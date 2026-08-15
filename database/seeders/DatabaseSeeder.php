@@ -14,6 +14,9 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->call(ContratsPaeColumnMappingSeeder::class);
+        $this->call([
+            ContratsPaeColumnMappingSeeder::class,
+            RolePermissionSeeder::class,
+        ]);
     }
 }

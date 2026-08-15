@@ -3,7 +3,7 @@
 namespace Tests\Feature\Database;
 
 use App\Models\User;
-use Database\Seeders\ContratsPaeColumnMappingSeeder;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
@@ -49,7 +49,7 @@ class InitialSchemaTest extends TestCase
 
     public function test_all_154_legacy_contract_columns_have_a_conservation_strategy(): void
     {
-        $this->seed(ContratsPaeColumnMappingSeeder::class);
+        $this->seed(DatabaseSeeder::class);
 
         $mappings = DB::table('correspondances_colonnes_contrats_pae')->get();
 
@@ -115,13 +115,8 @@ class InitialSchemaTest extends TestCase
     private function createWorkflowInstance(): array
     {
         $utilisateur = User::factory()->create();
-        $role = DB::table('roles')->insertGetId([
-            'name' => 'CIP',
-            'guard_name' => 'web',
-            'nom' => 'Conseiller emploi',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $this->seed(DatabaseSeeder::class);
+        $role = DB::table('roles')->where('name', 'cip')->value('id');
         $region = DB::table('regions')->insertGetId([
             'code' => 'ABJ',
             'nom' => 'Abidjan',
