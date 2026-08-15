@@ -67,12 +67,98 @@ class DmgService
     }
 
     /**
-     * Transmet un dossier Brouillon à l'Agent Comptable.
+     * Transmet un dossier Brouillon au Chef de Bureau (CB).
      */
-    public function transmettreDossierAc(DossierPaiement $dossier): void
+    public function transmettreDossierCb(DossierPaiement $dossier): void
     {
         DB::transaction(function () use ($dossier) {
-            $dossier->update(['statut' => 'TRANSMIS_AC']);
+            $dossier->update(['statut' => 'TRANSMIS_CB']);
+        });
+    }
+
+    /**
+     * Retrait d'un paiement d'un dossier
+     */
+    public function retirerPaiementDossier(DossierPaiement $dossier, Paiement $paiement, string $motif = ''): void
+    {
+        DB::transaction(function () use ($dossier, $paiement, $motif) {
+            $dossier->paiements()->updateExistingPivot($paiement->id, [
+                'retire_le' => now(),
+                'motif_retrait' => $motif
+            ]);
+            $paiement->update(['statut' => 'A_TRAITER']);
+            
+            // Recalculer le montant
+            $montantRetire = $dossier->paiements()->where('paiement_id', $paiement->id)->first()->pivot->montant ?? 0;
+            $dossier->update([
+                'montant_total' => $dossier->montant_total - $montantRetire
+            ]);
+        });
+    }
+
+    /**
+     * Élabore un OP à partir de plusieurs dossiers validés par le CB.
+     */
+    public function elaborerOp(array $dossierIds, int $periodeId): \App\Models\Payment\OrdrePaiement
+    {
+        return DB::transaction(function () use ($dossierIds, $periodeId) {
+            $dossiers = DossierPaiement::whereIn('id', $dossierIds)->where('statut', 'VALIDE_CB')->get();
+            $montantTotal = $dossiers->sum('montant_total');
+
+            $op = \App\Models\Payment\OrdrePaiement::create([
+                'uuid_public' => Str::uuid(),
+                'numero' => 'OP-' . date('Ym') . '-' . strtoupper(Str::random(5)),
+                'periode_id' => $periodeId,
+                'montant_total' => $montantTotal,
+                'statut' => 'BROUILLON'
+            ]);
+
+            foreach ($dossiers as $dossier) {
+                $dossier->update([
+                    'ordre_paiement_id' => $op->id,
+                    'statut' => 'EN_OP'
+                ]);
+            }
+
+            return $op;
+        });
+    }
+
+    /**
+     * Crée un Bordereau à partir de plusieurs OP.
+     */
+    public function creerBordereau(array $opIds, int $periodeId): \App\Models\Payment\BordereauPaiement
+    {
+        return DB::transaction(function () use ($opIds, $periodeId) {
+            $ops = \App\Models\Payment\OrdrePaiement::whereIn('id', $opIds)->where('statut', 'BROUILLON')->get();
+            $montantTotal = $ops->sum('montant_total');
+
+            $bordereau = \App\Models\Payment\BordereauPaiement::create([
+                'uuid_public' => Str::uuid(),
+                'numero' => 'BORD-' . date('Ym') . '-' . strtoupper(Str::random(5)),
+                'periode_id' => $periodeId,
+                'montant_total' => $montantTotal,
+                'statut' => 'BROUILLON'
+            ]);
+
+            foreach ($ops as $op) {
+                $op->update([
+                    'bordereau_paiement_id' => $bordereau->id,
+                    'statut' => 'EN_BORDEREAU'
+                ]);
+            }
+
+            return $bordereau;
+        });
+    }
+
+    /**
+     * Transmet un Bordereau à l'Agent Comptable.
+     */
+    public function transmettreBordereauAc(\App\Models\Payment\BordereauPaiement $bordereau): void
+    {
+        DB::transaction(function () use ($bordereau) {
+            $bordereau->update(['statut' => 'TRANSMIS_AC']);
         });
     }
 }

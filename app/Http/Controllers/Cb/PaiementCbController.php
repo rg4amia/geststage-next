@@ -13,27 +13,44 @@ class PaiementCbController extends Controller
 {
     public function __construct(private CorbeilleParcoursQueryService $corbeilles) {}
 
-    public function index()
+    public function index(Request $request)
     {
+        $mois = $request->query('mois', \Carbon\Carbon::now()->format('Y-m'));
+        $periode = \App\Models\Reference\Periode::where('code', $mois)->first();
+
+        $dossiersAttenteCB = \App\Models\Payment\DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
+            ->withCount('paiements')
+            ->where('statut', 'TRANSMIS_CB')
+            ->where('periode_id', $periode?->id)
+            ->get();
+
+        $dossiersAjournes = \App\Models\Payment\DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
+            ->withCount('paiements')
+            ->where('statut', 'AJOURNE_CB')
+            ->where('periode_id', $periode?->id)
+            ->get();
+
         return Inertia::render('Cb/Paiements/Index', [
-            'dossiersControle' => $this->corbeilles->instanceRows(CorbeilleEnum::CB_DOSSIER_MULTIPLE, 'En attente'),
-            'etatsAjournes' => $this->corbeilles->instanceRows(CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE, 'Ajourné'),
+            'dossiersControle' => $this->corbeilles->dossierRows($dossiersAttenteCB, 'En attente CB'),
+            'etatsAjournes' => $this->corbeilles->dossierRows($dossiersAjournes, 'Ajourné CB'),
+            'moisActuel' => $mois,
+            'periode' => $periode,
         ]);
     }
 
     public function valider(Request $request, $id)
     {
-        $instance = InstanceParcours::findOrFail($id);
-        $instance->update(['corbeille_actuelle' => CorbeilleEnum::DMG_ELABORATION_OP->value]);
+        $dossier = \App\Models\Payment\DossierPaiement::findOrFail($id);
+        $dossier->update(['statut' => 'VALIDE_CB']);
 
         return redirect()->back()->with('success', 'Dossier validé et transmis à la DMG pour élaboration OP.');
     }
 
     public function ajourner(Request $request, $id)
     {
-        $instance = InstanceParcours::findOrFail($id);
+        $dossier = \App\Models\Payment\DossierPaiement::findOrFail($id);
         // Retourne à la DMG pour correction du dossier
-        $instance->update(['corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value]); // Exemple
+        $dossier->update(['statut' => 'AJOURNE_CB']);
 
         return redirect()->back()->with('success', 'Dossier ajourné et renvoyé à la DMG.');
     }

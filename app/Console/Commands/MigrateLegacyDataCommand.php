@@ -512,7 +512,7 @@ class MigrateLegacyDataCommand extends Command
                     $pointage = \App\Models\Attendance\Pointage::updateOrCreate(
                         ['ancien_id' => $legacyPointage->id],
                         [
-                            'stage_id' => $stage->id,
+                            'stage_id' => $stage_id,
                             'periode_id' => $periodeId,
                             'nature' => 'PRESENCE',
                             'statut' => $statut,

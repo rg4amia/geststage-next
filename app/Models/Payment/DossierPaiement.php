@@ -25,7 +25,8 @@ class DossierPaiement extends Model
         'numero',
         'nature',
         'statut',
-        'montant_total'
+        'montant_total',
+        'ordre_paiement_id',
     ];
 
     protected $casts = [
@@ -55,6 +56,11 @@ class DossierPaiement extends Model
             'dossier_paiement_id',
             'paiement_id'
         )->withPivot(['montant', 'ajoute_le', 'retire_le', 'motif_retrait']);
+    }
+
+    public function ordrePaiement(): BelongsTo
+    {
+        return $this->belongsTo(OrdrePaiement::class, 'ordre_paiement_id');
     }
 
     // Scopes pour les vues

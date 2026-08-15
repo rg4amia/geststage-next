@@ -51,22 +51,27 @@ class PaiementDmgController extends Controller
 
         $dossiersTransmis = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
             ->withCount('paiements')
-            ->transmisAc()
+            ->where('statut', 'TRANSMIS_CB')
             ->where('periode_id', $periode?->id)
             ->get();
 
         $dossiersAjournes = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
             ->withCount('paiements')
-            ->ajourneDmg()
+            ->whereIn('statut', ['AJOURNE_DMG', 'AJOURNE_CB'])
             ->where('periode_id', $periode?->id)
             ->get();
+
+        $ops = \App\Models\Payment\OrdrePaiement::where('periode_id', $periode?->id)->get();
+        $bordereaux = \App\Models\Payment\BordereauPaiement::where('periode_id', $periode?->id)->get();
 
         return Inertia::render('Dmg/Paiements/Index', [
             'attenteDemarrage' => $this->corbeilles->paiementRows($attentePaiementDemarrage),
             'attentePresence' => $this->corbeilles->paiementRows($attentePaiementPresence),
             'dossiers' => $this->corbeilles->dossierRows($dossiersBrouillon, 'En élaboration'),
-            'dossiersTransmis' => $this->corbeilles->dossierRows($dossiersTransmis, 'Transmis AC'),
-            'dossiersAjournes' => $this->corbeilles->dossierRows($dossiersAjournes, 'Ajourné DMG'),
+            'dossiersTransmis' => $this->corbeilles->dossierRows($dossiersTransmis, 'Transmis CB'),
+            'dossiersAjournes' => $this->corbeilles->dossierRows($dossiersAjournes, 'Ajourné DMG/CB'),
+            'ops' => $ops,
+            'bordereaux' => $bordereaux,
             'moisActuel' => $mois,
             'periode' => $periode,
         ]);
@@ -84,8 +89,40 @@ class PaiementDmgController extends Controller
     public function transmettre(Request $request, $dossierId)
     {
         $dossier = DossierPaiement::findOrFail($dossierId);
-        $this->dmgService->transmettreDossierAc($dossier);
+        $this->dmgService->transmettreDossierCb($dossier);
 
-        return redirect()->back()->with('success', 'Dossier transmis à l\'Agent Comptable.');
+        return redirect()->back()->with('success', 'Dossier transmis au Chef de Bureau (CB).');
+    }
+
+    public function elaborerOp(Request $request)
+    {
+        $request->validate([
+            'dossiers' => 'required|array',
+            'periode_id' => 'required|exists:periodes,id'
+        ]);
+
+        $this->dmgService->elaborerOp($request->dossiers, $request->periode_id);
+
+        return redirect()->back()->with('success', 'Ordre de Paiement élaboré.');
+    }
+
+    public function creerBordereau(Request $request)
+    {
+        $request->validate([
+            'ops' => 'required|array',
+            'periode_id' => 'required|exists:periodes,id'
+        ]);
+
+        $this->dmgService->creerBordereau($request->ops, $request->periode_id);
+
+        return redirect()->back()->with('success', 'Bordereau de Paiement créé.');
+    }
+
+    public function transmettreBordereau(Request $request, $id)
+    {
+        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $this->dmgService->transmettreBordereauAc($bordereau);
+
+        return redirect()->back()->with('success', 'Bordereau transmis à l\'Agent Comptable.');
     }
 }

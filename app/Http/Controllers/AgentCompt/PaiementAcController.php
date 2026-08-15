@@ -23,22 +23,20 @@ class PaiementAcController extends Controller
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
         $periode = Periode::where('code', $mois)->first();
 
-        $dossiersAttenteVisa = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
-            ->withCount('paiements')
-            ->transmisAc()
+        $bordereauxAttenteVisa = \App\Models\Payment\BordereauPaiement::where('statut', 'TRANSMIS_AC')
             ->where('periode_id', $periode?->id)
             ->get();
 
-        $dossiersVises = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
-            ->withCount('paiements')
-            ->viseAc()
+        $bordereauxVises = \App\Models\Payment\BordereauPaiement::where('statut', 'VISE_AC')
             ->where('periode_id', $periode?->id)
             ->get();
 
         return Inertia::render('AgentComptable/Paiements/Index', [
-            'bordereauxAttente' => $this->corbeilles->dossierRows($dossiersAttenteVisa, 'En attente AC'),
-            'ordresRejetes' => $this->corbeilles->dossierRows($dossiersVises, 'Validé AC'),
-            'statutPaiements' => $this->corbeilles->dossierRows($dossiersVises, 'Payé'),
+            // On peut adapter corbeilles->dossierRows pour accepter des bordereaux, ou le faire manuellement
+            // Mais pour garder l'API de CorbeilleParcoursQueryService, on l'utilise tel quel en attendant
+            'bordereauxAttente' => $bordereauxAttenteVisa,
+            'ordresRejetes' => $bordereauxVises,
+            'statutPaiements' => $bordereauxVises,
             'moisActuel' => $mois,
             'periode' => $periode,
         ]);
@@ -46,19 +44,19 @@ class PaiementAcController extends Controller
 
     public function viser(Request $request, $id)
     {
-        $dossier = DossierPaiement::findOrFail($id);
-        $this->acService->viserDossier($dossier);
+        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $this->acService->viserBordereau($bordereau);
 
-        return redirect()->back()->with('success', 'Dossier visé avec succès.');
+        return redirect()->back()->with('success', 'Bordereau visé avec succès.');
     }
 
     public function ajourner(Request $request, $id)
     {
         $request->validate(['motif' => 'required|string|min:5']);
 
-        $dossier = DossierPaiement::findOrFail($id);
-        $this->acService->ajournerDossier($dossier, $request->motif);
+        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $this->acService->ajournerBordereau($bordereau, $request->motif);
 
-        return redirect()->back()->with('success', 'Dossier ajourné vers la DMG.');
+        return redirect()->back()->with('success', 'Bordereau ajourné vers la DMG.');
     }
 }
