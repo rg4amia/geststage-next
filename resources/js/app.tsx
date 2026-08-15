@@ -1,0 +1,73 @@
+import { createInertiaApp } from '@inertiajs/react';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
+import { Provider } from 'react-redux';
+import { configureStore } from '@reduxjs/toolkit';
+import type { ComponentType } from 'react';
+
+import { Toaster } from '@/old/components/ui/sonner';
+import { TooltipProvider } from '@/old/components/ui/tooltip';
+import { initializeTheme } from '@/old/hooks/use-appearance';
+import AppLayout from '@/old/layouts/app-layout';
+import AuthLayout from '@/old/layouts/auth-layout';
+import SettingsLayout from '@/old/layouts/settings/layout';
+import VelzoneLayout from '@/velzone/Layouts';
+import rootReducer from '@/velzone/slices';
+import fakeBackend from '@/velzone/helpers/AuthType/fakeBackend';
+
+import '@/velzone/i18n';
+import '@/velzone/assets/scss/themes.scss';
+
+fakeBackend();
+
+const store = configureStore({
+    reducer: rootReducer,
+    devTools: import.meta.env.DEV,
+});
+
+const pages = import.meta.glob<{ default: ComponentType }>([
+    './velzone/pages/DashboardAnalytics/index.tsx',
+    './velzone/pages/Tables/GridJs/index.tsx',
+    './old/pages/**/*.tsx',
+]);
+
+const appName = import.meta.env.VITE_APP_NAME || 'GestStage';
+
+createInertiaApp({
+    title: (title) => (title ? `${title} - ${appName}` : appName),
+    resolve: async (name) => {
+        const page = await resolvePageComponent<{ default: ComponentType }>(
+            [`./velzone/pages/${name}.tsx`, `./old/pages/${name}.tsx`],
+            pages,
+        );
+
+        return page.default;
+    },
+    layout: (name) => {
+        if (name === 'welcome') {
+            return null;
+        }
+
+        if (name.startsWith('auth/')) {
+            return AuthLayout;
+        }
+
+        if (name.startsWith('settings/')) {
+            return [AppLayout, SettingsLayout];
+        }
+
+        return VelzoneLayout;
+    },
+    withApp: (app) => (
+        <Provider store={store}>
+            <TooltipProvider delayDuration={0}>
+                {app}
+                <Toaster />
+            </TooltipProvider>
+        </Provider>
+    ),
+    progress: {
+        color: '#405189',
+    },
+});
+
+initializeTheme();
