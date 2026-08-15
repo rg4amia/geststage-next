@@ -98,7 +98,7 @@ return new class extends Migration
             $table->string('statut', 40)->default('A_RECONCILIER');
             $table->text('description');
             $table->jsonb('donnees')->nullable();
-            $table->foreignId('resolue_par_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('resolue_par_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestampTz('resolue_le')->nullable();
             $table->timestamps();
             $table->index(['statut', 'gravite']);

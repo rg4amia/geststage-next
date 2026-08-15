@@ -45,7 +45,7 @@ return new class extends Migration
         Schema::create('conseillers', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('ancien_id')->nullable()->unique();
-            $table->foreignId('utilisateur_id')->nullable()->unique()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('user_id')->nullable()->unique()->constrained('users')->nullOnDelete();
             $table->foreignId('agence_id')->constrained('agences')->restrictOnDelete();
             $table->string('matricule', 100)->nullable()->unique();
             $table->string('nom');
@@ -57,12 +57,12 @@ return new class extends Migration
 
         Schema::create('perimetres_agences_utilisateurs', function (Blueprint $table): void {
             $table->id();
-            $table->foreignId('utilisateur_id')->constrained('utilisateurs')->cascadeOnDelete();
+            $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
             $table->foreignId('agence_id')->constrained('agences')->restrictOnDelete();
             $table->timestampTz('valide_du')->useCurrent();
             $table->timestampTz('valide_au')->nullable();
             $table->timestamps();
-            $table->unique(['utilisateur_id', 'agence_id', 'valide_du'], 'perimetre_agence_utilisateur_unique');
+            $table->unique(['user_id', 'agence_id', 'valide_du'], 'perimetre_agence_utilisateur_unique');
         });
 
         Schema::create('periodes', function (Blueprint $table): void {

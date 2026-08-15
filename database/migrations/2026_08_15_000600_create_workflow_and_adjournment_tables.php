@@ -80,7 +80,7 @@ return new class extends Migration
             $table->foreignId('etape_parcours_id')->constrained('etapes_parcours')->restrictOnDelete();
             $table->foreignId('role_responsable_id')->constrained('roles')->restrictOnDelete();
             $table->foreignId('agence_id')->nullable()->constrained('agences')->restrictOnDelete();
-            $table->foreignId('utilisateur_assigne_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('utilisateur_assigne_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('code_corbeille', 120);
             $table->string('statut', 30)->default('OUVERTE');
             $table->unsignedSmallInteger('priorite')->default(0);
@@ -99,7 +99,7 @@ return new class extends Migration
             $table->foreignId('transition_parcours_id')->nullable()->constrained('transitions_parcours')->restrictOnDelete();
             $table->foreignId('etape_source_id')->nullable()->constrained('etapes_parcours')->restrictOnDelete();
             $table->foreignId('etape_cible_id')->constrained('etapes_parcours')->restrictOnDelete();
-            $table->foreignId('auteur_id')->constrained('utilisateurs')->restrictOnDelete();
+            $table->foreignId('auteur_id')->constrained('users')->restrictOnDelete();
             $table->string('type', 100);
             $table->string('cle_idempotence', 150)->unique();
             $table->jsonb('donnees')->nullable();
@@ -119,7 +119,7 @@ return new class extends Migration
             $table->foreignId('etape_retour_id')->constrained('etapes_parcours')->restrictOnDelete();
             $table->foreignId('motif_ajournement_id')->constrained('motifs_ajournement')->restrictOnDelete();
             $table->foreignId('role_correcteur_id')->constrained('roles')->restrictOnDelete();
-            $table->foreignId('auteur_id')->constrained('utilisateurs')->restrictOnDelete();
+            $table->foreignId('auteur_id')->constrained('users')->restrictOnDelete();
             $table->string('code_corbeille_origine', 120);
             $table->string('code_corbeille_retour', 120);
             $table->text('motif_detaille');
@@ -148,7 +148,7 @@ return new class extends Migration
         Schema::create('corrections_ajournements', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('ajournement_id')->constrained('ajournements')->restrictOnDelete();
-            $table->foreignId('auteur_id')->constrained('utilisateurs')->restrictOnDelete();
+            $table->foreignId('auteur_id')->constrained('users')->restrictOnDelete();
             $table->unsignedInteger('numero_version');
             $table->text('description');
             $table->jsonb('valeurs_corrigees')->nullable();

@@ -18,7 +18,7 @@ class InitialSchemaTest extends TestCase
     public function test_initial_schema_contains_every_requested_domain(): void
     {
         $tables = [
-            'utilisateurs', 'roles', 'permissions', 'regions', 'agences', 'communes',
+            'users', 'roles', 'permissions', 'regions', 'agences', 'communes',
             'conseillers', 'periodes', 'types_stage', 'types_structure',
             'sources_financement', 'programmes', 'entreprises', 'offres_emploi',
             'beneficiaires', 'stages', 'contrats', 'documents', 'versions_documents',
@@ -29,13 +29,14 @@ class InitialSchemaTest extends TestCase
             'dossiers_groupes', 'ordres_paiement', 'bordereaux_paiement',
             'conservations_contrats_pae', 'correspondances_colonnes_contrats_pae',
             'conservations_referentiels_legacy', 'correspondances_valeurs_referentiels',
+            'model_has_roles', 'model_has_permissions', 'role_has_permissions',
         ];
 
         foreach ($tables as $table) {
             $this->assertTrue(Schema::hasTable($table), "La table {$table} doit exister.");
         }
 
-        $this->assertFalse(Schema::hasTable('users'));
+        $this->assertFalse(Schema::hasTable('utilisateurs'));
     }
 
     public function test_workflow_position_has_a_single_schema_source_of_truth(): void
@@ -115,7 +116,8 @@ class InitialSchemaTest extends TestCase
     {
         $utilisateur = User::factory()->create();
         $role = DB::table('roles')->insertGetId([
-            'code' => 'CIP',
+            'name' => 'CIP',
+            'guard_name' => 'web',
             'nom' => 'Conseiller emploi',
             'created_at' => now(),
             'updated_at' => now(),

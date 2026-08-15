@@ -133,7 +133,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('stage_id')->constrained('stages')->restrictOnDelete();
             $table->foreignId('situation_stage_id')->constrained('situations_stage')->restrictOnDelete();
-            $table->foreignId('auteur_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('auteur_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestampTz('debute_le');
             $table->timestampTz('termine_le')->nullable();
             $table->text('motif')->nullable();

@@ -11,6 +11,7 @@ import AppLayout from '@/old/layouts/app-layout';
 import AuthLayout from '@/old/layouts/auth-layout';
 import SettingsLayout from '@/old/layouts/settings/layout';
 import VelzoneLayout from '@/velzone/Layouts';
+import NonAuthLayout from '@/velzone/Layouts/NonAuthLayout';
 import rootReducer from '@/velzone/slices';
 import fakeBackend from '@/velzone/helpers/AuthType/fakeBackend';
 
@@ -27,6 +28,7 @@ const store = configureStore({
 const pages = import.meta.glob<{ default: ComponentType }>([
     './velzone/pages/DashboardAnalytics/index.tsx',
     './velzone/pages/Tables/GridJs/index.tsx',
+    './velzone/pages/Authentication/**/*.tsx',
     './old/pages/**/*.tsx',
 ]);
 
@@ -49,6 +51,10 @@ createInertiaApp({
 
         if (name.startsWith('auth/')) {
             return AuthLayout;
+        }
+
+        if (name.startsWith('Authentication/')) {
+            return NonAuthLayout;
         }
 
         if (name.startsWith('settings/')) {

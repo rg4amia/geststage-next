@@ -17,7 +17,7 @@ return new class extends Migration
             $table->foreignId('beneficiaire_id')->nullable()->constrained('beneficiaires')->restrictOnDelete();
             $table->foreignId('stage_id')->nullable()->constrained('stages')->restrictOnDelete();
             $table->foreignId('contrat_id')->nullable()->constrained('contrats')->restrictOnDelete();
-            $table->foreignId('cree_par_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('cree_par_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('nom');
             $table->string('statut', 40)->default('BROUILLON');
             $table->boolean('prive')->default(true);
@@ -29,7 +29,7 @@ return new class extends Migration
         Schema::create('versions_documents', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('document_id')->constrained('documents')->restrictOnDelete();
-            $table->foreignId('depose_par_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('depose_par_id')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedInteger('numero_version');
             $table->string('disque', 100);
             $table->string('chemin');

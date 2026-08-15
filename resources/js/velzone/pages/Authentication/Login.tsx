@@ -1,96 +1,34 @@
 import React, { useEffect, useState } from 'react';
 import { Card, CardBody, Col, Container, Input, Label, Row, Button, Form, FormFeedback, Alert, Spinner } from 'reactstrap';
 import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
-
-//redux
-import { useSelector, useDispatch } from "react-redux";
-
-import { Link } from '@/velzone/inertia-router';
-import withRouter from "../../Components/Common/withRouter";
-// Formik validation
-import * as Yup from "yup";
-import { useFormik } from "formik";
-
-// actions
-import { loginUser, socialLogin, resetLoginFlag } from "../../slices/thunks";
+import { Link, useForm, usePage } from '@inertiajs/react';
 
 import logoLight from "../../assets/images/logo-light.png";
-import { createSelector } from 'reselect';
-//import images
 
-const Login = (props: any) => {
-    const dispatch: any = useDispatch();
-
-    const selectLayoutState = (state: any) => state;
-    const loginpageData = createSelector(
-        selectLayoutState,
-        (state) => ({
-            user: state.Account.user,
-            error: state.Login.error,
-            errorMsg: state.Login.errorMsg,
-        })
-    );
-    // Inside your component
-    const {
-        user, error, errorMsg
-    } = useSelector(loginpageData);
-
-    const [userLogin, setUserLogin] = useState<any>([]);
-    const [passwordShow, setPasswordShow] = useState<boolean>(false);
-
-    const [loader, setLoader] = useState<boolean>(false);
-
-
-    useEffect(() => {
-        if (user && user) {
-            const updatedUserData = process.env.REACT_APP_DEFAULTAUTH === "firebase" ? user.multiFactor.user.email : user.email;
-            const updatedUserPassword = process.env.REACT_APP_DEFAULTAUTH === "firebase" ? "" : user.confirm_password;
-            setUserLogin({
-                email: updatedUserData,
-                password: updatedUserPassword
-            });
-        }
-    }, [user]);
-
-    const validation: any = useFormik({
-        // enableReinitialize : use this flag when initial values needs to be changed
-        enableReinitialize: true,
-
-        initialValues: {
-            email: userLogin.email || "admin@themesbrand.com" || '',
-            password: userLogin.password || "123456" || '',
-        },
-        validationSchema: Yup.object({
-            email: Yup.string().required("Please Enter Your Email"),
-            password: Yup.string().required("Please Enter Your Password"),
-        }),
-        onSubmit: (values) => {
-            dispatch(loginUser(values, props.router.navigate));
-            setLoader(true)
-        }
+const Login = () => {
+    const { data, setData, post, processing, errors, reset } = useForm({
+        email: '',
+        password: '',
+        remember: false,
     });
 
-    const signIn = (type: any) => {
-        dispatch(socialLogin(type, props.router.navigate));
-    };
-
-
-    //for facebook and google authentication
-    const socialResponse = (type: any) => {
-        signIn(type);
-    };
-
+    const [passwordShow, setPasswordShow] = useState<boolean>(false);
+    
+    // Get status from page props (like reset password success message)
+    const { status } = usePage().props as any;
 
     useEffect(() => {
-        if (errorMsg) {
-            setTimeout(() => {
-                dispatch(resetLoginFlag());
-                setLoader(false)
-            }, 3000);
-        }
-    }, [dispatch, errorMsg]);
+        return () => {
+            reset('password');
+        };
+    }, []);
 
-    document.title = "Basic SignIn | Velzon - React Admin & Dashboard Template";
+    const submit = (e: any) => {
+        e.preventDefault();
+        post('/login');
+    };
+
+    document.title = "SignIn | GestStage";
     return (
         <React.Fragment>
             <ParticlesAuth>
@@ -100,11 +38,11 @@ const Login = (props: any) => {
                             <Col lg={12}>
                                 <div className="text-center mt-sm-5 mb-4 text-white-50">
                                     <div>
-                                        <Link to="/" className="d-inline-block auth-logo">
+                                        <Link href="/" className="d-inline-block auth-logo">
                                             <img src={logoLight} alt="" height="20" />
                                         </Link>
                                     </div>
-                                    <p className="mt-3 fs-15 fw-medium">Premium Admin & Dashboard Template</p>
+                                    <p className="mt-3 fs-15 fw-medium">GestStage - Authentification</p>
                                 </div>
                             </Col>
                         </Row>
@@ -115,17 +53,12 @@ const Login = (props: any) => {
                                     <CardBody className="p-4">
                                         <div className="text-center mt-2">
                                             <h5 className="text-primary">Welcome Back !</h5>
-                                            <p className="text-muted">Sign in to continue to Velzon.</p>
+                                            <p className="text-muted">Sign in to continue to GestStage.</p>
                                         </div>
-                                        {error && error ? (<Alert color="danger"> {error} </Alert>) : null}
+                                        {status && (<Alert color="success"> {status} </Alert>)}
+                                        {errors.email && (<Alert color="danger"> {errors.email} </Alert>)}
                                         <div className="p-2 mt-4">
-                                            <Form
-                                                onSubmit={(e) => {
-                                                    e.preventDefault();
-                                                    validation.handleSubmit();
-                                                    return false;
-                                                }}
-                                                action="#">
+                                            <Form onSubmit={submit}>
 
                                                 <div className="mb-3">
                                                     <Label htmlFor="email" className="form-label">Email</Label>
@@ -134,93 +67,64 @@ const Login = (props: any) => {
                                                         className="form-control"
                                                         placeholder="Enter email"
                                                         type="email"
-                                                        onChange={validation.handleChange}
-                                                        onBlur={validation.handleBlur}
-                                                        value={validation.values.email || ""}
-                                                        invalid={
-                                                            validation.touched.email && validation.errors.email ? true : false
-                                                        }
+                                                        onChange={(e) => setData('email', e.target.value)}
+                                                        value={data.email}
+                                                        invalid={errors.email ? true : false}
                                                     />
-                                                    {validation.touched.email && validation.errors.email ? (
-                                                        <FormFeedback type="invalid">{validation.errors.email}</FormFeedback>
+                                                    {errors.email ? (
+                                                        <FormFeedback type="invalid">{errors.email}</FormFeedback>
                                                     ) : null}
                                                 </div>
 
                                                 <div className="mb-3">
                                                     <div className="float-end">
-                                                        <Link to="/forgot-password" className="text-muted">Forgot password?</Link>
+                                                        <Link href="/forgot-password" className="text-muted">Forgot password?</Link>
                                                     </div>
                                                     <Label className="form-label" htmlFor="password-input">Password</Label>
                                                     <div className="position-relative auth-pass-inputgroup mb-3">
                                                         <Input
                                                             name="password"
-                                                            value={validation.values.password || ""}
+                                                            value={data.password}
                                                             type={passwordShow ? "text" : "password"}
                                                             className="form-control pe-5"
                                                             placeholder="Enter Password"
-                                                            onChange={validation.handleChange}
-                                                            onBlur={validation.handleBlur}
-                                                            invalid={
-                                                                validation.touched.password && validation.errors.password ? true : false
-                                                            }
+                                                            onChange={(e) => setData('password', e.target.value)}
+                                                            invalid={errors.password ? true : false}
                                                         />
-                                                        {validation.touched.password && validation.errors.password ? (
-                                                            <FormFeedback type="invalid">{validation.errors.password}</FormFeedback>
+                                                        {errors.password ? (
+                                                            <FormFeedback type="invalid">{errors.password}</FormFeedback>
                                                         ) : null}
                                                         <button className="btn btn-link position-absolute end-0 top-0 text-decoration-none text-muted" type="button" id="password-addon" onClick={() => setPasswordShow(!passwordShow)}><i className="ri-eye-fill align-middle"></i></button>
                                                     </div>
                                                 </div>
 
                                                 <div className="form-check">
-                                                    <Input className="form-check-input" type="checkbox" value="" id="auth-remember-check" />
+                                                    <Input 
+                                                        className="form-check-input" 
+                                                        type="checkbox" 
+                                                        id="auth-remember-check" 
+                                                        checked={data.remember}
+                                                        onChange={(e) => setData('remember', e.target.checked)}
+                                                    />
                                                     <Label className="form-check-label" htmlFor="auth-remember-check">Remember me</Label>
                                                 </div>
 
                                                 <div className="mt-4">
                                                     <Button color="success"
-                                                        disabled={loader && true}
+                                                        disabled={processing}
                                                         className="btn btn-success w-100" type="submit">
-                                                        {loader && <Spinner size="sm" className='me-2'> Loading... </Spinner>}
+                                                        {processing && <Spinner size="sm" className='me-2'> Loading... </Spinner>}
                                                         Sign In
                                                     </Button>
                                                 </div>
 
-                                                <div className="mt-4 text-center">
-                                                    <div className="signin-other-title">
-                                                        <h5 className="fs-13 mb-4 title">Sign In with</h5>
-                                                    </div>
-                                                    <div>
-                                                        <Link
-                                                            to="#"
-                                                            className="btn btn-primary btn-icon me-1"
-                                                            onClick={e => {
-                                                                e.preventDefault();
-                                                                socialResponse("facebook");
-                                                            }}
-                                                        >
-                                                            <i className="ri-facebook-fill fs-16" />
-                                                        </Link>
-                                                        <Link
-                                                            to="#"
-                                                            className="btn btn-danger btn-icon me-1"
-                                                            onClick={e => {
-                                                                e.preventDefault();
-                                                                socialResponse("google");
-                                                            }}
-                                                        >
-                                                            <i className="ri-google-fill fs-16" />
-                                                        </Link>
-                                                        <Button color="dark" className="btn-icon"><i className="ri-github-fill fs-16"></i></Button>{" "}
-                                                        <Button color="info" className="btn-icon"><i className="ri-twitter-fill fs-16"></i></Button>
-                                                    </div>
-                                                </div>
                                             </Form>
                                         </div>
                                     </CardBody>
                                 </Card>
 
                                 <div className="mt-4 text-center">
-                                    <p className="mb-0">Don't have an account ? <Link to="/register" className="fw-semibold text-primary text-decoration-underline"> Signup </Link> </p>
+                                    <p className="mb-0">Don't have an account ? <Link href="/register" className="fw-semibold text-primary text-decoration-underline"> Signup </Link> </p>
                                 </div>
 
                             </Col>
@@ -232,4 +136,4 @@ const Login = (props: any) => {
     );
 };
 
-export default withRouter(Login);
+export default Login;

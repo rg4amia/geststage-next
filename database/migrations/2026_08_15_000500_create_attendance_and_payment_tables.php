@@ -27,7 +27,7 @@ return new class extends Migration
         Schema::create('versions_pointages', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('pointage_id')->constrained('pointages')->restrictOnDelete();
-            $table->foreignId('saisi_par_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('saisi_par_id')->nullable()->constrained('users')->nullOnDelete();
             $table->unsignedInteger('numero_version');
             $table->string('presence', 30);
             $table->unsignedInteger('jours_presents')->default(0);
@@ -43,7 +43,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('pointage_id')->constrained('pointages')->restrictOnDelete();
             $table->foreignId('version_pointage_id')->constrained('versions_pointages')->restrictOnDelete();
-            $table->foreignId('auteur_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('auteur_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('decision', 40);
             $table->text('motif')->nullable();
             $table->timestampTz('decide_le')->useCurrent();
@@ -180,7 +180,7 @@ return new class extends Migration
         Schema::create('decisions_comptables', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('bordereau_paiement_id')->constrained('bordereaux_paiement')->restrictOnDelete();
-            $table->foreignId('auteur_id')->nullable()->constrained('utilisateurs')->nullOnDelete();
+            $table->foreignId('auteur_id')->nullable()->constrained('users')->nullOnDelete();
             $table->string('decision', 40);
             $table->text('motif')->nullable();
             $table->timestampTz('decide_le')->useCurrent();
