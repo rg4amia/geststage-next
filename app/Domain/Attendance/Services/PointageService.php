@@ -24,7 +24,7 @@ class PointageService
         // Note: C'est une implémentation simplifiée par rapport au legacy, 
         // mais elle respecte le même principe "whereDoesntHave".
         
-        $periode = Periode::where('nom', 'like', "%$mois%")->first();
+        $periode = Periode::where('code', $mois)->first();
         if (!$periode) {
             return collect();
         }

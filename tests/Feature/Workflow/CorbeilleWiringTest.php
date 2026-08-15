@@ -127,7 +127,6 @@ class CorbeilleWiringTest extends TestCase
         $stageValidation = Stage::factory()->create();
         $periodeValidation = Periode::create([
             'code' => '2026-08',
-            'nom' => 'Août 2026',
             'date_debut' => '2026-08-01',
             'date_fin' => '2026-08-31',
             'ouverte_pointage' => true,
