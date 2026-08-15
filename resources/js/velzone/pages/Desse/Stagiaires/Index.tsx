@@ -175,20 +175,20 @@ const DesseStagiairesIndex = ({
                                     <Row className="text-center p-4">
                                         <Col md={4}>
                                             <div className="border p-3 rounded">
-                                                <h5 className="text-success mb-1">{statistiques?.valides || 0}</h5>
-                                                <p className="text-muted mb-0">Total Stagiaires Validés</p>
+                                                <h5 className="text-primary mb-1">{statistiques?.attente_validation || 0}</h5>
+                                                <p className="text-muted mb-0">En attente de vérification</p>
                                             </div>
                                         </Col>
                                         <Col md={4}>
                                             <div className="border p-3 rounded">
-                                                <h5 className="text-danger mb-1">{statistiques?.rejetes || 0}</h5>
-                                                <p className="text-muted mb-0">Total Rejetés</p>
+                                                <h5 className="text-warning mb-1">{statistiques?.doublons || 0}</h5>
+                                                <p className="text-muted mb-0">Doublons suspects</p>
                                             </div>
                                         </Col>
                                         <Col md={4}>
                                             <div className="border p-3 rounded">
-                                                <h5 className="text-warning mb-1">{statistiques?.en_cours || 0}</h5>
-                                                <p className="text-muted mb-0">En cours d'inscription</p>
+                                                <h5 className="text-success mb-1">{statistiques?.total || 0}</h5>
+                                                <p className="text-muted mb-0">Total des cas suivis</p>
                                             </div>
                                         </Col>
                                     </Row>

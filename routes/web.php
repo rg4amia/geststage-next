@@ -31,6 +31,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Phase CIP : Mes Stagiaires et Ajournements
     Route::get('/cip/mes-stagiaires', [MesStagiairesCipController::class, 'index'])->name('cip.mes_stagiaires');
     Route::get('/cip/pointage/ajourne-dmg', [MesStagiairesCipController::class, 'pointageAjourneDmg'])->name('cip.pointages.ajourne_dmg');
+    Route::get('/cip/suivi', [MesStagiairesCipController::class, 'suivi'])->name('cip.suivi.index');
 
     // Phase 5 : Chef d'Agence (Démarrage & Omis)
     Route::get('/chefagence/validations', [IndexChefAgenceController::class, 'listeStagiaireAttenteValidation'])->name('chefagence.validations');

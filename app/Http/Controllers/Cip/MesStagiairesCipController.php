@@ -37,4 +37,17 @@ class MesStagiairesCipController extends Controller
             'instances' => $instances
         ]);
     }
+
+    /**
+     * Corbeille : Suivi des cas spécifiques
+     */
+    public function suivi(Request $request, \App\Domain\Workflow\Services\CorbeilleParcoursQueryService $corbeilles)
+    {
+        return Inertia::render('Cip/Suivi/Index', [
+            'differesAC' => $corbeilles->instanceRows(CorbeilleEnum::CIP_DIFFERE_AC, 'Différé AC'),
+            'doublonsDESSE' => $corbeilles->instanceRows(CorbeilleEnum::CIP_AJOURNE_DESSE, 'Doublon DESSE'),
+            'renouvellements' => $corbeilles->instanceRows(CorbeilleEnum::CIP_FIN_CONTRAT, 'Renouvellement'),
+            'suspensionsAbandons' => $corbeilles->instanceRows(CorbeilleEnum::CIP_AJOURNE_AAF, 'Suspension ou abandon'),
+        ]);
+    }
 }

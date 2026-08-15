@@ -14,9 +14,9 @@ class StagiaireDaicgController extends Controller
     public function index()
     {
         return Inertia::render('Daicg/Stagiaires/Index', [
-            'validesCA' => $this->corbeilles->instanceRows(CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'Validé CA'),
-            'validesDESSE' => $this->corbeilles->instanceRows(CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'Valide DESSE'),
-            'sansContrat' => collect(),
+            'validesCA' => $this->corbeilles->instanceRows(CorbeilleEnum::DAICG_VALIDES_CA, 'Validé CA'),
+            'validesDESSE' => $this->corbeilles->instanceRows(CorbeilleEnum::DAICG_VALIDES_DESSE, 'Validé DESSE'),
+            'sansContrat' => $this->corbeilles->instanceRows(CorbeilleEnum::DAICG_SANS_CONTRAT, 'Sans Contrat'),
         ]);
     }
 }

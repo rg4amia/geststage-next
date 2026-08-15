@@ -14,16 +14,21 @@ class StagiaireDesseController extends Controller
     public function index()
     {
         $attenteValidation = $this->corbeilles->instanceRows(
-            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
-            'Attente validation DESSE'
+            CorbeilleEnum::DESSE_ATTENTE_VERIFICATION_DMG,
+            'Attente de vérification'
+        );
+        $doublons = $this->corbeilles->instanceRows(
+            CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER,
+            'Doublon suspecté'
         );
 
         return Inertia::render('Desse/Stagiaires/Index', [
             'attenteValidation' => $attenteValidation,
-            'doublons' => collect(),
+            'doublons' => $doublons,
             'statistiques' => [
                 'attente_validation' => $attenteValidation->count(),
-                'doublons' => 0,
+                'doublons' => $doublons->count(),
+                'total' => $attenteValidation->count() + $doublons->count(),
             ],
         ]);
     }
