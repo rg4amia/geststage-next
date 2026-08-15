@@ -31,6 +31,7 @@ const pages = import.meta.glob<{ default: ComponentType }>([
     './velzone/pages/Authentication/**/*.tsx',
     './velzone/pages/Entreprises/**/*.tsx',
     './velzone/pages/Offres/**/*.tsx',
+    './velzone/pages/Inscriptions/**/*.tsx',
     './old/pages/**/*.tsx',
 ]);
 

@@ -61,6 +61,14 @@ class InstanceParcours extends Model
     }
 
     /**
+     * Les tâches ouvertes de l'instance.
+     */
+    public function taches_ouvertes(): HasMany
+    {
+        return $this->hasMany(TacheParcours::class)->where('statut', 'OUVERTE');
+    }
+
+    /**
      * Les événements survenus dans cette instance.
      */
     public function evenements(): HasMany

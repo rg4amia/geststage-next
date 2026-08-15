@@ -11,6 +11,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('offres', \App\Http\Controllers\Company\OffreEmploiController::class)->parameters([
         'offres' => 'offre_emploi'
     ]);
+    Route::resource('inscriptions', \App\Http\Controllers\Registration\InscriptionController::class);
 });
 
 require __DIR__.'/settings.php';
