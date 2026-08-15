@@ -5,6 +5,7 @@ namespace App\Models\Internship;
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Beneficiary\Beneficiaire;
+use App\Models\Attendance\Pointage;
 use App\Models\Company\Entreprise;
 use App\Models\Contract\Contrat;
 use App\Models\Reference\Agence;
@@ -62,6 +63,14 @@ class Stage extends Model
     public function contrats(): HasMany
     {
         return $this->hasMany(Contrat::class);
+    }
+
+    /**
+     * Les pointages liés à ce stage.
+     */
+    public function pointages(): HasMany
+    {
+        return $this->hasMany(Pointage::class);
     }
 
     /**

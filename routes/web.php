@@ -40,6 +40,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Phase 5 : Pointages CIP
     Route::get('/cip/pointages', [PointageCipController::class, 'stagiaireAttentePointage'])->name('cip.pointages.index');
+    Route::get('/cip/pointages/pejedec', [PointageCipController::class, 'stagiaireAttentePointagePejedec'])->name('cip.pointages.pejedec');
     Route::post('/cip/pointages/soumettre/{stageId}', [PointageCipController::class, 'soumettre'])->name('cip.pointages.soumettre');
 
     // Phase 5 : Pointages Chef d'Agence

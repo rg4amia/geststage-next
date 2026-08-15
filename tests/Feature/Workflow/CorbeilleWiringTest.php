@@ -25,6 +25,7 @@ class CorbeilleWiringTest extends TestCase
             '/desse/stagiaires' => ['Desse/Stagiaires/Index', ['attenteValidation', 'doublons', 'statistiques']],
             '/daicg/stagiaires' => ['Daicg/Stagiaires/Index', ['validesCA', 'validesDESSE', 'sansContrat']],
             '/cip/suivi' => ['Cip/Suivi/Index', ['differesAC', 'doublonsDESSE', 'renouvellements', 'suspensionsAbandons']],
+            '/cip/pointages/pejedec' => ['Cip/Pointages/Index', ['attente', 'effectues', 'ajournesCA', 'ajournesDMG', 'moisManques', 'moisActuel']],
         ];
 
         foreach ($pages as $uri => [$component, $props]) {

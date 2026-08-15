@@ -16,6 +16,7 @@ use Carbon\Carbon;
 class PointageCipController extends Controller
 {
     protected $pointageService;
+    private const PEJEDEC_SOURCE_FINANCEMENT_ID = 3;
 
     public function __construct(PointageService $pointageService)
     {
@@ -24,44 +25,69 @@ class PointageCipController extends Controller
 
     public function stagiaireAttentePointage(Request $request)
     {
+        return $this->renderPointages($request);
+    }
+
+    public function stagiaireAttentePointagePejedec(Request $request)
+    {
+        return $this->renderPointages($request, self::PEJEDEC_SOURCE_FINANCEMENT_ID);
+    }
+
+    private function renderPointages(Request $request, ?int $sourceFinancementId = null)
+    {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
 
-        // Corbeille 1 : Attente Pointage (Dynamique: Instances EN_STAGE sans pointage sur ce mois)
-        // Note: L'idéal est de passer par le service comme fait précédemment, on l'ajuste pour filtrer par EN_STAGE.
-        $attente = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence'])
+        $attenteQuery = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.pointages'])
             ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
             ->whereDoesntHave('stage.pointages', function($q) use ($mois) {
                 $q->whereHas('periode', function($p) use ($mois) {
                     $p->where('nom', 'like', "%$mois%");
                 });
             })
-            ->get();
+            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                    $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
+            });
 
-        // 2. Pointage Effectué (SOUMIS ou VALIDE ou CORRIGE_CIP)
+        $attente = $attenteQuery->get();
+
         $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante'])
             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
             })
+            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                    $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
+            })
             ->get();
 
-        // 3. Pointage Ajourné / Chef Agence
         $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante', 'decisions'])
             ->scopeAjourneParCA()
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
             })
+            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                    $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
+            })
             ->get();
 
-        // 4. Pointage Ajourné / DMG
         $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante', 'decisions'])
             ->where('statut', 'AJOURNE_DMG')
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
             })
+            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                    $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
+            })
             ->get();
 
-        // Pass missing months for select dropdown
         $moisManques = Periode::where('actif', true)->pluck('nom', 'id');
 
         return Inertia::render('Cip/Pointages/Index', [
@@ -70,7 +96,7 @@ class PointageCipController extends Controller
             'ajournesCA' => $ajournesCA,
             'ajournesDMG' => $ajournesDMG,
             'moisManques' => $moisManques,
-            'moisActuel' => $mois
+            'moisActuel' => $mois,
         ]);
     }
 
