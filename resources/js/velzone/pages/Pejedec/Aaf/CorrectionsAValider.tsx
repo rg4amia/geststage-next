@@ -24,6 +24,14 @@ const CorrectionsAValider = ({
         router.get('/pejedec/af/corrections-a-valider', selectedFilters, { preserveScroll: true, preserveState: true });
     };
 
+    const validerCorrection = (id: number) => {
+        if (confirm('Valider cette correction PEJEDEC ?')) {
+            router.post(`/pejedec/af/pointages/${id}/valider-correction`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
     const columns = [
         {
             header: 'Bénéficiaire',
@@ -47,10 +55,15 @@ const CorrectionsAValider = ({
         },
         {
             header: 'Actions',
-            cell: () => (
-                <Button color="info" size="sm" outline onClick={() => router.visit('/cip/pointages/pejedec')}>
-                    Vérifier la correction
-                </Button>
+            cell: (cell: any) => (
+                <div className="d-flex gap-2">
+                    <Button color="info" size="sm" outline onClick={() => validerCorrection(cell.row.original.id)}>
+                        Valider la correction
+                    </Button>
+                    <Button color="secondary" size="sm" outline onClick={() => router.visit('/cip/pointages/pejedec')}>
+                        Vérifier la correction
+                    </Button>
+                </div>
             ),
         },
     ];

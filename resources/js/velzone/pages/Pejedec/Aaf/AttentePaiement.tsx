@@ -24,6 +24,14 @@ const AttentePaiement = ({
         router.get('/pejedec/af/attente-paiement', selectedFilters, { preserveScroll: true, preserveState: true });
     };
 
+    const genererPaiement = (id: number) => {
+        if (confirm('Générer le paiement pour ce droit ?')) {
+            router.post(`/pejedec/af/droits-paiement/${id}/generer`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
     const columns = [
         {
             header: 'Bénéficiaire',
@@ -47,10 +55,15 @@ const AttentePaiement = ({
         },
         {
             header: 'Actions',
-            cell: () => (
-                <Button color="success" size="sm" outline onClick={() => router.visit('/dmg/paiements')}>
-                    Aller à la DMG
-                </Button>
+            cell: (cell: any) => (
+                <div className="d-flex gap-2">
+                    <Button color="success" size="sm" outline onClick={() => genererPaiement(cell.row.original.id)}>
+                        Générer le paiement
+                    </Button>
+                    <Button color="secondary" size="sm" outline onClick={() => router.visit('/dmg/paiements')}>
+                        Aller à la DMG
+                    </Button>
+                </div>
             ),
         },
     ];

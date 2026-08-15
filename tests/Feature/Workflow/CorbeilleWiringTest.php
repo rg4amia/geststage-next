@@ -3,7 +3,12 @@
 namespace Tests\Feature\Workflow;
 
 use App\Enums\CorbeilleEnum;
+use App\Models\Attendance\Pointage;
+use App\Models\Attendance\VersionPointage;
 use App\Models\Internship\Stage;
+use App\Models\Payment\DroitPaiement;
+use App\Models\Payment\Paiement;
+use App\Models\Reference\Periode;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
@@ -11,6 +16,7 @@ use App\Models\Workflow\InstanceParcours;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CorbeilleWiringTest extends TestCase
@@ -110,6 +116,111 @@ class CorbeilleWiringTest extends TestCase
         $this->assertDatabaseHas('instances_parcours', [
             'id' => $instanceDoublon->id,
             'corbeille_actuelle' => CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value,
+        ]);
+    }
+
+    public function test_actions_pejedec_aaf_branchees_sur_les_transitions_metier(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        $stageValidation = Stage::factory()->create();
+        $periodeValidation = Periode::create([
+            'code' => '2026-08',
+            'nom' => 'Août 2026',
+            'date_debut' => '2026-08-01',
+            'date_fin' => '2026-08-31',
+            'ouverte_pointage' => true,
+            'ouverte_paiement' => true,
+        ]);
+
+        $pointageSoumis = Pointage::create([
+            'uuid_public' => (string) Str::uuid(),
+            'stage_id' => $stageValidation->id,
+            'periode_id' => $periodeValidation->id,
+            'nature' => 'MENSUEL',
+            'statut' => 'SOUMIS',
+            'version_courante' => 1,
+            'version_verrouillage' => 0,
+        ]);
+
+        VersionPointage::create([
+            'pointage_id' => $pointageSoumis->id,
+            'saisi_par_id' => $user->id,
+            'numero_version' => 1,
+            'presence' => 'PRESENT',
+            'jours_presents' => 12,
+            'jours_absents' => 8,
+            'observation' => 'Soumission PEJEDEC',
+        ]);
+
+        $this->post("/pejedec/af/pointages/{$pointageSoumis->id}/valider")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('pointages', [
+            'id' => $pointageSoumis->id,
+            'statut' => 'VALIDE',
+        ]);
+
+        $this->assertDatabaseHas('droits_paiement', [
+            'stage_id' => $stageValidation->id,
+            'pointage_id' => $pointageSoumis->id,
+            'periode_id' => $periodeValidation->id,
+            'statut' => 'OUVERT',
+        ]);
+
+        $stageCorrection = Stage::factory()->create();
+        $pointageCorrige = Pointage::create([
+            'uuid_public' => (string) Str::uuid(),
+            'stage_id' => $stageCorrection->id,
+            'periode_id' => $periodeValidation->id,
+            'nature' => 'MENSUEL',
+            'statut' => 'CORRIGE_CIP',
+            'version_courante' => 1,
+            'version_verrouillage' => 0,
+        ]);
+
+        VersionPointage::create([
+            'pointage_id' => $pointageCorrige->id,
+            'saisi_par_id' => $user->id,
+            'numero_version' => 1,
+            'presence' => 'PRESENT',
+            'jours_presents' => 10,
+            'jours_absents' => 10,
+            'observation' => 'Correction CIP',
+        ]);
+
+        $this->post("/pejedec/af/pointages/{$pointageCorrige->id}/valider-correction")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('pointages', [
+            'id' => $pointageCorrige->id,
+            'statut' => 'VALIDE',
+        ]);
+
+        $this->assertDatabaseHas('decisions_pointages', [
+            'pointage_id' => $pointageCorrige->id,
+            'decision' => 'VALIDE_AAF',
+        ]);
+
+        $stagePaiement = Stage::factory()->create();
+        $droitPaiement = DroitPaiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'stage_id' => $stagePaiement->id,
+            'pointage_id' => null,
+            'periode_id' => $periodeValidation->id,
+            'source_financement_id' => $stagePaiement->source_financement_id,
+            'nature' => 'PRESENCE',
+            'montant' => 12500,
+            'statut' => 'OUVERT',
+        ]);
+
+        $this->post("/pejedec/af/droits-paiement/{$droitPaiement->id}/generer")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('paiements', [
+            'droit_paiement_id' => $droitPaiement->id,
+            'statut' => 'A_TRAITER',
         ]);
     }
 }
