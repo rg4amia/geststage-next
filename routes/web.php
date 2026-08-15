@@ -42,6 +42,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/agent-comptable/paiements', [\App\Http\Controllers\AgentCompt\PaiementAcController::class, 'index'])->name('ac.paiements.index');
     Route::post('/agent-comptable/paiements/viser/{id}', [\App\Http\Controllers\AgentCompt\PaiementAcController::class, 'viser'])->name('ac.paiements.viser');
     Route::post('/agent-comptable/paiements/ajourner/{id}', [\App\Http\Controllers\AgentCompt\PaiementAcController::class, 'ajourner'])->name('ac.paiements.ajourner');
+
+    // Phase 8 : Chef de Bureau (CB)
+    Route::get('/cb/paiements', [\App\Http\Controllers\Cb\PaiementCbController::class, 'index'])->name('cb.paiements.index');
+    Route::post('/cb/paiements/valider/{id}', [\App\Http\Controllers\Cb\PaiementCbController::class, 'valider'])->name('cb.paiements.valider');
+    Route::post('/cb/paiements/ajourner/{id}', [\App\Http\Controllers\Cb\PaiementCbController::class, 'ajourner'])->name('cb.paiements.ajourner');
 });
 
 require __DIR__.'/settings.php';
