@@ -41,6 +41,12 @@ const Navdata = () => {
             link: '/cip/pointages',
         },
         {
+            id: 'cip-pointages-pejedec',
+            label: 'Pointages PEJEDEC',
+            icon: 'ri-calendar-event-line',
+            link: '/cip/pointages/pejedec',
+        },
+        {
             id: 'cip-ajourne-dmg',
             label: 'Pointage Ajourné (DMG)',
             icon: 'ri-error-warning-line',
@@ -71,6 +77,70 @@ const Navdata = () => {
             label: 'Paiements / Elaboration OP',
             icon: 'ri-money-dollar-circle-line',
             link: '/dmg/paiements',
+        },
+        {
+            label: 'Espace CB',
+            isHeader: true,
+        },
+        {
+            id: 'cb-paiements',
+            label: 'Contrôle des paiements',
+            icon: 'ri-shield-check-line',
+            link: '/cb/paiements',
+        },
+        {
+            label: 'Espace DESSE',
+            isHeader: true,
+        },
+        {
+            id: 'desse-stagiaires',
+            label: 'Validation et doublons',
+            icon: 'ri-folder-warning-line',
+            link: '/desse/stagiaires',
+        },
+        {
+            label: 'Espace DAICG',
+            isHeader: true,
+        },
+        {
+            id: 'daicg-stagiaires',
+            label: 'Vue globale stagiaires',
+            icon: 'ri-eye-line',
+            link: '/daicg/stagiaires',
+        },
+        {
+            label: 'PEJEDEC / AAF',
+            isHeader: true,
+        },
+        {
+            id: 'pejedec-aaf-dashboard',
+            label: 'Tableau PEJEDEC / AAF',
+            icon: 'ri-stack-line',
+            link: '/pejedec/af',
+        },
+        {
+            id: 'pejedec-aaf-validation',
+            label: 'Validation PEJEDEC',
+            icon: 'ri-checkbox-circle-line',
+            link: '/pejedec/af/attente-validation',
+        },
+        {
+            id: 'pejedec-aaf-ajournes',
+            label: 'Paiements ajournés',
+            icon: 'ri-error-warning-line',
+            link: '/pejedec/af/paiements-ajournes',
+        },
+        {
+            id: 'pejedec-aaf-corrections',
+            label: 'Corrections à valider',
+            icon: 'ri-refresh-line',
+            link: '/pejedec/af/corrections-a-valider',
+        },
+        {
+            id: 'pejedec-aaf-paiement',
+            label: 'Attente paiement',
+            icon: 'ri-bank-card-line',
+            link: '/pejedec/af/attente-paiement',
         },
         {
             label: 'Espace Agent Comptable',

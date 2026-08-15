@@ -10,6 +10,7 @@ use App\Models\Reference\SourceFinancement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Domain\Audit\Traits\Auditable;
 
 class DroitPaiement extends Model
@@ -55,5 +56,13 @@ class DroitPaiement extends Model
     public function sourceFinancement(): BelongsTo
     {
         return $this->belongsTo(SourceFinancement::class);
+    }
+
+    /**
+     * Les paiements générés à partir de ce droit.
+     */
+    public function paiements(): HasMany
+    {
+        return $this->hasMany(Paiement::class);
     }
 }

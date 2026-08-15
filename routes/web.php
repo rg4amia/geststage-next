@@ -14,6 +14,7 @@ use App\Http\Controllers\Dmg\OperationDmgController;
 use App\Http\Controllers\Dmg\PaiementDmgController;
 use App\Http\Controllers\Dmg\RejetDmgController;
 use App\Http\Controllers\Dmg\ValidationDmgController;
+use App\Http\Controllers\Pejedec\AafController;
 use App\Http\Controllers\Registration\InscriptionController;
 use Illuminate\Support\Facades\Route;
 
@@ -73,6 +74,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::get('/desse/stagiaires', [StagiaireDesseController::class, 'index'])->name('desse.stagiaires.index');
     Route::get('/daicg/stagiaires', [StagiaireDaicgController::class, 'index'])->name('daicg.stagiaires.index');
+
+    // Phase 9 : PEJEDEC / AAF
+    Route::get('/pejedec/af', [AafController::class, 'index'])->name('pejedec.af.index');
+    Route::get('/pejedec/af/attente-validation', [AafController::class, 'attenteValidation'])->name('pejedec.af.attente_validation');
+    Route::get('/pejedec/af/paiements-ajournes', [AafController::class, 'paiementsAjournes'])->name('pejedec.af.paiements_ajournes');
+    Route::get('/pejedec/af/corrections-a-valider', [AafController::class, 'correctionsAValider'])->name('pejedec.af.corrections_a_valider');
+    Route::get('/pejedec/af/attente-paiement', [AafController::class, 'attentePaiement'])->name('pejedec.af.attente_paiement');
 });
 
 require __DIR__.'/settings.php';
