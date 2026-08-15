@@ -81,7 +81,7 @@ const Edit = ({ offre, entreprises, agences, typesStage, sourcesFinancement, pro
                                                 <Label htmlFor="type_stage_id" className="form-label">Type de Stage <span className="text-danger">*</span></Label>
                                                 <select className={`form-select ${errors.type_stage_id ? 'is-invalid' : ''}`} id="type_stage_id" value={data.type_stage_id} onChange={e => setData('type_stage_id', e.target.value)}>
                                                     <option value="">Sélectionner</option>
-                                                    {typesStage.map(t => <option key={t.id} value={t.id}>{t.libelle}</option>)}
+                                                    {typesStage.map(t => <option key={t.id} value={t.id}>{t.nom}</option>)}
                                                 </select>
                                                 {errors.type_stage_id && <div className="invalid-feedback">{errors.type_stage_id}</div>}
                                             </Col>
@@ -89,7 +89,7 @@ const Edit = ({ offre, entreprises, agences, typesStage, sourcesFinancement, pro
                                                 <Label htmlFor="source_financement_id" className="form-label">Source Financement <span className="text-danger">*</span></Label>
                                                 <select className={`form-select ${errors.source_financement_id ? 'is-invalid' : ''}`} id="source_financement_id" value={data.source_financement_id} onChange={e => setData('source_financement_id', e.target.value)}>
                                                     <option value="">Sélectionner</option>
-                                                    {sourcesFinancement.map(s => <option key={s.id} value={s.id}>{s.libelle}</option>)}
+                                                    {sourcesFinancement.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
                                                 </select>
                                                 {errors.source_financement_id && <div className="invalid-feedback">{errors.source_financement_id}</div>}
                                             </Col>
@@ -97,7 +97,7 @@ const Edit = ({ offre, entreprises, agences, typesStage, sourcesFinancement, pro
                                                 <Label htmlFor="programme_id" className="form-label">Programme</Label>
                                                 <select className={`form-select ${errors.programme_id ? 'is-invalid' : ''}`} id="programme_id" value={data.programme_id} onChange={e => setData('programme_id', e.target.value)}>
                                                     <option value="">Sélectionner (optionnel)</option>
-                                                    {programmes.map(p => <option key={p.id} value={p.id}>{p.libelle}</option>)}
+                                                    {programmes.map(p => <option key={p.id} value={p.id}>{p.nom}</option>)}
                                                 </select>
                                                 {errors.programme_id && <div className="invalid-feedback">{errors.programme_id}</div>}
                                             </Col>

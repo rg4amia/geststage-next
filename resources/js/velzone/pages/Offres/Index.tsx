@@ -85,7 +85,7 @@ const Index = ({ offres, filters }: Props) => {
                                                         <td>{offre.numero}</td>
                                                         <td>{offre.intitule}</td>
                                                         <td>{offre.entreprise?.raison_sociale || '-'}</td>
-                                                        <td>{offre.type_stage?.libelle || '-'}</td>
+                                                        <td>{offre.type_stage?.nom || '-'}</td>
                                                         <td>{offre.nombre_places}</td>
                                                         <td>
                                                             <span className={getStatutBadge(offre.statut)}>

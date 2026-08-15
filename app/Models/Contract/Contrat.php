@@ -8,9 +8,11 @@ use App\Models\Internship\Stage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
 class Contrat extends Model
 {
-    use HasPublicUuid, Auditable;
+    use HasPublicUuid, Auditable, HasFactory;
 
     /**
      * The table associated with the model.

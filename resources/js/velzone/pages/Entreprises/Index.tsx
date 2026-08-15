@@ -73,7 +73,7 @@ const Index = ({ entreprises, filters }: Props) => {
                                                         <td>{entreprise.raison_sociale}</td>
                                                         <td>{entreprise.sigle || '-'}</td>
                                                         <td>{entreprise.agence?.nom || '-'}</td>
-                                                        <td>{entreprise.type_structure?.libelle || '-'}</td>
+                                                        <td>{entreprise.type_structure?.nom || '-'}</td>
                                                         <td>
                                                             <span className={`badge bg-${entreprise.actif ? 'success' : 'danger'}`}>
                                                                 {entreprise.actif ? 'Actif' : 'Inactif'}

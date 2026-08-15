@@ -67,7 +67,7 @@ const Create = ({ agences, communes, typesStructure }: Props) => {
                                                 <Label htmlFor="type_structure_id" className="form-label">Type de Structure</Label>
                                                 <select className={`form-select ${errors.type_structure_id ? 'is-invalid' : ''}`} id="type_structure_id" value={data.type_structure_id} onChange={e => setData('type_structure_id', e.target.value)}>
                                                     <option value="">Sélectionner un type</option>
-                                                    {typesStructure.map(t => <option key={t.id} value={t.id}>{t.libelle}</option>)}
+                                                    {typesStructure.map(t => <option key={t.id} value={t.id}>{t.nom}</option>)}
                                                 </select>
                                                 {errors.type_structure_id && <div className="invalid-feedback">{errors.type_structure_id}</div>}
                                             </Col>
