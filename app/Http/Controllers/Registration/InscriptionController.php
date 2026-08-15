@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Registration;
 
 use App\Domain\Registration\Services\InscriptionStagiaireService;
 use App\Http\Controllers\Controller;
-use App\Http\Controllers\Controller;
 use App\Models\Company\OffreEmploi;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Commune;
@@ -13,6 +12,7 @@ use App\Models\Reference\Handicap;
 use App\Models\Reference\LienParente;
 use App\Models\Reference\NiveauEtude;
 use App\Models\Reference\OrigineStagiaire;
+use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeEnseignement;
 use App\Models\Reference\TypeHandicap;
 use App\Models\Reference\TypePaiement;
@@ -62,6 +62,7 @@ class InscriptionController extends Controller
         $handicaps = Handicap::where('actif', true)->get();
         $typesHandicap = TypeHandicap::where('actif', true)->get();
         $typesPaiement = TypePaiement::where('actif', true)->get();
+        $sourcesFinancement = SourceFinancement::where('actif', true)->get();
 
         return Inertia::render('Inscriptions/Create', [
             'offres' => $offres,
@@ -76,6 +77,7 @@ class InscriptionController extends Controller
             'handicaps' => $handicaps,
             'typesHandicap' => $typesHandicap,
             'typesPaiement' => $typesPaiement,
+            'sourcesFinancement' => $sourcesFinancement,
         ]);
     }
 
@@ -85,12 +87,15 @@ class InscriptionController extends Controller
             'beneficiaire' => 'required|array',
             'stage' => 'required|array',
             'contrat' => 'required|array',
+            'documents' => 'nullable|array',
+            'documents.*' => 'nullable|file|max:10240', // 10MB limit per file
         ]);
 
         $instance = $this->inscriptionService->inscrire(
             $validated['beneficiaire'],
             $validated['stage'],
             $validated['contrat'],
+            $request->file('documents') ?? [],
             Auth::user()
         );
 

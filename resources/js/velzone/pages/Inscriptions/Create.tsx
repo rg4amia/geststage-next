@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Button, Input, Label, Form } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
@@ -17,12 +17,13 @@ interface Props {
     handicaps: any[];
     typesHandicap: any[];
     typesPaiement: any[];
+    sourcesFinancement: any[];
 }
 
 const Create = ({ 
     offres, agences, communes, typesStage, originesStagiaire, 
     liensParente, niveauxEtude, diplomes, typesEnseignement, 
-    handicaps, typesHandicap, typesPaiement 
+    handicaps, typesHandicap, typesPaiement, sourcesFinancement
 }: Props) => {
     const { data, setData, post, processing, errors } = useForm({
         beneficiaire: {
@@ -125,6 +126,58 @@ const Create = ({
         post('/inscriptions');
     };
 
+    // Derived States (Dynamic Rules)
+    const origineId = String(data.stage.origine_stagiaire_id);
+    const financementId = String(data.stage.source_financement_id);
+
+    const isAEJ = origineId === '1';
+    const isPEJEDEC = origineId === '2';
+    const isSpontaneOuDAICG = origineId === '3' || origineId === '4';
+
+    const isFinancementBMZ = financementId === '5';
+    const isFinancementBailleurs = financementId === '3';
+    const isFinancement4 = financementId === '4';
+
+    const showOffre = isAEJ || isPEJEDEC;
+    const showDateDebutClassique = isAEJ || isPEJEDEC;
+    const showCapitalisationPejedec = isPEJEDEC;
+    const showCapitalisationSansFinanciere = isSpontaneOuDAICG;
+
+    // Payment fields display
+    const showWave = isFinancementBMZ;
+    const showTresorMoney = !isFinancementBMZ && isAEJ;
+
+    // Available types de stage based on logic
+    const availableTypesStage = typesStage.filter(ts => {
+        const nom = ts.nom.toUpperCase();
+        if (isFinancement4 || isFinancementBMZ) return nom.includes('QUALIFICATION');
+        if (isFinancementBailleurs && isPEJEDEC) return nom.includes('ECOLE');
+        if (isFinancementBailleurs && isAEJ) return nom.includes('ECOLE') || nom.includes('QUALIFICATION');
+        return true;
+    });
+
+    // Enforce Rules when origin or financement changes
+    useEffect(() => {
+        if (isPEJEDEC) {
+            setData('stage', { ...data.stage, source_financement_id: '3' }); // Force Financement = 3
+        } else if (isSpontaneOuDAICG) {
+            setData('stage', { ...data.stage, offre_emploi_id: '' }); // Reset offre
+        }
+    }, [origineId]);
+
+    useEffect(() => {
+        if (isFinancementBMZ) {
+            // Select Wave payment ID
+            const waveId = typesPaiement.find(p => p.nom.toLowerCase().includes('wave'))?.id || '2';
+            setData('beneficiaire', { ...data.beneficiaire, type_paiement_id: waveId });
+        } else {
+            // Select Tresor Money/YUP ID
+            const yupId = typesPaiement.find(p => p.nom.toLowerCase().includes('yup') || p.nom.toLowerCase().includes('tresor'))?.id || '1';
+            setData('beneficiaire', { ...data.beneficiaire, type_paiement_id: yupId });
+        }
+    }, [financementId]);
+
+
     return (
         <React.Fragment>
             <Head title="Création de Stagiaire" />
@@ -142,32 +195,44 @@ const Create = ({
                                     </CardHeader>
                                     <CardBody>
                                         <Row className="g-3">
-                                            <Col lg={4}>
-                                                <Label>Offre d'emploi (Optionnel)</Label>
-                                                <Select
-                                                    options={offresOptions}
-                                                    onChange={handleOffreSelect}
-                                                    placeholder="Sélectionner une offre..."
-                                                />
-                                            </Col>
-                                            <Col lg={4}>
+                                            <Col lg={3}>
                                                 <Label>Agence <span className="text-danger">*</span></Label>
                                                 <select className="form-select" value={data.stage.agence_id} onChange={e => setData('stage', {...data.stage, agence_id: e.target.value})}>
                                                     <option value="">Sélectionner</option>
                                                     {agences.map(a => <option key={a.id} value={a.id}>{a.nom}</option>)}
                                                 </select>
                                             </Col>
-                                            <Col lg={4}>
-                                                <Label>Origine du stagiaire</Label>
+                                            <Col lg={3}>
+                                                <Label>Origine du stagiaire <span className="text-danger">*</span></Label>
                                                 <select className="form-select" value={data.stage.origine_stagiaire_id} onChange={e => setData('stage', {...data.stage, origine_stagiaire_id: e.target.value})}>
                                                     <option value="">Sélectionner</option>
                                                     {originesStagiaire.map(o => <option key={o.id} value={o.id}>{o.nom}</option>)}
                                                 </select>
                                             </Col>
-                                            <Col lg={4}>
+                                            <Col lg={3}>
+                                                <Label>Type de Financement {isPEJEDEC && '(Verrouillé)'}</Label>
+                                                <select className="form-select" disabled={isPEJEDEC} value={data.stage.source_financement_id} onChange={e => setData('stage', {...data.stage, source_financement_id: e.target.value})}>
+                                                    <option value="">Sélectionner</option>
+                                                    {sourcesFinancement.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
+                                                </select>
+                                            </Col>
+                                            <Col lg={3}>
                                                 <Label>Date d'entrée en portefeuille</Label>
                                                 <Input type="date" value={data.stage.date_entree_portefeuille} onChange={e => setData('stage', {...data.stage, date_entree_portefeuille: e.target.value})} />
                                             </Col>
+
+                                            {showOffre && (
+                                                <Col lg={12} className="mt-4">
+                                                    <div className="p-3 bg-light rounded border">
+                                                        <Label>Lier à une Offre d'emploi {isAEJ && <span className="text-danger">*</span>}</Label>
+                                                        <Select
+                                                            options={offresOptions}
+                                                            onChange={handleOffreSelect}
+                                                            placeholder="Sélectionner une offre..."
+                                                        />
+                                                    </div>
+                                                </Col>
+                                            )}
                                         </Row>
                                     </CardBody>
                                 </Card>
@@ -182,7 +247,7 @@ const Create = ({
                                     <CardBody>
                                         <Row className="g-3">
                                             <Col lg={3}>
-                                                <Label>Numéro AEJ <span className="text-danger">*</span></Label>
+                                                <Label>{isFinancement4 ? 'MATRICULE' : 'Numéro AEJ'} <span className="text-danger">*</span></Label>
                                                 <Input type="text" value={data.beneficiaire.numero_aej} onChange={e => setData('beneficiaire', {...data.beneficiaire, numero_aej: e.target.value})} />
                                             </Col>
                                             <Col lg={3}>
@@ -259,11 +324,18 @@ const Create = ({
                                     </CardHeader>
                                     <CardBody>
                                         <Row className="g-3">
-                                            <Col lg={6}>
+                                            <Col lg={4}>
+                                                <Label>Type de Stage</Label>
+                                                <select className="form-select" value={data.stage.type_stage_id} onChange={e => setData('stage', {...data.stage, type_stage_id: e.target.value})}>
+                                                    <option value="">Sélectionner</option>
+                                                    {availableTypesStage.map(ts => <option key={ts.id} value={ts.id}>{ts.nom}</option>)}
+                                                </select>
+                                            </Col>
+                                            <Col lg={4}>
                                                 <Label>Intitulé du poste <span className="text-danger">*</span></Label>
                                                 <Input type="text" value={data.stage.intitule_poste} onChange={e => setData('stage', {...data.stage, intitule_poste: e.target.value})} />
                                             </Col>
-                                            <Col lg={6}>
+                                            <Col lg={4}>
                                                 <Label>Service d'affectation</Label>
                                                 <Input type="text" value={data.stage.service_affectation} onChange={e => setData('stage', {...data.stage, service_affectation: e.target.value})} />
                                             </Col>
@@ -282,21 +354,40 @@ const Create = ({
                                             </Col>
 
                                             <Col lg={3}>
-                                                <Label>Date de début <span className="text-danger">*</span></Label>
-                                                <Input type="date" value={data.stage.date_debut} onChange={e => setData('stage', {...data.stage, date_debut: e.target.value})} />
-                                            </Col>
-                                            <Col lg={3}>
                                                 <Label>Date de fin prévue <span className="text-danger">*</span></Label>
                                                 <Input type="date" value={data.stage.date_fin_prevue} onChange={e => setData('stage', {...data.stage, date_fin_prevue: e.target.value})} />
                                             </Col>
                                             <Col lg={3}>
-                                                <Label>Nbr mois à capitaliser</Label>
-                                                <Input type="number" value={data.stage.nbr_mois_capitaliser} onChange={e => setData('stage', {...data.stage, nbr_mois_capitaliser: parseInt(e.target.value) || 0})} />
-                                            </Col>
-                                            <Col lg={3}>
                                                 <Label>Prime mensuelle (Contrat) <span className="text-danger">*</span></Label>
-                                                <Input type="number" value={data.contrat.prime_mensuelle} onChange={e => setData('contrat', {...data.contrat, prime_mensuelle: e.target.value, date_debut: data.stage.date_debut, date_fin: data.stage.date_fin_prevue})} />
+                                                <Input type="number" value={data.contrat.prime_mensuelle} onChange={e => setData('contrat', {...data.contrat, prime_mensuelle: e.target.value, date_fin: data.stage.date_fin_prevue})} />
                                             </Col>
+
+                                            {showDateDebutClassique && (
+                                                <Col lg={3}>
+                                                    <Label>Date de début de stage <span className="text-danger">*</span></Label>
+                                                    <Input type="date" value={data.stage.date_debut} onChange={e => setData('stage', {...data.stage, date_debut: e.target.value})} />
+                                                </Col>
+                                            )}
+
+                                            {showCapitalisationPejedec && (
+                                                <>
+                                                    <Col lg={3}>
+                                                        <Label>Date de Démarrage Capitalisation</Label>
+                                                        <Input type="date" value={data.stage.date_demarrage_capitalisation} onChange={e => setData('stage', {...data.stage, date_demarrage_capitalisation: e.target.value})} />
+                                                    </Col>
+                                                    <Col lg={3}>
+                                                        <Label>Nombre de mois à capitaliser</Label>
+                                                        <Input type="number" value={data.stage.nbr_mois_capitaliser} onChange={e => setData('stage', {...data.stage, nbr_mois_capitaliser: parseInt(e.target.value) || 0})} />
+                                                    </Col>
+                                                </>
+                                            )}
+
+                                            {showCapitalisationSansFinanciere && (
+                                                <Col lg={3}>
+                                                    <Label>Date démarrage capitalisation sans financiere</Label>
+                                                    <Input type="date" value={data.stage.date_demarrage_capitalisation_sans_financiere} onChange={e => setData('stage', {...data.stage, date_demarrage_capitalisation_sans_financiere: e.target.value})} />
+                                                </Col>
+                                            )}
                                         </Row>
                                     </CardBody>
                                 </Card>
@@ -306,10 +397,46 @@ const Create = ({
                             <Col lg={12}>
                                 <Card>
                                     <CardHeader>
-                                        <h5 className="card-title mb-0">PIÈCES JUSTIFICATIVES</h5>
+                                        <h5 className="card-title mb-0">PIÈCES JUSTIFICATIVES & PAIEMENT</h5>
                                     </CardHeader>
                                     <CardBody>
                                         <Row className="g-3">
+                                            {showTresorMoney && (
+                                                <Col lg={12}>
+                                                    <div className="p-3 bg-light border rounded">
+                                                        <h6 className="mb-3"><i className="ri-wallet-3-line text-primary align-bottom me-1"></i> Trésor Money / YUP</h6>
+                                                        <Row>
+                                                            <Col lg={6}>
+                                                                <Label>Numéro Trésor Money</Label>
+                                                                <Input type="text" value={data.beneficiaire.numero_tresor_money} onChange={e => setData('beneficiaire', {...data.beneficiaire, numero_tresor_money: e.target.value})} />
+                                                            </Col>
+                                                            <Col lg={6}>
+                                                                <Label>Fiche Trésor Money (PDF/Image)</Label>
+                                                                <Input type="file" onChange={e => setData('documents', {...data.documents, fiche_tresor_money: e.target.files ? e.target.files[0] : null})} />
+                                                            </Col>
+                                                        </Row>
+                                                    </div>
+                                                </Col>
+                                            )}
+                                            
+                                            {showWave && (
+                                                <Col lg={12}>
+                                                    <div className="p-3 bg-light border rounded">
+                                                        <h6 className="mb-3"><i className="ri-exchange-dollar-line text-info align-bottom me-1"></i> WAVE</h6>
+                                                        <Row>
+                                                            <Col lg={6}>
+                                                                <Label>Numéro Wave</Label>
+                                                                <Input type="text" value={data.beneficiaire.numero_wave} onChange={e => setData('beneficiaire', {...data.beneficiaire, numero_wave: e.target.value})} />
+                                                            </Col>
+                                                            <Col lg={6}>
+                                                                <Label>Fiche Wave (PDF/Image)</Label>
+                                                                <Input type="file" onChange={e => setData('documents', {...data.documents, fiche_wave: e.target.files ? e.target.files[0] : null})} />
+                                                            </Col>
+                                                        </Row>
+                                                    </div>
+                                                </Col>
+                                            )}
+
                                             <Col lg={4}>
                                                 <Label>Pièce d'identité</Label>
                                                 <Input type="file" onChange={e => setData('documents', {...data.documents, piece_identite: e.target.files ? e.target.files[0] : null})} />
@@ -321,6 +448,10 @@ const Create = ({
                                             <Col lg={4}>
                                                 <Label>Diplôme</Label>
                                                 <Input type="file" onChange={e => setData('documents', {...data.documents, diplome: e.target.files ? e.target.files[0] : null})} />
+                                            </Col>
+                                            <Col lg={4}>
+                                                <Label>RIB (Optionnel)</Label>
+                                                <Input type="file" onChange={e => setData('documents', {...data.documents, rib: e.target.files ? e.target.files[0] : null})} />
                                             </Col>
                                         </Row>
                                     </CardBody>
