@@ -13,4 +13,20 @@ class Document extends Model
 
     protected $table = 'documents';
     protected $guarded = [];
+
+    /**
+     * Les versions de ce document.
+     */
+    public function versions()
+    {
+        return $this->hasMany(VersionDocument::class);
+    }
+
+    /**
+     * Le type de document.
+     */
+    public function typeDocument()
+    {
+        return $this->belongsTo(\App\Models\Reference\TypeDocument::class);
+    }
 }

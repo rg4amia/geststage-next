@@ -101,4 +101,24 @@ class InscriptionController extends Controller
 
         return redirect()->route('inscriptions.index')->with('success', 'Stagiaire inscrit et dossier initié avec succès.');
     }
+
+    public function show($id)
+    {
+        $instance = InstanceParcours::with([
+            'stage.beneficiaire.communeResidence',
+            'stage.beneficiaire.diplome',
+            'stage.entreprise',
+            'stage.agence',
+            'stage.contrats',
+            'stage.documents.versions',
+            'stage.documents.typeDocument',
+            'etapeCourante',
+            'evenements.acteur',
+            'taches_ouvertes'
+        ])->findOrFail($id);
+
+        return Inertia::render('Inscriptions/Show', [
+            'instance' => $instance
+        ]);
+    }
 }

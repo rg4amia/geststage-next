@@ -35,4 +35,14 @@ class Beneficiaire extends Model
     {
         return $this->hasMany(Stage::class);
     }
+
+    public function communeResidence()
+    {
+        return $this->belongsTo(\App\Models\Reference\Commune::class, 'commune_residence_id');
+    }
+
+    public function diplome()
+    {
+        return $this->belongsTo(\App\Models\Reference\Diplome::class, 'diplome_id');
+    }
 }

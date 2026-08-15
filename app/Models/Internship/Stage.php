@@ -63,4 +63,20 @@ class Stage extends Model
     {
         return $this->hasMany(Contrat::class);
     }
+
+    /**
+     * Les documents (pièces justificatives) rattachés à ce stage.
+     */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(\App\Models\Document\Document::class);
+    }
+
+    /**
+     * L'instance de parcours (workflow) liée à ce stage.
+     */
+    public function instanceParcours()
+    {
+        return $this->hasOne(\App\Models\Workflow\InstanceParcours::class);
+    }
 }
