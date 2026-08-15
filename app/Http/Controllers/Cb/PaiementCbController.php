@@ -2,54 +2,22 @@
 
 namespace App\Http\Controllers\Cb;
 
+use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
+use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Workflow\InstanceParcours;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use App\Models\Workflow\InstanceParcours;
-use App\Enums\CorbeilleEnum;
 
 class PaiementCbController extends Controller
 {
+    public function __construct(private CorbeilleParcoursQueryService $corbeilles) {}
+
     public function index()
     {
-        // 1. Dossiers en attente de contrôle CB avant OP
-        $controleDossiers = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise'])
-            ->where('corbeille_actuelle', CorbeilleEnum::CB_DOSSIER_MULTIPLE->value)
-            ->get()
-            ->map(function ($instance) {
-                return [
-                    'id' => $instance->id,
-                    'numero_dossier' => 'DOS-' . str_pad($instance->id, 4, '0', STR_PAD_LEFT),
-                    'beneficiaire' => [
-                        'nom' => $instance->stage->beneficiaire->nom ?? 'Inconnu',
-                        'prenoms' => $instance->stage->beneficiaire->prenoms ?? '',
-                        'matricule' => $instance->stage->beneficiaire->matricule ?? '',
-                    ],
-                    'montant' => 45000, // Mock montant pour l'instant
-                    'statut' => 'En attente'
-                ];
-            });
-
-        // 2. Dossiers ajournés par la Direction ou AC qui reviennent au CB
-        $ajournes = InstanceParcours::with(['stage.beneficiaire'])
-            ->where('corbeille_actuelle', CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE->value)
-            ->get()
-            ->map(function ($instance) {
-                return [
-                    'id' => $instance->id,
-                    'numero_dossier' => 'DOS-' . str_pad($instance->id, 4, '0', STR_PAD_LEFT),
-                    'beneficiaire' => [
-                        'nom' => $instance->stage->beneficiaire->nom ?? 'Inconnu',
-                        'prenoms' => $instance->stage->beneficiaire->prenoms ?? '',
-                    ],
-                    'motif_ajournement' => 'Pièce manquante', // Mock motif
-                    'date_ajournement' => $instance->updated_at->format('d/m/Y')
-                ];
-            });
-
         return Inertia::render('Cb/Paiements/Index', [
-            'controleDossiers' => $controleDossiers,
-            'ajournes' => $ajournes,
+            'dossiersControle' => $this->corbeilles->instanceRows(CorbeilleEnum::CB_DOSSIER_MULTIPLE, 'En attente'),
+            'etatsAjournes' => $this->corbeilles->instanceRows(CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE, 'Ajourné'),
         ]);
     }
 

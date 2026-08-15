@@ -3,27 +3,26 @@
 namespace App\Http\Controllers\Dmg;
 
 use App\Domain\Payment\Services\DmgService;
+use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
 use App\Http\Controllers\Controller;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class PaiementDmgController extends Controller
 {
-    protected $dmgService;
-
-    public function __construct(DmgService $dmgService)
-    {
-        $this->dmgService = $dmgService;
-    }
+    public function __construct(
+        private DmgService $dmgService,
+        private CorbeilleParcoursQueryService $corbeilles
+    ) {}
 
     public function index(Request $request)
     {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
-        $periode = Periode::where('nom', 'like', "%$mois%")->first();
+        $periode = Periode::where('code', $mois)->first();
 
         $attentePaiementDemarrage = collect();
         $attentePaiementPresence = collect();
@@ -34,46 +33,49 @@ class PaiementDmgController extends Controller
                     $q->where('periode_id', $periode->id);
                 })
                 ->get();
-            
-            $attentePaiementDemarrage = $paiementsATraiter->filter(function($p) {
+
+            $attentePaiementDemarrage = $paiementsATraiter->filter(function ($p) {
                 return $p->droitPaiement->nature === 'DEMARRAGE';
             })->values();
 
-            $attentePaiementPresence = $paiementsATraiter->filter(function($p) {
+            $attentePaiementPresence = $paiementsATraiter->filter(function ($p) {
                 return $p->droitPaiement->nature === 'PRESENCE';
             })->values();
         }
 
         $dossiersBrouillon = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
+            ->withCount('paiements')
             ->brouillon()
             ->where('periode_id', $periode?->id)
             ->get();
 
         $dossiersTransmis = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
+            ->withCount('paiements')
             ->transmisAc()
             ->where('periode_id', $periode?->id)
             ->get();
 
         $dossiersAjournes = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
+            ->withCount('paiements')
             ->ajourneDmg()
             ->where('periode_id', $periode?->id)
             ->get();
 
         return Inertia::render('Dmg/Paiements/Index', [
-            'attentePaiementDemarrage' => $attentePaiementDemarrage,
-            'attentePaiementPresence' => $attentePaiementPresence,
-            'dossiersBrouillon' => $dossiersBrouillon,
-            'dossiersTransmis' => $dossiersTransmis,
-            'dossiersAjournes' => $dossiersAjournes,
+            'attenteDemarrage' => $this->corbeilles->paiementRows($attentePaiementDemarrage),
+            'attentePresence' => $this->corbeilles->paiementRows($attentePaiementPresence),
+            'dossiers' => $this->corbeilles->dossierRows($dossiersBrouillon, 'En élaboration'),
+            'dossiersTransmis' => $this->corbeilles->dossierRows($dossiersTransmis, 'Transmis AC'),
+            'dossiersAjournes' => $this->corbeilles->dossierRows($dossiersAjournes, 'Ajourné DMG'),
             'moisActuel' => $mois,
-            'periode' => $periode
+            'periode' => $periode,
         ]);
     }
 
     public function generer(Request $request)
     {
         $request->validate(['periode_id' => 'required|exists:periodes,id']);
-        
+
         $this->dmgService->genererDossiersPaiement($request->periode_id);
 
         return redirect()->back()->with('success', 'Dossiers de paiement générés avec succès.');
