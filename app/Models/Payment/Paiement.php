@@ -2,28 +2,52 @@
 
 namespace App\Models\Payment;
 
-use App\Domain\Shared\Traits\HasPublicUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Paiement extends Model
 {
-    use HasFactory, HasPublicUuid;
+    use HasFactory;
 
     protected $table = 'paiements';
 
-    protected $guarded = [];
+    protected $fillable = [
+        'uuid_public',
+        'ancien_id',
+        'droit_paiement_id',
+        'compte_paiement_beneficiaire_id',
+        'montant',
+        'statut',
+        'reference_externe',
+        'paye_le',
+        'version_verrouillage'
+    ];
 
     protected $casts = [
         'paye_le' => 'datetime',
+        'montant' => 'decimal:2',
     ];
 
-    /**
-     * Le droit de paiement justifiant ce décaissement.
-     */
     public function droitPaiement(): BelongsTo
     {
         return $this->belongsTo(DroitPaiement::class);
+    }
+
+    public function dossiersPaiement(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            DossierPaiement::class, 
+            'lignes_dossiers_paiement', 
+            'paiement_id', 
+            'dossier_paiement_id'
+        )->withPivot(['montant', 'ajoute_le', 'retire_le', 'motif_retrait']);
+    }
+
+    // Scopes
+    public function scopeATraiter($query)
+    {
+        return $query->where('statut', 'A_TRAITER');
     }
 }
