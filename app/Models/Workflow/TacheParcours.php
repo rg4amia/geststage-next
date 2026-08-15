@@ -7,10 +7,11 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Permission\Models\Role;
+use App\Domain\Audit\Traits\Auditable;
 
 class TacheParcours extends Model
 {
-    use HasPublicUuid;
+    use HasPublicUuid, Auditable;
 
     /**
      * The table associated with the model.

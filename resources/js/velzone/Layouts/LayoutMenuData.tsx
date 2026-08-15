@@ -1,93 +1,87 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 const Navdata = () => {
+    const [isCip, setIsCip] = useState(false);
+    const [isChefAgence, setIsChefAgence] = useState(false);
+    const [isDmg, setIsDmg] = useState(false);
+    const [isAc, setIsAc] = useState(false);
+
+    useEffect(() => {
+        setIsCip(false);
+        setIsChefAgence(false);
+        setIsDmg(false);
+        setIsAc(false);
+    }, []);
+
     const menuItems: any = [
         {
-            label: 'Menu',
+            label: 'Menu Principal',
             isHeader: true,
         },
         {
             id: 'dashboard',
-            label: 'Dashboards',
+            label: 'Tableau de bord',
             icon: 'ri-dashboard-2-line',
             link: '/dashboard',
         },
         {
-            id: 'apps',
-            label: 'Apps',
-            icon: 'ri-apps-2-line',
-            link: '#',
-        },
-        {
-            id: 'layouts',
-            label: 'Layouts',
-            icon: 'ri-layout-3-line',
-            link: '#',
-            badge: 'Hot',
-        },
-        {
-            label: 'Pages',
+            label: 'Espace CIP',
             isHeader: true,
         },
         {
-            id: 'authentication',
-            label: 'Authentication',
-            icon: 'ri-user-3-line',
-            link: '/login',
+            id: 'cip-mes-stagiaires',
+            label: 'Mes Stagiaires',
+            icon: 'ri-team-line',
+            link: '/cip/mes-stagiaires',
         },
         {
-            id: 'pages',
-            label: 'Pages',
-            icon: 'ri-pages-line',
-            link: '#',
+            id: 'cip-pointages',
+            label: 'Présence - Pointages',
+            icon: 'ri-calendar-check-line',
+            link: '/cip/pointages',
         },
         {
-            id: 'landing',
-            label: 'Landing',
-            icon: 'ri-rocket-line',
-            link: '#',
+            id: 'cip-ajourne-dmg',
+            label: 'Pointage Ajourné (DMG)',
+            icon: 'ri-error-warning-line',
+            link: '/cip/pointage/ajourne-dmg',
         },
         {
-            label: 'Components',
+            label: 'Espace Chef Agence',
             isHeader: true,
         },
         {
-            id: 'base-ui',
-            label: 'Base UI',
-            icon: 'ri-pencil-ruler-2-line',
-            link: '#',
+            id: 'ca-validations',
+            label: 'Attente de validation',
+            icon: 'ri-checkbox-circle-line',
+            link: '/chefagence/validations',
         },
         {
-            id: 'advance-ui',
-            label: 'Advance UI',
-            icon: 'ri-stack-line',
-            link: '#',
+            id: 'ca-pointages',
+            label: 'Validation des Pointages',
+            icon: 'ri-calendar-todo-line',
+            link: '/chefagence/pointages',
         },
         {
-            id: 'widgets',
-            label: 'Widgets',
-            icon: 'ri-honour-line',
-            link: '#',
+            label: 'Espace DMG',
+            isHeader: true,
         },
         {
-            id: 'forms',
-            label: 'Forms',
-            icon: 'ri-file-list-3-line',
-            link: '#',
+            id: 'dmg-paiements',
+            label: 'Paiements / Elaboration OP',
+            icon: 'ri-money-dollar-circle-line',
+            link: '/dmg/paiements',
         },
         {
-            id: 'tables',
-            label: 'Tables',
-            icon: 'ri-table-line',
-            link: '/',
-            subItems: [
-                {
-                    id: 'basic-tables',
-                    label: 'Basic Tables',
-                    link: '/',
-                },
-            ],
+            label: 'Espace Agent Comptable',
+            isHeader: true,
         },
+        {
+            id: 'ac-paiements',
+            label: 'Visas des Bordereaux',
+            icon: 'ri-file-shield-2-line',
+            link: '/agent-comptable/paiements',
+        }
     ];
 
     return <React.Fragment>{menuItems}</React.Fragment>;

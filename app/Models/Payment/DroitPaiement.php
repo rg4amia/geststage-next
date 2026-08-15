@@ -10,10 +10,11 @@ use App\Models\Reference\SourceFinancement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Domain\Audit\Traits\Auditable;
 
 class DroitPaiement extends Model
 {
-    use HasFactory, HasPublicUuid;
+    use HasFactory, HasPublicUuid, Auditable;
 
     protected $table = 'droits_paiement';
 

@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Domain\Audit\Traits\Auditable;
 
 class Pointage extends Model
 {
-    use HasFactory, HasPublicUuid, SoftDeletes;
+    use HasFactory, HasPublicUuid, SoftDeletes, Auditable;
 
     protected $table = 'pointages';
 

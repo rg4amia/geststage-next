@@ -25,7 +25,8 @@ class PaiementDmgController extends Controller
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
         $periode = Periode::where('nom', 'like', "%$mois%")->first();
 
-        $paiementsATraiter = collect();
+        $attentePaiementDemarrage = collect();
+        $attentePaiementPresence = collect();
         if ($periode) {
             $paiementsATraiter = Paiement::with(['droitPaiement.stage.beneficiaire', 'droitPaiement.stage.agence', 'droitPaiement.stage.entreprise'])
                 ->aTraiter()
@@ -33,6 +34,14 @@ class PaiementDmgController extends Controller
                     $q->where('periode_id', $periode->id);
                 })
                 ->get();
+            
+            $attentePaiementDemarrage = $paiementsATraiter->filter(function($p) {
+                return $p->droitPaiement->nature === 'DEMARRAGE';
+            })->values();
+
+            $attentePaiementPresence = $paiementsATraiter->filter(function($p) {
+                return $p->droitPaiement->nature === 'PRESENCE';
+            })->values();
         }
 
         $dossiersBrouillon = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
@@ -51,7 +60,8 @@ class PaiementDmgController extends Controller
             ->get();
 
         return Inertia::render('Dmg/Paiements/Index', [
-            'paiementsATraiter' => $paiementsATraiter,
+            'attentePaiementDemarrage' => $attentePaiementDemarrage,
+            'attentePaiementPresence' => $attentePaiementPresence,
             'dossiersBrouillon' => $dossiersBrouillon,
             'dossiersTransmis' => $dossiersTransmis,
             'dossiersAjournes' => $dossiersAjournes,

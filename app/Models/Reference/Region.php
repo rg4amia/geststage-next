@@ -2,11 +2,13 @@
 
 namespace App\Models\Reference;
 
+use App\Domain\Audit\Traits\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Region extends Model
 {
+    use Auditable;
     /**
      * The table associated with the model.
      *

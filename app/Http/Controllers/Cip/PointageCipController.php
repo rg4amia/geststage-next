@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Attendance\Services\PointageService;
+use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance\Pointage;
+use App\Models\Workflow\InstanceParcours;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Periode;
 use Illuminate\Http\Request;
@@ -24,12 +26,20 @@ class PointageCipController extends Controller
     {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
 
-        // 1. Attente Pointage
-        $attente = $this->pointageService->getStagiairesSansPointage($mois);
+        // Corbeille 1 : Attente Pointage (Dynamique: Instances EN_STAGE sans pointage sur ce mois)
+        // Note: L'idéal est de passer par le service comme fait précédemment, on l'ajuste pour filtrer par EN_STAGE.
+        $attente = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence'])
+            ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
+            ->whereDoesntHave('stage.pointages', function($q) use ($mois) {
+                $q->whereHas('periode', function($p) use ($mois) {
+                    $p->where('nom', 'like', "%$mois%");
+                });
+            })
+            ->get();
 
-        // 2. Pointage Effectué (SOUMIS ou VALIDE)
+        // 2. Pointage Effectué (SOUMIS ou VALIDE ou CORRIGE_CIP)
         $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante'])
-            ->whereIn('statut', ['SOUMIS', 'VALIDE'])
+            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
             })
@@ -45,7 +55,7 @@ class PointageCipController extends Controller
 
         // 4. Pointage Ajourné / DMG
         $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante', 'decisions'])
-            ->scopeAjourneParDMG()
+            ->where('statut', 'AJOURNE_DMG')
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
             })

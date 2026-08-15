@@ -6,10 +6,11 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Domain\Audit\Traits\Auditable;
 
 class Paiement extends Model
 {
-    use HasFactory;
+    use HasFactory, Auditable;
 
     protected $table = 'paiements';
 
@@ -20,6 +21,7 @@ class Paiement extends Model
         'compte_paiement_beneficiaire_id',
         'montant',
         'statut',
+        'corbeille_actuelle',
         'reference_externe',
         'paye_le',
         'version_verrouillage'

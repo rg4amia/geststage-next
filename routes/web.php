@@ -13,10 +13,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ]);
     Route::resource('inscriptions', \App\Http\Controllers\Registration\InscriptionController::class);
 
-    // Phase 5 : Chef d'Agence (Démarrage)
+    // Phase CIP : Mes Stagiaires et Ajournements
+    Route::get('/cip/mes-stagiaires', [\App\Http\Controllers\Cip\MesStagiairesCipController::class, 'index'])->name('cip.mes_stagiaires');
+    Route::get('/cip/pointage/ajourne-dmg', [\App\Http\Controllers\Cip\MesStagiairesCipController::class, 'pointageAjourneDmg'])->name('cip.pointages.ajourne_dmg');
+
+    // Phase 5 : Chef d'Agence (Démarrage & Omis)
     Route::get('/chefagence/validations', [\App\Http\Controllers\ChefAgence\IndexChefAgenceController::class, 'listeStagiaireAttenteValidation'])->name('chefagence.validations');
-    Route::post('/validations/demarrage/{id}', [\App\Http\Controllers\Validation\ValidationController::class, 'validerDemarrage'])->name('validations.demarrage');
-    Route::post('/validations/ajourner/{id}', [\App\Http\Controllers\Validation\ValidationController::class, 'ajourner'])->name('validations.ajourner');
+    Route::post('/chefagence/demarrage/{id}/valider', [\App\Http\Controllers\ChefAgence\IndexChefAgenceController::class, 'validerDemarrage'])->name('chefagence.demarrage.valider');
+    Route::post('/chefagence/demarrage-omis/{id}/valider', [\App\Http\Controllers\ChefAgence\IndexChefAgenceController::class, 'validerDemarrageOmis'])->name('chefagence.demarrage_omis.valider');
     
     // Phase 5 : Pointages CIP
     Route::get('/cip/pointages', [\App\Http\Controllers\Cip\PointageCipController::class, 'stagiaireAttentePointage'])->name('cip.pointages.index');
@@ -26,6 +30,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/chefagence/pointages', [\App\Http\Controllers\ChefAgence\PointageChefAgenceController::class, 'pointageAttenteValidationByChefAgence'])->name('chefagence.pointages.index');
     Route::post('/chefagence/pointages/valider/{id}', [\App\Http\Controllers\ChefAgence\PointageChefAgenceController::class, 'valider'])->name('chefagence.pointages.valider');
     Route::post('/chefagence/pointages/ajourner/{id}', [\App\Http\Controllers\ChefAgence\PointageChefAgenceController::class, 'ajourner'])->name('chefagence.pointages.ajourner');
+    Route::post('/chefagence/pointages-adp/{id}/valider', [\App\Http\Controllers\ChefAgence\PointageChefAgenceController::class, 'validerAjournementAdp'])->name('chefagence.pointages.adp.valider');
+    Route::post('/chefagence/pointages-adp/{id}/rejeter', [\App\Http\Controllers\ChefAgence\PointageChefAgenceController::class, 'rejeterAjournementAdp'])->name('chefagence.pointages.adp.rejeter');
 
     // Phase 6 : DMG (Chaîne Financière)
     Route::get('/dmg/paiements', [\App\Http\Controllers\Dmg\PaiementDmgController::class, 'index'])->name('dmg.paiements.index');

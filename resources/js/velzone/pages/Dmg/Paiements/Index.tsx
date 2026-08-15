@@ -1,37 +1,50 @@
 import React, { useState } from 'react';
-import { Head, useForm, Link } from '@inertiajs/react';
-import { Container, Row, Col, Card, CardBody, CardHeader, Nav, NavItem, NavLink, TabContent, TabPane, Table, Badge, Button } from 'reactstrap';
+import { Head, router } from '@inertiajs/react';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Table, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import classnames from 'classnames';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
-interface Props {
-    paiementsATraiter: any[];
-    dossiersBrouillon: any[];
-    dossiersTransmis: any[];
-    dossiersAjournes: any[];
-    moisActuel: string;
-    periode: any;
-}
-
-const DmgPaiementIndex = ({ paiementsATraiter, dossiersBrouillon, dossiersTransmis, dossiersAjournes, moisActuel, periode }: Props) => {
+const DmgPaiementIndex = ({
+    moisActuel,
+    attentePaiementDemarrage = [],
+    attentePaiementPresence = [],
+    dossiersBrouillon = [],
+    dossiersTransmis = [],
+    dossiersAjournes = []
+}: any) => {
     const [activeTab, setActiveTab] = useState('1');
-    const { post, processing } = useForm({
-        periode_id: periode?.id
-    });
+    const [processing, setProcessing] = useState(false);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [selectedPaiement, setSelectedPaiement] = useState<any>(null);
 
     const toggleTab = (tab: string) => {
         if (activeTab !== tab) setActiveTab(tab);
     };
 
+    const handleAjourner = (paiement: any) => {
+        setSelectedPaiement(paiement);
+        setModalOpen(true);
+    };
+
+    const confirmAjournement = () => {
+        setProcessing(true);
+        // Api call simulation
+        setTimeout(() => {
+            setProcessing(false);
+            setModalOpen(false);
+        }, 500);
+    };
+
     const genererDossiers = () => {
-        if (confirm('Générer les dossiers pour tous les paiements en attente de cette période ?')) {
-            post('/dmg/paiements/generer');
-        }
+        setProcessing(true);
+        router.post('/dmg/paiements/generer-dossiers', {}, {
+            onFinish: () => setProcessing(false)
+        });
     };
 
     const transmettreDossier = (id: number) => {
         if (confirm('Transmettre ce dossier à l\'Agent Comptable ?')) {
-            post(`/dmg/paiements/transmettre/${id}`);
+            router.post(`/dmg/paiements/transmettre/${id}`);
         }
     };
 
@@ -45,7 +58,7 @@ const DmgPaiementIndex = ({ paiementsATraiter, dossiersBrouillon, dossiersTransm
                     <Card>
                         <CardHeader className="d-flex align-items-center">
                             <h4 className="card-title mb-0 flex-grow-1">Gestion des Paiements - {moisActuel}</h4>
-                            {activeTab === '1' && paiementsATraiter.length > 0 && (
+                            {(activeTab === '1' || activeTab === '2') && (
                                 <Button color="primary" onClick={genererDossiers} disabled={processing}>
                                     <i className="ri-folder-add-line align-middle me-1"></i> Générer Dossiers de Paiement
                                 </Button>
@@ -55,22 +68,22 @@ const DmgPaiementIndex = ({ paiementsATraiter, dossiersBrouillon, dossiersTransm
                             <Nav tabs className="nav-tabs-custom nav-success nav-justified mb-3">
                                 <NavItem>
                                     <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '1' })} onClick={() => toggleTab('1')}>
-                                        Paiements à Traiter <Badge color="warning" className="ms-1">{paiementsATraiter.length}</Badge>
+                                        Attente Démarrage <Badge color="primary" className="ms-1">{attentePaiementDemarrage.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
                                     <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '2' })} onClick={() => toggleTab('2')}>
-                                        Dossiers Brouillon <Badge color="info" className="ms-1">{dossiersBrouillon.length}</Badge>
+                                        Attente Présence <Badge color="primary" className="ms-1">{attentePaiementPresence.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
                                     <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '3' })} onClick={() => toggleTab('3')}>
-                                        Transmis AC <Badge color="success" className="ms-1">{dossiersTransmis.length}</Badge>
+                                        Élaboration OP (Dossiers) <Badge color="info" className="ms-1">{dossiersBrouillon.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
                                     <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '4' })} onClick={() => toggleTab('4')}>
-                                        Ajournés AC <Badge color="danger" className="ms-1">{dossiersAjournes.length}</Badge>
+                                        Ordres Différés (AC) <Badge color="danger" className="ms-1">{dossiersAjournes.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                             </Nav>
@@ -80,33 +93,69 @@ const DmgPaiementIndex = ({ paiementsATraiter, dossiersBrouillon, dossiersTransm
                                     <Table className="table-nowrap mb-0 align-middle table-striped">
                                         <thead className="table-light">
                                             <tr>
-                                                <th>Nature</th>
                                                 <th>Agence</th>
                                                 <th>Bénéficiaire</th>
                                                 <th>Numéro AEJ</th>
                                                 <th>Montant</th>
-                                                <th>Statut</th>
+                                                <th>Actions</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {paiementsATraiter.map((p, idx) => (
+                                            {attentePaiementDemarrage.map((p: any, idx: number) => (
                                                 <tr key={idx}>
-                                                    <td>{p.droit_paiement?.nature}</td>
-                                                    <td>{p.droit_paiement?.stage?.agence?.nom}</td>
-                                                    <td>{p.droit_paiement?.stage?.beneficiaire?.nom} {p.droit_paiement?.stage?.beneficiaire?.prenoms}</td>
-                                                    <td>{p.droit_paiement?.stage?.beneficiaire?.numero_aej}</td>
-                                                    <td className="fw-bold">{p.montant} FCFA</td>
-                                                    <td><Badge color="warning">{p.statut}</Badge></td>
+                                                    <td>{p.stage?.agence?.nom}</td>
+                                                    <td>{p.stage?.beneficiaire?.nom} {p.stage?.beneficiaire?.prenoms}</td>
+                                                    <td>{p.stage?.beneficiaire?.numero_aej}</td>
+                                                    <td className="fw-bold text-success">45 000 FCFA</td>
+                                                    <td>
+                                                        <Button color="danger" size="sm" onClick={() => handleAjourner(p)}>
+                                                            Ajourner
+                                                        </Button>
+                                                    </td>
                                                 </tr>
                                             ))}
-                                            {paiementsATraiter.length === 0 && (
-                                                <tr><td colSpan={6} className="text-center p-3">Aucun paiement à traiter.</td></tr>
+                                            {attentePaiementDemarrage.length === 0 && (
+                                                <tr><td colSpan={5} className="text-center p-3">Aucun stagiaire en attente de paiement de démarrage.</td></tr>
                                             )}
                                         </tbody>
                                     </Table>
                                 </TabPane>
 
                                 <TabPane tabId="2">
+                                    <Table className="table-nowrap mb-0 align-middle table-striped">
+                                        <thead className="table-light">
+                                            <tr>
+                                                <th>Agence</th>
+                                                <th>Bénéficiaire</th>
+                                                <th>Numéro AEJ</th>
+                                                <th>Jours Présence</th>
+                                                <th>Montant</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {attentePaiementPresence.map((p: any, idx: number) => (
+                                                <tr key={idx}>
+                                                    <td>{p.stage?.agence?.nom}</td>
+                                                    <td>{p.stage?.beneficiaire?.nom} {p.stage?.beneficiaire?.prenoms}</td>
+                                                    <td>{p.stage?.beneficiaire?.numero_aej}</td>
+                                                    <td>{p.jours_presence || 30}</td>
+                                                    <td className="fw-bold text-success">45 000 FCFA</td>
+                                                    <td>
+                                                        <Button color="danger" size="sm" onClick={() => handleAjourner(p)}>
+                                                            Ajourner
+                                                        </Button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {attentePaiementPresence.length === 0 && (
+                                                <tr><td colSpan={6} className="text-center p-3">Aucun stagiaire en attente de paiement de présence.</td></tr>
+                                            )}
+                                        </tbody>
+                                    </Table>
+                                </TabPane>
+
+                                <TabPane tabId="3">
                                     <Table className="table-nowrap mb-0 align-middle table-striped">
                                         <thead className="table-light">
                                             <tr>
@@ -118,7 +167,7 @@ const DmgPaiementIndex = ({ paiementsATraiter, dossiersBrouillon, dossiersTransm
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {dossiersBrouillon.map((d, idx) => (
+                                            {dossiersBrouillon.map((d: any, idx: number) => (
                                                 <tr key={idx}>
                                                     <td className="fw-medium text-primary">{d.numero}</td>
                                                     <td>{d.agence?.nom}</td>
@@ -132,26 +181,37 @@ const DmgPaiementIndex = ({ paiementsATraiter, dossiersBrouillon, dossiersTransm
                                                 </tr>
                                             ))}
                                             {dossiersBrouillon.length === 0 && (
-                                                <tr><td colSpan={5} className="text-center p-3">Aucun dossier brouillon.</td></tr>
+                                                <tr><td colSpan={5} className="text-center p-3">Aucun dossier en cours d'élaboration.</td></tr>
                                             )}
                                         </tbody>
                                     </Table>
                                 </TabPane>
 
-                                {/* Tabs 3 & 4 (Transmis et Ajournés) would similarly display dossiers... */}
-                                <TabPane tabId="3">
-                                    <p className="text-center p-3">Dossiers transmis à l'Agent Comptable ({dossiersTransmis.length}).</p>
-                                </TabPane>
                                 <TabPane tabId="4">
-                                    <p className="text-center p-3">Dossiers ajournés par l'Agent Comptable ({dossiersAjournes.length}).</p>
+                                    <p className="text-center p-3">Dossiers différés par l'Agent Comptable ({dossiersAjournes.length}).</p>
                                 </TabPane>
 
                             </TabContent>
                         </CardBody>
                     </Card>
-
                 </Container>
             </div>
+
+            {/* Modal Ajournement DMG */}
+            <Modal isOpen={modalOpen} toggle={() => setModalOpen(!modalOpen)}>
+                <ModalHeader toggle={() => setModalOpen(!modalOpen)}>Ajourner le paiement</ModalHeader>
+                <ModalBody>
+                    <p>En ajournant ce dossier, il retournera dans la corbeille "Pointage Ajourné DMG" du CIP.</p>
+                    <div className="mb-3">
+                        <label htmlFor="motif" className="form-label">Motif de l'ajournement</label>
+                        <Input type="textarea" id="motif" rows={3} placeholder="Ex: RIB invalide, jours de présence incohérents..." />
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalOpen(!modalOpen)}>Annuler</Button>
+                    <Button color="danger" onClick={confirmAjournement} disabled={processing}>Confirmer l'Ajournement</Button>
+                </ModalFooter>
+            </Modal>
         </React.Fragment>
     );
 };

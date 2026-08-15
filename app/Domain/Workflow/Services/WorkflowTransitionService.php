@@ -2,134 +2,90 @@
 
 namespace App\Domain\Workflow\Services;
 
-use App\Models\User;
-use App\Models\Workflow\DefinitionParcours;
-use App\Models\Workflow\EtapeParcours;
-use App\Models\Workflow\EvenementParcours;
+use App\Enums\CorbeilleEnum;
 use App\Models\Workflow\InstanceParcours;
-use App\Models\Workflow\TacheParcours;
+use App\Models\Attendance\Pointage;
 use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
-use LogicException;
 
 class WorkflowTransitionService
 {
     /**
-     * Initie un nouveau parcours de workflow.
-     *
-     * @param DefinitionParcours $definition
-     * @param User $acteur
-     * @param array $cibles (ex: ['stage_id' => 1])
-     * @param array $donneesContexte
-     * @return InstanceParcours
+     * 1. Le CIP soumet le stagiaire.
+     * Si la date de début est le mois en cours -> Démarrage.
+     * Sinon -> Démarrage Omis.
      */
-    public function initier(
-        DefinitionParcours $definition,
-        User $acteur,
-        array $cibles,
-        array $donneesContexte = []
-    ): InstanceParcours {
-        return DB::transaction(function () use ($definition, $acteur, $cibles, $donneesContexte) {
-            $etapeInitiale = EtapeParcours::where('definition_parcours_id', $definition->id)
-                ->where('initiale', true)
-                ->firstOrFail();
+    public function submitToChefAgence(InstanceParcours $instance): void
+    {
+        $moisEnCours = date('Y-m');
+        $moisDemarrage = substr($instance->date_debut_reelle ?? $instance->date_debut_prevue, 0, 7);
 
-            // 1. Créer l'instance
-            $instance = InstanceParcours::create(array_merge([
-                'definition_parcours_id' => $definition->id,
-                'etape_courante_id' => $etapeInitiale->id,
-                'version_verrouillage' => 0,
-            ], $cibles));
-
-            // 2. Créer la première tâche
-            $nouvelleTache = TacheParcours::create([
-                'instance_parcours_id' => $instance->id,
-                'etape_parcours_id' => $etapeInitiale->id,
-                'role_responsable_id' => $etapeInitiale->role_responsable_id,
-                'code_corbeille' => $etapeInitiale->code_corbeille ?? 'DEFAULT',
-                'statut' => 'OUVERTE',
-                'ouverte_le' => now(),
-            ]);
-
-            // 3. Enregistrer l'événement initial
-            EvenementParcours::create([
-                'instance_parcours_id' => $instance->id,
-                'etape_cible_id' => $etapeInitiale->id,
-                'auteur_id' => $acteur->id,
-                'type' => 'INITIALISATION',
-                'cle_idempotence' => $instance->id . '-init-' . time(),
-                'donnees' => $donneesContexte,
-                'survenu_le' => now(),
-            ]);
-
-            return $instance;
-        });
+        if ($moisDemarrage === $moisEnCours) {
+            $instance->update(['corbeille_actuelle' => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE]);
+        } else {
+            $instance->update(['corbeille_actuelle' => CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS]);
+        }
     }
 
     /**
-     * Transitionne une instance de parcours vers une nouvelle étape.
-     *
-     * @param InstanceParcours $instance
-     * @param EtapeParcours $nouvelleEtape
-     * @param User $acteur
-     * @param array $donneesContexte
-     * @return TacheParcours La nouvelle tâche créée
-     * @throws LogicException Si aucune tâche n'est ouverte pour cette instance
+     * 2. Le CA valide le Démarrage -> Va à la DMG.
      */
-    public function transitionner(
-        InstanceParcours $instance,
-        EtapeParcours $nouvelleEtape,
-        User $acteur,
-        array $donneesContexte = []
-    ): TacheParcours {
-        return DB::transaction(function () use ($instance, $nouvelleEtape, $acteur, $donneesContexte) {
-            // 1. Verrouiller l'instance pour éviter la concurrence
-            $instance = InstanceParcours::where('id', $instance->id)->lockForUpdate()->firstOrFail();
+    public function caValideDemarrage(InstanceParcours $instance): void
+    {
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE]);
+    }
 
-            // 2. Trouver la tâche actuellement ouverte ou revendiquée
-            $tacheActuelle = TacheParcours::where('instance_parcours_id', $instance->id)
-                ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])
-                ->lockForUpdate()
-                ->first();
+    /**
+     * 3. Le CA valide le Démarrage Omis -> Passe "EN_STAGE" pour que le CIP le voie dans le pointage mensuel.
+     */
+    public function caValideDemarrageOmis(InstanceParcours $instance): void
+    {
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::EN_STAGE]);
+    }
 
-            if (! $tacheActuelle) {
-                throw new LogicException("Aucune tâche ouverte ou revendiquée pour l'instance {$instance->id}.");
-            }
+    /**
+     * 4. La DMG valide le paiement Démarrage -> Passe "EN_STAGE".
+     */
+    public function dmgValidePaiementDemarrage(InstanceParcours $instance): void
+    {
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::EN_STAGE]);
+    }
 
-            // 3. Fermer la tâche actuelle
-            $tacheActuelle->update([
-                'statut' => 'TERMINEE',
-                'fermee_le' => now(),
-            ]);
+    /**
+     * 5. La DMG ajourne un pointage mensuel -> Le pointage passe AJOURNE_DMG
+     */
+    public function dmgAjournePointage(Pointage $pointage): void
+    {
+        $pointage->update(['statut' => 'AJOURNE_DMG']);
+    }
 
-            // 4. Mettre à jour l'instance avec la nouvelle étape
-            $instance->update([
-                'etape_courante_id' => $nouvelleEtape->id,
-            ]);
+    /**
+     * 6. Le CIP corrige un pointage ajourné DMG -> Le CA le verra dans "Validation Ajourné ADP".
+     */
+    public function cipCorrigeAjournementDmg(Pointage $pointage): void
+    {
+        $pointage->update(['statut' => 'CORRIGE_CIP']);
+    }
 
-            // 5. Créer la nouvelle tâche
-            $nouvelleTache = TacheParcours::create([
-                'instance_parcours_id' => $instance->id,
-                'etape_parcours_id' => $nouvelleEtape->id,
-                'role_responsable_id' => $nouvelleEtape->role_responsable_id,
-                'code_corbeille' => $nouvelleEtape->code_corbeille ?? 'DEFAULT',
-                'statut' => 'OUVERTE',
-                'ouverte_le' => now(),
-            ]);
+    /**
+     * 7. Le CA valide la correction -> Le pointage redevient SOUMIS pour le flux normal.
+     */
+    public function caValideAjournementAdp(Pointage $pointage): void
+    {
+        $pointage->update(['statut' => 'SOUMIS']);
+    }
 
-            // 6. Enregistrer l'événement immuable
-            EvenementParcours::create([
-                'instance_parcours_id' => $instance->id,
-                'etape_source_id' => $tacheActuelle->etape_parcours_id,
-                'etape_cible_id' => $nouvelleEtape->id,
-                'auteur_id' => $acteur->id,
-                'type' => 'TRANSITION',
-                'cle_idempotence' => $tacheActuelle->id . '-' . $nouvelleEtape->id . '-' . time(),
-                'donnees' => $donneesContexte,
-                'survenu_le' => now(),
-            ]);
-
-            return $nouvelleTache;
-        });
+    /**
+     * 8. Le CA rejette la correction du pointage -> Impact sur l'instance entière ! 
+     * Retourne au CIP "Mes Stagiaires" pour correction du dossier.
+     */
+    public function caRejetteAjournementAdp(Pointage $pointage): void
+    {
+        // Rétrograde l'instance au début
+        $pointage->stage->instanceParcours()->update([
+            'corbeille_actuelle' => CorbeilleEnum::CIP_MES_STAGIAIRES
+        ]);
+        
+        // Optionnel: on supprime le pointage erroné ? Ou on le passe en "REJETE_DEFINITIF"
+        $pointage->update(['statut' => 'REJETE_DEFINITIF']);
     }
 }
