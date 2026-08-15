@@ -81,9 +81,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Phase 9 : PEJEDEC / AAF
     Route::get('/pejedec/af', [AafController::class, 'index'])->name('pejedec.af.index');
     Route::get('/pejedec/af/attente-validation', [AafController::class, 'attenteValidation'])->name('pejedec.af.attente_validation');
+    Route::post('/pejedec/af/pointages/{id}/valider', [AafController::class, 'validerPointage'])->name('pejedec.af.pointages.valider');
+    Route::post('/pejedec/af/pointages/{id}/valider-correction', [AafController::class, 'validerCorrection'])->name('pejedec.af.pointages.valider_correction');
     Route::get('/pejedec/af/paiements-ajournes', [AafController::class, 'paiementsAjournes'])->name('pejedec.af.paiements_ajournes');
     Route::get('/pejedec/af/corrections-a-valider', [AafController::class, 'correctionsAValider'])->name('pejedec.af.corrections_a_valider');
     Route::get('/pejedec/af/attente-paiement', [AafController::class, 'attentePaiement'])->name('pejedec.af.attente_paiement');
+    Route::post('/pejedec/af/droits-paiement/{id}/generer', [AafController::class, 'genererPaiement'])->name('pejedec.af.droits.generer_paiement');
 });
 
 require __DIR__.'/settings.php';

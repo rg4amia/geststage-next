@@ -2,14 +2,18 @@
 
 namespace App\Http\Controllers\Pejedec;
 
+use App\Domain\Attendance\Services\PointageService;
+use App\Domain\Payment\Services\PejedecAafService;
 use App\Http\Controllers\Controller;
-use App\Models\Company\Entreprise;
+use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
+use App\Models\Company\Entreprise;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use Carbon\Carbon;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
@@ -17,6 +21,11 @@ use Inertia\Inertia;
 class AafController extends Controller
 {
     private const PEJEDEC_SOURCE_FINANCEMENT_ID = 3;
+
+    public function __construct(
+        private PointageService $pointageService,
+        private PejedecAafService $pejedecAafService,
+    ) {}
 
     public function index(Request $request)
     {
@@ -41,6 +50,51 @@ class AafController extends Controller
     public function attentePaiement(Request $request)
     {
         return $this->renderDashboard($request, 'paiement', 'Pejedec/Aaf/AttentePaiement');
+    }
+
+    public function validerPointage(Request $request, int $id): RedirectResponse
+    {
+        $pointage = Pointage::with('versionCourante')->findOrFail($id);
+        $this->pointageService->validerMensuel($pointage, $request->user());
+
+        return back()->with('success', 'Pointage validé et droit de paiement généré.');
+    }
+
+    public function validerCorrection(Request $request, int $id): RedirectResponse
+    {
+        $pointage = Pointage::with('versionCourante')->findOrFail($id);
+
+        if ($pointage->statut !== 'CORRIGE_CIP') {
+            abort(409, 'La correction ne peut pas être validée dans cet état.');
+        }
+
+        if (! $pointage->versionCourante) {
+            abort(422, 'La version courante du pointage est introuvable.');
+        }
+
+        $pointage->update(['statut' => 'VALIDE']);
+
+        DecisionPointage::create([
+            'pointage_id' => $pointage->id,
+            'version_pointage_id' => $pointage->versionCourante->id,
+            'auteur_id' => $request->user()->id,
+            'decision' => 'VALIDE_AAF',
+            'motif' => $request->input('motif'),
+        ]);
+
+        return back()->with('success', 'Correction validée par l’AAF.');
+    }
+
+    public function genererPaiement(Request $request, int $id): RedirectResponse
+    {
+        $droitPaiement = DroitPaiement::findOrFail($id);
+        $paiement = $this->pejedecAafService->genererPaiement($droitPaiement);
+
+        $message = $paiement->wasRecentlyCreated
+            ? 'Paiement généré et prêt pour la DMG.'
+            : 'Le paiement existait déjà pour ce droit.';
+
+        return back()->with('success', $message);
     }
 
     private function renderDashboard(Request $request, string $focus, string $component)

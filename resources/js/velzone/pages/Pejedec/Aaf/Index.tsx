@@ -70,6 +70,30 @@ const PejedecAafIndex = ({
         router.visit('/dmg/paiements');
     };
 
+    const validerPointage = (id: number) => {
+        if (confirm('Valider ce pointage PEJEDEC ?')) {
+            router.post(`/pejedec/af/pointages/${id}/valider`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
+    const validerCorrection = (id: number) => {
+        if (confirm('Valider cette correction PEJEDEC ?')) {
+            router.post(`/pejedec/af/pointages/${id}/valider-correction`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
+    const genererPaiement = (id: number) => {
+        if (confirm('Générer le paiement pour ce droit ?')) {
+            router.post(`/pejedec/af/droits-paiement/${id}/generer`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
     const validationColumns = [
         {
             header: 'Bénéficiaire',
@@ -105,10 +129,15 @@ const PejedecAafIndex = ({
         },
         {
             header: 'Actions',
-            cell: () => (
-                <Button color="primary" size="sm" outline onClick={openPointage}>
-                    Ouvrir le pointage
-                </Button>
+            cell: (cell: any) => (
+                <div className="d-flex gap-2">
+                    <Button color="success" size="sm" outline onClick={() => validerPointage(cell.row.original.id)}>
+                        Valider
+                    </Button>
+                    <Button color="primary" size="sm" outline onClick={openPointage}>
+                        Ouvrir le pointage
+                    </Button>
+                </div>
             ),
         },
     ];
@@ -147,10 +176,15 @@ const PejedecAafIndex = ({
         },
         {
             header: 'Actions',
-            cell: () => (
-                <Button color="warning" size="sm" outline onClick={openPointage}>
-                    Revoir le dossier
-                </Button>
+            cell: (cell: any) => (
+                <div className="d-flex gap-2">
+                    <Button color="warning" size="sm" outline onClick={() => openPointage()}>
+                        Revoir le dossier
+                    </Button>
+                    <Button color="info" size="sm" outline onClick={() => validerPointage(cell.row.original.id)}>
+                        Revalider
+                    </Button>
+                </div>
             ),
         },
     ];
@@ -190,10 +224,15 @@ const PejedecAafIndex = ({
         },
         {
             header: 'Actions',
-            cell: () => (
-                <Button color="info" size="sm" outline onClick={openPointage}>
-                    Vérifier la correction
-                </Button>
+            cell: (cell: any) => (
+                <div className="d-flex gap-2">
+                    <Button color="info" size="sm" outline onClick={() => validerCorrection(cell.row.original.id)}>
+                        Valider la correction
+                    </Button>
+                    <Button color="secondary" size="sm" outline onClick={openPointage}>
+                        Vérifier la correction
+                    </Button>
+                </div>
             ),
         },
     ];
@@ -233,10 +272,15 @@ const PejedecAafIndex = ({
         },
         {
             header: 'Actions',
-            cell: () => (
-                <Button color="success" size="sm" outline onClick={openDmg}>
-                    Aller à la DMG
-                </Button>
+            cell: (cell: any) => (
+                <div className="d-flex gap-2">
+                    <Button color="success" size="sm" outline onClick={() => genererPaiement(cell.row.original.id)}>
+                        Générer le paiement
+                    </Button>
+                    <Button color="secondary" size="sm" outline onClick={openDmg}>
+                        Aller à la DMG
+                    </Button>
+                </div>
             ),
         },
     ];

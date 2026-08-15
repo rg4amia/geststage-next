@@ -24,6 +24,14 @@ const AttenteValidation = ({
         router.get('/pejedec/af/attente-validation', selectedFilters, { preserveScroll: true, preserveState: true });
     };
 
+    const validerPointage = (id: number) => {
+        if (confirm('Valider ce pointage PEJEDEC ?')) {
+            router.post(`/pejedec/af/pointages/${id}/valider`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
     const columns = [
         {
             header: 'Bénéficiaire',
@@ -47,10 +55,15 @@ const AttenteValidation = ({
         },
         {
             header: 'Actions',
-            cell: () => (
-                <Button color="primary" size="sm" outline onClick={() => router.visit('/cip/pointages/pejedec')}>
-                    Ouvrir le pointage
-                </Button>
+            cell: (cell: any) => (
+                <div className="d-flex gap-2">
+                    <Button color="success" size="sm" outline onClick={() => validerPointage(cell.row.original.id)}>
+                        Valider
+                    </Button>
+                    <Button color="primary" size="sm" outline onClick={() => router.visit('/cip/pointages/pejedec')}>
+                        Ouvrir le pointage
+                    </Button>
+                </div>
             ),
         },
     ];
