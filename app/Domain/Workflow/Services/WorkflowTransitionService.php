@@ -88,4 +88,29 @@ class WorkflowTransitionService
         // Optionnel: on supprime le pointage erroné ? Ou on le passe en "REJETE_DEFINITIF"
         $pointage->update(['statut' => 'REJETE_DEFINITIF']);
     }
+
+    /**
+     * 9. La DESSE valide un dossier PEJEDEC/AAF.
+     * Le dossier devient visible côté DAICG dans la corbeille de suivi validé.
+     */
+    public function desseValidePejedec(InstanceParcours $instance): void
+    {
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::DAICG_VALIDES_DESSE->value]);
+    }
+
+    /**
+     * 10. La DESSE ajourne un dossier vers l'agence.
+     */
+    public function desseAjournePejedec(InstanceParcours $instance): void
+    {
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::DESSE_RETOUR_AGENCE->value]);
+    }
+
+    /**
+     * 11. La DESSE traite un doublon et le retire de la corbeille de traitement.
+     */
+    public function desseTraiteDoublon(InstanceParcours $instance): void
+    {
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value]);
+    }
 }

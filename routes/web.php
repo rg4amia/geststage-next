@@ -73,6 +73,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/cb/paiements/ajourner/{id}', [PaiementCbController::class, 'ajourner'])->name('cb.paiements.ajourner');
 
     Route::get('/desse/stagiaires', [StagiaireDesseController::class, 'index'])->name('desse.stagiaires.index');
+    Route::post('/desse/stagiaires/valider/{id}', [StagiaireDesseController::class, 'valider'])->name('desse.stagiaires.valider');
+    Route::post('/desse/stagiaires/ajourner/{id}', [StagiaireDesseController::class, 'ajourner'])->name('desse.stagiaires.ajourner');
+    Route::post('/desse/stagiaires/doublons/{id}/traiter', [StagiaireDesseController::class, 'traiterDoublon'])->name('desse.stagiaires.doublons.traiter');
     Route::get('/daicg/stagiaires', [StagiaireDaicgController::class, 'index'])->name('daicg.stagiaires.index');
 
     // Phase 9 : PEJEDEC / AAF

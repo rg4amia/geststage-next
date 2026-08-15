@@ -20,30 +20,30 @@ class AafController extends Controller
 
     public function index(Request $request)
     {
-        return $this->renderDashboard($request, 'validation');
+        return $this->renderDashboard($request, 'validation', 'Pejedec/Aaf/Index');
     }
 
     public function attenteValidation(Request $request)
     {
-        return $this->renderDashboard($request, 'validation');
+        return $this->renderDashboard($request, 'validation', 'Pejedec/Aaf/AttenteValidation');
     }
 
     public function paiementsAjournes(Request $request)
     {
-        return $this->renderDashboard($request, 'ajournes');
+        return $this->renderDashboard($request, 'ajournes', 'Pejedec/Aaf/PaiementsAjournes');
     }
 
     public function correctionsAValider(Request $request)
     {
-        return $this->renderDashboard($request, 'corrections');
+        return $this->renderDashboard($request, 'corrections', 'Pejedec/Aaf/CorrectionsAValider');
     }
 
     public function attentePaiement(Request $request)
     {
-        return $this->renderDashboard($request, 'paiement');
+        return $this->renderDashboard($request, 'paiement', 'Pejedec/Aaf/AttentePaiement');
     }
 
-    private function renderDashboard(Request $request, string $focus)
+    private function renderDashboard(Request $request, string $focus, string $component)
     {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
         $agenceId = $request->query('agence_id');
@@ -89,7 +89,7 @@ class AafController extends Controller
             $this->queryDroitsPaiement($mois, $agenceId, $entrepriseId, $sourceFinancementId)
         );
 
-        return Inertia::render('Pejedec/Aaf/Index', [
+        return Inertia::render($component, [
             'attenteValidation' => $attenteValidation,
             'paiementsAjournes' => $paiementsAjournes,
             'correctionsAValider' => $correctionsAValider,

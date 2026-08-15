@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Col, Container, Row, Button, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Table, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import classnames from 'classnames';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
@@ -14,6 +14,7 @@ const DesseStagiairesIndex = ({
     const [processing, setProcessing] = useState(false);
     const [modalOpen, setModalOpen] = useState(false);
     const [selectedStagiaire, setSelectedStagiaire] = useState<any>(null);
+    const [motif, setMotif] = useState('');
 
     const toggleTab = (tab: string) => {
         if (activeTab !== tab) setActiveTab(tab);
@@ -21,21 +22,42 @@ const DesseStagiairesIndex = ({
 
     const handleAjourner = (stagiaire: any) => {
         setSelectedStagiaire(stagiaire);
+        setMotif('');
         setModalOpen(true);
     };
 
     const confirmAjournement = () => {
+        if (!selectedStagiaire) {
+            return;
+        }
+
         setProcessing(true);
-        // Api call simulation
-        setTimeout(() => {
-            setProcessing(false);
-            setModalOpen(false);
-        }, 500);
+        router.post(`/desse/stagiaires/ajourner/${selectedStagiaire.id}`, { motif }, {
+            preserveScroll: true,
+            onFinish: () => {
+                setProcessing(false);
+                setModalOpen(false);
+                setSelectedStagiaire(null);
+                setMotif('');
+            },
+        });
     };
 
     const validerStagiaire = (id: number) => {
         if (confirm('Valider ce stagiaire ?')) {
-            router.post(`/desse/stagiaires/valider/${id}`);
+            router.post(`/desse/stagiaires/valider/${id}`, {}, {
+                preserveScroll: true,
+            });
+        }
+    };
+
+    const traiterDoublon = (id: number) => {
+        if (confirm('Marquer ce doublon comme traité ?')) {
+            setProcessing(true);
+            router.post(`/desse/stagiaires/doublons/${id}/traiter`, {}, {
+                preserveScroll: true,
+                onFinish: () => setProcessing(false),
+            });
         }
     };
 
@@ -109,7 +131,9 @@ const DesseStagiairesIndex = ({
         {
             header: 'Actions',
             cell: (cell: any) => (
-                <Button color="primary" size="sm">Traiter le doublon</Button>
+                <Button color="primary" size="sm" onClick={() => traiterDoublon(cell.row.original.id)} disabled={processing}>
+                    <i className="ri-settings-3-line align-bottom me-1"></i> Traiter le doublon
+                </Button>
             ),
         },
     ];
@@ -205,9 +229,21 @@ const DesseStagiairesIndex = ({
                 <ModalHeader toggle={() => setModalOpen(!modalOpen)}>Rejeter le dossier</ModalHeader>
                 <ModalBody>
                     <p>En rejetant ce dossier, il retournera dans la corbeille "Rejetés DESSE" du Chef d'Agence.</p>
+                    {selectedStagiaire && (
+                        <p className="fw-medium mb-2">
+                            Dossier : {selectedStagiaire.beneficiaire?.nom} {selectedStagiaire.beneficiaire?.prenoms}
+                        </p>
+                    )}
                     <div className="mb-3">
                         <label htmlFor="motif" className="form-label">Motif du rejet</label>
-                        <Input type="textarea" id="motif" rows={3} placeholder="Ex: Informations incomplètes..." />
+                        <Input
+                            type="textarea"
+                            id="motif"
+                            rows={3}
+                            placeholder="Ex: Informations incomplètes..."
+                            value={motif}
+                            onChange={(event) => setMotif(event.target.value)}
+                        />
                     </div>
                 </ModalBody>
                 <ModalFooter>
