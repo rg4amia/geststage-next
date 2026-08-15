@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Pejedec;
 
 use App\Http\Controllers\Controller;
+use App\Models\Company\Entreprise;
 use App\Models\Attendance\Pointage;
 use App\Models\Payment\DroitPaiement;
+use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use Carbon\Carbon;
@@ -44,23 +46,47 @@ class AafController extends Controller
     private function renderDashboard(Request $request, string $focus)
     {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
+        $agenceId = $request->query('agence_id');
+        $entrepriseId = $request->query('entreprise_id');
+        $sourceFinancementId = $request->query('source_financement_id');
+        if ($sourceFinancementId === null || $sourceFinancementId === '') {
+            $sourceFinancementId = (string) self::PEJEDEC_SOURCE_FINANCEMENT_ID;
+        }
         $periode = Periode::where('code', $mois)->first();
-        $sourceFinancement = SourceFinancement::find(self::PEJEDEC_SOURCE_FINANCEMENT_ID);
+        $sourceFinancement = SourceFinancement::find($sourceFinancementId);
+        $agences = Agence::orderBy('nom')->get(['id', 'nom'])->map(function (Agence $agence) {
+            return [
+                'id' => $agence->id,
+                'label' => $agence->nom,
+            ];
+        });
+        $entreprises = Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale'])->map(function (Entreprise $entreprise) {
+            return [
+                'id' => $entreprise->id,
+                'label' => $entreprise->raison_sociale,
+            ];
+        });
+        $sourcesFinancement = SourceFinancement::orderBy('nom')->get(['id', 'nom'])->map(function (SourceFinancement $source) {
+            return [
+                'id' => $source->id,
+                'label' => $source->nom,
+            ];
+        });
 
         $attenteValidation = $this->pointageRows(
-            $this->queryPointages($mois, ['SOUMIS'])
+            $this->queryPointages($mois, ['SOUMIS'], $agenceId, $entrepriseId, $sourceFinancementId)
         );
 
         $paiementsAjournes = $this->pointageRows(
-            $this->queryPointages($mois, ['AJOURNE_DMG', 'AJOURNE_CA'])
+            $this->queryPointages($mois, ['AJOURNE_DMG', 'AJOURNE_CA'], $agenceId, $entrepriseId, $sourceFinancementId)
         );
 
         $correctionsAValider = $this->pointageRows(
-            $this->queryPointages($mois, ['CORRIGE_CIP'])
+            $this->queryPointages($mois, ['CORRIGE_CIP'], $agenceId, $entrepriseId, $sourceFinancementId)
         );
 
         $attentePaiement = $this->droitRows(
-            $this->queryDroitsPaiement($mois)
+            $this->queryDroitsPaiement($mois, $agenceId, $entrepriseId, $sourceFinancementId)
         );
 
         return Inertia::render('Pejedec/Aaf/Index', [
@@ -86,11 +112,26 @@ class AafController extends Controller
                 'code' => $sourceFinancement->code,
                 'nom' => $sourceFinancement->nom,
             ] : null,
+            'agences' => $agences,
+            'entreprises' => $entreprises,
+            'sourcesFinancement' => $sourcesFinancement,
+            'filters' => [
+                'mois' => $mois,
+                'agence_id' => $agenceId ? (string) $agenceId : '',
+                'entreprise_id' => $entrepriseId ? (string) $entrepriseId : '',
+                'source_financement_id' => (string) $sourceFinancementId,
+            ],
             'focus' => $focus,
         ]);
     }
 
-    private function queryPointages(string $mois, array $statuts): Collection
+    private function queryPointages(
+        string $mois,
+        array $statuts,
+        ?string $agenceId = null,
+        ?string $entrepriseId = null,
+        ?string $sourceFinancementId = null,
+    ): Collection
     {
         return Pointage::with([
             'stage.beneficiaire',
@@ -104,14 +145,31 @@ class AafController extends Controller
             ->whereHas('periode', function ($query) use ($mois) {
                 $query->where('code', $mois);
             })
-            ->whereHas('stage', function ($query) {
-                $query->where('source_financement_id', self::PEJEDEC_SOURCE_FINANCEMENT_ID);
+            ->when($agenceId, function ($query) use ($agenceId) {
+                $query->whereHas('stage', function ($stageQuery) use ($agenceId) {
+                    $stageQuery->where('agence_id', $agenceId);
+                });
+            })
+            ->when($entrepriseId, function ($query) use ($entrepriseId) {
+                $query->whereHas('stage', function ($stageQuery) use ($entrepriseId) {
+                    $stageQuery->where('entreprise_id', $entrepriseId);
+                });
+            })
+            ->when($sourceFinancementId, function ($query) use ($sourceFinancementId) {
+                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                    $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
             })
             ->orderByDesc('id')
             ->get();
     }
 
-    private function queryDroitsPaiement(string $mois): Collection
+    private function queryDroitsPaiement(
+        string $mois,
+        ?string $agenceId = null,
+        ?string $entrepriseId = null,
+        ?string $sourceFinancementId = null,
+    ): Collection
     {
         return DroitPaiement::with([
             'stage.beneficiaire',
@@ -126,8 +184,20 @@ class AafController extends Controller
             ->whereHas('periode', function ($query) use ($mois) {
                 $query->where('code', $mois);
             })
-            ->whereHas('stage', function ($query) {
-                $query->where('source_financement_id', self::PEJEDEC_SOURCE_FINANCEMENT_ID);
+            ->when($agenceId, function ($query) use ($agenceId) {
+                $query->whereHas('stage', function ($stageQuery) use ($agenceId) {
+                    $stageQuery->where('agence_id', $agenceId);
+                });
+            })
+            ->when($entrepriseId, function ($query) use ($entrepriseId) {
+                $query->whereHas('stage', function ($stageQuery) use ($entrepriseId) {
+                    $stageQuery->where('entreprise_id', $entrepriseId);
+                });
+            })
+            ->when($sourceFinancementId, function ($query) use ($sourceFinancementId) {
+                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                    $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
             })
             ->whereDoesntHave('paiements')
             ->orderByDesc('id')

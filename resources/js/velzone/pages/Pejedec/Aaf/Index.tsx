@@ -14,14 +14,33 @@ const PejedecAafIndex = ({
     moisActuel,
     periode,
     sourceFinancement,
+    agences = [],
+    entreprises = [],
+    sourcesFinancement = [],
+    filters = {},
     focus = 'validation',
 }: any) => {
     const [activeTab, setActiveTab] = useState(
         focus === 'ajournes' ? '2' : focus === 'corrections' ? '3' : focus === 'paiement' ? '4' : '1',
     );
+    const [selectedFilters, setSelectedFilters] = useState({
+        mois: filters?.mois || moisActuel || '',
+        agence_id: filters?.agence_id || '',
+        entreprise_id: filters?.entreprise_id || '',
+        source_financement_id: filters?.source_financement_id || sourceFinancement?.id?.toString() || '3',
+    });
 
-    const goToMonth = (value: string) => {
-        router.get('/pejedec/af', { mois: value }, { preserveScroll: true, preserveState: true });
+    const search = () => {
+        router.get(
+            '/pejedec/af',
+            {
+                mois: selectedFilters.mois,
+                agence_id: selectedFilters.agence_id,
+                entreprise_id: selectedFilters.entreprise_id,
+                source_financement_id: selectedFilters.source_financement_id,
+            },
+            { preserveScroll: true, preserveState: true },
+        );
     };
 
     const badgeForStatus = (status?: string) => {
@@ -283,20 +302,91 @@ const PejedecAafIndex = ({
                         ))}
                     </Row>
 
-                    <Card className="shadow-sm">
+                    <Card className="shadow-sm mb-3">
                         <CardHeader className="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                             <div>
                                 <h4 className="card-title mb-1">Corbeilles PEJEDEC / AAF</h4>
                                 <p className="text-muted mb-0">Lecture unifiée des files métier héritées du legacy.</p>
                             </div>
-                            <Input
-                                type="month"
-                                value={moisActuel}
-                                onChange={(event) => goToMonth(event.target.value)}
-                                style={{ maxWidth: '180px' }}
-                            />
                         </CardHeader>
                         <CardBody>
+                            <Row className="g-3 mb-3">
+                                <Col md={3}>
+                                    <label className="form-label">Période</label>
+                                    <Input
+                                        type="month"
+                                        value={selectedFilters.mois}
+                                        onChange={(event) =>
+                                            setSelectedFilters((current) => ({ ...current, mois: event.target.value }))
+                                        }
+                                    />
+                                </Col>
+                                <Col md={3}>
+                                    <label className="form-label">Agence</label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.agence_id}
+                                        onChange={(event) =>
+                                            setSelectedFilters((current) => ({ ...current, agence_id: event.target.value }))
+                                        }
+                                    >
+                                        <option value="">Toutes</option>
+                                        {agences.map((agence: any) => (
+                                            <option key={agence.id} value={agence.id}>
+                                                {agence.label}
+                                            </option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <label className="form-label">Entreprise</label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.entreprise_id}
+                                        onChange={(event) =>
+                                            setSelectedFilters((current) => ({
+                                                ...current,
+                                                entreprise_id: event.target.value,
+                                            }))
+                                        }
+                                    >
+                                        <option value="">Toutes</option>
+                                        {entreprises.map((entreprise: any) => (
+                                            <option key={entreprise.id} value={entreprise.id}>
+                                                {entreprise.label}
+                                            </option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <label className="form-label">Source financement</label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.source_financement_id}
+                                        onChange={(event) =>
+                                            setSelectedFilters((current) => ({
+                                                ...current,
+                                                source_financement_id: event.target.value,
+                                            }))
+                                        }
+                                    >
+                                        <option value="">Toutes</option>
+                                        {sourcesFinancement.map((source: any) => (
+                                            <option key={source.id} value={source.id}>
+                                                {source.label}
+                                            </option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                            </Row>
+                            <div className="d-flex justify-content-end">
+                                <Button color="primary" onClick={search}>
+                                    Rechercher
+                                </Button>
+                            </div>
+
+                            <hr className="my-4" />
+
                             <Nav tabs className="nav-tabs-custom nav-primary nav-justified mb-3">
                                 {[
                                     { id: '1', label: 'Validation PEJEDEC', count: attenteValidation.length },
