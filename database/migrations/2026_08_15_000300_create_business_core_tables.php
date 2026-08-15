@@ -70,13 +70,40 @@ return new class extends Migration
             $table->string('prenoms');
             $table->date('date_naissance')->nullable();
             $table->string('lieu_naissance')->nullable();
+            $table->string('sous_prefecture_naissance')->nullable();
             $table->string('sexe', 20)->nullable();
             $table->string('telephone_principal', 30)->nullable();
             $table->string('telephone_secondaire', 30)->nullable();
             $table->string('email')->nullable();
+            
             $table->foreignId('commune_residence_id')->nullable()->constrained('communes')->restrictOnDelete();
+            $table->string('sous_prefecture_residence')->nullable();
+            
+            $table->string('nature_piece_identite')->nullable();
+            $table->string('numero_piece_identite')->nullable();
+            $table->string('numero_cmu')->nullable();
+            
+            $table->string('personne_urgence')->nullable();
+            $table->foreignId('lien_parente_id')->nullable()->constrained('liens_parente')->restrictOnDelete();
+            $table->string('contact_urgence_1', 30)->nullable();
+            $table->string('contact_urgence_2', 30)->nullable();
+            
+            $table->foreignId('niveau_etude_id')->nullable()->constrained('niveaux_etude')->restrictOnDelete();
+            $table->foreignId('diplome_id')->nullable()->constrained('diplomes')->restrictOnDelete();
+            $table->string('autre_diplome')->nullable();
+            $table->string('specialite')->nullable();
+            $table->year('annee_diplome')->nullable();
+            $table->string('etablissement_frequente')->nullable();
+            
             $table->foreignId('type_enseignement_id')->nullable()->constrained('types_enseignement')->restrictOnDelete();
             $table->foreignId('handicap_id')->nullable()->constrained('handicaps')->restrictOnDelete();
+            $table->foreignId('type_handicap_id')->nullable()->constrained('types_handicap')->restrictOnDelete();
+            $table->string('autre_handicap')->nullable();
+
+            $table->foreignId('type_paiement_id')->nullable()->constrained('types_paiement')->restrictOnDelete();
+            $table->string('numero_tresor_money')->nullable();
+            $table->string('numero_wave')->nullable();
+            
             $table->boolean('actif')->default(true);
             $table->timestamps();
             $table->softDeletes();
@@ -116,10 +143,34 @@ return new class extends Migration
             $table->foreignId('entreprise_id')->constrained('entreprises')->restrictOnDelete();
             $table->foreignId('agence_id')->constrained('agences')->restrictOnDelete();
             $table->foreignId('conseiller_id')->nullable()->constrained('conseillers')->restrictOnDelete();
+            
+            $table->foreignId('origine_stagiaire_id')->nullable()->constrained('origines_stagiaire')->restrictOnDelete();
+            $table->date('date_entree_portefeuille')->nullable();
+            
             $table->foreignId('type_stage_id')->constrained('types_stage')->restrictOnDelete();
             $table->foreignId('source_financement_id')->constrained('sources_financement')->restrictOnDelete();
             $table->foreignId('programme_id')->nullable()->constrained('programmes')->restrictOnDelete();
+            
+            $table->string('service_affectation')->nullable();
             $table->string('intitule_poste');
+            
+            $table->string('localite_stage')->nullable();
+            $table->string('commune_stage')->nullable();
+            $table->string('sous_prefecture_stage')->nullable();
+            
+            $table->string('nom_encadreur')->nullable();
+            $table->string('fonction_encadreur')->nullable();
+            $table->string('contact_encadreur', 30)->nullable();
+            
+            $table->string('statut_stage')->nullable();
+            $table->string('situation_stage')->nullable();
+            
+            $table->integer('nbr_mois_capitaliser')->default(0);
+            $table->date('date_demarrage_capitalisation')->nullable();
+            $table->date('date_demarrage_capitalisation_sans_financiere')->nullable();
+
+            $table->text('observations')->nullable();
+            
             $table->date('date_debut');
             $table->date('date_fin_prevue');
             $table->date('date_fin_effective')->nullable();

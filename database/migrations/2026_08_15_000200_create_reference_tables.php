@@ -85,8 +85,12 @@ return new class extends Migration
         $this->createCodeReference('liens_parente');
         $this->createCodeReference('types_enseignement');
         $this->createCodeReference('handicaps');
+        $this->createCodeReference('types_handicap');
         $this->createCodeReference('types_piece_identite');
         $this->createCodeReference('specialites_diplome');
+        $this->createCodeReference('niveaux_etude');
+        $this->createCodeReference('diplomes');
+        $this->createCodeReference('origines_stagiaire');
         $this->createCodeReference('etats_validation');
         $this->createCodeReference('types_document');
 
@@ -122,8 +126,8 @@ return new class extends Migration
     public function down(): void
     {
         foreach ([
-            'motifs_ajournement', 'types_document', 'etats_validation', 'specialites_diplome',
-            'types_piece_identite', 'handicaps', 'types_enseignement', 'liens_parente',
+            'motifs_ajournement', 'types_document', 'etats_validation', 'origines_stagiaire', 'diplomes', 'niveaux_etude', 'specialites_diplome',
+            'types_piece_identite', 'types_handicap', 'handicaps', 'types_enseignement', 'liens_parente',
             'types_paiement', 'statuts_stage', 'situations_stage', 'programmes',
             'sources_financement', 'types_structure', 'types_stage', 'periodes',
             'perimetres_agences_utilisateurs', 'conseillers', 'agences', 'communes', 'regions',

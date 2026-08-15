@@ -4,7 +4,19 @@ namespace App\Http\Controllers\Registration;
 
 use App\Domain\Registration\Services\InscriptionStagiaireService;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Controller;
 use App\Models\Company\OffreEmploi;
+use App\Models\Reference\Agence;
+use App\Models\Reference\Commune;
+use App\Models\Reference\Diplome;
+use App\Models\Reference\Handicap;
+use App\Models\Reference\LienParente;
+use App\Models\Reference\NiveauEtude;
+use App\Models\Reference\OrigineStagiaire;
+use App\Models\Reference\TypeEnseignement;
+use App\Models\Reference\TypeHandicap;
+use App\Models\Reference\TypePaiement;
+use App\Models\Reference\TypeStage;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -38,9 +50,32 @@ class InscriptionController extends Controller
         $offres = OffreEmploi::with(['entreprise', 'agence', 'typeStage', 'sourceFinancement'])
             ->where('statut', 'PUBLIEE')
             ->get();
+            
+        $agences = Agence::where('actif', true)->get();
+        $communes = Commune::where('actif', true)->get();
+        $typesStage = TypeStage::where('actif', true)->get();
+        $originesStagiaire = OrigineStagiaire::where('actif', true)->get();
+        $liensParente = LienParente::where('actif', true)->get();
+        $niveauxEtude = NiveauEtude::where('actif', true)->get();
+        $diplomes = Diplome::where('actif', true)->get();
+        $typesEnseignement = TypeEnseignement::where('actif', true)->get();
+        $handicaps = Handicap::where('actif', true)->get();
+        $typesHandicap = TypeHandicap::where('actif', true)->get();
+        $typesPaiement = TypePaiement::where('actif', true)->get();
 
         return Inertia::render('Inscriptions/Create', [
             'offres' => $offres,
+            'agences' => $agences,
+            'communes' => $communes,
+            'typesStage' => $typesStage,
+            'originesStagiaire' => $originesStagiaire,
+            'liensParente' => $liensParente,
+            'niveauxEtude' => $niveauxEtude,
+            'diplomes' => $diplomes,
+            'typesEnseignement' => $typesEnseignement,
+            'handicaps' => $handicaps,
+            'typesHandicap' => $typesHandicap,
+            'typesPaiement' => $typesPaiement,
         ]);
     }
 
