@@ -65,7 +65,7 @@ class PointageCipController extends Controller
             ->get();
 
         $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante', 'decisions'])
-            ->scopeAjourneParCA()
+            ->ajourneParCA()
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
             })
