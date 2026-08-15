@@ -1,6 +1,25 @@
-import React, { useMemo, useState } from 'react';
-import { Head } from '@inertiajs/react';
-import { Badge, Card, CardBody, CardHeader, Col, Container, Input, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
+import React, { useState } from 'react';
+import { Head, router } from '@inertiajs/react';
+import {
+    Badge,
+    Button,
+    Card,
+    CardBody,
+    CardHeader,
+    Col,
+    Container,
+    Input,
+    Modal,
+    ModalBody,
+    ModalFooter,
+    ModalHeader,
+    Nav,
+    NavItem,
+    NavLink,
+    Row,
+    TabContent,
+    TabPane,
+} from 'reactstrap';
 import classnames from 'classnames';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
@@ -15,75 +34,174 @@ const PointagesPejedec = ({
     sourceFinancement,
 }: any) => {
     const [activeTab, setActiveTab] = useState('1');
+    const [modalOpen, setModalOpen] = useState(false);
+    const [submitting, setSubmitting] = useState(false);
+    const [selectedAction, setSelectedAction] = useState<any>(null);
+    const [joursPresents, setJoursPresents] = useState(30);
+    const [joursAbsents, setJoursAbsents] = useState(0);
+    const [motif, setMotif] = useState('');
 
-    const columns = useMemo(
-        () => [
-            {
-                header: 'Bénéficiaire',
-                accessorKey: 'stage.beneficiaire.nom',
-                cell: (cell: any) => (
-                    <div>
-                        <h5 className="fs-14 mb-1">
-                            {cell.row.original.stage?.beneficiaire?.nom} {cell.row.original.stage?.beneficiaire?.prenoms}
-                        </h5>
-                        <p className="text-muted mb-0">{cell.row.original.stage?.beneficiaire?.matricule}</p>
-                    </div>
-                ),
-            },
-            {
-                header: 'Entreprise',
-                accessorKey: 'stage.entreprise.raison_sociale',
-                cell: (cell: any) => cell.getValue() || '-',
-            },
-            {
-                header: 'Financement',
-                cell: (cell: any) => (
-                    <Badge color="primary" className="text-uppercase">
-                        {cell.row.original.stage?.sourceFinancement?.nom || sourceFinancement?.nom || 'PEJEDEC'}
-                    </Badge>
-                ),
-            },
-            {
-                header: 'Statut',
-                accessorKey: 'pointage_statut',
-                cell: (cell: any) => {
-                    const pointages = cell.row.original.stage?.pointages || [];
-                    const pointageMois = pointages.find((p: any) => p.periode_id === periode?.id);
+    const openSubmissionModal = (item: any, mode: 'submit' | 'resubmit' | 'correct') => {
+        setSelectedAction({ item, mode });
+        setJoursPresents(item?.versionCourante?.jours_presents ?? 30);
+        setJoursAbsents(item?.versionCourante?.jours_absents ?? 0);
+        setMotif(item?.versionCourante?.observation ?? '');
+        setModalOpen(true);
+    };
 
-                    if (!pointageMois) {
-                        return <span className="badge bg-warning-subtle text-warning">À Saisir</span>;
-                    }
-                    if (pointageMois.statut === 'SOUMIS') {
-                        return <span className="badge bg-info-subtle text-info">Soumis</span>;
-                    }
-                    if (pointageMois.statut === 'VALIDE') {
-                        return <span className="badge bg-success-subtle text-success">Validé</span>;
-                    }
-                    if (pointageMois.statut === 'AJOURNE_CA') {
-                        return <span className="badge bg-danger-subtle text-danger">Ajourné CA</span>;
-                    }
-                    return <span className="badge bg-secondary-subtle text-secondary">{pointageMois.statut}</span>;
+    const closeModal = () => {
+        if (!submitting) {
+            setModalOpen(false);
+            setSelectedAction(null);
+        }
+    };
+
+    const submitPointage = () => {
+        if (!selectedAction?.item?.stage?.id || !periode?.id) {
+            return;
+        }
+
+        setSubmitting(true);
+        router.post(
+            `/cip/pointages/soumettre/${selectedAction.item.stage.id}`,
+            {
+                periode_id: periode.id,
+                jours_presents: joursPresents,
+                jours_absents: joursAbsents,
+                observation: motif || undefined,
+            },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setSubmitting(false);
+                    setModalOpen(false);
+                    setSelectedAction(null);
                 },
             },
-            {
-                header: 'Jours',
-                cell: (cell: any) => {
-                    const pointages = cell.row.original.stage?.pointages || [];
-                    const pointageMois = pointages.find((p: any) => p.periode_id === periode?.id);
+        );
+    };
 
-                    return pointageMois?.jours_presence ?? '-';
+    const correctDmgPointage = () => {
+        if (!selectedAction?.item?.id) {
+            return;
+        }
+
+        setSubmitting(true);
+        router.post(
+            `/cip/pointages/corriger-ajournement-dmg/${selectedAction.item.id}`,
+            { motif: motif || undefined },
+            {
+                preserveScroll: true,
+                onFinish: () => {
+                    setSubmitting(false);
+                    setModalOpen(false);
+                    setSelectedAction(null);
                 },
             },
-        ],
-        [periode, sourceFinancement],
-    );
+        );
+    };
+
+    const statusBadge = (item: any, fallback = 'A Saisir') => {
+        const statut = item?.statut || fallback;
+
+        if (statut === 'SOUMIS') return <span className="badge bg-info-subtle text-info">Soumis</span>;
+        if (statut === 'VALIDE') return <span className="badge bg-success-subtle text-success">Validé</span>;
+        if (statut === 'AJOURNE_CA') return <span className="badge bg-warning-subtle text-warning">Ajourné CA</span>;
+        if (statut === 'AJOURNE_DMG') return <span className="badge bg-danger-subtle text-danger">Ajourné DMG</span>;
+        if (statut === 'CORRIGE_CIP') return <span className="badge bg-primary-subtle text-primary">Corrigé CIP</span>;
+
+        return <span className="badge bg-secondary-subtle text-secondary">{fallback}</span>;
+    };
+
+    const buildColumns = (kind: 'waiting' | 'submitted' | 'ajourne-ca' | 'ajourne-dmg') => [
+        {
+            header: 'Bénéficiaire',
+            accessorKey: 'stage.beneficiaire.nom',
+            cell: (cell: any) => (
+                <div>
+                    <h5 className="fs-14 mb-1">
+                        {cell.row.original.stage?.beneficiaire?.nom} {cell.row.original.stage?.beneficiaire?.prenoms}
+                    </h5>
+                    <p className="text-muted mb-0">{cell.row.original.stage?.beneficiaire?.matricule}</p>
+                </div>
+            ),
+        },
+        {
+            header: 'Entreprise',
+            accessorKey: 'stage.entreprise.raison_sociale',
+            cell: (cell: any) => cell.getValue() || '-',
+        },
+        {
+            header: 'Financement',
+            cell: (cell: any) => (
+                <Badge color="primary" className="text-uppercase">
+                    {cell.row.original.stage?.sourceFinancement?.nom || sourceFinancement?.nom || 'PEJEDEC'}
+                </Badge>
+            ),
+        },
+        {
+            header: 'Statut',
+            accessorKey: 'statut',
+            cell: (cell: any) => statusBadge(cell.row.original, kind === 'waiting' ? 'A Saisir' : '-'),
+        },
+        {
+            header: 'Jours',
+            cell: (cell: any) => {
+                if (kind === 'waiting') {
+                    return '-';
+                }
+
+                return cell.row.original.versionCourante?.jours_presents ?? '-';
+            },
+        },
+        {
+            header: 'Action',
+            cell: (cell: any) => {
+                if (kind === 'waiting') {
+                    return (
+                        <Button color="success" size="sm" onClick={() => openSubmissionModal(cell.row.original, 'submit')} disabled={!periode?.id}>
+                            Soumettre
+                        </Button>
+                    );
+                }
+
+                if (kind === 'ajourne-ca') {
+                    return (
+                        <Button color="warning" size="sm" onClick={() => openSubmissionModal(cell.row.original, 'resubmit')} disabled={!periode?.id}>
+                            Resoumettre
+                        </Button>
+                    );
+                }
+
+                if (kind === 'ajourne-dmg') {
+                    return (
+                        <Button color="primary" size="sm" onClick={() => openSubmissionModal(cell.row.original, 'correct')}>
+                            Corriger DMG
+                        </Button>
+                    );
+                }
+
+                return <span className="text-muted">Consultation</span>;
+            },
+        },
+    ];
 
     const tabs = [
-        { id: '1', label: 'A saisir', data: attente },
-        { id: '2', label: 'Soumis', data: effectues },
-        { id: '3', label: 'Ajournés CA', data: ajournesCA },
-        { id: '4', label: 'Ajournés DMG', data: ajournesDMG },
+        { id: '1', label: 'A saisir', data: attente, kind: 'waiting' as const },
+        { id: '2', label: 'Soumis', data: effectues, kind: 'submitted' as const },
+        { id: '3', label: 'Ajournés CA', data: ajournesCA, kind: 'ajourne-ca' as const },
+        { id: '4', label: 'Ajournés DMG', data: ajournesDMG, kind: 'ajourne-dmg' as const },
     ];
+
+    const actionTitle = selectedAction?.mode === 'correct'
+        ? 'Correction DMG'
+        : selectedAction?.mode === 'resubmit'
+            ? 'Resoumission du pointage'
+            : 'Soumission du pointage';
+
+    const actionDescription = selectedAction?.mode === 'correct'
+        ? 'Le pointage retourne au flux CA avec le statut corrigé.'
+        : 'La saisie relance le pointage dans le flux normal PEJEDEC.';
 
     return (
         <React.Fragment>
@@ -172,7 +290,7 @@ const PointagesPejedec = ({
                                 {tabs.map((tab) => (
                                     <TabPane key={tab.id} tabId={tab.id}>
                                         <TableContainerReactTable
-                                            columns={columns}
+                                            columns={buildColumns(tab.kind)}
                                             data={tab.data || []}
                                             isGlobalFilter={true}
                                             customPageSize={10}
@@ -188,6 +306,63 @@ const PointagesPejedec = ({
                     </Card>
                 </Container>
             </div>
+
+            <Modal isOpen={modalOpen} toggle={closeModal} centered>
+                <ModalHeader toggle={closeModal}>{actionTitle}</ModalHeader>
+                <ModalBody>
+                    <p className="text-muted">{actionDescription}</p>
+
+                    {selectedAction?.mode !== 'correct' && (
+                        <>
+                            <div className="mb-3">
+                                <label className="form-label">Jours de présence</label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={31}
+                                    value={joursPresents}
+                                    onChange={(event) => setJoursPresents(Number(event.target.value))}
+                                />
+                            </div>
+                            <div className="mb-3">
+                                <label className="form-label">Jours d'absence</label>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    max={31}
+                                    value={joursAbsents}
+                                    onChange={(event) => setJoursAbsents(Number(event.target.value))}
+                                />
+                            </div>
+                        </>
+                    )}
+
+                    <div className="mb-0">
+                        <label className="form-label">Observation</label>
+                        <Input
+                            type="textarea"
+                            rows={4}
+                            value={motif}
+                            onChange={(event) => setMotif(event.target.value)}
+                            placeholder={selectedAction?.mode === 'correct' ? 'Motif de la correction DMG' : 'Observation du pointage'}
+                        />
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={closeModal} disabled={submitting}>
+                        Annuler
+                    </Button>
+                    {selectedAction?.mode === 'correct' ? (
+                        <Button color="primary" onClick={correctDmgPointage} disabled={submitting}>
+                            Corriger et renvoyer
+                        </Button>
+                    ) : (
+                        <Button color="success" onClick={submitPointage} disabled={submitting || !periode?.id}>
+                            Soumettre
+                        </Button>
+                    )}
+                </ModalFooter>
+            </Modal>
         </React.Fragment>
     );
 };

@@ -152,6 +152,10 @@ class PointageCipController extends Controller
             abort(409, 'Le pointage ne peut pas être corrigé dans cet état.');
         }
 
+        if (! $pointage->versionCourante) {
+            abort(422, 'La version courante du pointage est introuvable.');
+        }
+
         $this->workflowService->cipCorrigeAjournementDmg($pointage);
 
         DecisionPointage::create([
