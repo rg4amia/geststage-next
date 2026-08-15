@@ -25,6 +25,12 @@ const Navdata = () => {
             link: '/dashboard',
         },
         {
+            id: 'reporting',
+            label: 'Reporting',
+            icon: 'ri-bar-chart-2-line',
+            link: '/reporting',
+        },
+        {
             label: 'Espace CIP',
             isHeader: true,
         },

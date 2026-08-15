@@ -43,6 +43,9 @@ class RolePermissionSeeder extends Seeder
                 'voir_pointages',
                 'gerer_pointages',
             ],
+            'reporting' => [
+                'voir_reporting',
+            ],
             'workflow' => [
                 'valider_chef_agence',
                 'valider_desse',
@@ -156,5 +159,9 @@ class RolePermissionSeeder extends Seeder
             'voir_beneficiaires',
             'voir_contrats',
         ]);
+
+        foreach (['cip', 'chef_agence', 'desse', 'daicg', 'dmg', 'cb', 'agent_comptable', 'pejedec', 'aaf'] as $roleName) {
+            Role::findByName($roleName)->givePermissionTo(['voir_reporting']);
+        }
     }
 }

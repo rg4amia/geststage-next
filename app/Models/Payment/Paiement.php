@@ -2,6 +2,7 @@
 
 namespace App\Models\Payment;
 
+use App\Domain\Shared\Traits\HasPublicUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -10,7 +11,7 @@ use App\Domain\Audit\Traits\Auditable;
 
 class Paiement extends Model
 {
-    use HasFactory, Auditable;
+    use HasFactory, HasPublicUuid, Auditable;
 
     protected $table = 'paiements';
 

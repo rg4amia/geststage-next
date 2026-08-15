@@ -179,7 +179,7 @@ return new class extends Migration
         DB::statement('ALTER TABLE ajournements ADD CONSTRAINT ajournements_cycle_positif CHECK (numero_cycle > 0)');
         DB::statement("ALTER TABLE ajournements ADD CONSTRAINT ajournements_statut_valide CHECK (statut IN ('OUVERT', 'RESOUMIS', 'CLOS', 'ANNULE'))");
         DB::unprepared(<<<'SQL'
-            CREATE FUNCTION interdire_mutation_evenement_parcours() RETURNS trigger AS $$
+            CREATE OR REPLACE FUNCTION interdire_mutation_evenement_parcours() RETURNS trigger AS $$
             BEGIN
                 RAISE EXCEPTION 'Les evenements_parcours sont immuables';
             END;

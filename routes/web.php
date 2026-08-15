@@ -15,13 +15,16 @@ use App\Http\Controllers\Dmg\PaiementDmgController;
 use App\Http\Controllers\Dmg\RejetDmgController;
 use App\Http\Controllers\Dmg\ValidationDmgController;
 use App\Http\Controllers\Pejedec\AafController;
+use App\Http\Controllers\Reporting\TableauDeBordController;
 use App\Http\Controllers\Registration\InscriptionController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::inertia('dashboard', 'Tables/GridJs/index')->name('dashboard');
+    Route::get('/dashboard', [TableauDeBordController::class, 'index'])->middleware('can:voir_reporting')->name('dashboard');
+    Route::get('/reporting', [TableauDeBordController::class, 'index'])->middleware('can:voir_reporting')->name('reporting.index');
+    Route::get('/reporting/export/kpi.csv', [TableauDeBordController::class, 'exportCsv'])->middleware('can:voir_reporting')->name('reporting.export.kpi');
 
     Route::resource('entreprises', EntrepriseController::class);
     Route::resource('offres', OffreEmploiController::class)->parameters([
