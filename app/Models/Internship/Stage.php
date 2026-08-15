@@ -9,6 +9,7 @@ use App\Models\Attendance\Pointage;
 use App\Models\Company\Entreprise;
 use App\Models\Contract\Contrat;
 use App\Models\Reference\Agence;
+use App\Models\Reference\SourceFinancement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -55,6 +56,14 @@ class Stage extends Model
     public function agence(): BelongsTo
     {
         return $this->belongsTo(Agence::class);
+    }
+
+    /**
+     * La source de financement liée au stage.
+     */
+    public function sourceFinancement(): BelongsTo
+    {
+        return $this->belongsTo(SourceFinancement::class);
     }
 
     /**

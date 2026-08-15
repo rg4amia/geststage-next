@@ -3,12 +3,15 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Attendance\Services\PointageService;
+use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
 use App\Models\Workflow\InstanceParcours;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SourceFinancement;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -16,11 +19,15 @@ use Carbon\Carbon;
 class PointageCipController extends Controller
 {
     protected $pointageService;
+    protected $workflowService;
     private const PEJEDEC_SOURCE_FINANCEMENT_ID = 3;
 
-    public function __construct(PointageService $pointageService)
-    {
+    public function __construct(
+        PointageService $pointageService,
+        WorkflowTransitionService $workflowService
+    ) {
         $this->pointageService = $pointageService;
+        $this->workflowService = $workflowService;
     }
 
     public function stagiaireAttentePointage(Request $request)
@@ -30,14 +37,15 @@ class PointageCipController extends Controller
 
     public function stagiaireAttentePointagePejedec(Request $request)
     {
-        return $this->renderPointages($request, self::PEJEDEC_SOURCE_FINANCEMENT_ID);
+        return $this->renderPointages($request, self::PEJEDEC_SOURCE_FINANCEMENT_ID, true);
     }
 
-    private function renderPointages(Request $request, ?int $sourceFinancementId = null)
+    private function renderPointages(Request $request, ?int $sourceFinancementId = null, bool $pejedec = false)
     {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
+        $periode = Periode::where('code', $mois)->first();
 
-        $attenteQuery = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.pointages'])
+        $attenteQuery = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'stage.pointages'])
             ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
             ->whereDoesntHave('stage.pointages', function($q) use ($mois) {
                 $q->whereHas('periode', function($p) use ($mois) {
@@ -52,7 +60,7 @@ class PointageCipController extends Controller
 
         $attente = $attenteQuery->get();
 
-        $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante'])
+        $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante'])
             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
@@ -64,7 +72,7 @@ class PointageCipController extends Controller
             })
             ->get();
 
-        $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante', 'decisions'])
+        $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
             ->ajourneParCA()
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
@@ -76,7 +84,7 @@ class PointageCipController extends Controller
             })
             ->get();
 
-        $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'versionCourante', 'decisions'])
+        $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
             ->where('statut', 'AJOURNE_DMG')
             ->whereHas('periode', function ($q) use ($mois) {
                 $q->where('nom', 'like', "%$mois%");
@@ -89,14 +97,23 @@ class PointageCipController extends Controller
             ->get();
 
         $moisManques = Periode::where('actif', true)->pluck('nom', 'id');
+        $sourceFinancement = $sourceFinancementId !== null
+            ? SourceFinancement::find($sourceFinancementId)
+            : null;
 
-        return Inertia::render('Cip/Pointages/Index', [
+        return Inertia::render($pejedec ? 'Cip/Pointages/Pejedec' : 'Cip/Pointages/Index', [
             'attente' => $attente,
             'effectues' => $effectues,
             'ajournesCA' => $ajournesCA,
             'ajournesDMG' => $ajournesDMG,
             'moisManques' => $moisManques,
             'moisActuel' => $mois,
+            'periode' => $periode,
+            'sourceFinancement' => $sourceFinancement ? [
+                'id' => $sourceFinancement->id,
+                'code' => $sourceFinancement->code,
+                'nom' => $sourceFinancement->nom,
+            ] : null,
         ]);
     }
 
@@ -121,5 +138,30 @@ class PointageCipController extends Controller
         );
 
         return redirect()->back()->with('success', 'Pointage soumis avec succès.');
+    }
+
+    public function corrigerAjournementDmg(Request $request, $id)
+    {
+        $request->validate([
+            'motif' => 'nullable|string|max:500',
+        ]);
+
+        $pointage = Pointage::with('versionCourante')->findOrFail($id);
+
+        if ($pointage->statut !== 'AJOURNE_DMG') {
+            abort(409, 'Le pointage ne peut pas être corrigé dans cet état.');
+        }
+
+        $this->workflowService->cipCorrigeAjournementDmg($pointage);
+
+        DecisionPointage::create([
+            'pointage_id' => $pointage->id,
+            'version_pointage_id' => $pointage->versionCourante->id,
+            'auteur_id' => $request->user()->id,
+            'decision' => 'CORRIGE_CIP',
+            'motif' => $request->input('motif'),
+        ]);
+
+        return redirect()->back()->with('success', 'Pointage corrigé et renvoyé au CA.');
     }
 }
