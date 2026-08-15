@@ -211,28 +211,53 @@ class MigrateLegacyDataCommand extends Command
 
     private function migrateStages()
     {
-        $this->info("Migration des contrats/stages (contrats_pae)...");
+        $this->info("Migration complète des contrats/stages (contrats_pae)...");
         $contrats = DB::connection('legacy')->table('contrats_pae')->get();
 
         $bar = $this->output->createProgressBar(count($contrats));
         $bar->start();
 
         foreach ($contrats as $legacyContrat) {
-            // Création du Stage (ancien contrats_pae)
+            // 1. Création du Stage (ancien contrats_pae)
             $stage = Stage::updateOrCreate(
                 ['ancien_id' => $legacyContrat->id],
                 [
                     'beneficiaire_id' => $legacyContrat->beneficiaire_id ?? 1,
-                    'entreprise_id' => $legacyContrat->entreprise_id ?? 1,
-                    'agence_id' => $legacyContrat->agence_id ?? 1,
-                    'type_stage_id' => $legacyContrat->type_stage ?? 1,
-                    'source_financement_id' => $legacyContrat->type_financement ?? 1,
-                    'intitule_poste' => $legacyContrat->service_affectation ?? 'Poste non défini',
+                    'entreprise_id' => $legacyContrat->id_entreprise ?? 1,
+                    'agence_id' => $legacyContrat->id_agence ?? 1,
+                    'type_stage_id' => $legacyContrat->id_type_stage ?? 1,
+                    'source_financement_id' => $legacyContrat->source_financement ?? 1,
+                    'conseiller_id' => $legacyContrat->conseiller_id ?? null,
+                    'date_entree_portefeuille' => $legacyContrat->date_entree ?? null,
+                    
+                    'service_affectation' => $legacyContrat->service_affectation ?? null,
+                    'intitule_poste' => $legacyContrat->intitule_poste_stage ?? 'Poste non défini',
+                    
+                    'localite_stage' => $legacyContrat->lieu_de_stage ?? null,
+                    
+                    'nom_encadreur' => $legacyContrat->nom_encadreur ?? null,
+                    
+                    'date_debut' => $legacyContrat->date_debut ?? now(),
+                    'date_fin_prevue' => $legacyContrat->date_fin ?? now()->addMonths(6),
+                    'observations' => $legacyContrat->observation ?? null,
                 ]
             );
 
-            // Gérer le Workflow via contrat_etape / etape_traitement
-            $statutLegacy = $legacyContrat->etape_traitement ?? $legacyContrat->id_statut_stage;
+            // 2. Gérer le Contrat Financier lié
+            \App\Models\Contract\Contrat::updateOrCreate(
+                ['ancien_id' => $legacyContrat->id],
+                [
+                    'stage_id' => $stage->id,
+                    'numero' => 'CT-' . str_pad($legacyContrat->id, 5, '0', STR_PAD_LEFT),
+                    'date_debut' => $legacyContrat->date_debut ?? now(),
+                    'date_fin' => $legacyContrat->date_fin ?? now()->addMonths(6),
+                    'prime_mensuelle' => $legacyContrat->montant_du ?? 45000,
+                    'statut' => 'SIGNE', // Les anciens contrats étaient signés
+                ]
+            );
+
+            // 3. Gérer le Workflow via contrat_etape / etape_traitement
+            $statutLegacy = $legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage;
             $corbeilleEnum = $this->mapper->mapStatutStageToCorbeille($statutLegacy ?? 1);
 
             InstanceParcours::updateOrCreate(
