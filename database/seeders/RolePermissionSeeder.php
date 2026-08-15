@@ -57,9 +57,10 @@ class RolePermissionSeeder extends Seeder
         // Création des permissions
         foreach ($permissionsByDomain as $domaine => $permissions) {
             foreach ($permissions as $permission) {
-                Permission::findOrCreate($permission, 'web');
-                // Optionnel : on peut mettre à jour le domaine si la colonne existe (ajoutée dans notre migration)
-                Permission::where('name', $permission)->update(['domaine' => $domaine]);
+                Permission::updateOrCreate(
+                    ['name' => $permission, 'guard_name' => 'web'],
+                    ['domaine' => $domaine]
+                );
             }
         }
 
@@ -78,7 +79,7 @@ class RolePermissionSeeder extends Seeder
         ];
 
         foreach ($roles as $roleName) {
-            Role::findOrCreate($roleName, 'web');
+            Role::updateOrCreate(['name' => $roleName, 'guard_name' => 'web']);
         }
 
         // Assignation des permissions aux rôles
