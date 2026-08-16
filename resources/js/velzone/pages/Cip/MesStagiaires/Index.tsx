@@ -4,8 +4,6 @@ import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, M
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
-const route = (window as any).route;
-
 const MesStagiaires = ({ 
     instances, 
     agences, 
@@ -36,7 +34,7 @@ const MesStagiaires = ({
 
     const handleSearch = (e?: any) => {
         if(e) e.preventDefault();
-        get(route('cip.mes-stagiaires'));
+        get('/cip/mes-stagiaires');
     };
 
     const handleReset = () => {
@@ -52,7 +50,7 @@ const MesStagiaires = ({
             date_fin: '',
             search: '',
         });
-        setTimeout(() => get(route('cip.mes-stagiaires')), 50);
+        setTimeout(() => get('/cip/mes-stagiaires'), 50);
     };
 
     const toggleAnalyse = (stagiaire: any = null) => {
@@ -185,7 +183,7 @@ const MesStagiaires = ({
                     );
                 },
             },
-        ],
+        ].map(col => ({ ...col, enableColumnFilter: false })),
         []
     );
 
@@ -208,7 +206,7 @@ const MesStagiaires = ({
                                 <div className="page-title-right">
                                     <ol className="breadcrumb m-0">
                                         <li className="breadcrumb-item">
-                                            <Link href={route('dashboard')}>Accueil</Link>
+                                            <Link href="/dashboard">Accueil</Link>
                                         </li>
                                         <li className="breadcrumb-item active">
                                             Mes Stagiaires
@@ -422,7 +420,7 @@ const MesStagiaires = ({
                                     <TableContainerReactTable
                                         columns={columns}
                                         data={data}
-                                        isGlobalFilter={true}
+                                        isGlobalFilter={false}
                                         customPageSize={10}
                                         divClass="table-responsive"
                                         tableClass="table table-striped table-hover align-middle mb-0"
@@ -473,15 +471,39 @@ const MesStagiaires = ({
                                     </thead>
                                     <tbody>
                                         {/* Example empty state row */}
-                                        <tr>
-                                            <td colSpan={9} className="text-center text-muted py-5">
-                                                <div className="d-flex flex-column align-items-center justify-content-center">
-                                                    <i className="ri-file-search-line display-5 text-muted opacity-50 mb-3"></i>
-                                                    <h6>Aucun pointage disponible</h6>
-                                                    <p className="mb-0 fs-13">Les données de pointage de ce stagiaire s'afficheront ici.</p>
-                                                </div>
-                                            </td>
-                                        </tr>
+                                        {selectedStagiaire?.stage?.pointages?.length > 0 ? (
+                                            selectedStagiaire.stage.pointages.map((pointage: any, index: number) => (
+                                                <tr key={index}>
+                                                    <td>{pointage.periode?.code || '-'}</td>
+                                                    <td><Badge color="info">{pointage.statut || '-'}</Badge></td>
+                                                    <td>-</td>
+                                                    <td>-</td>
+                                                    <td>-</td>
+                                                    <td>-</td>
+                                                    <td>
+                                                        {pointage.version_courante?.jours_presents !== undefined 
+                                                            ? `${pointage.version_courante.jours_presents} J` 
+                                                            : '-'}
+                                                    </td>
+                                                    <td>{pointage.version_courante?.presence || '-'}</td>
+                                                    <td>
+                                                        {pointage.version_courante?.saisi_le 
+                                                            ? new Date(pointage.version_courante.saisi_le).toLocaleDateString('fr-FR') 
+                                                            : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan={9} className="text-center text-muted py-5">
+                                                    <div className="d-flex flex-column align-items-center justify-content-center">
+                                                        <i className="ri-file-search-line display-5 text-muted opacity-50 mb-3"></i>
+                                                        <h6>Aucun pointage disponible</h6>
+                                                        <p className="mb-0 fs-13">Les données de pointage de ce stagiaire s'afficheront ici.</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>

@@ -29,7 +29,9 @@ class MesStagiairesCipController extends Controller
             'stage.agence',
             'stage.sourceFinancement',
             'stage.typeStage',
-            'stage.contrats'
+            'stage.contrats',
+            'stage.pointages.periode',
+            'stage.pointages.versionCourante'
         ])->where('corbeille_actuelle', CorbeilleEnum::CIP_MES_STAGIAIRES);
 
         // Apply filters
