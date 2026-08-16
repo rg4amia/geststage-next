@@ -398,10 +398,11 @@ class MigrateLegacyDataCommand extends Command
                 }
 
                 // 1. Création du Stage (ancien contrats_pae)
-                $date_entree = $legacyContrat->date_entree;
-                if ($date_entree && (str_starts_with($date_entree, '-') || str_starts_with($date_entree, '0000'))) {
-                    $date_entree = null;
-                }
+                $date_entree = $this->mapper->normalizeLegacyDate($legacyContrat->date_entree ?? null);
+                [$date_debut, $date_fin_prevue] = $this->mapper->normalizeLegacyDateRange(
+                    $legacyContrat->date_debut ?? null,
+                    $legacyContrat->date_fin ?? null
+                );
 
                 $stage = Stage::updateOrCreate(
                     ['ancien_id' => $legacyContrat->id],
@@ -421,8 +422,8 @@ class MigrateLegacyDataCommand extends Command
                         
                         'nom_encadreur' => $legacyContrat->nom_encadreur ?? null,
                         
-                        'date_debut' => $legacyContrat->date_debut ?? now(),
-                        'date_fin_prevue' => $legacyContrat->date_fin ?? now()->addMonths(6),
+                        'date_debut' => $date_debut,
+                        'date_fin_prevue' => $date_fin_prevue,
                         'observations' => $legacyContrat->observation ?? null,
                     ]
                 );
@@ -433,8 +434,8 @@ class MigrateLegacyDataCommand extends Command
                     [
                         'stage_id' => $stage->id,
                         'numero' => 'CT-' . str_pad($legacyContrat->id, 5, '0', STR_PAD_LEFT),
-                        'date_debut' => $legacyContrat->date_debut ?? now(),
-                        'date_fin' => $legacyContrat->date_fin ?? now()->addMonths(6),
+                        'date_debut' => $date_debut,
+                        'date_fin' => $date_fin_prevue,
                         'prime_mensuelle' => $legacyContrat->montant_du ?? 45000,
                         'statut' => 'SIGNE', // Les anciens contrats étaient signés
                     ]
@@ -499,7 +500,7 @@ class MigrateLegacyDataCommand extends Command
                     if ($legacyPointage->status_dmg == 1 && $legacyPointage->status_ca == 1) $statut = 'VALIDE';
 
                     // Créer dynamiquement une période basée sur la date de création
-                    $date = new \DateTime($legacyPointage->created_at ?? 'now');
+                    $date = $this->mapper->normalizeLegacyDate($legacyPointage->created_at ?? null) ?? now();
                     $codePeriode = $date->format('Y-m');
 
                     if (!isset($periodesMap[$codePeriode])) {
@@ -533,7 +534,7 @@ class MigrateLegacyDataCommand extends Command
                             'jours_presents' => 30,
                             'jours_absents' => 0,
                             'observation' => $legacyPointage->commentaire,
-                            'saisi_le' => clone new \DateTime($legacyPointage->created_at ?? 'now'),
+                            'saisi_le' => $date,
                         ]
                     );
                 } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
@@ -570,16 +571,16 @@ class MigrateLegacyDataCommand extends Command
                 $stage_id = $stagesMap[$legacyPaiement->stagiaire_id] ?? 1;
 
                 // Créer dynamiquement une période basée sur la date de création du paiement
-                $date = new \DateTime($legacyPaiement->created_at ?? 'now');
-                $codePeriode = $date->format('Y-m');
+                    $date = $this->mapper->normalizeLegacyDate($legacyPaiement->created_at ?? null) ?? now();
+                    $codePeriode = $date->format('Y-m');
 
                 if (!isset($periodesMap[$codePeriode])) {
                     $periodesMap[$codePeriode] = DB::table('periodes')->insertGetId([
                         'code' => $codePeriode,
-                        'date_debut' => $date->format('Y-m-01'),
-                        'date_fin' => $date->format('Y-m-t'),
-                        'ouverte_pointage' => false,
-                        'ouverte_paiement' => false,
+                            'date_debut' => $date->format('Y-m-01'),
+                            'date_fin' => $date->format('Y-m-t'),
+                            'ouverte_pointage' => false,
+                            'ouverte_paiement' => false,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
@@ -654,7 +655,7 @@ class MigrateLegacyDataCommand extends Command
                                     'corbeille_cible' => $corbeilleCible
                                 ]),
                                 'auteur_id' => 1, // default user
-                                'survenu_le' => $legacyEvent->created_at ?? now(),
+                                'survenu_le' => $this->mapper->normalizeLegacyDate($legacyEvent->created_at ?? null) ?? now(),
                             ]
                         );
                     }

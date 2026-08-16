@@ -8,6 +8,46 @@ use Illuminate\Support\Str;
 
 class LegacyMapperService
 {
+    public function normalizeLegacyDate(?string $value): ?Carbon
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $trimmed = trim($value);
+
+        if ($trimmed === '' || str_starts_with($trimmed, '-') || str_starts_with($trimmed, '0000')) {
+            return null;
+        }
+
+        try {
+            return Carbon::parse($trimmed);
+        } catch (\Throwable) {
+            return null;
+        }
+    }
+
+    /**
+     * Normalize a legacy date range while preserving the ordering required by PostgreSQL checks.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function normalizeLegacyDateRange(?string $startValue, ?string $endValue, int $fallbackMonths = 6): array
+    {
+        $start = $this->normalizeLegacyDate($startValue) ?? now();
+        $end = $this->normalizeLegacyDate($endValue);
+
+        if ($end === null) {
+            $end = $start->copy()->addMonths($fallbackMonths);
+        }
+
+        if ($end->lt($start)) {
+            $end = $start->copy();
+        }
+
+        return [$start, $end];
+    }
+
     public function mapStatutStageToCorbeille(int $legacyStatutId): CorbeilleEnum
     {
         return match ($legacyStatutId) {
@@ -49,9 +89,9 @@ class LegacyMapperService
     public function mapChefAgenceCorbeille(object $legacyContrat): CorbeilleEnum
     {
         $etatChefAgence = (int) ($legacyContrat->etat_chef_agence ?? 0);
-        $dateChefAgence = $legacyContrat->date_chef_agence ?? null;
+        $dateChefAgence = $this->normalizeLegacyDate($legacyContrat->date_chef_agence ?? null);
 
-        if ($etatChefAgence === 0 && !empty($dateChefAgence)) {
+        if ($etatChefAgence === 0 && $dateChefAgence !== null) {
             return CorbeilleEnum::CA_RETOUR_AJOURNEMENT;
         }
 
@@ -59,7 +99,7 @@ class LegacyMapperService
             return $this->mapStatutStageToCorbeille((int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1));
         }
 
-        $dateDebut = $legacyContrat->date_debut ?? null;
+        $dateDebut = $this->normalizeLegacyDate($legacyContrat->date_debut ?? null);
 
         if (!$dateDebut) {
             return CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE;

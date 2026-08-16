@@ -32,6 +32,55 @@ class LegacyMapperServiceTest extends TestCase
         );
     }
 
+    public function test_normalize_legacy_date_returns_null_for_zero_dates(): void
+    {
+        $mapper = new LegacyMapperService();
+
+        $this->assertNull($mapper->normalizeLegacyDate('0000-00-00 00:00:00'));
+        $this->assertNull($mapper->normalizeLegacyDate('0000-00-00'));
+    }
+
+    public function test_normalize_legacy_date_range_clamps_end_before_start(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-16'));
+
+        $mapper = new LegacyMapperService();
+
+        [$start, $end] = $mapper->normalizeLegacyDateRange('2024-03-01', '2024-02-29');
+
+        $this->assertSame('2024-03-01', $start->format('Y-m-d'));
+        $this->assertSame('2024-03-01', $end->format('Y-m-d'));
+    }
+
+    public function test_normalize_legacy_date_range_uses_default_duration_when_end_is_missing(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-16'));
+
+        $mapper = new LegacyMapperService();
+
+        [$start, $end] = $mapper->normalizeLegacyDateRange('2024-03-01', null);
+
+        $this->assertSame('2024-03-01', $start->format('Y-m-d'));
+        $this->assertSame('2024-09-01', $end->format('Y-m-d'));
+    }
+
+    public function test_map_chef_agence_corbeille_ignores_zero_validation_dates(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-16'));
+
+        $mapper = new LegacyMapperService();
+        $legacyContrat = (object) [
+            'etat_chef_agence' => 0,
+            'date_chef_agence' => '0000-00-00 00:00:00',
+            'date_debut' => '2026-08-10',
+        ];
+
+        $this->assertSame(
+            CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
+            $mapper->mapChefAgenceCorbeille($legacyContrat)
+        );
+    }
+
     public function test_map_chef_agence_corbeille_returns_demarrage_or_omis_based_on_stage_month(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));
