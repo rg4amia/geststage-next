@@ -27,7 +27,7 @@ class PaiementDmgController extends Controller
         $attentePaiementDemarrage = collect();
         $attentePaiementPresence = collect();
         if ($periode) {
-            $paiementsATraiter = Paiement::with(['droitPaiement.stage.beneficiaire', 'droitPaiement.stage.agence', 'droitPaiement.stage.entreprise'])
+            $paiementsATraiter = Paiement::with(['droitPaiement.stage.beneficiaire', 'droitPaiement.stage.agence', 'droitPaiement.stage.entreprise', 'droitPaiement.stage.sourceFinancement'])
                 ->aTraiter()
                 ->whereHas('droitPaiement', function ($q) use ($periode) {
                     $q->where('periode_id', $periode->id);

@@ -83,6 +83,8 @@ class CorbeilleParcoursQueryService
                 'nom' => $beneficiaire?->nom ?? 'Inconnu',
                 'prenoms' => $beneficiaire?->prenoms ?? '',
                 'matricule' => $beneficiaire?->numero_aej ?? '',
+                'date_naissance' => $beneficiaire?->date_naissance ? \Carbon\Carbon::parse($beneficiaire->date_naissance)->format('d/m/Y') : '-',
+                'tresor_pay' => $beneficiaire?->numero_tresor_pay ?? '-',
             ],
             'entreprise' => [
                 'raison_sociale' => $stage?->entreprise?->raison_sociale ?? '-',
@@ -90,9 +92,18 @@ class CorbeilleParcoursQueryService
             'agence' => [
                 'nom' => $stage?->agence?->nom ?? '-',
             ],
+            'stage' => [
+                'source_financement' => $stage?->sourceFinancement?->nom ?? '-',
+                'type_stage' => $stage?->type_stage ?? '-',
+                'date_validation' => $stage?->date_validation ? \Carbon\Carbon::parse($stage->date_validation)->format('d/m/Y') : '-',
+                'date_debut' => $stage?->date_debut ? \Carbon\Carbon::parse($stage->date_debut)->format('d/m/Y') : '-',
+                'date_fin' => $stage?->date_fin ? \Carbon\Carbon::parse($stage->date_fin)->format('d/m/Y') : '-',
+            ],
             'montant' => $paiement->montant,
             'statut' => $statut,
             'date_creation' => $paiement->created_at?->format('d/m/Y'),
+            'piece_jointe' => $paiement->piece_jointe ?? null,
+            'cohorte' => 1,
         ];
     }
 

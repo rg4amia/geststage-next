@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input, Row, Col, Label, Form } from 'reactstrap';
+import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input, Row, Col, Label, Form, UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import classnames from 'classnames';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
@@ -15,6 +15,15 @@ const DmgPaiementsIndex = ({
     const [modalOpen, setModalOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [selectedStagiaire, setSelectedStagiaire] = useState<any>(null);
+    const [selectedPresenceIds, setSelectedPresenceIds] = useState<Array<string | number>>([]);
+
+    const togglePresenceSelectAll = (checked: boolean) => {
+        setSelectedPresenceIds(checked ? attentePresence.map((p: any) => p.id) : []);
+    };
+
+    const togglePresenceRow = (id: string | number, checked: boolean) => {
+        setSelectedPresenceIds((prev) => (checked ? [...prev, id] : prev.filter((rowId) => rowId !== id)));
+    };
 
     const toggleTab = (tab: string) => {
         if (activeTab !== tab) setActiveTab(tab);
@@ -38,31 +47,46 @@ const DmgPaiementsIndex = ({
         }, 500);
     };
 
-    const commonColumns = [
+    const presenceColumns = [
         {
-            header: 'Bénéficiaire',
-            accessorKey: 'beneficiaire.nom',
-            cell: (cell: any) => (
-                <div className="d-flex align-items-center">
-                    <div className="flex-grow-1">
-                        <h5 className="fs-14 mb-1">
-                            {cell.row.original.beneficiaire?.nom} {cell.row.original.beneficiaire?.prenoms}
-                        </h5>
-                        <p className="text-muted mb-0">{cell.row.original.beneficiaire?.matricule}</p>
-                    </div>
-                </div>
+            header: () => (
+                <Input
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={attentePresence.length > 0 && selectedPresenceIds.length === attentePresence.length}
+                    onChange={(e: any) => togglePresenceSelectAll(e.target.checked)}
+                />
             ),
-        },
-        {
-            header: 'Montant (FCFA)',
-            accessorKey: 'montant',
-            cell: (cell: any) => <span className="fw-bold">{cell.getValue() || '0'} FCFA</span>,
-        },
-        {
-            header: 'Actions',
+            accessorKey: 'select',
             cell: (cell: any) => (
-                <Button color="primary" size="sm" onClick={() => handleAction(cell.row.original)}>
-                    Inclure dans un dossier
+                <Input
+                    type="checkbox"
+                    className="form-check-input"
+                    checked={selectedPresenceIds.includes(cell.row.original.id)}
+                    onChange={(e: any) => togglePresenceRow(cell.row.original.id, e.target.checked)}
+                />
+            ),
+            enableSorting: false,
+        },
+        { header: 'Date Création', accessorKey: 'date_creation', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Agence', accessorKey: 'agence.nom', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Entreprise', accessorKey: 'entreprise.raison_sociale', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Source de financement', accessorKey: 'source_financement', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Type de stage', accessorKey: 'type_stage', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Type de structure', accessorKey: 'type_structure', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Numéro AEJ', accessorKey: 'beneficiaire.matricule', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Nom et prénoms', accessorKey: 'beneficiaire', cell: (cell: any) => { const b = cell.getValue(); return b ? `${b.nom} ${b.prenoms}`.trim() : '-'; } },
+        { header: 'Date de naissance', accessorKey: 'beneficiaire.date_naissance', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Debut', accessorKey: 'date_debut', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Fin', accessorKey: 'date_fin', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'N° Trésor Pay', accessorKey: 'tresor_pay', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'État dossier', accessorKey: 'statut', cell: (cell: any) => <Badge color="info">{cell.getValue() || '-'}</Badge> },
+        { header: 'Pièce jointe', accessorKey: 'piece_jointe', cell: () => '-' },
+        {
+            header: 'Action',
+            cell: (cell: any) => (
+                <Button color="warning" size="sm" onClick={() => handleAction(cell.row.original)}>
+                    <i className="ri-eye-line"></i>
                 </Button>
             ),
         },
@@ -75,18 +99,18 @@ const DmgPaiementsIndex = ({
             cell: () => <Input type="checkbox" className="form-check-input" />,
             enableSorting: false,
         },
-        { header: 'Date Création', accessorKey: 'created_at', cell: (cell: any) => cell.getValue()?.split('T')[0] || '-' },
-        { header: 'Agence', accessorKey: 'droitPaiement.stage.agence.nom', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Entreprise', accessorKey: 'droitPaiement.stage.entreprise.raison_sociale', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Source de financement', accessorKey: 'droitPaiement.stage.source_financement', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Type de stagiaire', accessorKey: 'droitPaiement.stage.type_stage', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Numéro AEJ', accessorKey: 'droitPaiement.stage.beneficiaire.matricule', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Nom et prénoms', accessorKey: 'droitPaiement.stage.beneficiaire', cell: (cell: any) => { const b = cell.getValue(); return b ? `${b.nom} ${b.prenoms}` : '-'; } },
-        { header: 'Date de naissance', accessorKey: 'droitPaiement.stage.beneficiaire.date_naissance', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Date Validation', accessorKey: 'droitPaiement.stage.date_validation', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Date Debut', accessorKey: 'droitPaiement.stage.date_debut', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Date Fin', accessorKey: 'droitPaiement.stage.date_fin', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'N° Trésor Pay', accessorKey: 'droitPaiement.stage.beneficiaire.tresor_pay', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Création', accessorKey: 'date_creation', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Agence', accessorKey: 'agence.nom', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Entreprise', accessorKey: 'entreprise.raison_sociale', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Source de financement', accessorKey: 'stage.source_financement', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Type de stagiaire', accessorKey: 'stage.type_stage', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Numéro AEJ', accessorKey: 'beneficiaire.matricule', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Nom et prénoms', accessorKey: 'beneficiaire', cell: (cell: any) => { const b = cell.getValue(); return b ? `${b.nom} ${b.prenoms}` : '-'; } },
+        { header: 'Date de naissance', accessorKey: 'beneficiaire.date_naissance', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Validation', accessorKey: 'stage.date_validation', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Debut', accessorKey: 'stage.date_debut', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Fin', accessorKey: 'stage.date_fin', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'N° Trésor Pay', accessorKey: 'beneficiaire.tresor_pay', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'État dossier', accessorKey: 'statut', cell: (cell: any) => <Badge color="info">{cell.getValue() || '-'}</Badge> },
         { header: 'Pièce jointe', accessorKey: 'piece_jointe', cell: (cell: any) => '-' },
         { header: 'Action', cell: (cell: any) => (
@@ -348,14 +372,85 @@ const DmgPaiementsIndex = ({
                                 </TabPane>
 
                                 <TabPane tabId="2">
+                                    <Card className="border shadow-none mb-4">
+                                        <CardHeader className="d-flex align-items-center bg-light border-bottom border-light">
+                                            <h5 className="card-title mb-0 flex-grow-1 fs-14">Traitement des stagiaires sélectionnés</h5>
+                                        </CardHeader>
+                                        <CardBody>
+                                            <div className="d-flex flex-wrap gap-2">
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-light border-info text-secondary fw-medium shadow-none">
+                                                        <i className="ri-printer-line me-1 text-info"></i> Etat Paiement (.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem>Tous les stagiaires (liste)</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0}>Stagiaires sélectionnés</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
+
+                                                <Button color="light" outline className="border-success text-dark fw-bold shadow-none" style={{ backgroundColor: '#fff' }}>
+                                                    <i className="ri-file-excel-2-line me-1 text-success"></i> Canvas Bénéficiaires TrésorPay Dépenses
+                                                </Button>
+
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-light border-info text-secondary fw-medium shadow-none">
+                                                        <i className="ri-printer-line me-1 text-info"></i> Attestation Présence (.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0}>Stagiaires sélectionnés</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
+
+                                                <Button color="primary" className="shadow-none" style={{ backgroundColor: '#5c6bc0', borderColor: '#5c6bc0' }}>
+                                                    <i className="ri-check-double-line me-1"></i> Fusionner Fiche Trésor Pay
+                                                </Button>
+
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-danger shadow-none" style={{ backgroundColor: '#e57373', borderColor: '#e57373' }}>
+                                                        <i className="ri-close-circle-line me-1"></i> Ajourner <i className="ri-arrow-down-s-line ms-1"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem>Ajourner la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0}>Ajourner sélection</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
+
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-success shadow-none" style={{ backgroundColor: '#81c784', borderColor: '#81c784' }}>
+                                                        <i className="ri-check-line me-1"></i> Valider paiement <i className="ri-arrow-down-s-line ms-1"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem>Valider paiement de la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0}>Sélectionner pour Valider</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
+
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-info shadow-none text-white" style={{ backgroundColor: '#00acc1', borderColor: '#00acc1' }}>
+                                                        <i className="ri-folder-fill me-1"></i> Marquer dossiers <i className="ri-arrow-down-s-line ms-1"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem>Marquer la liste</DropdownItem>
+                                                        {selectedPresenceIds.length > 0 && (
+                                                            <DropdownItem>
+                                                                Marquer sélection <Badge color="primary" className="ms-1">{selectedPresenceIds.length}</Badge>
+                                                            </DropdownItem>
+                                                        )}
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+
                                     <TableContainerReactTable
-                                        columns={commonColumns}
+                                        columns={presenceColumns}
                                         data={attentePresence || []}
                                         isGlobalFilter={true}
                                         customPageSize={10}
                                         divClass="table-responsive table-card mb-3"
                                         tableClass="align-middle table-nowrap mb-0"
-                                        theadClass="table-light"
+                                        theadClass="bg-success text-white"
                                     />
                                 </TabPane>
 
