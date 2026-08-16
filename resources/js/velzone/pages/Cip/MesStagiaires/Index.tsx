@@ -58,6 +58,101 @@ const MesStagiaires = ({
         setModalAnalyse(!modalAnalyse);
     };
 
+    // Étapes principales du circuit d'une instance de parcours (cf. WorkflowTransitionService)
+    const WORKFLOW_STEPS = [
+        { step: 1, label: 'Soumission CIP' },
+        { step: 2, label: "Validation Démarrage" },
+        { step: 3, label: 'Paiement Démarrage' },
+        { step: 4, label: 'En stage / Pointage' },
+    ];
+
+    // Correspondance corbeille_actuelle -> étape du circuit + libellé lisible (cf. App\Enums\CorbeilleEnum)
+    const CORBEILLE_INFO: Record<string, { label: string; acteur: string; step: number }> = {
+        cip_mes_stagiaires: { label: 'Soumission du dossier', acteur: 'CIP', step: 1 },
+        cip_ajourne_ca: { label: "Ajourné par le Chef d'Agence — à corriger", acteur: 'CIP', step: 1 },
+        cip_ajourne_desse: { label: 'Ajourné par la DESSE — à corriger', acteur: 'CIP', step: 1 },
+        cip_ajourne_dmg: { label: 'Ajourné par la DMG — à corriger', acteur: 'CIP', step: 1 },
+        cip_ajourne_aaf: { label: 'Ajourné (AAF) — à corriger', acteur: 'CIP', step: 1 },
+
+        ca_attente_validation_demarrage: { label: 'En attente de validation du démarrage', acteur: "Chef d'Agence", step: 2 },
+        ca_attente_validation_omis: { label: 'En attente de validation du démarrage omis', acteur: "Chef d'Agence", step: 2 },
+
+        dmg_attente_paiement_demarrage: { label: 'En attente du paiement de démarrage', acteur: 'DMG', step: 3 },
+
+        en_stage: { label: 'En stage — cycle de pointage mensuel', acteur: 'Cycle mensuel', step: 4 },
+        cip_pointage: { label: 'Pointage mensuel en cours', acteur: 'CIP', step: 4 },
+        cip_pointage_ajourne_dmg: { label: 'Pointage ajourné par la DMG', acteur: 'CIP', step: 4 },
+        cip_pointage_pejedec: { label: 'Pointage PEJEDEC en cours', acteur: 'CIP', step: 4 },
+        cip_differe_ac: { label: "Différé par l'Agent Comptable", acteur: 'CIP', step: 4 },
+        cip_fin_contrat: { label: 'Fin de contrat', acteur: 'CIP', step: 4 },
+        ca_validation_pointages: { label: 'En attente de validation des pointages', acteur: "Chef d'Agence", step: 4 },
+        ca_validation_pointage_ajourne_adp: { label: 'Validation de la correction du pointage', acteur: "Chef d'Agence", step: 4 },
+        ca_stagiaire_differe_ac: { label: "Différé par l'Agent Comptable", acteur: "Chef d'Agence", step: 4 },
+        desse_doublons_a_traiter: { label: 'Doublon à traiter', acteur: 'DESSE', step: 4 },
+        desse_attente_verification_dmg: { label: 'En attente de vérification DMG', acteur: 'DESSE', step: 4 },
+        desse_retour_agence: { label: "Retourné à l'agence", acteur: 'DESSE', step: 4 },
+        desse_doublons_traites: { label: 'Doublon traité', acteur: 'DESSE', step: 4 },
+        desse_suivi_processus: { label: 'Suivi du processus', acteur: 'DESSE', step: 4 },
+        desse_beneficiaires_2023: { label: 'Bénéficiaire 2023', acteur: 'DESSE', step: 4 },
+        desse_attente_ca: { label: "En attente du Chef d'Agence", acteur: 'DESSE', step: 4 },
+        desse_suivi_enregistres: { label: 'Suivi des dossiers enregistrés', acteur: 'DESSE', step: 4 },
+        desse_suivi_valides_ar: { label: 'Suivi des dossiers validés AR', acteur: 'DESSE', step: 4 },
+        daicg_valides_ca: { label: "Validé par le Chef d'Agence", acteur: 'DAICG', step: 4 },
+        daicg_valides_desse: { label: 'Validé par la DESSE', acteur: 'DAICG', step: 4 },
+        daicg_sans_contrat: { label: 'Dossier sans contrat', acteur: 'DAICG', step: 4 },
+        daicg_attente_dmg: { label: 'En attente de la DMG', acteur: 'DAICG', step: 4 },
+    };
+
+    const getWorkflowProgress = (corbeille?: string | null) => {
+        const info = corbeille ? CORBEILLE_INFO[corbeille] : undefined;
+        const currentStep = info?.step ?? 0;
+
+        return (
+            <div>
+                <div className="d-flex align-items-center mb-2">
+                    {WORKFLOW_STEPS.map((s, idx) => {
+                        const isDone = currentStep > s.step;
+                        const isCurrent = currentStep === s.step;
+                        const color = isDone ? 'var(--vz-success)' : isCurrent ? 'var(--vz-primary)' : 'var(--vz-border-color)';
+                        return (
+                            <React.Fragment key={s.step}>
+                                <div className="d-flex flex-column align-items-center" style={{ minWidth: 90 }}>
+                                    <div
+                                        className="d-flex align-items-center justify-content-center rounded-circle fw-semibold flex-shrink-0"
+                                        style={{
+                                            width: 28,
+                                            height: 28,
+                                            fontSize: 12,
+                                            color: isDone || isCurrent ? '#fff' : 'var(--vz-secondary-color)',
+                                            backgroundColor: color,
+                                            border: `2px solid ${color}`,
+                                        }}
+                                    >
+                                        {isDone ? <i className="ri-check-line"></i> : s.step}
+                                    </div>
+                                    <span className="fs-11 text-muted mt-1 text-center">{s.label}</span>
+                                </div>
+                                {idx < WORKFLOW_STEPS.length - 1 && (
+                                    <div
+                                        className="flex-grow-1"
+                                        style={{
+                                            height: 2,
+                                            backgroundColor: currentStep > s.step ? 'var(--vz-success)' : 'var(--vz-border-color)',
+                                            marginBottom: 18,
+                                        }}
+                                    ></div>
+                                )}
+                            </React.Fragment>
+                        );
+                    })}
+                </div>
+                <Badge color={currentStep === 4 ? 'success' : 'primary'} className="fs-12">
+                    {info ? `${info.acteur} — ${info.label}` : 'Étape non renseignée'}
+                </Badge>
+            </div>
+        );
+    };
+
     // Calculate some basic stats
     const totalStagiaires = data.length;
     const avecContrat = data.filter((d: any) => d.stage?.contrats?.length > 0).length;
@@ -366,7 +461,7 @@ const MesStagiaires = ({
                                         >
                                             <i className="ri-search-line me-1"></i>Filtrer
                                             {activeFiltersCount > 0 && (
-                                                <span className="badge ms-1 fs-10" style={{ background: '#405189', color: '#fff' }}>{activeFiltersCount}</span>
+                                                <span className="badge ms-1 fs-10" style={{ background: 'var(--vz-primary)', color: '#fff' }}>{activeFiltersCount}</span>
                                             )}
                                         </button>
                                         <button
@@ -410,7 +505,7 @@ const MesStagiaires = ({
                                     <div className="d-flex justify-content-between align-items-center">
                                         <h5 className="card-title mb-0" style={{ color: '#495057' }}>
                                             Liste des Stagiaires
-                                            <span className="badge ms-2 fs-12" style={{ background: '#e8f0fe', color: '#405189' }}>
+                                            <span className="badge ms-2 fs-12" style={{ background: 'var(--vz-primary-bg-subtle)', color: 'var(--vz-primary)' }}>
                                                 {totalStagiaires}
                                             </span>
                                         </h5>

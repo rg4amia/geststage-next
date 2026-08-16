@@ -53,16 +53,18 @@ $auth-bg-cover:                                   linear-gradient(-45deg, var(--
 // Color system
 
 // scss-docs-start gray-color-variables
+// AEJ neutral gray ramp, anchored on the church.gray palette
+// (light #E5E5E5 = gray-300, DEFAULT #666666 = gray-600, dark #222222 = gray-900)
 $white:    #fff;
-$gray-100: #f3f6f9;
-$gray-200: #eff2f7;
-$gray-300: #e9ebec;
-$gray-400: #ced4da;
-$gray-500: #adb5bd;
-$gray-600: #878a99;
-$gray-700: #495057;
-$gray-800: #343a40;
-$gray-900: #212529;
+$gray-100: #f7f7f7;
+$gray-200: #f0f0f0;
+$gray-300: #e5e5e5;
+$gray-400: #d4d4d4;
+$gray-500: #a8a8a8;
+$gray-600: #666666;
+$gray-700: #4d4d4d;
+$gray-800: #333333;
+$gray-900: #222222;
 $black:    #000;
 
 // fusv-disable
@@ -82,14 +84,15 @@ $grays: (
 // fusv-enable
 
 // scss-docs-start color-variables
+// AEJ brand colors: church.orange -> $orange, church.green -> $green
 $blue:       #3577f1;
 $indigo:     #405189;
 $purple:     #6559cc;
 $pink:       #f672a7;
 $red:        #f06548;
-$orange:     #f1963b;
+$orange:     #f47c20;
 $yellow:     #f7b84b;
-$green:      #0ab39c;
+$green:      #1fa84a;
 $teal:       #02a8b5;
 $cyan:       #299cdb;
 // scss-docs-end color-variables
@@ -343,8 +346,9 @@ $cyans: (
 // fusv-enable
 
 // scss-docs-start theme-color-variables
-$primary:       $indigo;
-$secondary:     $blue;
+// AEJ palette: orange = primary (actions/accents), green = success, gray = neutral secondary
+$primary:       $orange;
+$secondary:     $gray-600;
 $success:       $green;
 $info:          $cyan;
 $warning:       $yellow;
@@ -476,7 +480,7 @@ $position-values: (
 //
 // Settings for the `<body>` element.
 
-$body-bg:                   #f3f3f9;
+$body-bg:                   $gray-100;
 $body-color:                $gray-900;
 $body-text-align:           null;
 
@@ -492,7 +496,8 @@ $body-emphasis-color:       $gray-900;
 //
 // Style anchor elements.
 
-$link-color:                              $primary;
+// Text links use a shaded orange (vs. raw $primary) so running text keeps AA-level contrast on white
+$link-color:                              shade-color($primary, 25%);
 $link-decoration:                         none;
 $link-shade-percentage:                   20%;
 $link-hover-color:                        $primary;

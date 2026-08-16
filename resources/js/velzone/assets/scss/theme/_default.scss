@@ -77,19 +77,19 @@
         --#{$prefix}sidebar-user-name-sub-text:                         #{darken($gray-600, 4%)};
 
         &[data-sidebar="dark"] {
-            //vertical dark
-            --#{$prefix}vertical-menu-bg:                               var(--#{$prefix}primary);
-            --#{$prefix}vertical-menu-border:                           var(--#{$prefix}primary);
-            --#{$prefix}vertical-menu-item-color:                       #abb9e8;
-            --#{$prefix}vertical-menu-item-bg:                          #{rgba($white, .15)};
-            --#{$prefix}vertical-menu-item-hover-color:                 #{$white};
-            --#{$prefix}vertical-menu-item-active-color:                #{$white};
-            --#{$prefix}vertical-menu-item-active-bg:                   #{rgba($white, .15)};
-            --#{$prefix}vertical-menu-sub-item-color:                   #abb9e8;
-            --#{$prefix}vertical-menu-sub-item-hover-color:             #{$white};
-            --#{$prefix}vertical-menu-sub-item-active-color:            #{$white};
-            --#{$prefix}vertical-menu-title-color:                      #838fb9;
-            --#{$prefix}twocolumn-menu-iconview-bg:                     #{darken($primary, 2%)};
+            //vertical dark - neutral aej-gray-dark background, orange reserved for accents only
+            --#{$prefix}vertical-menu-bg:                               var(--#{$prefix}dark);
+            --#{$prefix}vertical-menu-border:                           var(--#{$prefix}dark);
+            --#{$prefix}vertical-menu-item-color:                       #b0b0b0;
+            --#{$prefix}vertical-menu-item-bg:                          #{rgba($primary, .18)};
+            --#{$prefix}vertical-menu-item-hover-color:                 var(--#{$prefix}primary);
+            --#{$prefix}vertical-menu-item-active-color:                var(--#{$prefix}primary);
+            --#{$prefix}vertical-menu-item-active-bg:                   #{rgba($primary, .18)};
+            --#{$prefix}vertical-menu-sub-item-color:                   #a8a8a8;
+            --#{$prefix}vertical-menu-sub-item-hover-color:             var(--#{$prefix}primary);
+            --#{$prefix}vertical-menu-sub-item-active-color:            var(--#{$prefix}primary);
+            --#{$prefix}vertical-menu-title-color:                      #8a8a8a;
+            --#{$prefix}twocolumn-menu-iconview-bg:                     #{darken($dark, 4%)};
             --#{$prefix}vertical-menu-box-shadow:                       0 2px 4px rgba(15, 34, 58, 0.12);
             --#{$prefix}vertical-menu-dropdown-box-shadow:              0 2px 4px rgba(15, 34, 58, 0.12);
             --#{$prefix}sidebar-user-bg:                                #{rgba($white, .08)};
@@ -107,14 +107,14 @@
         --#{$prefix}topbar-user-bg:                                     #f3f3f9;
         --#{$prefix}topbar-search-color:                                #{$gray-700};
         
-        // Topbar - Dark
+        // Topbar - Dark (neutral aej-gray-dark background, orange reserved for accents only)
         &[data-topbar="dark"] {
-            --#{$prefix}header-bg:                                      var(--#{$prefix}primary);
-            --#{$prefix}header-border:                                  var(--#{$prefix}primary);
+            --#{$prefix}header-bg:                                      var(--#{$prefix}dark);
+            --#{$prefix}header-border:                                  var(--#{$prefix}dark);
             --#{$prefix}header-item-color:                              #{rgba($white, .85)};
-            --#{$prefix}header-item-bg:                                 #495c99;
-            --#{$prefix}header-item-sub-color:                          #b0c4d9;
-            --#{$prefix}topbar-user-bg:                                 #52639c;
+            --#{$prefix}header-item-bg:                                 #{rgba($white, .1)};
+            --#{$prefix}header-item-sub-color:                          #b0b0b0;
+            --#{$prefix}topbar-user-bg:                                 #{rgba($white, .1)};
             --#{$prefix}topbar-search-bg:                               #{rgba($white, .05)};
             --#{$prefix}topbar-search-color:                            #{$white};
         }
