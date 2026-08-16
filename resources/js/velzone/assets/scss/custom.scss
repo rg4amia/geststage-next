@@ -5,3 +5,216 @@ Website: https://themesbrand.com/
 Contact: support@themesbrand.com
 File: Custom Css File
 */
+
+:root,
+[data-theme="default"] {
+    --vz-primary: #f47c20;
+    --vz-primary-rgb: 244, 124, 32;
+    --vz-primary-dark: #d96510;
+    --vz-primary-light: #ffb37a;
+    --vz-success: #1fa84a;
+    --vz-success-rgb: 31, 168, 74;
+    --vz-success-dark: #16853a;
+    --vz-success-light: #6edc8f;
+    --vz-secondary: #666666;
+    --vz-secondary-rgb: 102, 102, 102;
+    --vz-light: #f7f7f7;
+    --vz-light-rgb: 247, 247, 247;
+    --vz-dark: #222222;
+    --vz-dark-rgb: 34, 34, 34;
+    --vz-body-bg: #f7f7f7;
+    --vz-body-color: #222222;
+}
+
+.btn {
+    border-radius: 0.75rem;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background-color: var(--vz-primary);
+    border-color: var(--vz-primary);
+
+    &:hover,
+    &:focus,
+    &:active,
+    &.active {
+        background-color: var(--vz-primary-dark);
+        border-color: var(--vz-primary-dark);
+    }
+}
+
+.btn-success {
+    background-color: var(--vz-success);
+    border-color: var(--vz-success);
+
+    &:hover,
+    &:focus,
+    &:active,
+    &.active {
+        background-color: var(--vz-success-dark);
+        border-color: var(--vz-success-dark);
+    }
+}
+
+.btn-soft-primary,
+.bg-soft-primary,
+.bg-primary-subtle {
+    background-color: rgba(var(--vz-primary-rgb), 0.12) !important;
+    color: var(--vz-primary-dark) !important;
+}
+
+.btn-soft-success,
+.bg-soft-success,
+.bg-success-subtle {
+    background-color: rgba(var(--vz-success-rgb), 0.12) !important;
+    color: var(--vz-success-dark) !important;
+}
+
+.text-primary {
+    color: var(--vz-primary) !important;
+}
+
+.text-success {
+    color: var(--vz-success) !important;
+}
+
+.card {
+    border: 1px solid var(--vz-border-color);
+    border-radius: 1rem;
+    box-shadow: 0 1px 4px rgba(34, 34, 34, 0.06);
+}
+
+.card-header {
+    background-color: var(--vz-secondary-bg);
+    border-bottom: 1px solid var(--vz-border-color);
+    padding: 1rem 1.25rem;
+}
+
+.card-footer {
+    background-color: var(--vz-secondary-bg);
+    border-top: 1px solid var(--vz-border-color);
+}
+
+.table {
+    --bs-table-bg: transparent;
+    color: var(--vz-body-color);
+}
+
+.table > :not(caption) > * > * {
+    padding: 0.9rem 1rem;
+    vertical-align: middle;
+}
+
+.table thead th {
+    background-color: var(--vz-light);
+    color: var(--vz-dark);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+}
+
+.table tbody tr {
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(var(--vz-primary-rgb), 0.04);
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+    --bs-table-accent-bg: rgba(34, 34, 34, 0.015);
+}
+
+.page-link {
+    border-color: var(--vz-border-color);
+    color: var(--vz-secondary-color);
+    border-radius: 0.75rem;
+}
+
+.page-link:hover {
+    color: var(--vz-primary);
+    background-color: rgba(var(--vz-primary-rgb), 0.08);
+    border-color: rgba(var(--vz-primary-rgb), 0.28);
+}
+
+.page-item.active .page-link {
+    background-color: var(--vz-primary);
+    border-color: var(--vz-primary);
+}
+
+.form-control,
+.form-select {
+    border-radius: 0.75rem;
+    border-color: var(--vz-border-color);
+    min-height: 42px;
+    padding: 0.625rem 0.875rem;
+}
+
+.form-control::placeholder,
+.form-select::placeholder {
+    color: var(--vz-secondary-color);
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--vz-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--vz-primary-rgb), 0.15);
+}
+
+.form-check-input:checked {
+    background-color: var(--vz-primary);
+    border-color: var(--vz-primary);
+}
+
+.form-check-input:focus {
+    border-color: var(--vz-primary);
+    box-shadow: 0 0 0 0.2rem rgba(var(--vz-primary-rgb), 0.15);
+}
+
+.navbar-menu {
+    .navbar-nav {
+        .nav-link {
+            border-radius: 0.75rem;
+            margin: 0.1rem 0.75rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        .nav-link:hover,
+        .nav-link.active {
+            background-color: rgba(var(--vz-primary-rgb), 0.08);
+        }
+
+        .nav-sm .nav-link {
+            margin: 0.1rem 0.75rem 0.1rem 1.5rem;
+            padding: 0.45rem 0.85rem;
+            border-radius: 0.65rem;
+        }
+
+        .nav-sm .nav-link.active,
+        .nav-sm .nav-link:hover {
+            background-color: rgba(var(--vz-primary-rgb), 0.12);
+        }
+    }
+
+    .menu-title {
+        color: var(--vz-secondary-color);
+
+        span {
+            padding-bottom: 0.35rem;
+            padding-top: 0.75rem;
+        }
+    }
+}
+
+.badge.bg-primary,
+.badge.text-bg-primary {
+    background-color: var(--vz-primary) !important;
+}
+
+.badge.bg-success,
+.badge.text-bg-success {
+    background-color: var(--vz-success) !important;
+}

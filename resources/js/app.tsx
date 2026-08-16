@@ -84,7 +84,7 @@ createInertiaApp({
         </Provider>
     ),
     progress: {
-        color: '#405189',
+        color: '#f47c20',
     },
 });
 

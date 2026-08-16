@@ -61,25 +61,25 @@
 
         --#{$prefix}vertical-menu-bg:                                   #{$white};
         --#{$prefix}vertical-menu-border:                               #{$white};
-        --#{$prefix}vertical-menu-item-color:                           #{darken($gray-600, 10%)};
-        --#{$prefix}vertical-menu-item-bg:                              #{rgba(var(--#{$prefix}primary-rgb), .15)};
+        --#{$prefix}vertical-menu-item-color:                           #{$gray-700};
+        --#{$prefix}vertical-menu-item-bg:                              #{rgba(var(--#{$prefix}primary-rgb), .08)};
         --#{$prefix}vertical-menu-item-hover-color:                     var(--#{$prefix}primary);
         --#{$prefix}vertical-menu-item-active-color:                    var(--#{$prefix}primary);
-        --#{$prefix}vertical-menu-item-active-bg:                       #{rgba(var(--#{$prefix}primary-rgb), .15)};
-        --#{$prefix}vertical-menu-sub-item-color:                       #{darken($gray-600, 4%)};
+        --#{$prefix}vertical-menu-item-active-bg:                       #{rgba(var(--#{$prefix}primary-rgb), .12)};
+        --#{$prefix}vertical-menu-sub-item-color:                       #{$gray-600};
         --#{$prefix}vertical-menu-sub-item-hover-color:                 var(--#{$prefix}primary);
         --#{$prefix}vertical-menu-sub-item-active-color:                var(--#{$prefix}primary);
-        --#{$prefix}vertical-menu-title-color:                          #919da9;
+        --#{$prefix}vertical-menu-title-color:                          #{$gray-500};
         --#{$prefix}vertical-menu-box-shadow:                           0 2px 4px rgba(15, 34, 58, 0.12);
         --#{$prefix}vertical-menu-dropdown-box-shadow:                  0 2px 4px rgba(15, 34, 58, 0.12);
-        --#{$prefix}sidebar-user-bg:                                    #{$light};
-        --#{$prefix}sidebar-user-name-text:                             #{darken($gray-700, 10%)};
-        --#{$prefix}sidebar-user-name-sub-text:                         #{darken($gray-600, 4%)};
+        --#{$prefix}sidebar-user-bg:                                    #{$gray-100};
+        --#{$prefix}sidebar-user-name-text:                             #{$gray-800};
+        --#{$prefix}sidebar-user-name-sub-text:                         #{$gray-600};
 
         &[data-sidebar="dark"] {
             //vertical dark - neutral aej-gray-dark background, orange reserved for accents only
-            --#{$prefix}vertical-menu-bg:                               var(--#{$prefix}dark);
-            --#{$prefix}vertical-menu-border:                           var(--#{$prefix}dark);
+            --#{$prefix}vertical-menu-bg:                               #{$gray-900};
+            --#{$prefix}vertical-menu-border:                           #{$gray-900};
             --#{$prefix}vertical-menu-item-color:                       #b0b0b0;
             --#{$prefix}vertical-menu-item-bg:                          #{rgba($primary, .18)};
             --#{$prefix}vertical-menu-item-hover-color:                 var(--#{$prefix}primary);
@@ -89,7 +89,7 @@
             --#{$prefix}vertical-menu-sub-item-hover-color:             var(--#{$prefix}primary);
             --#{$prefix}vertical-menu-sub-item-active-color:            var(--#{$prefix}primary);
             --#{$prefix}vertical-menu-title-color:                      #8a8a8a;
-            --#{$prefix}twocolumn-menu-iconview-bg:                     #{darken($dark, 4%)};
+            --#{$prefix}twocolumn-menu-iconview-bg:                     #{$gray-800};
             --#{$prefix}vertical-menu-box-shadow:                       0 2px 4px rgba(15, 34, 58, 0.12);
             --#{$prefix}vertical-menu-dropdown-box-shadow:              0 2px 4px rgba(15, 34, 58, 0.12);
             --#{$prefix}sidebar-user-bg:                                #{rgba($white, .08)};
@@ -177,25 +177,25 @@
         }
 
         &[data-theme-colors="purple"] {
-            --#{$prefix}primary:                                        #{$purple-600};
-            --#{$prefix}primary-rgb:                                    #{to-rgb($purple-600)};
-            --#{$prefix}primary-bg-subtle:                              #{rgba($purple-600, 0.15)};
-            --#{$prefix}primary-border-subtle:                          #{rgba($purple-600, 0.30)};
-            --#{$prefix}primary-text-emphasis:                          #{shade-color($purple-600, 25%)};
+            --#{$prefix}primary:                                        #{$gray-600};
+            --#{$prefix}primary-rgb:                                    #{to-rgb($gray-600)};
+            --#{$prefix}primary-bg-subtle:                              #{rgba($gray-600, 0.15)};
+            --#{$prefix}primary-border-subtle:                          #{rgba($gray-600, 0.30)};
+            --#{$prefix}primary-text-emphasis:                          #{shade-color($gray-600, 25%)};
         }
 
         &[data-theme-colors="blue"] {
-            --#{$prefix}primary:                                        #{$blue-600};
-            --#{$prefix}primary-rgb:                                    #{to-rgb($blue-600)};
-            --#{$prefix}primary-bg-subtle:                              #{rgba($blue-600, 0.15)};
-            --#{$prefix}primary-border-subtle:                          #{rgba($blue-600, 0.30)};
-            --#{$prefix}primary-text-emphasis:                          #{shade-color($blue-600, 25%)};
+            --#{$prefix}primary:                                        #{$gray-800};
+            --#{$prefix}primary-rgb:                                    #{to-rgb($gray-800)};
+            --#{$prefix}primary-bg-subtle:                              #{rgba($gray-800, 0.15)};
+            --#{$prefix}primary-border-subtle:                          #{rgba($gray-800, 0.30)};
+            --#{$prefix}primary-text-emphasis:                          #{shade-color($gray-800, 25%)};
         }
 
         .card-radio {
             .form-check-label {
                 &[for="themeColor-01"] {
-                    background-color: $primary;
+                    background-color: $orange;
                 }
 
                 &[for="themeColor-02"] {
@@ -203,11 +203,11 @@
                 }
 
                 &[for="themeColor-03"] {
-                    background-color: $purple-600; 
+                    background-color: $gray-600; 
                 }
 
                 &[for="themeColor-04"] {
-                    background-color: $blue-600; 
+                    background-color: $gray-800; 
                 }
             }
         }

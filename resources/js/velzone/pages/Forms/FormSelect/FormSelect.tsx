@@ -144,21 +144,21 @@ const FormSelect = () => {
         multiValue: (styles: any, { data }: any) => {
             return {
                 ...styles,
-                backgroundColor: "#3762ea",
+                backgroundColor: "rgba(244, 124, 32, 0.12)",
             };
         },
         multiValueLabel: (styles: any, { data }: any) => ({
             ...styles,
-            backgroundColor: "#405189",
-            color: "white",
+            backgroundColor: "rgba(244, 124, 32, 0.12)",
+            color: "#d96510",
         }),
         multiValueRemove: (styles: any, { data }: any) => ({
             ...styles,
-            color: "white",
-            backgroundColor: "#405189",
+            color: "#d96510",
+            backgroundColor: "rgba(244, 124, 32, 0.18)",
             ':hover': {
-                backgroundColor: "#405189",
-                color: 'white',
+                backgroundColor: "#f47c20",
+                color: '#ffffff',
             },
         }),
     }

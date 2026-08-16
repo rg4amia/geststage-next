@@ -144,8 +144,8 @@ const AudiencesCharts = ({ chartId, series }: any) => {
 const AudiencesSessionsCharts = ({ chartId, series }: any) => {
     const chartHeatMapBasicColors = useChartColors(chartId);
     const heatMapRangeColors = [
-        chartHeatMapBasicColors[0] ?? '#0ab39c',
-        chartHeatMapBasicColors[1] ?? '#299cdb',
+        chartHeatMapBasicColors[0] ?? '#1fa84a',
+        chartHeatMapBasicColors[1] ?? '#f47c20',
     ];
 
 

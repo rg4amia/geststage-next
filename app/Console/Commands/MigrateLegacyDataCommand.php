@@ -307,50 +307,54 @@ class MigrateLegacyDataCommand extends Command
 
     private function migrateBeneficiaires()
     {
-        $this->info("Migration des bénéficiaires (beneficiaire_stages)...");
-        // On suppose que la table principale historique s'appelait beneficiaire_stages ou dossiers_stagiaires
-        $query = DB::connection('legacy')->table('beneficiaire_stages');
+        $this->info("Migration des bénéficiaires (extraits de contrats_pae)...");
+        // NB: la table 'beneficiaire_stages' est un export ponctuel figé (mai 2024, table Power BI)
+        // dont les numero_aej ne correspondent quasiment jamais à ceux de contrats_pae (372 / 68933).
+        // Les données bénéficiaire sont en réalité dénormalisées directement dans contrats_pae,
+        // qui est la table opérationnelle réelle et à jour.
+        $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
 
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(1000, function ($beneficiaires) use (&$bar) {
-            foreach ($beneficiaires as $legacyBen) {
+        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$bar) {
+            foreach ($contrats as $legacyContrat) {
+            if (empty($legacyContrat->numero_aej)) {
+                $bar->advance();
+                continue; // Skip if no numero_aej as it's required and unique
+            }
+
             $niveau_etude_id = null;
-            if (!empty($legacyBen->niveau_etude)) {
-                $code = 'NE-' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $legacyBen->niveau_etude), 0, 5));
+            if (!empty($legacyContrat->niveau_etude)) {
+                $code = 'NE-' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $legacyContrat->niveau_etude), 0, 5));
                 $niveau = \App\Models\Reference\NiveauEtude::firstOrCreate(
                     ['code' => $code],
-                    ['nom' => $legacyBen->niveau_etude]
+                    ['nom' => $legacyContrat->niveau_etude]
                 );
                 $niveau_etude_id = $niveau->id;
             }
 
-            $date_naissance = $legacyBen->date_naissance;
+            $date_naissance = $legacyContrat->date_de_naissance;
             if ($date_naissance && (str_starts_with($date_naissance, '-') || str_starts_with($date_naissance, '0000'))) {
                 $date_naissance = null;
             }
 
-            if (empty($legacyBen->numero_aej)) {
-                continue; // Skip if no numero_aej as it's required and unique
-            }
-
             \App\Models\Beneficiary\Beneficiaire::updateOrCreate(
-                ['numero_aej' => $legacyBen->numero_aej],
+                ['numero_aej' => $legacyContrat->numero_aej],
                 [
-                    'ancien_id' => $legacyBen->id,
-                    'nom' => $legacyBen->nom ?? 'Inconnu',
-                    'prenoms' => $legacyBen->prenoms ?? '',
+                    'ancien_id' => $legacyContrat->id,
+                    'nom' => $legacyContrat->nom_stagiaire ?? 'Inconnu',
+                    'prenoms' => $legacyContrat->prenoms_stagiaire ?? '',
                     'date_naissance' => $date_naissance,
-                    'lieu_naissance' => $legacyBen->lieu_naissance,
-                    'sexe' => $legacyBen->sexe,
-                    'telephone_principal' => $legacyBen->contact_tel1,
-                    'telephone_secondaire' => $legacyBen->contact_tel2,
-                    'nature_piece_identite' => $legacyBen->nature_pieceidentite,
-                    'numero_piece_identite' => $legacyBen->num_pieceidentite,
+                    'lieu_naissance' => $legacyContrat->lieu_de_naissance,
+                    'sexe' => $legacyContrat->sexe,
+                    'telephone_principal' => $legacyContrat->contact1,
+                    'telephone_secondaire' => $legacyContrat->contact2,
+                    'nature_piece_identite' => $legacyContrat->nature_piece,
+                    'numero_piece_identite' => $legacyContrat->num_piece,
                     'niveau_etude_id' => $niveau_etude_id,
-                    'autre_handicap' => !empty($legacyBen->handicap) && strtolower($legacyBen->handicap) !== 'non' ? ($legacyBen->type_handicap ?? 'Handicap signalé') : null,
+                    'autre_handicap' => !empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non' ? ($legacyContrat->type_handicap ?? 'Handicap signalé') : null,
                 ]
             );
             $bar->advance();
