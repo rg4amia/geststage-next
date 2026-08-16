@@ -50,9 +50,9 @@ const VerticalLayout = () => {
                                 <span className="badge badge-pill bg-danger ms-auto">
                                     {item.badge}
                                 </span>
-                            ) : (
+                            ) : item.subItems ? (
                                 <i className="ri-arrow-right-s-line ms-auto"></i>
-                            )}
+                            ) : null}
                         </Link>
                         {item.subItems && isActive ? (
                             <div className="menu-dropdown show">
