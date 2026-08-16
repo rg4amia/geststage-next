@@ -9,6 +9,7 @@ use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class WorkflowTransitionService
@@ -20,8 +21,9 @@ class WorkflowTransitionService
      */
     public function submitToChefAgence(InstanceParcours $instance): void
     {
-        $moisEnCours = date('Y-m');
-        $moisDemarrage = substr($instance->date_debut_reelle ?? $instance->date_debut_prevue, 0, 7);
+        $moisEnCours = Carbon::now()->format('Y-m');
+        $dateDebutStage = $instance->stage?->date_debut;
+        $moisDemarrage = $dateDebutStage ? substr((string) $dateDebutStage, 0, 7) : null;
 
         if ($moisDemarrage === $moisEnCours) {
             $instance->update(['corbeille_actuelle' => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE]);

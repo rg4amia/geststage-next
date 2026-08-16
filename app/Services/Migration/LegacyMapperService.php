@@ -3,6 +3,7 @@
 namespace App\Services\Migration;
 
 use App\Enums\CorbeilleEnum;
+use Carbon\Carbon;
 use Illuminate\Support\Str;
 
 class LegacyMapperService
@@ -43,6 +44,32 @@ class LegacyMapperService
             31 => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE,
             default => CorbeilleEnum::CIP_MES_STAGIAIRES,
         };
+    }
+
+    public function mapChefAgenceCorbeille(object $legacyContrat): CorbeilleEnum
+    {
+        $etatChefAgence = (int) ($legacyContrat->etat_chef_agence ?? 0);
+        $dateChefAgence = $legacyContrat->date_chef_agence ?? null;
+
+        if ($etatChefAgence === 0 && !empty($dateChefAgence)) {
+            return CorbeilleEnum::CA_RETOUR_AJOURNEMENT;
+        }
+
+        if ($etatChefAgence !== 0) {
+            return $this->mapStatutStageToCorbeille((int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1));
+        }
+
+        $dateDebut = $legacyContrat->date_debut ?? null;
+
+        if (!$dateDebut) {
+            return CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE;
+        }
+
+        $moisDebut = Carbon::parse($dateDebut)->format('Y-m');
+
+        return $moisDebut < now()->format('Y-m')
+            ? CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS
+            : CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE;
     }
 
     /**
