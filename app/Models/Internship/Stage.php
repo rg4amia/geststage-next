@@ -67,6 +67,14 @@ class Stage extends Model
     }
 
     /**
+     * Le type de stage.
+     */
+    public function typeStage(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Reference\TypeStage::class);
+    }
+
+    /**
      * Les contrats associés à ce stage.
      */
     public function contrats(): HasMany
