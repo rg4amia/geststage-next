@@ -59,4 +59,14 @@ class PaiementAcController extends Controller
 
         return redirect()->back()->with('success', 'Bordereau ajourné vers la DMG.');
     }
+
+    public function rejeter(Request $request, $id)
+    {
+        $request->validate(['motif' => 'required|string|min:5']);
+
+        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $this->acService->rejeterBordereau($bordereau, $request->motif);
+
+        return redirect()->back()->with('success', 'Bordereau rejeté définitivement.');
+    }
 }

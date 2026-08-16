@@ -13,10 +13,15 @@ class RejetDmgController extends Controller
 
     public function index()
     {
+        $dossiersAjournesCB = \App\Models\Payment\DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
+            ->withCount('paiements')
+            ->where('statut', 'AJOURNE_CB')
+            ->get();
+
         return Inertia::render('Dmg/Rejets/Index', [
-            'ajournesCB' => $this->corbeilles->instanceRows(CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE, 'Ajourné par CB'),
-            'rejetesAC' => $this->corbeilles->instanceRows(CorbeilleEnum::DMG_OP_REJETE_AC, 'Rejeté par AC'),
-            'differesAC' => $this->corbeilles->instanceRows(CorbeilleEnum::DMG_OP_DIFFERE_AC, 'Différé par AC'),
+            'ajournesCB' => $this->corbeilles->dossierRows($dossiersAjournesCB, 'Ajourné par CB'),
+            'rejetesAC' => $this->corbeilles->paiementRowsFor(CorbeilleEnum::DMG_OP_REJETE_AC, 'Rejeté par AC'),
+            'differesAC' => $this->corbeilles->paiementRowsFor(CorbeilleEnum::DMG_OP_DIFFERE_AC, 'Différé par AC'),
         ]);
     }
 }

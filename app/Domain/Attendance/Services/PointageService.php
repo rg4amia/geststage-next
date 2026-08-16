@@ -2,18 +2,23 @@
 
 namespace App\Domain\Attendance\Services;
 
+use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
+use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class PointageService
 {
+    public function __construct(private WorkflowTransitionService $workflowService) {}
+
     /**
      * Retourne la liste des stages actifs (validés CA) n'ayant pas encore de pointage pour ce mois.
      */
@@ -113,6 +118,16 @@ class PointageService
                 'montant' => $montantPaiement,
                 'statut' => 'OUVERT',
             ]);
+
+            // 4. Générer le paiement correspondant et le mettre en attente DMG
+            $paiement = Paiement::create([
+                'uuid_public' => (string) Str::uuid(),
+                'droit_paiement_id' => $droitPaiement->id,
+                'montant' => $droitPaiement->montant,
+                'statut' => 'A_TRAITER',
+                'version_verrouillage' => 0,
+            ]);
+            $this->workflowService->dmgReceptionnePaiement($paiement);
 
             return $droitPaiement;
         });

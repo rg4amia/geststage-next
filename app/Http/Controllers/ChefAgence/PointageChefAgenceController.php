@@ -35,7 +35,7 @@ class PointageChefAgenceController extends Controller
         ])
         ->where('statut', 'SOUMIS')
         ->whereHas('periode', function ($q) use ($mois) {
-            $q->where('nom', 'like', "%$mois%");
+            $q->where('code', 'like', "%$mois%");
         })
         ->get();
 
@@ -49,7 +49,7 @@ class PointageChefAgenceController extends Controller
         ])
         ->where('statut', 'CORRIGE_CIP')
         ->whereHas('periode', function ($q) use ($mois) {
-            $q->where('nom', 'like', "%$mois%");
+            $q->where('code', 'like', "%$mois%");
         })
         ->get();
 

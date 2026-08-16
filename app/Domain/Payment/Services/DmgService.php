@@ -2,6 +2,7 @@
 
 namespace App\Domain\Payment\Services;
 
+use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Payment\LigneDossierPaiement;
@@ -10,6 +11,8 @@ use Illuminate\Support\Str;
 
 class DmgService
 {
+    public function __construct(private WorkflowTransitionService $workflowService) {}
+
     /**
      * Regroupe les paiements en attente ("A_TRAITER") en Dossiers de Paiement.
      * Le regroupement se fait par : Période, Agence, Source de Financement.
@@ -62,6 +65,8 @@ class DmgService
                     // Marquer le paiement comme EN_COURS (lié à un dossier)
                     $paiement->update(['statut' => 'EN_COURS']);
                 }
+
+                $this->workflowService->dmgElaboreDossier($dossier);
             }
         });
     }
@@ -120,6 +125,8 @@ class DmgService
                 ]);
             }
 
+            $this->workflowService->dmgElaboreOp($op);
+
             return $op;
         });
     }
@@ -159,6 +166,7 @@ class DmgService
     {
         DB::transaction(function () use ($bordereau) {
             $bordereau->update(['statut' => 'TRANSMIS_AC']);
+            $this->workflowService->dmgTransmetBordereauAc($bordereau);
         });
     }
 }

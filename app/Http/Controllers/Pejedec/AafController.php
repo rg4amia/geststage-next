@@ -159,7 +159,7 @@ class AafController extends Controller
             'periode' => $periode ? [
                 'id' => $periode->id,
                 'code' => $periode->code,
-                'nom' => $periode->nom,
+                'nom' => $periode->code,
             ] : null,
             'sourceFinancement' => $sourceFinancement ? [
                 'id' => $sourceFinancement->id,
@@ -288,7 +288,7 @@ class AafController extends Controller
                 'periode' => [
                     'id' => $pointage->periode?->id,
                     'code' => $pointage->periode?->code ?? $pointage->periode?->nom,
-                    'nom' => $pointage->periode?->nom ?? $pointage->periode?->code,
+                    'nom' => $pointage->periode?->code,
                 ],
                 'statut' => $pointage->statut,
                 'jours_presents' => $pointage->versionCourante?->jours_presents,
@@ -330,7 +330,7 @@ class AafController extends Controller
                 'periode' => [
                     'id' => $droitPaiement->periode?->id,
                     'code' => $droitPaiement->periode?->code ?? $droitPaiement->periode?->nom,
-                    'nom' => $droitPaiement->periode?->nom ?? $droitPaiement->periode?->code,
+                    'nom' => $droitPaiement->periode?->code,
                 ],
                 'montant' => $droitPaiement->montant,
                 'statut' => $droitPaiement->statut,

@@ -14,8 +14,8 @@ class OperationDmgController extends Controller
     public function index()
     {
         return Inertia::render('Dmg/Operations/Index', [
-            'elaborationOp' => $this->corbeilles->instanceRows(CorbeilleEnum::DMG_ELABORATION_OP, 'Élaboration OP'),
-            'bordereaux' => $this->corbeilles->instanceRows(CorbeilleEnum::DMG_OP_ATTENTE_BORDEREAU, 'Bordereau en attente'),
+            'elaborationOp' => $this->corbeilles->paiementRowsFor(CorbeilleEnum::DMG_ELABORATION_OP, 'Élaboration OP'),
+            'bordereaux' => $this->corbeilles->paiementRowsFor(CorbeilleEnum::DMG_OP_ATTENTE_BORDEREAU, 'Bordereau en attente'),
             'fichierCut' => collect(),
         ]);
     }

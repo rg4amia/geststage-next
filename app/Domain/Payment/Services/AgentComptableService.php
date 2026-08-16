@@ -2,11 +2,14 @@
 
 namespace App\Domain\Payment\Services;
 
+use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Payment\BordereauPaiement;
 use Illuminate\Support\Facades\DB;
 
 class AgentComptableService
 {
+    public function __construct(private WorkflowTransitionService $workflowService) {}
+
     /**
      * Vise un bordereau de paiement transmis par la DMG.
      */
@@ -29,11 +32,13 @@ class AgentComptableService
                     }
                 }
             }
+
+            $this->workflowService->acViseBordereau($bordereau);
         });
     }
 
     /**
-     * Rejette un bordereau de paiement, le renvoyant à la DMG avec un motif.
+     * Diffère un bordereau de paiement, le renvoyant à la DMG pour correction, avec un motif.
      */
     public function ajournerBordereau(BordereauPaiement $bordereau, string $motif): void
     {
@@ -53,6 +58,30 @@ class AgentComptableService
                     }
                 }
             }
+
+            $this->workflowService->acDiffereBordereau($bordereau);
+        });
+    }
+
+    /**
+     * Rejette définitivement un bordereau de paiement (contrairement à l'ajournement, aucun retour possible sans intervention manuelle).
+     */
+    public function rejeterBordereau(BordereauPaiement $bordereau, string $motif): void
+    {
+        DB::transaction(function () use ($bordereau, $motif) {
+            $bordereau->update(['statut' => 'REJETE_AC_DEFINITIF']);
+
+            foreach ($bordereau->ordresPaiement as $op) {
+                $op->update(['statut' => 'REJETE_AC_DEFINITIF']);
+
+                foreach ($op->dossiersPaiement as $dossier) {
+                    foreach ($dossier->paiements as $paiement) {
+                        $dossier->paiements()->updateExistingPivot($paiement->id, ['motif_retrait' => $motif]);
+                    }
+                }
+            }
+
+            $this->workflowService->acRejetteBordereau($bordereau);
         });
     }
 }

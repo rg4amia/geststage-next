@@ -5,10 +5,12 @@ namespace App\Domain\Validation\Services;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Adjournment\Ajournement;
 use App\Models\Payment\DroitPaiement;
+use App\Models\Payment\Paiement;
 use App\Models\User;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 class ValidationChefAgenceService
@@ -33,16 +35,11 @@ class ValidationChefAgenceService
                 throw new InvalidArgumentException("Cette instance de parcours n'est pas liée à un stage.");
             }
 
-            // 1. Déterminer l'étape suivante (ex: "Validation Démarrage DMG")
-            $etapeCible = EtapeParcours::where('definition_parcours_id', $instance->definition_parcours_id)
-                ->where('nom', 'Validation Démarrage DMG')
-                ->firstOrFail();
-
-            // 2. Générer le droit de paiement (DÉMARRAGE)
+            // 1. Générer le droit de paiement (DÉMARRAGE)
             $contratActif = $stage->contrats()->latest()->first();
             $montantDemarrage = $contratActif ? $contratActif->prime_mensuelle : 0; // Ou une autre règle métier.
-            
-            // FIXME: Need to find Periode and SourceFinancement appropriately. 
+
+            // FIXME: Need to find Periode and SourceFinancement appropriately.
             // For now, we will assume standard defaults or retrieve the first available.
             $periodeCourante = \App\Models\Reference\Periode::where('actif', true)->first();
             $sourceFinancement = \App\Models\Reference\SourceFinancement::first();
@@ -57,13 +54,18 @@ class ValidationChefAgenceService
                 'statut' => 'OUVERT',
             ]);
 
-            // 3. Transitionner le workflow
-            $this->workflowService->transitionner(
-                $instance,
-                $etapeCible,
-                $ca,
-                ['action' => 'VALIDATION_DEMARRAGE', 'droit_paiement_id' => $droitPaiement->id]
-            );
+            // 2. Générer le paiement correspondant et le mettre en attente DMG
+            $paiement = Paiement::create([
+                'uuid_public' => (string) Str::uuid(),
+                'droit_paiement_id' => $droitPaiement->id,
+                'montant' => $droitPaiement->montant,
+                'statut' => 'A_TRAITER',
+                'version_verrouillage' => 0,
+            ]);
+            $this->workflowService->dmgReceptionnePaiement($paiement);
+
+            // 3. Transitionner le workflow : l'instance passe à la DMG
+            $this->workflowService->caValideDemarrage($instance);
 
             return $droitPaiement;
         });
@@ -87,13 +89,8 @@ class ValidationChefAgenceService
                 'statut' => 'EN_ATTENTE',
             ]);
 
-            // 2. Transitionner le workflow en arrière
-            $this->workflowService->transitionner(
-                $instance,
-                $etapeCible,
-                $ca,
-                ['action' => 'AJOURNEMENT', 'ajournement_id' => $ajournement->id]
-            );
+            // 2. Transitionner le workflow en arrière, vers le CIP
+            $this->workflowService->caAjourneSoumission($instance);
 
             return $ajournement;
         });

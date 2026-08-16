@@ -60,6 +60,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dmg/paiements', [PaiementDmgController::class, 'index'])->name('dmg.paiements.index');
     Route::post('/dmg/paiements/generer', [PaiementDmgController::class, 'generer'])->name('dmg.paiements.generer');
     Route::post('/dmg/paiements/transmettre/{id}', [PaiementDmgController::class, 'transmettre'])->name('dmg.paiements.transmettre');
+    Route::post('/dmg/paiements/elaborer-op', [PaiementDmgController::class, 'elaborerOp'])->name('dmg.paiements.elaborer_op');
+    Route::post('/dmg/paiements/creer-bordereau', [PaiementDmgController::class, 'creerBordereau'])->name('dmg.paiements.creer_bordereau');
+    Route::post('/dmg/paiements/transmettre-bordereau/{id}', [PaiementDmgController::class, 'transmettreBordereau'])->name('dmg.paiements.transmettre_bordereau');
     Route::get('/dmg/operations', [OperationDmgController::class, 'index'])->name('dmg.operations.index');
     Route::get('/dmg/rejets', [RejetDmgController::class, 'index'])->name('dmg.rejets.index');
 
@@ -67,6 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/agent-comptable/paiements', [PaiementAcController::class, 'index'])->name('ac.paiements.index');
     Route::post('/agent-comptable/paiements/viser/{id}', [PaiementAcController::class, 'viser'])->name('ac.paiements.viser');
     Route::post('/agent-comptable/paiements/ajourner/{id}', [PaiementAcController::class, 'ajourner'])->name('ac.paiements.ajourner');
+    Route::post('/agent-comptable/paiements/rejeter/{id}', [PaiementAcController::class, 'rejeter'])->name('ac.paiements.rejeter');
     Route::post('/ac/paiements/valider/{id}', [PaiementAcController::class, 'viser'])->name('ac.paiements.valider');
     Route::post('/ac/paiements/ajourner/{id}', [PaiementAcController::class, 'ajourner'])->name('ac.paiements.ajourner.alias');
 

@@ -49,7 +49,7 @@ class PointageCipController extends Controller
             ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
             ->whereDoesntHave('stage.pointages', function($q) use ($mois) {
                 $q->whereHas('periode', function($p) use ($mois) {
-                    $p->where('nom', 'like', "%$mois%");
+                    $p->where('code', 'like', "%$mois%");
                 });
             })
             ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
@@ -63,7 +63,7 @@ class PointageCipController extends Controller
         $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante'])
             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
             ->whereHas('periode', function ($q) use ($mois) {
-                $q->where('nom', 'like', "%$mois%");
+                $q->where('code', 'like', "%$mois%");
             })
             ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
                 $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
@@ -75,7 +75,7 @@ class PointageCipController extends Controller
         $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
             ->ajourneParCA()
             ->whereHas('periode', function ($q) use ($mois) {
-                $q->where('nom', 'like', "%$mois%");
+                $q->where('code', 'like', "%$mois%");
             })
             ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
                 $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
@@ -87,7 +87,7 @@ class PointageCipController extends Controller
         $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
             ->where('statut', 'AJOURNE_DMG')
             ->whereHas('periode', function ($q) use ($mois) {
-                $q->where('nom', 'like', "%$mois%");
+                $q->where('code', 'like', "%$mois%");
             })
             ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
                 $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
@@ -96,7 +96,7 @@ class PointageCipController extends Controller
             })
             ->get();
 
-        $moisManques = Periode::where('actif', true)->pluck('nom', 'id');
+        $moisManques = Periode::where('actif', true)->pluck('code', 'id');
         $sourceFinancement = $sourceFinancementId !== null
             ? SourceFinancement::find($sourceFinancementId)
             : null;

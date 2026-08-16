@@ -11,12 +11,17 @@ const DmgPaiementsIndex = ({
     dossiers = []
 }: any) => {
     const [activeTab, setActiveTab] = useState('1');
+    const [demarrageTab, setDemarrageTab] = useState('global');
     const [modalOpen, setModalOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
     const [selectedStagiaire, setSelectedStagiaire] = useState<any>(null);
 
     const toggleTab = (tab: string) => {
         if (activeTab !== tab) setActiveTab(tab);
+    };
+
+    const toggleDemarrageTab = (tab: string) => {
+        if (demarrageTab !== tab) setDemarrageTab(tab);
     };
 
     const handleAction = (stagiaire: any) => {
@@ -61,6 +66,34 @@ const DmgPaiementsIndex = ({
                 </Button>
             ),
         },
+    ];
+
+    const demarrageColumns = [
+        {
+            header: () => <Input type="checkbox" className="form-check-input" />,
+            accessorKey: 'select',
+            cell: () => <Input type="checkbox" className="form-check-input" />,
+            enableSorting: false,
+        },
+        { header: 'Date Création', accessorKey: 'created_at', cell: (cell: any) => cell.getValue()?.split('T')[0] || '-' },
+        { header: 'Agence', accessorKey: 'droitPaiement.stage.agence.nom', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Entreprise', accessorKey: 'droitPaiement.stage.entreprise.raison_sociale', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Source de financement', accessorKey: 'droitPaiement.stage.source_financement', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Type de stagiaire', accessorKey: 'droitPaiement.stage.type_stage', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Numéro AEJ', accessorKey: 'droitPaiement.stage.beneficiaire.matricule', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Nom et prénoms', accessorKey: 'droitPaiement.stage.beneficiaire', cell: (cell: any) => { const b = cell.getValue(); return b ? `${b.nom} ${b.prenoms}` : '-'; } },
+        { header: 'Date de naissance', accessorKey: 'droitPaiement.stage.beneficiaire.date_naissance', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Validation', accessorKey: 'droitPaiement.stage.date_validation', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Debut', accessorKey: 'droitPaiement.stage.date_debut', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'Date Fin', accessorKey: 'droitPaiement.stage.date_fin', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'N° Trésor Pay', accessorKey: 'droitPaiement.stage.beneficiaire.tresor_pay', cell: (cell: any) => cell.getValue() || '-' },
+        { header: 'État dossier', accessorKey: 'statut', cell: (cell: any) => <Badge color="info">{cell.getValue() || '-'}</Badge> },
+        { header: 'Pièce jointe', accessorKey: 'piece_jointe', cell: (cell: any) => '-' },
+        { header: 'Action', cell: (cell: any) => (
+            <Button color="primary" size="sm" onClick={() => handleAction(cell.row.original)}>
+                Action
+            </Button>
+        ) },
     ];
 
     const dossierColumns = [
@@ -190,15 +223,128 @@ const DmgPaiementsIndex = ({
 
                             <TabContent activeTab={activeTab} className="text-muted">
                                 <TabPane tabId="1">
-                                    <TableContainerReactTable
-                                        columns={commonColumns}
-                                        data={attenteDemarrage || []}
-                                        isGlobalFilter={true}
-                                        customPageSize={10}
-                                        divClass="table-responsive table-card mb-3"
-                                        tableClass="align-middle table-nowrap mb-0"
-                                        theadClass="table-light"
-                                    />
+                                    <Card className="border shadow-none mb-4">
+                                        <CardHeader className="d-flex align-items-center bg-light border-bottom border-light">
+                                            <h5 className="card-title mb-0 flex-grow-1 fs-14">Traiment des stagiaires selectionnée</h5>
+                                            <div className="d-flex gap-2">
+                                                <Button color="light" size="sm" className="border shadow-none text-muted fw-medium"><i className="ri-eraser-line me-1"></i> Vider onglet</Button>
+                                                <Button color="danger" outline size="sm" className="shadow-none fw-medium"><i className="ri-delete-bin-line me-1"></i> Vider tout</Button>
+                                            </div>
+                                        </CardHeader>
+                                        <CardBody>
+                                            <div className="d-flex flex-wrap gap-3 mb-2">
+                                                <Button color="light" outline className="border-info text-secondary fw-medium shadow-none">
+                                                    <i className="ri-printer-line me-1 text-info"></i> Générer Etat Paiement (.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
+                                                </Button>
+                                                <Button color="light" outline className="border-success text-dark fw-bold shadow-none" style={{ backgroundColor: '#fff' }}>
+                                                    <i className="ri-printer-line me-1 text-success"></i> Canvas Beneficiaires TresorPay Depenses
+                                                </Button>
+                                                <Button color="light" outline className="border-info text-secondary fw-medium shadow-none">
+                                                    <i className="ri-printer-line me-1 text-info"></i> Attestation Demarrage(.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
+                                                </Button>
+                                                <Button color="primary" className="shadow-none" style={{ backgroundColor: '#5c6bc0', borderColor: '#5c6bc0' }}>
+                                                    <i className="ri-check-double-line me-1"></i> Fusionner Fiche Trésor Pay
+                                                </Button>
+                                                <Button color="danger" className="shadow-none" style={{ backgroundColor: '#e57373', borderColor: '#e57373' }}>
+                                                    <i className="ri-close-circle-line me-1"></i> Ajourner <i className="ri-arrow-down-s-line ms-1"></i>
+                                                </Button>
+                                                <Button color="success" className="shadow-none" style={{ backgroundColor: '#81c784', borderColor: '#81c784' }}>
+                                                    <i className="ri-check-line me-1"></i> Valider paiement <i className="ri-arrow-down-s-line ms-1"></i>
+                                                </Button>
+                                                <Button color="info" className="shadow-none text-white" style={{ backgroundColor: '#00acc1', borderColor: '#00acc1' }}>
+                                                    <i className="ri-folder-fill me-1"></i> Marquer dossiers <i className="ri-arrow-down-s-line ms-1"></i>
+                                                </Button>
+                                            </div>
+                                        </CardBody>
+                                    </Card>
+
+                                    <Row className="g-3 mb-4 mt-2">
+                                        <Col md={4}>
+                                            <div className="p-3 rounded text-white text-center h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: '#4396df', fontSize: '13px' }}>
+                                                Retard Cohorte 1: Date début est compris entre 1 à 5 qui a été validé par l'agence après le 10 du mois
+                                            </div>
+                                        </Col>
+                                        <Col md={4}>
+                                            <div className="p-3 rounded text-white text-center h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: '#f6cc58', fontSize: '13px' }}>
+                                                Retard Cohorte 2: Date début est compris entre 10 qui a été validé par l'agence après le 20 du mois
+                                            </div>
+                                        </Col>
+                                        <Col md={4}>
+                                            <div className="p-3 rounded text-white text-center h-100 d-flex align-items-center justify-content-center" style={{ backgroundColor: '#f18271', fontSize: '13px' }}>
+                                                Retard Cohorte 3: Date début est compris entre 20 qui a été validé par l'agence après le mois en cours
+                                            </div>
+                                        </Col>
+                                    </Row>
+
+                                    <Nav tabs className="nav-tabs-custom nav-success mb-3 border-bottom">
+                                        <NavItem>
+                                            <NavLink style={{ cursor: 'pointer', color: demarrageTab === 'global' ? '#405189' : '#878a99' }} className={classnames({ active: demarrageTab === 'global' })} onClick={() => toggleDemarrageTab('global')}>
+                                                Cohorte Global
+                                            </NavLink>
+                                        </NavItem>
+                                        <NavItem>
+                                            <NavLink style={{ cursor: 'pointer', color: demarrageTab === 'cohorte1' ? '#4396df' : '#878a99' }} className={classnames({ active: demarrageTab === 'cohorte1' })} onClick={() => toggleDemarrageTab('cohorte1')}>
+                                                Retard Cohorte 1
+                                            </NavLink>
+                                        </NavItem>
+                                        <NavItem>
+                                            <NavLink style={{ cursor: 'pointer', color: demarrageTab === 'cohorte2' ? '#f6cc58' : '#878a99' }} className={classnames({ active: demarrageTab === 'cohorte2' })} onClick={() => toggleDemarrageTab('cohorte2')}>
+                                                Retard Cohorte 2
+                                            </NavLink>
+                                        </NavItem>
+                                        <NavItem>
+                                            <NavLink style={{ cursor: 'pointer', color: demarrageTab === 'cohorte3' ? '#f18271' : '#878a99' }} className={classnames({ active: demarrageTab === 'cohorte3' })} onClick={() => toggleDemarrageTab('cohorte3')}>
+                                                Retard Cohorte 3
+                                            </NavLink>
+                                        </NavItem>
+                                    </Nav>
+
+                                    <TabContent activeTab={demarrageTab}>
+                                        <TabPane tabId="global">
+                                            <TableContainerReactTable
+                                                columns={demarrageColumns}
+                                                data={attenteDemarrage || []}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="align-middle table-nowrap mb-0"
+                                                theadClass="bg-success text-white"
+                                            />
+                                        </TabPane>
+                                        <TabPane tabId="cohorte1">
+                                            <TableContainerReactTable
+                                                columns={demarrageColumns}
+                                                data={attenteDemarrage || []}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="align-middle table-nowrap mb-0"
+                                                theadClass="bg-success text-white"
+                                            />
+                                        </TabPane>
+                                        <TabPane tabId="cohorte2">
+                                            <TableContainerReactTable
+                                                columns={demarrageColumns}
+                                                data={attenteDemarrage || []}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="align-middle table-nowrap mb-0"
+                                                theadClass="bg-success text-white"
+                                            />
+                                        </TabPane>
+                                        <TabPane tabId="cohorte3">
+                                            <TableContainerReactTable
+                                                columns={demarrageColumns}
+                                                data={attenteDemarrage || []}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="align-middle table-nowrap mb-0"
+                                                theadClass="bg-success text-white"
+                                            />
+                                        </TabPane>
+                                    </TabContent>
                                 </TabPane>
 
                                 <TabPane tabId="2">

@@ -51,30 +51,49 @@ class CorbeilleParcoursQueryService
     public function paiementRows(Collection $paiements): Collection
     {
         return $paiements
-            ->map(function (Paiement $paiement) {
-                $stage = $paiement->droitPaiement?->stage;
-                $beneficiaire = $stage?->beneficiaire;
-
-                return [
-                    'id' => $paiement->id,
-                    'numero' => 'PAY-'.str_pad((string) $paiement->id, 5, '0', STR_PAD_LEFT),
-                    'beneficiaire' => [
-                        'nom' => $beneficiaire?->nom ?? 'Inconnu',
-                        'prenoms' => $beneficiaire?->prenoms ?? '',
-                        'matricule' => $beneficiaire?->numero_aej ?? '',
-                    ],
-                    'entreprise' => [
-                        'raison_sociale' => $stage?->entreprise?->raison_sociale ?? '-',
-                    ],
-                    'agence' => [
-                        'nom' => $stage?->agence?->nom ?? '-',
-                    ],
-                    'montant' => $paiement->montant,
-                    'statut' => $paiement->statut,
-                    'date_creation' => $paiement->created_at?->format('d/m/Y'),
-                ];
-            })
+            ->map(fn (Paiement $paiement) => $this->formatPaiementRow($paiement, $paiement->statut))
             ->values();
+    }
+
+    public function paiementsFor(CorbeilleEnum $corbeille): Collection
+    {
+        return Paiement::query()
+            ->with(['droitPaiement.stage.beneficiaire', 'droitPaiement.stage.entreprise', 'droitPaiement.stage.agence'])
+            ->where('corbeille_actuelle', $corbeille->value)
+            ->orderBy('created_at')
+            ->get();
+    }
+
+    public function paiementRowsFor(CorbeilleEnum $corbeille, string $statut): Collection
+    {
+        return $this->paiementsFor($corbeille)
+            ->map(fn (Paiement $paiement) => $this->formatPaiementRow($paiement, $statut))
+            ->values();
+    }
+
+    private function formatPaiementRow(Paiement $paiement, string $statut): array
+    {
+        $stage = $paiement->droitPaiement?->stage;
+        $beneficiaire = $stage?->beneficiaire;
+
+        return [
+            'id' => $paiement->id,
+            'numero' => 'PAY-'.str_pad((string) $paiement->id, 5, '0', STR_PAD_LEFT),
+            'beneficiaire' => [
+                'nom' => $beneficiaire?->nom ?? 'Inconnu',
+                'prenoms' => $beneficiaire?->prenoms ?? '',
+                'matricule' => $beneficiaire?->numero_aej ?? '',
+            ],
+            'entreprise' => [
+                'raison_sociale' => $stage?->entreprise?->raison_sociale ?? '-',
+            ],
+            'agence' => [
+                'nom' => $stage?->agence?->nom ?? '-',
+            ],
+            'montant' => $paiement->montant,
+            'statut' => $statut,
+            'date_creation' => $paiement->created_at?->format('d/m/Y'),
+        ];
     }
 
     public function dossierRows(Collection $dossiers, string $statut): Collection

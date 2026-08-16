@@ -5,6 +5,10 @@ namespace App\Domain\Workflow\Services;
 use App\Enums\CorbeilleEnum;
 use App\Models\Workflow\InstanceParcours;
 use App\Models\Attendance\Pointage;
+use App\Models\Payment\BordereauPaiement;
+use App\Models\Payment\DossierPaiement;
+use App\Models\Payment\OrdrePaiement;
+use App\Models\Payment\Paiement;
 use Illuminate\Support\Facades\DB;
 
 class WorkflowTransitionService
@@ -32,6 +36,14 @@ class WorkflowTransitionService
     public function caValideDemarrage(InstanceParcours $instance): void
     {
         $instance->update(['corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE]);
+    }
+
+    /**
+     * 2b. Le CA ajourne la soumission initiale -> Retourne au CIP "Mes Stagiaires" pour correction.
+     */
+    public function caAjourneSoumission(InstanceParcours $instance): void
+    {
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::CIP_MES_STAGIAIRES]);
     }
 
     /**
@@ -112,5 +124,90 @@ class WorkflowTransitionService
     public function desseTraiteDoublon(InstanceParcours $instance): void
     {
         $instance->update(['corbeille_actuelle' => CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value]);
+    }
+
+    /**
+     * 12. Un paiement (Démarrage ou Présence) est généré -> attend son traitement par la DMG.
+     */
+    public function dmgReceptionnePaiement(Paiement $paiement): void
+    {
+        $corbeille = match ($paiement->droitPaiement?->nature) {
+            'DEMARRAGE' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
+            'PRESENCE' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+            default => null,
+        };
+
+        if ($corbeille) {
+            $paiement->update(['corbeille_actuelle' => $corbeille]);
+        }
+    }
+
+    /**
+     * 13. La DMG regroupe des paiements dans un Dossier -> les paiements passent en élaboration OP.
+     */
+    public function dmgElaboreDossier(DossierPaiement $dossier): void
+    {
+        $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_ELABORATION_OP]);
+    }
+
+    /**
+     * 14. La DMG élabore un Ordre de Paiement à partir de dossiers validés CB -> les paiements attendent le bordereau.
+     */
+    public function dmgElaboreOp(OrdrePaiement $op): void
+    {
+        foreach ($op->dossiersPaiement as $dossier) {
+            $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_OP_ATTENTE_BORDEREAU]);
+        }
+    }
+
+    /**
+     * 15. La DMG transmet le Bordereau à l'Agent Comptable -> les paiements attendent le visa AC.
+     */
+    public function dmgTransmetBordereauAc(BordereauPaiement $bordereau): void
+    {
+        foreach ($bordereau->ordresPaiement as $op) {
+            foreach ($op->dossiersPaiement as $dossier) {
+                $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE]);
+            }
+        }
+    }
+
+    /**
+     * 16. L'AC vise le Bordereau -> le circuit est terminé, les paiements sortent des corbeilles.
+     */
+    public function acViseBordereau(BordereauPaiement $bordereau): void
+    {
+        foreach ($bordereau->ordresPaiement as $op) {
+            foreach ($op->dossiersPaiement as $dossier) {
+                $dossier->paiements()->update(['corbeille_actuelle' => null]);
+            }
+        }
+    }
+
+    /**
+     * 17. L'AC diffère le Bordereau -> retour à la DMG pour correction, paiements différés.
+     */
+    public function acDiffereBordereau(BordereauPaiement $bordereau): void
+    {
+        foreach ($bordereau->ordresPaiement as $op) {
+            foreach ($op->dossiersPaiement as $dossier) {
+                $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC]);
+            }
+        }
+    }
+
+    /**
+     * 18. L'AC rejette définitivement le Bordereau -> les paiements sortent du circuit normal.
+     */
+    public function acRejetteBordereau(BordereauPaiement $bordereau): void
+    {
+        foreach ($bordereau->ordresPaiement as $op) {
+            foreach ($op->dossiersPaiement as $dossier) {
+                $dossier->paiements()->update([
+                    'statut' => 'REJETE_DEFINITIF',
+                    'corbeille_actuelle' => CorbeilleEnum::DMG_OP_REJETE_AC,
+                ]);
+            }
+        }
     }
 }
