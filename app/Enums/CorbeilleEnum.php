@@ -23,6 +23,7 @@ enum CorbeilleEnum: string
     // ==========================================
     case CA_ATTENTE_VALIDATION_DEMARRAGE = 'ca_attente_validation_demarrage';
     case CA_ATTENTE_VALIDATION_OMIS = 'ca_attente_validation_omis';
+    case CA_RETOUR_AJOURNEMENT = 'ca_retour_ajournement';
     case EN_STAGE = 'en_stage'; // Déclenche le cycle dynamique des pointages mensuels
     case CA_VALIDATION_POINTAGES = 'ca_validation_pointages';
     case CA_VALIDATION_POINTAGE_AJOURNE_ADP = 'ca_validation_pointage_ajourne_adp';

@@ -191,11 +191,11 @@ const TableContainer = ({
                           desc: ' ',
                         }
                         [header.column.getIsSorted() as string] ?? null}
-                        {header.column.getCanFilter() ? (
+                        {/* header.column.getCanFilter() ? (
                           <div>
                             <Filter column={header.column} table={table} />
                           </div>
-                        ) : null}
+                        ) : null */}
                       </React.Fragment>
                     )}
                   </th>
@@ -205,22 +205,36 @@ const TableContainer = ({
           </thead>
 
           <tbody>
-            {getRowModel().rows.map((row: any) => {
-              return (
-                <tr key={row.id}>
-                  {row.getVisibleCells().map((cell: any) => {
-                    return (
-                      <td key={cell.id}>
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    );
-                  })}
+            {getRowModel().rows.length > 0 ? (
+                getRowModel().rows.map((row: any) => {
+                return (
+                    <tr key={row.id}>
+                    {row.getVisibleCells().map((cell: any) => {
+                        return (
+                        <td key={cell.id}>
+                            {flexRender(
+                            cell.column.columnDef.cell,
+                            cell.getContext()
+                            )}
+                        </td>
+                        );
+                    })}
+                    </tr>
+                );
+                })
+            ) : (
+                <tr>
+                    <td colSpan={columns.length} className="text-center py-5 text-muted border-0">
+                        <div className="avatar-sm mx-auto mb-4">
+                            <div className="avatar-title bg-light text-primary rounded-circle fs-24">
+                                <i className="ri-inbox-line"></i>
+                            </div>
+                        </div>
+                        <h5 className="fs-14 fw-medium text-dark mb-1">Aucune donnée trouvée</h5>
+                        <p className="text-muted mb-0 fs-13">La liste est actuellement vide ou aucun élément ne correspond à vos filtres.</p>
+                    </td>
                 </tr>
-              );
-            })}
+            )}
           </tbody>
         </Table>
       </div>

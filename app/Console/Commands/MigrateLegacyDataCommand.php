@@ -440,6 +440,17 @@ class MigrateLegacyDataCommand extends Command
                 $statutLegacy = $legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage;
                 $corbeilleEnum = $this->mapper->mapStatutStageToCorbeille($statutLegacy ?? 1);
 
+                // Correction pour intégrer les positions de l'ancien workflow dans le nouveau workflow
+                // Les dossiers en attente de validation démarrage au niveau du Chef d'Agence
+                if ($statutLegacy == 1 && (int)($legacyContrat->etat_chef_agence ?? 0) === 0) {
+                    $dateDebut = $legacyContrat->date_debut ? \Carbon\Carbon::parse($legacyContrat->date_debut) : now();
+                    if ($dateDebut->format('Y-m') < now()->format('Y-m')) {
+                        $corbeilleEnum = \App\Enums\CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS;
+                    } else {
+                        $corbeilleEnum = \App\Enums\CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE;
+                    }
+                }
+
                 $definition = \App\Models\Workflow\DefinitionParcours::firstOrCreate(
                     ['code' => 'STAGE_LEGACY', 'version' => 1],
                     ['nom' => 'Parcours Legacy', 'active' => true]
