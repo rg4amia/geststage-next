@@ -7,18 +7,40 @@ use Illuminate\Support\Str;
 
 class LegacyMapperService
 {
-    /**
-     * Map les anciens statuts de stage vers les nouvelles étapes du workflow.
-     */
     public function mapStatutStageToCorbeille(int $legacyStatutId): CorbeilleEnum
     {
         return match ($legacyStatutId) {
-            // Ces valeurs (1, 2, 3...) sont des exemples et doivent être ajustées selon l'ancienne base
             1 => CorbeilleEnum::CIP_MES_STAGIAIRES,
             2 => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
             3 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
-            4 => CorbeilleEnum::EN_STAGE,
-            5 => CorbeilleEnum::DMG_ELABORATION_OP,
+            4 => CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER,
+            5 => CorbeilleEnum::DESSE_DOUBLONS_TRAITES,
+            6 => CorbeilleEnum::DESSE_DOUBLONS_TRAITES,
+            7 => CorbeilleEnum::CIP_AJOURNE_DESSE,
+            8 => CorbeilleEnum::DESSE_SUIVI_PROCESSUS,
+            9 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
+            10 => CorbeilleEnum::CIP_AJOURNE_DMG,
+            11 => CorbeilleEnum::CA_VALIDATION_POINTAGES,
+            12 => CorbeilleEnum::CIP_AJOURNE_CA,
+            13 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
+            14 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+            15 => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG,
+            16 => CorbeilleEnum::CA_VALIDATION_POINTAGE_AJOURNE_ADP,
+            17 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+            18 => CorbeilleEnum::CIP_AJOURNE_CA,
+            19 => CorbeilleEnum::CB_DOSSIER_MULTIPLE,
+            20 => CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE,
+            21 => CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE,
+            22 => CorbeilleEnum::DMG_ELABORATION_OP,
+            23 => CorbeilleEnum::DMG_OP_ATTENTE_BORDEREAU,
+            24 => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE,
+            25 => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE,
+            26 => CorbeilleEnum::DMG_OP_REJETE_AC,
+            27 => CorbeilleEnum::CIP_DIFFERE_AC,
+            28 => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE,
+            29 => CorbeilleEnum::DMG_OP_REJETE_AC,
+            30 => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE,
+            31 => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE,
             default => CorbeilleEnum::CIP_MES_STAGIAIRES,
         };
     }

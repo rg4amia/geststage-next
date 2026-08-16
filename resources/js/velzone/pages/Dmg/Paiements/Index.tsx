@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input, Row, Col, Label, Form, UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
+import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input, Row, Col, Label, UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import classnames from 'classnames';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
@@ -464,13 +464,21 @@ const DmgPaiementsIndex = ({
                                 <TabPane tabId="2">
                                     <Card className="border shadow-none mb-4">
                                         <CardHeader className="d-flex align-items-center bg-light border-bottom border-light">
-                                            <h5 className="card-title mb-0 flex-grow-1 fs-14">Traitement des stagiaires sélectionnés</h5>
+                                            <h5 className="card-title mb-0 flex-grow-1 fs-14">
+                                                Traitement des stagiaires sélectionnés
+                                                <Badge color="primary" className="ms-2 fs-12">{attentePresence.length}</Badge>
+                                                {selectedPresenceIds.length > 0 && (
+                                                    <span className="text-muted fs-12 fw-normal ms-2">
+                                                        <i className="ri-checkbox-multiple-line me-1"></i>{selectedPresenceIds.length} sélectionné(s)
+                                                    </span>
+                                                )}
+                                            </h5>
                                         </CardHeader>
                                         <CardBody>
                                             <div className="d-flex flex-wrap gap-2">
                                                 <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-light border-info text-secondary fw-medium shadow-none">
-                                                        <i className="ri-printer-line me-1 text-info"></i> Etat Paiement (.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
+                                                    <DropdownToggle tag="button" className="btn btn-soft-info btn-sm">
+                                                        <i className="ri-printer-line me-1"></i> Etat Paiement (.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
                                                         <DropdownItem>Tous les stagiaires (liste)</DropdownItem>
@@ -478,13 +486,13 @@ const DmgPaiementsIndex = ({
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
-                                                <Button color="light" outline className="border-success text-dark fw-bold shadow-none" style={{ backgroundColor: '#fff' }}>
-                                                    <i className="ri-file-excel-2-line me-1 text-success"></i> Canvas Bénéficiaires TrésorPay Dépenses
-                                                </Button>
+                                                <button type="button" className="btn btn-soft-success btn-sm">
+                                                    <i className="ri-file-excel-2-line me-1"></i> Canvas Bénéficiaires TrésorPay Dépenses
+                                                </button>
 
                                                 <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-light border-info text-secondary fw-medium shadow-none">
-                                                        <i className="ri-printer-line me-1 text-info"></i> Attestation Présence (.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
+                                                    <DropdownToggle tag="button" className="btn btn-soft-primary btn-sm">
+                                                        <i className="ri-printer-line me-1"></i> Attestation Présence (.PDF) <i className="ri-arrow-down-s-line ms-1"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
                                                         <DropdownItem>Tous les stagiaires</DropdownItem>
@@ -492,12 +500,12 @@ const DmgPaiementsIndex = ({
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
-                                                <Button color="primary" className="shadow-none" style={{ backgroundColor: '#5c6bc0', borderColor: '#5c6bc0' }}>
+                                                <button type="button" className="btn btn-primary btn-sm">
                                                     <i className="ri-check-double-line me-1"></i> Fusionner Fiche Trésor Pay
-                                                </Button>
+                                                </button>
 
                                                 <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-danger shadow-none" style={{ backgroundColor: '#e57373', borderColor: '#e57373' }}>
+                                                    <DropdownToggle tag="button" className="btn btn-soft-danger btn-sm">
                                                         <i className="ri-close-circle-line me-1"></i> Ajourner <i className="ri-arrow-down-s-line ms-1"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
@@ -507,7 +515,7 @@ const DmgPaiementsIndex = ({
                                                 </UncontrolledDropdown>
 
                                                 <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-success shadow-none" style={{ backgroundColor: '#81c784', borderColor: '#81c784' }}>
+                                                    <DropdownToggle tag="button" className="btn btn-success btn-sm">
                                                         <i className="ri-check-line me-1"></i> Valider paiement <i className="ri-arrow-down-s-line ms-1"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
@@ -517,7 +525,7 @@ const DmgPaiementsIndex = ({
                                                 </UncontrolledDropdown>
 
                                                 <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-info shadow-none text-white" style={{ backgroundColor: '#00acc1', borderColor: '#00acc1' }}>
+                                                    <DropdownToggle tag="button" className="btn btn-soft-dark btn-sm">
                                                         <i className="ri-folder-fill me-1"></i> Marquer dossiers <i className="ri-arrow-down-s-line ms-1"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
@@ -539,8 +547,8 @@ const DmgPaiementsIndex = ({
                                         isGlobalFilter={true}
                                         customPageSize={10}
                                         divClass="table-responsive table-card mb-3"
-                                        tableClass="align-middle table-nowrap mb-0"
-                                        theadClass="bg-success text-white"
+                                        tableClass="table-striped align-middle table-nowrap mb-0"
+                                        theadClass="table-light"
                                     />
                                 </TabPane>
 
@@ -551,7 +559,7 @@ const DmgPaiementsIndex = ({
                                         isGlobalFilter={true}
                                         customPageSize={10}
                                         divClass="table-responsive table-card mb-3"
-                                        tableClass="align-middle table-nowrap mb-0"
+                                        tableClass="table-striped align-middle table-nowrap mb-0"
                                         theadClass="table-light"
                                     />
                                 </TabPane>

@@ -443,12 +443,10 @@ const MesStagiaires = ({
                 </ModalHeader>
                 <ModalBody className="bg-white">
                     <div className="alert alert-info border-0 rounded-3 mb-4 d-flex">
-                        <i className="ri-information-line fs-18 me-3"></i>
-                        <div>
+                        <i className="ri-information-line fs-18 me-3 mt-1"></i>
+                        <div className="w-100">
                             <h6 className="alert-heading fw-semibold mb-1">Flux de traitement</h6>
-                            <p className="mb-0 fs-13">
-                                <strong>1. Agence</strong> → <strong>2. DESSE</strong> → <strong>3. DMG</strong> → <strong>4. CB</strong> → <strong>5. DMG-OP</strong> → <strong>6. AC</strong>
-                            </p>
+                            {getWorkflowProgress(selectedStagiaire?.corbeille_actuelle)}
                         </div>
                     </div>
 

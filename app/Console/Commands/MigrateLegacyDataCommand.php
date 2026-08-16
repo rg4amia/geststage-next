@@ -631,6 +631,8 @@ class MigrateLegacyDataCommand extends Command
                 if ($stage_id) {
                     $instance = $instancesMap[$stage_id] ?? null;
                     if ($instance) {
+                        $corbeilleCible = $this->mapper->mapStatutStageToCorbeille($legacyEvent->etape_id ?? 1)->value;
+
                         \App\Models\Workflow\EvenementParcours::updateOrCreate(
                             [
                                 'instance_parcours_id' => $instance->id,
@@ -641,7 +643,8 @@ class MigrateLegacyDataCommand extends Command
                                 'type' => 'MIGRATION_STATUT',
                                 'donnees' => json_encode([
                                     'commentaire' => $legacyEvent->commentaire,
-                                    'description' => "Passage à l'étape legacy ID : " . $legacyEvent->etape_id
+                                    'description' => "Passage à l'étape legacy ID : " . $legacyEvent->etape_id,
+                                    'corbeille_cible' => $corbeilleCible
                                 ]),
                                 'auteur_id' => 1, // default user
                                 'survenu_le' => $legacyEvent->created_at ?? now(),
