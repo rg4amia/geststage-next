@@ -16,6 +16,7 @@ use App\Models\Workflow\InstanceParcours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class MesStagiairesCipController extends Controller
@@ -38,13 +39,15 @@ class MesStagiairesCipController extends Controller
             'page',
         ]);
 
-        if ($request->wantsJson()) {
-            $cacheKey = 'mes_stagiaires_index_' . \Illuminate\Support\Facades\Auth::id() . '_' . md5(json_encode($filters));
 
-            $instances = \Illuminate\Support\Facades\Cache::remember($cacheKey, 1800, function () use ($request) {
+        Log::info("wantsJson hit!", ["wantsJson" => $request->wantsJson(), "accept" => $request->header("Accept")]);
+        if ($request->wantsJson()) {
+            $cacheKey = 'mes_stagiaires_index_' . Auth::id() . '_' . md5(json_encode($filters));
+
+            $instances = Cache::remember($cacheKey, 1800, function () use ($request) {
                 $query = InstanceParcours::with([
-                    'stage.beneficiaire', 
-                    'stage.entreprise.typeStructure', 
+                    'stage.beneficiaire.typePaiement',
+                    'stage.entreprise.typeStructure',
                     'stage.agence',
                     'stage.sourceFinancement',
                     'stage.typeStage',
@@ -53,7 +56,7 @@ class MesStagiairesCipController extends Controller
                     'stage.pointages.versionCourante'
                 ]);
 
-                $user = \Illuminate\Support\Facades\Auth::user();
+                $user = Auth::user();
 
                 // Equivalent to legacy ->mine() scope for CIPs
                 if ($user && $user->agence_id) {
@@ -107,29 +110,32 @@ class MesStagiairesCipController extends Controller
                     });
                 }
 
-                return $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
+                return $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString()->toArray();
             });
 
             return response()->json(['instances' => $instances, 'filters' => $filters]);
         }
 
-        $user = \Illuminate\Support\Facades\Auth::user();
+        $user = Auth::user();
 
         // Shell Inertia — données de filtres uniquement
-        $agences = \Illuminate\Support\Facades\Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => \App\Models\Reference\Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
-        
+        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => \App\Models\Reference\Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
+
         // Filter entreprises for the logged-in user's agency like in legacy
-        $entreprises = \Illuminate\Support\Facades\Cache::remember('filter_entreprises_mes_stagiaires_' . ($user->id ?? '0'), 1800, fn () => 
+        $entreprises = Cache::remember('filter_entreprises_mes_stagiaires_' . ($user->id ?? '0'), 1800, fn () =>
             \App\Models\Company\Entreprise::when($user && $user->agence_id, function ($q) use ($user) {
                 $q->where('agence_id', $user->agence_id);
             })->orderBy('raison_sociale')->pluck('raison_sociale', 'id')->toArray()
         );
 
-        $typesfinancements = \Illuminate\Support\Facades\Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => \App\Models\Reference\SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestages = \Illuminate\Support\Facades\Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestructures = \Illuminate\Support\Facades\Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $etapes = \Illuminate\Support\Facades\Cache::remember('filter_etapes_mes_stagiaires', 1800, fn () => \App\Models\Workflow\EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $situationstages = \Illuminate\Support\Facades\Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn () => \App\Models\Reference\SituationStage::pluck('nom', 'id')->toArray());
+        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => \App\Models\Reference\SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $etapes = Cache::remember('filter_etapes_mes_stagiaires', 1800, fn () => \App\Models\Workflow\EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
+
+        // stages.situation_stage stocke le code (dénormalisé) et non l'id de la table de référence,
+        // donc on indexe les options du filtre par code pour que la comparaison reste cohérente.
+        $situationstages = Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn () => \App\Models\Reference\SituationStage::orderBy('nom')->pluck('nom', 'code')->toArray());
 
         return Inertia::render('Cip/MesStagiaires/Index', [
             'agences' => $agences,

@@ -39,11 +39,12 @@ const MesStagiaires = ({
     const fetchData = async (filtersData: any) => {
         setIsLoading(true);
         try {
-            const response = await axios.get('/cip/mes-stagiaires', {
+            const response: any = await axios.get('/cip/mes-stagiaires', {
                 params: filtersData,
                 headers: { Accept: 'application/json' }
             });
-            const fetchedInstances = response.data.instances;
+            const responseData = response.data !== undefined ? response.data : response;
+            const fetchedInstances = responseData.instances;
             setDataList(fetchedInstances?.data || fetchedInstances || []);
         } catch (error) {
             console.error('Erreur lors du chargement des données:', error);
@@ -180,18 +181,66 @@ const MesStagiaires = ({
         );
     };
 
+    // Couleur de badge pour l'étape/corbeille courante (cf. CORBEILLE_INFO)
+    const getEtapeBadgeColor = (corbeille?: string | null, step?: number) => {
+        if (!corbeille) {
+            return 'secondary';
+        }
+        if (corbeille.includes('ajourne') || corbeille.includes('differe') || corbeille.includes('rejet')) {
+            return 'danger';
+        }
+        if (step === 4) {
+            return 'success';
+        }
+        return 'primary';
+    };
+
+    // Couleur de badge pour la situation de stage (cf. légende légacy : EN COURS / ABANDON / SUSPENSION / FIN DE STAGE / REACTIVATION / DESISTEMENT)
+    const getSituationBadgeColor = (label: string) => {
+        const upper = label.toUpperCase();
+        if (upper.includes('EN COURS')) {
+            return 'success';
+        }
+        if (upper.includes('ABANDON')) {
+            return 'warning';
+        }
+        if (upper.includes('SUSPENSION')) {
+            return 'info';
+        }
+        if (upper.includes('REACTIV')) {
+            return 'warning';
+        }
+        if (upper.includes('DESIST')) {
+            return 'secondary';
+        }
+        if (upper.includes('FIN')) {
+            return 'danger';
+        }
+        return 'light';
+    };
+
     // Calculate some basic stats
     const totalStagiaires = data.length;
     const avecContrat = data.filter((d: any) => d.stage?.contrats?.length > 0).length;
     const sansContrat = totalStagiaires - avecContrat;
-    const enAttente = data.filter((d: any) => (d.etape_courante || '').toLowerCase().includes('attente')).length;
+    const enAttente = data.filter((d: any) => {
+        const info = d.corbeille_actuelle ? CORBEILLE_INFO[d.corbeille_actuelle] : undefined;
+        return (info?.label || d.corbeille_actuelle || '').toLowerCase().includes('attente');
+    }).length;
 
     const columns = useMemo(
         () => [
             {
                 header: 'Situation Stage',
                 accessorKey: 'stage.situation_stage',
-                cell: (cell: any) => cell.getValue() || '-',
+                cell: (cell: any) => {
+                    const code = cell.getValue();
+                    if (!code) {
+                        return <Badge color="light" className="text-dark">NEANT</Badge>;
+                    }
+                    const label = situationstages?.[code] || code;
+                    return <Badge color={getSituationBadgeColor(String(label))}>{label}</Badge>;
+                },
             },
             {
                 header: 'Date',
@@ -252,12 +301,32 @@ const MesStagiaires = ({
                 cell: (cell: any) => <span className="fw-medium">{cell.getValue() || '-'}</span>,
             },
             {
+                header: 'Type Paiement',
+                accessorKey: 'stage.beneficiaire.type_paiement.nom',
+                cell: (cell: any) => cell.getValue() || '-',
+            },
+            {
+                header: 'N° Trésor Money',
+                accessorKey: 'stage.beneficiaire.numero_tresor_money',
+                cell: (cell: any) => cell.getValue() || '-',
+            },
+            {
+                header: 'N° Wave',
+                accessorKey: 'stage.beneficiaire.numero_wave',
+                cell: (cell: any) => cell.getValue() || '-',
+            },
+            {
                 header: 'Nom et prénoms',
                 accessorKey: 'stage.beneficiaire.nom',
                 cell: (cell: any) => {
                     const row = cell.row.original.stage?.beneficiaire;
                     return row ? <span className="fw-semibold text-primary">{row.nom} {row.prenoms}</span> : '-';
                 },
+            },
+            {
+                header: 'Date naissance',
+                accessorKey: 'stage.beneficiaire.date_naissance',
+                cell: (cell: any) => cell.getValue() ? new Date(cell.getValue()).toLocaleDateString('fr-FR') : '-',
             },
             {
                 header: 'Sexe',
@@ -278,10 +347,20 @@ const MesStagiaires = ({
                 },
             },
             {
-                header: 'Etape Traitement',
-                accessorKey: 'etape_courante',
+                header: 'Capitalisation financière',
+                accessorKey: 'stage.nbr_mois_capitaliser',
                 cell: (cell: any) => {
-                    return <Badge color="info">{cell.getValue() || '-'}</Badge>;
+                    const mois = cell.getValue() || 0;
+                    return mois > 0 ? <Badge color="success">Oui ({mois} mois)</Badge> : <Badge color="secondary">Non</Badge>;
+                },
+            },
+            {
+                header: 'Etape Traitement',
+                accessorKey: 'corbeille_actuelle',
+                cell: (cell: any) => {
+                    const corbeille = cell.getValue();
+                    const info = corbeille ? CORBEILLE_INFO[corbeille] : undefined;
+                    return <Badge color={getEtapeBadgeColor(corbeille, info?.step)}>{info?.label || corbeille || 'N/A'}</Badge>;
                 },
             },
             {

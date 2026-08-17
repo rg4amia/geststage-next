@@ -7,8 +7,10 @@ use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Commune;
 use App\Models\Reference\Diplome;
+use App\Models\Reference\TypePaiement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Beneficiaire extends Model
@@ -45,5 +47,13 @@ class Beneficiaire extends Model
     public function diplome()
     {
         return $this->belongsTo(Diplome::class, 'diplome_id');
+    }
+
+    /**
+     * Le moyen de paiement (Wave, Trésor Money, ...) du bénéficiaire.
+     */
+    public function typePaiement(): BelongsTo
+    {
+        return $this->belongsTo(TypePaiement::class);
     }
 }
