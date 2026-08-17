@@ -17,6 +17,7 @@ const MesStagiaires = ({
     filters 
 }: any) => {
     const [dataList, setDataList] = useState<any[]>(instances || []);
+    const [stats, setStats] = useState<any>({ total: 0, avecContrat: 0, sansContrat: 0, enAttente: 0 });
     const [isLoading, setIsLoading] = useState(false);
     const data = dataList;
 
@@ -46,6 +47,9 @@ const MesStagiaires = ({
             const responseData = response.data !== undefined ? response.data : response;
             const fetchedInstances = responseData.instances;
             setDataList(fetchedInstances?.data || fetchedInstances || []);
+            if (responseData.stats) {
+                setStats(responseData.stats);
+            }
         } catch (error) {
             console.error('Erreur lors du chargement des données:', error);
         } finally {
@@ -219,14 +223,11 @@ const MesStagiaires = ({
         return 'light';
     };
 
-    // Calculate some basic stats
-    const totalStagiaires = data.length;
-    const avecContrat = data.filter((d: any) => d.stage?.contrats?.length > 0).length;
-    const sansContrat = totalStagiaires - avecContrat;
-    const enAttente = data.filter((d: any) => {
-        const info = d.corbeille_actuelle ? CORBEILLE_INFO[d.corbeille_actuelle] : undefined;
-        return (info?.label || d.corbeille_actuelle || '').toLowerCase().includes('attente');
-    }).length;
+    // Use backend global stats instead of calculating on local paginated data
+    const totalStagiaires = stats.total || 0;
+    const avecContrat = stats.avecContrat || 0;
+    const sansContrat = stats.sansContrat || 0;
+    const enAttente = stats.enAttente || 0;
 
     const columns = useMemo(
         () => [

@@ -110,10 +110,37 @@ class MesStagiairesCipController extends Controller
                     });
                 }
 
-                return $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString()->toArray();
+                $total = $query->count();
+                $avecContrat = (clone $query)->has('stage.contrats')->count();
+                $sansContrat = $total - $avecContrat;
+                $enAttente = (clone $query)->whereIn('corbeille_actuelle', [
+                    'ca_attente_validation_demarrage', 
+                    'ca_attente_validation_omis', 
+                    'dmg_attente_paiement_demarrage', 
+                    'ca_validation_pointages', 
+                    'desse_attente_verification_dmg', 
+                    'desse_attente_ca', 
+                    'daicg_attente_dmg'
+                ])->count();
+
+                $paginator = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString()->toArray();
+                
+                return [
+                    'instances' => $paginator,
+                    'stats' => [
+                        'total' => $total,
+                        'avecContrat' => $avecContrat,
+                        'sansContrat' => $sansContrat,
+                        'enAttente' => $enAttente,
+                    ]
+                ];
             });
 
-            return response()->json(['instances' => $instances, 'filters' => $filters]);
+            return response()->json([
+                'instances' => $instances['instances'], 
+                'stats' => $instances['stats'],
+                'filters' => $filters
+            ]);
         }
 
         $user = Auth::user();
