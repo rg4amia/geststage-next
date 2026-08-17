@@ -19,8 +19,8 @@ use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
 
 class InscriptionController extends Controller
 {
@@ -31,16 +31,16 @@ class InscriptionController extends Controller
     public function index()
     {
         $user = Auth::user();
-        
+
         $instances = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'taches_ouvertes'])
-            ->whereHas('taches_ouvertes', function ($q) use ($user) {
+            ->whereHas('taches_ouvertes', function ($q) {
                 // Seulement les tâches de la corbeille CIP, assignables à ce rôle
                 // Simplification : instances dont l'utilisateur est concerné
             })
             ->get();
 
         return Inertia::render('Inscriptions/Index', [
-            'instances' => $instances
+            'instances' => $instances,
         ]);
     }
 
@@ -50,7 +50,7 @@ class InscriptionController extends Controller
         $offres = OffreEmploi::with(['entreprise', 'agence', 'typeStage', 'sourceFinancement'])
             ->where('statut', 'PUBLIEE')
             ->get();
-            
+
         $agences = Agence::where('actif', true)->get();
         $communes = Commune::where('actif', true)->get();
         $typesStage = TypeStage::where('actif', true)->get();
@@ -114,11 +114,11 @@ class InscriptionController extends Controller
             'stage.documents.typeDocument',
             'etapeCourante',
             'evenements.acteur',
-            'taches_ouvertes'
+            'taches_ouvertes',
         ])->findOrFail($id);
 
         return Inertia::render('Inscriptions/Show', [
-            'instance' => $instance
+            'instance' => $instance,
         ]);
     }
 }

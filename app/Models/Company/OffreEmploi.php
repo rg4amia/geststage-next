@@ -4,15 +4,18 @@ namespace App\Models\Company;
 
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
+use App\Models\Reference\Agence;
+use App\Models\Reference\Programme;
+use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 class OffreEmploi extends Model
 {
-    use HasPublicUuid, Auditable, SoftDeletes, HasFactory;
+    use Auditable, HasFactory, HasPublicUuid, SoftDeletes;
 
     protected $table = 'offres_emploi';
 
@@ -31,21 +34,21 @@ class OffreEmploi extends Model
 
     public function agence(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Reference\Agence::class);
+        return $this->belongsTo(Agence::class);
     }
 
     public function typeStage(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Reference\TypeStage::class);
+        return $this->belongsTo(TypeStage::class);
     }
 
     public function sourceFinancement(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Reference\SourceFinancement::class);
+        return $this->belongsTo(SourceFinancement::class);
     }
 
     public function programme(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Reference\Programme::class);
+        return $this->belongsTo(Programme::class);
     }
 }

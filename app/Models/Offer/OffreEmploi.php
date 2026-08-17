@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OffreEmploi extends Model
 {
-    use HasPublicUuid, Auditable;
+    use Auditable, HasPublicUuid;
 
     /**
      * The table associated with the model.

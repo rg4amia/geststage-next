@@ -3,12 +3,20 @@
 namespace Tests\Feature\Domain\Workflow;
 
 use App\Domain\Workflow\Services\WorkflowTransitionService;
+use App\Models\Beneficiary\Beneficiaire;
+use App\Models\Company\Entreprise;
+use App\Models\Internship\Stage;
+use App\Models\Reference\Agence;
+use App\Models\Reference\Region;
+use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
+use App\Models\Reference\TypeStructure;
 use App\Models\User;
+use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
 use App\Models\Workflow\TacheParcours;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\DB;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -29,7 +37,7 @@ class WorkflowTransitionTest extends TestCase
         $role = Role::create(['name' => 'cip', 'domaine' => 'Mes Stagiaires']);
         $acteur = User::factory()->create();
 
-        $definition = \App\Models\Workflow\DefinitionParcours::create([
+        $definition = DefinitionParcours::create([
             'code' => 'STAGE',
             'nom' => 'Stage',
             'version' => 1,
@@ -53,15 +61,15 @@ class WorkflowTransitionTest extends TestCase
         ]);
 
         // Creating dummy data for stage
-        $region = \App\Models\Reference\Region::create(['code' => 'TEST', 'nom' => 'R']);
-        $agence = \App\Models\Reference\Agence::create(['code' => 'A', 'nom' => 'A', 'region_id' => $region->id]);
-        $typeStructure = \App\Models\Reference\TypeStructure::create(['code' => 'T', 'nom' => 'T']);
-        $typeStage = \App\Models\Reference\TypeStage::create(['code' => 'TS', 'nom' => 'TS']);
-        $financement = \App\Models\Reference\SourceFinancement::create(['code' => 'F', 'nom' => 'F']);
-        
-        $entreprise = \App\Models\Company\Entreprise::create(['raison_sociale' => 'E', 'agence_id' => $agence->id, 'type_structure_id' => $typeStructure->id]);
-        $beneficiaire = \App\Models\Beneficiary\Beneficiaire::create(['nom' => 'B', 'prenoms' => 'B']);
-        $stage = \App\Models\Internship\Stage::create([
+        $region = Region::create(['code' => 'TEST', 'nom' => 'R']);
+        $agence = Agence::create(['code' => 'A', 'nom' => 'A', 'region_id' => $region->id]);
+        $typeStructure = TypeStructure::create(['code' => 'T', 'nom' => 'T']);
+        $typeStage = TypeStage::create(['code' => 'TS', 'nom' => 'TS']);
+        $financement = SourceFinancement::create(['code' => 'F', 'nom' => 'F']);
+
+        $entreprise = Entreprise::create(['raison_sociale' => 'E', 'agence_id' => $agence->id, 'type_structure_id' => $typeStructure->id]);
+        $beneficiaire = Beneficiaire::create(['nom' => 'B', 'prenoms' => 'B']);
+        $stage = Stage::create([
             'entreprise_id' => $entreprise->id,
             'beneficiaire_id' => $beneficiaire->id,
             'agence_id' => $agence->id,
@@ -116,7 +124,7 @@ class WorkflowTransitionTest extends TestCase
         $role = Role::create(['name' => 'cip', 'domaine' => 'Mes Stagiaires']);
         $acteur = User::factory()->create();
 
-        $definition = \App\Models\Workflow\DefinitionParcours::create([
+        $definition = DefinitionParcours::create([
             'code' => 'STAGE',
             'nom' => 'Stage',
             'version' => 1,
@@ -132,15 +140,15 @@ class WorkflowTransitionTest extends TestCase
         ]);
 
         // Creating dummy data for stage
-        $region = \App\Models\Reference\Region::create(['code' => 'TEST', 'nom' => 'R']);
-        $agence = \App\Models\Reference\Agence::create(['code' => 'A', 'nom' => 'A', 'region_id' => $region->id]);
-        $typeStructure = \App\Models\Reference\TypeStructure::create(['code' => 'T', 'nom' => 'T']);
-        $typeStage = \App\Models\Reference\TypeStage::create(['code' => 'TS', 'nom' => 'TS']);
-        $financement = \App\Models\Reference\SourceFinancement::create(['code' => 'F', 'nom' => 'F']);
-        
-        $entreprise = \App\Models\Company\Entreprise::create(['raison_sociale' => 'E', 'agence_id' => $agence->id, 'type_structure_id' => $typeStructure->id]);
-        $beneficiaire = \App\Models\Beneficiary\Beneficiaire::create(['nom' => 'B', 'prenoms' => 'B']);
-        $stage = \App\Models\Internship\Stage::create([
+        $region = Region::create(['code' => 'TEST', 'nom' => 'R']);
+        $agence = Agence::create(['code' => 'A', 'nom' => 'A', 'region_id' => $region->id]);
+        $typeStructure = TypeStructure::create(['code' => 'T', 'nom' => 'T']);
+        $typeStage = TypeStage::create(['code' => 'TS', 'nom' => 'TS']);
+        $financement = SourceFinancement::create(['code' => 'F', 'nom' => 'F']);
+
+        $entreprise = Entreprise::create(['raison_sociale' => 'E', 'agence_id' => $agence->id, 'type_structure_id' => $typeStructure->id]);
+        $beneficiaire = Beneficiaire::create(['nom' => 'B', 'prenoms' => 'B']);
+        $stage = Stage::create([
             'entreprise_id' => $entreprise->id,
             'beneficiaire_id' => $beneficiaire->id,
             'agence_id' => $agence->id,

@@ -6,6 +6,8 @@ use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Adjournment\Ajournement;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Reference\Periode;
+use App\Models\Reference\SourceFinancement;
 use App\Models\User;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
@@ -28,10 +30,10 @@ class ValidationChefAgenceService
      */
     public function validerDemarrage(InstanceParcours $instance, User $ca): DroitPaiement
     {
-        return DB::transaction(function () use ($instance, $ca) {
+        return DB::transaction(function () use ($instance) {
             $stage = $instance->stage;
 
-            if (!$stage) {
+            if (! $stage) {
                 throw new InvalidArgumentException("Cette instance de parcours n'est pas liée à un stage.");
             }
 
@@ -41,8 +43,8 @@ class ValidationChefAgenceService
 
             // The `periodes` table currently models a valid date-range period, not an `actif` flag.
             // Use the most recent period as the current effective period.
-            $periodeCourante = \App\Models\Reference\Periode::orderByDesc('date_debut')->first();
-            $sourceFinancement = \App\Models\Reference\SourceFinancement::first();
+            $periodeCourante = Periode::orderByDesc('date_debut')->first();
+            $sourceFinancement = SourceFinancement::first();
 
             $droitPaiement = DroitPaiement::create([
                 'stage_id' => $stage->id,

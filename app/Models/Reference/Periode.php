@@ -17,6 +17,5 @@ class Periode extends Model
         'date_debut' => 'date',
         'date_fin' => 'date',
         'cloture_le' => 'datetime',
-        'actif' => 'boolean',
     ];
 }

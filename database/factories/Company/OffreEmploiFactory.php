@@ -2,7 +2,11 @@
 
 namespace Database\Factories\Company;
 
+use App\Models\Company\Entreprise;
 use App\Models\Company\OffreEmploi;
+use App\Models\Reference\Agence;
+use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,10 +22,10 @@ class OffreEmploiFactory extends Factory
     public function definition(): array
     {
         return [
-            'entreprise_id' => \App\Models\Company\Entreprise::factory(),
-            'agence_id' => \App\Models\Reference\Agence::factory() ?? 1,
-            'type_stage_id' => \App\Models\Reference\TypeStage::factory() ?? 1,
-            'source_financement_id' => \App\Models\Reference\SourceFinancement::factory() ?? 1,
+            'entreprise_id' => Entreprise::factory(),
+            'agence_id' => Agence::factory() ?? 1,
+            'type_stage_id' => TypeStage::factory() ?? 1,
+            'source_financement_id' => SourceFinancement::factory() ?? 1,
             'programme_id' => null,
             'numero' => $this->faker->unique()->numerify('OFFRE-####-####'),
             'intitule' => $this->faker->jobTitle(),

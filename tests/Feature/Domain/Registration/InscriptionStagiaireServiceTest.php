@@ -7,7 +7,6 @@ use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\Entreprise;
 use App\Models\Company\OffreEmploi;
-use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Agence;
 use App\Models\Reference\SourceFinancement;
@@ -28,7 +27,7 @@ class InscriptionStagiaireServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new InscriptionStagiaireService(new WorkflowTransitionService());
+        $this->service = new InscriptionStagiaireService(new WorkflowTransitionService);
     }
 
     public function test_inscription_complete_reussie(): void
@@ -85,28 +84,28 @@ class InscriptionStagiaireServiceTest extends TestCase
         $instance = $this->service->inscrire($donneesBeneficiaire, $donneesStage, $donneesContrat, $cip);
 
         $this->assertDatabaseHas('beneficiaires', ['nom' => 'Doe', 'prenoms' => 'John']);
-        
+
         $beneficiaire = Beneficiaire::where('nom', 'Doe')->first();
         $this->assertDatabaseHas('stages', [
             'beneficiaire_id' => $beneficiaire->id,
-            'intitule_poste' => 'Développeur Web'
+            'intitule_poste' => 'Développeur Web',
         ]);
 
         $stage = Stage::where('beneficiaire_id', $beneficiaire->id)->first();
         $this->assertDatabaseHas('contrats', [
             'stage_id' => $stage->id,
             'numero' => 'CTR-2026-0001',
-            'statut' => 'BROUILLON'
+            'statut' => 'BROUILLON',
         ]);
 
         $this->assertDatabaseHas('instances_parcours', [
             'id' => $instance->id,
             'stage_id' => $stage->id,
         ]);
-        
+
         $this->assertDatabaseHas('taches_parcours', [
             'instance_parcours_id' => $instance->id,
-            'statut' => 'OUVERTE'
+            'statut' => 'OUVERTE',
         ]);
     }
 }

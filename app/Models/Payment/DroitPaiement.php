@@ -2,6 +2,7 @@
 
 namespace App\Models\Payment;
 
+use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Attendance\Pointage;
 use App\Models\Internship\Stage;
@@ -11,11 +12,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Domain\Audit\Traits\Auditable;
 
 class DroitPaiement extends Model
 {
-    use HasFactory, HasPublicUuid, Auditable;
+    use Auditable, HasFactory, HasPublicUuid;
 
     protected $table = 'droits_paiement';
 

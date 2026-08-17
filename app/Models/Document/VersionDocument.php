@@ -10,5 +10,6 @@ class VersionDocument extends Model
     use HasFactory;
 
     protected $table = 'versions_documents';
+
     protected $guarded = [];
 }

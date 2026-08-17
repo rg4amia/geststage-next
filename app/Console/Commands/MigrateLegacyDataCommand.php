@@ -2,15 +2,32 @@
 
 namespace App\Console\Commands;
 
-use App\Models\Reference\Agence;
-use App\Models\System\User;
+use App\Enums\CorbeilleEnum;
+use App\Models\Attendance\Pointage;
+use App\Models\Attendance\VersionPointage;
+use App\Models\Beneficiary\Beneficiaire;
+use App\Models\Company\Entreprise;
+use App\Models\Company\OffreEmploi;
+use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
+use App\Models\Payment\DroitPaiement;
+use App\Models\Payment\Paiement;
+use App\Models\Reference\Agence;
+use App\Models\Reference\NiveauEtude;
+use App\Models\Reference\Region;
+use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
+use App\Models\System\User;
+use App\Models\Workflow\DefinitionParcours;
+use App\Models\Workflow\EtapeParcours;
+use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
 use App\Services\Migration\LegacyMapperService;
 use Illuminate\Console\Command;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 
 class MigrateLegacyDataCommand extends Command
@@ -47,6 +64,7 @@ class MigrateLegacyDataCommand extends Command
         } catch (\Exception $e) {
             $this->error("Impossible de se connecter à la base 'legacy'. Vérifiez votre config/database.php et .env");
             $this->error($e->getMessage());
+
             return 1;
         }
 
@@ -90,22 +108,23 @@ class MigrateLegacyDataCommand extends Command
             $this->migrateEvenements();
         }
 
-        $this->info("Migration terminée !");
+        $this->info('Migration terminée !');
+
         return 0;
     }
 
     private function migrateReferences()
     {
-        $this->info("Migration des données de référence...");
-        
+        $this->info('Migration des données de référence...');
+
         // Regions
         $regions = DB::connection('legacy')->table('regions')->get();
         foreach ($regions as $r) {
-            \App\Models\Reference\Region::updateOrCreate(
+            Region::updateOrCreate(
                 ['ancien_id' => $r->id],
                 [
-                    'code' => $r->code ?? 'REG-' . $r->id,
-                    'nom' => $r->libelle ?? 'Region ' . $r->id,
+                    'code' => $r->code ?? 'REG-'.$r->id,
+                    'nom' => $r->libelle ?? 'Region '.$r->id,
                 ]
             );
         }
@@ -114,11 +133,11 @@ class MigrateLegacyDataCommand extends Command
         if (Schema::connection('legacy')->hasTable('type_stage')) {
             $types = DB::connection('legacy')->table('type_stage')->get();
             foreach ($types as $t) {
-                \App\Models\Reference\TypeStage::updateOrCreate(
+                TypeStage::updateOrCreate(
                     ['ancien_id' => $t->id],
                     [
-                        'code' => 'TS-' . $t->id,
-                        'nom' => $t->libelle_type_stage ?? 'Type ' . $t->id,
+                        'code' => 'TS-'.$t->id,
+                        'nom' => $t->libelle_type_stage ?? 'Type '.$t->id,
                     ]
                 );
             }
@@ -128,22 +147,22 @@ class MigrateLegacyDataCommand extends Command
         if (Schema::connection('legacy')->hasTable('type_financements')) {
             $sources = DB::connection('legacy')->table('type_financements')->get();
             foreach ($sources as $s) {
-                \App\Models\Reference\SourceFinancement::updateOrCreate(
+                SourceFinancement::updateOrCreate(
                     ['ancien_id' => $s->id],
                     [
-                        'code' => 'SF-' . $s->id,
-                        'nom' => $s->libelle_financement ?? 'Source ' . $s->id,
+                        'code' => 'SF-'.$s->id,
+                        'nom' => $s->libelle_financement ?? 'Source '.$s->id,
                     ]
                 );
             }
         }
-        
+
         $this->newLine();
     }
 
     private function migrateAgences()
     {
-        $this->info("Migration des agences...");
+        $this->info('Migration des agences...');
         $agences = DB::connection('legacy')->table('agences')->get();
 
         $bar = $this->output->createProgressBar(count($agences));
@@ -163,14 +182,14 @@ class MigrateLegacyDataCommand extends Command
 
             $region_id = null;
             if ($legacyRegionId) {
-                $region_id = \App\Models\Reference\Region::where('ancien_id', $legacyRegionId)->value('id');
+                $region_id = Region::where('ancien_id', $legacyRegionId)->value('id');
             }
 
-            \App\Models\Reference\Agence::updateOrCreate(
+            Agence::updateOrCreate(
                 ['ancien_id' => $legacyAgence->id],
                 [
                     'nom' => $legacyAgence->libelle_agence ?? 'Agence Inconnue',
-                    'code' => 'AG-' . str_pad($legacyAgence->id, 3, '0', STR_PAD_LEFT),
+                    'code' => 'AG-'.str_pad($legacyAgence->id, 3, '0', STR_PAD_LEFT),
                     'region_id' => $region_id,
                 ]
             );
@@ -183,7 +202,7 @@ class MigrateLegacyDataCommand extends Command
 
     private function migrateUsers()
     {
-        $this->info("Migration des utilisateurs...");
+        $this->info('Migration des utilisateurs...');
         $users = DB::connection('legacy')->table('users')->get();
 
         $bar = $this->output->createProgressBar(count($users));
@@ -191,7 +210,7 @@ class MigrateLegacyDataCommand extends Command
 
         foreach ($users as $legacyUser) {
             $email = $this->mapper->sanitizeEmail($legacyUser->email, $legacyUser->nom ?? 'User', $legacyUser->pseudo ?? '', $legacyUser->id);
-            
+
             $user = \App\Models\User::updateOrCreate(
                 ['email' => $email],
                 [
@@ -203,7 +222,7 @@ class MigrateLegacyDataCommand extends Command
 
             // Assigner le rôle Spatie
             $roleName = $this->mapper->mapTypeUserToRole($legacyUser->type_user_id);
-            if ($roleName !== null && Role::where('name', $roleName)->exists() && !$user->hasRole($roleName)) {
+            if ($roleName !== null && Role::where('name', $roleName)->exists() && ! $user->hasRole($roleName)) {
                 $user->syncRoles([$roleName]);
             }
 
@@ -216,36 +235,36 @@ class MigrateLegacyDataCommand extends Command
 
     private function migrateEntreprises()
     {
-        $this->info("Migration des entreprises...");
+        $this->info('Migration des entreprises...');
         $entreprises = DB::connection('legacy')->table('entreprises')->get();
 
         $bar = $this->output->createProgressBar(count($entreprises));
         $bar->start();
 
         foreach ($entreprises as $legacyEntreprise) {
-            $agence_id = \App\Models\Reference\Agence::where('ancien_id', $legacyEntreprise->agence_id)->value('id');
-            
+            $agence_id = Agence::where('ancien_id', $legacyEntreprise->agence_id)->value('id');
+
             $numContribuable = $legacyEntreprise->compte_contri ?: null;
             if ($numContribuable) {
-                $exists = \App\Models\Company\Entreprise::where('numero_contribuable', $numContribuable)
+                $exists = Entreprise::where('numero_contribuable', $numContribuable)
                     ->where('ancien_id', '!=', $legacyEntreprise->id)
                     ->exists();
                 if ($exists) {
-                    $numContribuable = $numContribuable . '_' . $legacyEntreprise->id;
+                    $numContribuable = $numContribuable.'_'.$legacyEntreprise->id;
                 }
             }
 
             $registreCommerce = $legacyEntreprise->rccm ?: null;
             if ($registreCommerce) {
-                $exists = \App\Models\Company\Entreprise::where('registre_commerce', $registreCommerce)
+                $exists = Entreprise::where('registre_commerce', $registreCommerce)
                     ->where('ancien_id', '!=', $legacyEntreprise->id)
                     ->exists();
                 if ($exists) {
-                    $registreCommerce = $registreCommerce . '_' . $legacyEntreprise->id;
+                    $registreCommerce = $registreCommerce.'_'.$legacyEntreprise->id;
                 }
             }
 
-            \App\Models\Company\Entreprise::updateOrCreate(
+            Entreprise::updateOrCreate(
                 ['ancien_id' => $legacyEntreprise->id],
                 [
                     'raison_sociale' => $legacyEntreprise->libelle_entreprise ?? 'Inconnu',
@@ -274,27 +293,27 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         foreach ($offres as $legacyOffre) {
-            $entreprise_id = \App\Models\Company\Entreprise::where('ancien_id', $legacyOffre->entreprise_id)->value('id');
-            $agence_id = \App\Models\Reference\Agence::where('ancien_id', $legacyOffre->agence_id)->value('id');
-            $type_stage_id = \App\Models\Reference\TypeStage::where('ancien_id', $legacyOffre->type_stage_id)->value('id') ?? 1;
-            $source_financement_id = \App\Models\Reference\SourceFinancement::where('ancien_id', $legacyOffre->source_financement_id)->value('id') ?? 1;
-            
+            $entreprise_id = Entreprise::where('ancien_id', $legacyOffre->entreprise_id)->value('id');
+            $agence_id = Agence::where('ancien_id', $legacyOffre->agence_id)->value('id');
+            $type_stage_id = TypeStage::where('ancien_id', $legacyOffre->type_stage_id)->value('id') ?? 1;
+            $source_financement_id = SourceFinancement::where('ancien_id', $legacyOffre->source_financement_id)->value('id') ?? 1;
+
             if ($entreprise_id && $agence_id) {
                 $publiee_le = $legacyOffre->date_de_publication;
                 if ($publiee_le && (str_starts_with($publiee_le, '-') || str_starts_with($publiee_le, '0000'))) {
                     $publiee_le = null;
                 }
 
-                \App\Models\Company\OffreEmploi::updateOrCreate(
+                OffreEmploi::updateOrCreate(
                     ['ancien_id' => $legacyOffre->id_offre],
                     [
                         'entreprise_id' => $entreprise_id,
                         'agence_id' => $agence_id,
                         'type_stage_id' => $type_stage_id,
                         'source_financement_id' => $source_financement_id,
-                        'numero' => 'OFR-' . str_pad($legacyOffre->id_offre, 5, '0', STR_PAD_LEFT),
+                        'numero' => 'OFR-'.str_pad($legacyOffre->id_offre, 5, '0', STR_PAD_LEFT),
                         'intitule' => $legacyOffre->intitule_offre ?? 'Offre non spécifiée',
-                        'nombre_places' => max(1, (int)($legacyOffre->nombre_de_place ?? 1)),
+                        'nombre_places' => max(1, (int) ($legacyOffre->nombre_de_place ?? 1)),
                         'publiee_le' => $publiee_le,
                     ]
                 );
@@ -308,7 +327,7 @@ class MigrateLegacyDataCommand extends Command
 
     private function migrateBeneficiaires()
     {
-        $this->info("Migration des bénéficiaires (extraits de contrats_pae)...");
+        $this->info('Migration des bénéficiaires (extraits de contrats_pae)...');
         // NB: la table 'beneficiaire_stages' est un export ponctuel figé (mai 2024, table Power BI)
         // dont les numero_aej ne correspondent quasiment jamais à ceux de contrats_pae (372 / 68933).
         // Les données bénéficiaire sont en réalité dénormalisées directement dans contrats_pae,
@@ -321,44 +340,45 @@ class MigrateLegacyDataCommand extends Command
 
         $query->orderBy('id')->chunk(1000, function ($contrats) use (&$bar) {
             foreach ($contrats as $legacyContrat) {
-            if (empty($legacyContrat->numero_aej)) {
-                $bar->advance();
-                continue; // Skip if no numero_aej as it's required and unique
-            }
+                if (empty($legacyContrat->numero_aej)) {
+                    $bar->advance();
 
-            $niveau_etude_id = null;
-            if (!empty($legacyContrat->niveau_etude)) {
-                $code = 'NE-' . strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $legacyContrat->niveau_etude), 0, 5));
-                $niveau = \App\Models\Reference\NiveauEtude::firstOrCreate(
-                    ['code' => $code],
-                    ['nom' => $legacyContrat->niveau_etude]
+                    continue; // Skip if no numero_aej as it's required and unique
+                }
+
+                $niveau_etude_id = null;
+                if (! empty($legacyContrat->niveau_etude)) {
+                    $code = 'NE-'.strtoupper(substr(preg_replace('/[^a-zA-Z0-9]/', '', $legacyContrat->niveau_etude), 0, 5));
+                    $niveau = NiveauEtude::firstOrCreate(
+                        ['code' => $code],
+                        ['nom' => $legacyContrat->niveau_etude]
+                    );
+                    $niveau_etude_id = $niveau->id;
+                }
+
+                $date_naissance = $legacyContrat->date_de_naissance;
+                if ($date_naissance && (str_starts_with($date_naissance, '-') || str_starts_with($date_naissance, '0000'))) {
+                    $date_naissance = null;
+                }
+
+                Beneficiaire::updateOrCreate(
+                    ['numero_aej' => $legacyContrat->numero_aej],
+                    [
+                        'ancien_id' => $legacyContrat->id,
+                        'nom' => $legacyContrat->nom_stagiaire ?? 'Inconnu',
+                        'prenoms' => $legacyContrat->prenoms_stagiaire ?? '',
+                        'date_naissance' => $date_naissance,
+                        'lieu_naissance' => $legacyContrat->lieu_de_naissance,
+                        'sexe' => $legacyContrat->sexe,
+                        'telephone_principal' => $legacyContrat->contact1,
+                        'telephone_secondaire' => $legacyContrat->contact2,
+                        'nature_piece_identite' => $legacyContrat->nature_piece,
+                        'numero_piece_identite' => $legacyContrat->num_piece,
+                        'niveau_etude_id' => $niveau_etude_id,
+                        'autre_handicap' => ! empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non' ? ($legacyContrat->type_handicap ?? 'Handicap signalé') : null,
+                    ]
                 );
-                $niveau_etude_id = $niveau->id;
-            }
-
-            $date_naissance = $legacyContrat->date_de_naissance;
-            if ($date_naissance && (str_starts_with($date_naissance, '-') || str_starts_with($date_naissance, '0000'))) {
-                $date_naissance = null;
-            }
-
-            \App\Models\Beneficiary\Beneficiaire::updateOrCreate(
-                ['numero_aej' => $legacyContrat->numero_aej],
-                [
-                    'ancien_id' => $legacyContrat->id,
-                    'nom' => $legacyContrat->nom_stagiaire ?? 'Inconnu',
-                    'prenoms' => $legacyContrat->prenoms_stagiaire ?? '',
-                    'date_naissance' => $date_naissance,
-                    'lieu_naissance' => $legacyContrat->lieu_de_naissance,
-                    'sexe' => $legacyContrat->sexe,
-                    'telephone_principal' => $legacyContrat->contact1,
-                    'telephone_secondaire' => $legacyContrat->contact2,
-                    'nature_piece_identite' => $legacyContrat->nature_piece,
-                    'numero_piece_identite' => $legacyContrat->num_piece,
-                    'niveau_etude_id' => $niveau_etude_id,
-                    'autre_handicap' => !empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non' ? ($legacyContrat->type_handicap ?? 'Handicap signalé') : null,
-                ]
-            );
-            $bar->advance();
+                $bar->advance();
             }
         });
 
@@ -368,7 +388,7 @@ class MigrateLegacyDataCommand extends Command
 
     private function migrateStages()
     {
-        $this->info("Migration complète des contrats/stages (contrats_pae)...");
+        $this->info('Migration complète des contrats/stages (contrats_pae)...');
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
 
@@ -376,15 +396,15 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         // Load mappings once to save memory and avoid querying per row
-        $agencesMap = \App\Models\Reference\Agence::pluck('id', 'ancien_id')->toArray();
-        $typesStageMap = \App\Models\Reference\TypeStage::pluck('id', 'ancien_id')->toArray();
-        $entreprisesMap = \App\Models\Company\Entreprise::pluck('id', 'ancien_id')->toArray();
-        $sourcesFinancementMap = \App\Models\Reference\SourceFinancement::pluck('id', 'code')->toArray();
+        $agencesMap = Agence::pluck('id', 'ancien_id')->toArray();
+        $typesStageMap = TypeStage::pluck('id', 'ancien_id')->toArray();
+        $entreprisesMap = Entreprise::pluck('id', 'ancien_id')->toArray();
+        $sourcesFinancementMap = SourceFinancement::pluck('id', 'code')->toArray();
         $defaultSourceId = $sourcesFinancementMap['DEF'] ?? 1;
 
         $query->orderBy('id')->chunk(1000, function ($contrats) use (&$bar, $agencesMap, $typesStageMap, $entreprisesMap, $defaultSourceId) {
             $aejNums = $contrats->pluck('numero_aej')->filter()->unique()->toArray();
-            $beneficiairesMap = \App\Models\Beneficiary\Beneficiaire::whereIn('numero_aej', $aejNums)->pluck('id', 'numero_aej')->toArray();
+            $beneficiairesMap = Beneficiaire::whereIn('numero_aej', $aejNums)->pluck('id', 'numero_aej')->toArray();
 
             foreach ($contrats as $legacyContrat) {
                 $beneficiaire_id = $beneficiairesMap[$legacyContrat->numero_aej] ?? null;
@@ -393,8 +413,9 @@ class MigrateLegacyDataCommand extends Command
                 $type_stage_id = $typesStageMap[$legacyContrat->id_type_stage] ?? 1;
                 $source_financement_id = $sourcesFinancementMap[$legacyContrat->source_financement] ?? $defaultSourceId;
 
-                if (!$beneficiaire_id || !$entreprise_id || !$agence_id) {
+                if (! $beneficiaire_id || ! $entreprise_id || ! $agence_id) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -415,14 +436,14 @@ class MigrateLegacyDataCommand extends Command
                         'source_financement_id' => $source_financement_id,
                         'conseiller_id' => null, // conseiller mapping needs conseillers table populated
                         'date_entree_portefeuille' => $date_entree,
-                        
+
                         'service_affectation' => $legacyContrat->service_affectation ?? null,
                         'intitule_poste' => $legacyContrat->intitule_poste_stage ?? 'Poste non défini',
-                        
+
                         'localite_stage' => $legacyContrat->lieu_de_stage ?? null,
-                        
+
                         'nom_encadreur' => $legacyContrat->nom_encadreur ?? null,
-                        
+
                         'date_debut' => $date_debut,
                         'date_fin_prevue' => $date_fin_prevue,
                         'observations' => $legacyContrat->observation ?? null,
@@ -430,11 +451,11 @@ class MigrateLegacyDataCommand extends Command
                 );
 
                 // 2. Gérer le Contrat Financier lié
-                \App\Models\Contract\Contrat::updateOrCreate(
+                Contrat::updateOrCreate(
                     ['ancien_id' => $legacyContrat->id],
                     [
                         'stage_id' => $stage->id,
-                        'numero' => 'CT-' . str_pad($legacyContrat->id, 5, '0', STR_PAD_LEFT),
+                        'numero' => 'CT-'.str_pad($legacyContrat->id, 5, '0', STR_PAD_LEFT),
                         'date_debut' => $date_debut,
                         'date_fin' => $date_fin_prevue,
                         'prime_mensuelle' => $legacyContrat->montant_du ?? 45000,
@@ -444,17 +465,17 @@ class MigrateLegacyDataCommand extends Command
 
                 // 3. Gérer le Workflow via contrat_etape / etape_traitement
                 $corbeilleEnum = $this->mapper->mapChefAgenceCorbeille($legacyContrat);
-                if ($corbeilleEnum === \App\Enums\CorbeilleEnum::CIP_MES_STAGIAIRES) {
+                if ($corbeilleEnum === CorbeilleEnum::CIP_MES_STAGIAIRES) {
                     $statutLegacy = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
                     $corbeilleEnum = $this->mapper->mapStatutStageToCorbeille($statutLegacy);
                 }
 
-                $definition = \App\Models\Workflow\DefinitionParcours::firstOrCreate(
+                $definition = DefinitionParcours::firstOrCreate(
                     ['code' => 'STAGE_LEGACY', 'version' => 1],
                     ['nom' => 'Parcours Legacy', 'active' => true]
                 );
 
-                $etape = \App\Models\Workflow\EtapeParcours::firstOrCreate(
+                $etape = EtapeParcours::firstOrCreate(
                     ['definition_parcours_id' => $definition->id, 'code' => 'INIT_LEGACY'],
                     ['nom' => 'Initiale Legacy', 'initiale' => true, 'finale' => false]
                 );
@@ -496,15 +517,21 @@ class MigrateLegacyDataCommand extends Command
                 if ($stage_id) {
                     // Mapper le statut du pointage
                     $statut = 'SOUMIS';
-                    if ($legacyPointage->status_dmg == 2) $statut = 'AJOURNE_DMG';
-                    if ($legacyPointage->status_ca == 2) $statut = 'AJOURNE_CA';
-                    if ($legacyPointage->status_dmg == 1 && $legacyPointage->status_ca == 1) $statut = 'VALIDE';
+                    if ($legacyPointage->status_dmg == 2) {
+                        $statut = 'AJOURNE_DMG';
+                    }
+                    if ($legacyPointage->status_ca == 2) {
+                        $statut = 'AJOURNE_CA';
+                    }
+                    if ($legacyPointage->status_dmg == 1 && $legacyPointage->status_ca == 1) {
+                        $statut = 'VALIDE';
+                    }
 
                     // Créer dynamiquement une période basée sur la date de création
                     $date = $this->mapper->normalizeLegacyDate($legacyPointage->created_at ?? null) ?? now();
                     $codePeriode = $date->format('Y-m');
 
-                    if (!isset($periodesMap[$codePeriode])) {
+                    if (! isset($periodesMap[$codePeriode])) {
                         $periodesMap[$codePeriode] = DB::table('periodes')->insertGetId([
                             'code' => $codePeriode,
                             'date_debut' => $date->format('Y-m-01'),
@@ -517,32 +544,32 @@ class MigrateLegacyDataCommand extends Command
                     }
                     $periodeId = $periodesMap[$codePeriode];
 
-                try {
-                    $pointage = \App\Models\Attendance\Pointage::updateOrCreate(
-                        ['ancien_id' => $legacyPointage->id],
-                        [
-                            'stage_id' => $stage_id,
-                            'periode_id' => $periodeId,
-                            'nature' => 'PRESENCE',
-                            'statut' => $statut,
-                        ]
-                    );
+                    try {
+                        $pointage = Pointage::updateOrCreate(
+                            ['ancien_id' => $legacyPointage->id],
+                            [
+                                'stage_id' => $stage_id,
+                                'periode_id' => $periodeId,
+                                'nature' => 'PRESENCE',
+                                'statut' => $statut,
+                            ]
+                        );
 
-                    \App\Models\Attendance\VersionPointage::updateOrCreate(
-                        ['pointage_id' => $pointage->id, 'numero_version' => 1],
-                        [
-                            'presence' => 'PRESENT',
-                            'jours_presents' => 30,
-                            'jours_absents' => 0,
-                            'observation' => $legacyPointage->commentaire,
-                            'saisi_le' => $date,
-                        ]
-                    );
-                } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-                    // Ignorer les doublons de pointages pour le même stage sur la même période
+                        VersionPointage::updateOrCreate(
+                            ['pointage_id' => $pointage->id, 'numero_version' => 1],
+                            [
+                                'presence' => 'PRESENT',
+                                'jours_presents' => 30,
+                                'jours_absents' => 0,
+                                'observation' => $legacyPointage->commentaire,
+                                'saisi_le' => $date,
+                            ]
+                        );
+                    } catch (UniqueConstraintViolationException $e) {
+                        // Ignorer les doublons de pointages pour le même stage sur la même période
+                    }
                 }
-            }
-            $bar->advance();
+                $bar->advance();
             }
         });
 
@@ -552,7 +579,7 @@ class MigrateLegacyDataCommand extends Command
 
     private function migratePaiements()
     {
-        $this->info("Migration des paiements (paiement_models)...");
+        $this->info('Migration des paiements (paiement_models)...');
         $query = DB::connection('legacy')->table('paiement_models');
         $total = $query->count();
 
@@ -572,48 +599,48 @@ class MigrateLegacyDataCommand extends Command
                 $stage_id = $stagesMap[$legacyPaiement->stagiaire_id] ?? 1;
 
                 // Créer dynamiquement une période basée sur la date de création du paiement
-                    $date = $this->mapper->normalizeLegacyDate($legacyPaiement->created_at ?? null) ?? now();
-                    $codePeriode = $date->format('Y-m');
+                $date = $this->mapper->normalizeLegacyDate($legacyPaiement->created_at ?? null) ?? now();
+                $codePeriode = $date->format('Y-m');
 
-                if (!isset($periodesMap[$codePeriode])) {
+                if (! isset($periodesMap[$codePeriode])) {
                     $periodesMap[$codePeriode] = DB::table('periodes')->insertGetId([
                         'code' => $codePeriode,
-                            'date_debut' => $date->format('Y-m-01'),
-                            'date_fin' => $date->format('Y-m-t'),
-                            'ouverte_pointage' => false,
-                            'ouverte_paiement' => false,
+                        'date_debut' => $date->format('Y-m-01'),
+                        'date_fin' => $date->format('Y-m-t'),
+                        'ouverte_pointage' => false,
+                        'ouverte_paiement' => false,
                         'created_at' => now(),
                         'updated_at' => now(),
                     ]);
                 }
                 $periodeId = $periodesMap[$codePeriode];
 
-            try {
-                $droit = \App\Models\Payment\DroitPaiement::updateOrCreate(
-                    ['ancien_id' => $legacyPaiement->id],
-                    [
-                        'stage_id' => $stage_id,
-                        'periode_id' => $periodeId,
-                        'source_financement_id' => $source_financement_id,
-                        'nature' => 'PRESENCE',
-                        'montant' => $legacyPaiement->montant,
-                        'statut' => 'OUVERT',
-                    ]
-                );
+                try {
+                    $droit = DroitPaiement::updateOrCreate(
+                        ['ancien_id' => $legacyPaiement->id],
+                        [
+                            'stage_id' => $stage_id,
+                            'periode_id' => $periodeId,
+                            'source_financement_id' => $source_financement_id,
+                            'nature' => 'PRESENCE',
+                            'montant' => $legacyPaiement->montant,
+                            'statut' => 'OUVERT',
+                        ]
+                    );
 
-                // Créer le paiement réel
-                \App\Models\Payment\Paiement::updateOrCreate(
-                    ['ancien_id' => $legacyPaiement->id],
-                    [
-                        'droit_paiement_id' => $droit->id,
-                        'montant' => $legacyPaiement->montant,
-                        'statut' => 'A_TRAITER',
-                    ]
-                );
-            } catch (\Illuminate\Database\UniqueConstraintViolationException $e) {
-                // Ignorer les doublons de droits de paiement
-            }
-            $bar->advance();
+                    // Créer le paiement réel
+                    Paiement::updateOrCreate(
+                        ['ancien_id' => $legacyPaiement->id],
+                        [
+                            'droit_paiement_id' => $droit->id,
+                            'montant' => $legacyPaiement->montant,
+                            'statut' => 'A_TRAITER',
+                        ]
+                    );
+                } catch (UniqueConstraintViolationException $e) {
+                    // Ignorer les doublons de droits de paiement
+                }
+                $bar->advance();
             }
         });
 
@@ -642,18 +669,18 @@ class MigrateLegacyDataCommand extends Command
                     if ($instance) {
                         $corbeilleCible = $this->mapper->mapStatutStageToCorbeille($legacyEvent->etape_id ?? 1)->value;
 
-                        \App\Models\Workflow\EvenementParcours::updateOrCreate(
+                        EvenementParcours::updateOrCreate(
                             [
                                 'instance_parcours_id' => $instance->id,
-                                'cle_idempotence' => 'mig_' . $legacyEvent->id . '_' . $instance->id,
+                                'cle_idempotence' => 'mig_'.$legacyEvent->id.'_'.$instance->id,
                             ],
                             [
                                 'etape_cible_id' => $instance->etape_courante_id, // we might not know the exact target step, default to current
                                 'type' => 'MIGRATION_STATUT',
                                 'donnees' => json_encode([
                                     'commentaire' => $legacyEvent->commentaire,
-                                    'description' => "Passage à l'étape legacy ID : " . $legacyEvent->etape_id,
-                                    'corbeille_cible' => $corbeilleCible
+                                    'description' => "Passage à l'étape legacy ID : ".$legacyEvent->etape_id,
+                                    'corbeille_cible' => $corbeilleCible,
                                 ]),
                                 'auteur_id' => 1, // default user
                                 'survenu_le' => $this->mapper->normalizeLegacyDate($legacyEvent->created_at ?? null) ?? now(),

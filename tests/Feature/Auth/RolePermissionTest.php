@@ -16,7 +16,7 @@ class RolePermissionTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         $this->seed(RolePermissionSeeder::class);
     }
 
@@ -31,7 +31,7 @@ class RolePermissionTest extends TestCase
     public function test_cip_has_correct_permissions(): void
     {
         $cipRole = Role::findByName('cip');
-        
+
         $this->assertTrue($cipRole->hasPermissionTo('voir_beneficiaires'));
         $this->assertFalse($cipRole->hasPermissionTo('valider_chef_agence'));
     }
@@ -60,7 +60,7 @@ class RolePermissionTest extends TestCase
 
         $adminUser = User::factory()->create();
         $adminUser->assignRole('administrateur');
-        
+
         // L'admin peut voir les utilisateurs
         $this->assertTrue($adminUser->can('viewAny', User::class));
     }

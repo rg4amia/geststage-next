@@ -87,7 +87,7 @@ class RolePermissionSeeder extends Seeder
 
         // Assignation des permissions aux rôles
         // Note: L'administrateur bypass toutes les permissions via la Gate::before dans AppServiceProvider
-        
+
         $cip = Role::findByName('cip');
         $cip->givePermissionTo([
             'voir_entreprises',
@@ -153,7 +153,7 @@ class RolePermissionSeeder extends Seeder
             'voir_contrats',
             'valider_aaf',
         ]);
-        
+
         $daicg = Role::findByName('daicg');
         $daicg->givePermissionTo([
             'voir_beneficiaires',

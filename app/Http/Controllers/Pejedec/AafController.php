@@ -185,8 +185,7 @@ class AafController extends Controller
         ?string $agenceId = null,
         ?string $entrepriseId = null,
         ?string $sourceFinancementId = null,
-    ): Collection
-    {
+    ): Collection {
         return Pointage::with([
             'stage.beneficiaire',
             'stage.entreprise',
@@ -223,8 +222,7 @@ class AafController extends Controller
         ?string $agenceId = null,
         ?string $entrepriseId = null,
         ?string $sourceFinancementId = null,
-    ): Collection
-    {
+    ): Collection {
         return DroitPaiement::with([
             'stage.beneficiaire',
             'stage.entreprise',

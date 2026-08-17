@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Dmg;
 use App\Domain\Payment\Services\DmgService;
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
 use App\Http\Controllers\Controller;
+use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierPaiement;
+use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use Carbon\Carbon;
@@ -61,8 +63,8 @@ class PaiementDmgController extends Controller
             ->where('periode_id', $periode?->id)
             ->get();
 
-        $ops = \App\Models\Payment\OrdrePaiement::where('periode_id', $periode?->id)->get();
-        $bordereaux = \App\Models\Payment\BordereauPaiement::where('periode_id', $periode?->id)->get();
+        $ops = OrdrePaiement::where('periode_id', $periode?->id)->get();
+        $bordereaux = BordereauPaiement::where('periode_id', $periode?->id)->get();
 
         return Inertia::render('Dmg/Paiements/Index', [
             'attenteDemarrage' => $this->corbeilles->paiementRows($attentePaiementDemarrage),
@@ -98,7 +100,7 @@ class PaiementDmgController extends Controller
     {
         $request->validate([
             'dossiers' => 'required|array',
-            'periode_id' => 'required|exists:periodes,id'
+            'periode_id' => 'required|exists:periodes,id',
         ]);
 
         $this->dmgService->elaborerOp($request->dossiers, $request->periode_id);
@@ -110,7 +112,7 @@ class PaiementDmgController extends Controller
     {
         $request->validate([
             'ops' => 'required|array',
-            'periode_id' => 'required|exists:periodes,id'
+            'periode_id' => 'required|exists:periodes,id',
         ]);
 
         $this->dmgService->creerBordereau($request->ops, $request->periode_id);
@@ -120,7 +122,7 @@ class PaiementDmgController extends Controller
 
     public function transmettreBordereau(Request $request, $id)
     {
-        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $bordereau = BordereauPaiement::findOrFail($id);
         $this->dmgService->transmettreBordereauAc($bordereau);
 
         return redirect()->back()->with('success', 'Bordereau transmis à l\'Agent Comptable.');

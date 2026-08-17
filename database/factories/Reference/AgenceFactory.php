@@ -19,7 +19,7 @@ class AgenceFactory extends Factory
     {
         return [
             'region_id' => null, // or a factory relation if needed
-            'nom' => $this->faker->city() . ' Agence',
+            'nom' => $this->faker->city().' Agence',
             'code' => $this->faker->unique()->lexify('AG-???'),
             'adresse' => $this->faker->address(),
             'actif' => true,

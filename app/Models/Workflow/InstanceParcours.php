@@ -2,16 +2,16 @@
 
 namespace App\Models\Workflow;
 
+use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Internship\Stage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Domain\Audit\Traits\Auditable;
 
 class InstanceParcours extends Model
 {
-    use HasPublicUuid, Auditable;
+    use Auditable, HasPublicUuid;
 
     /**
      * The table associated with the model.

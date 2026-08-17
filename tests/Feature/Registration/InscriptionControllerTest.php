@@ -19,6 +19,7 @@ class InscriptionControllerTest extends TestCase
     use RefreshDatabase;
 
     private User $cip;
+
     private OffreEmploi $offre;
 
     protected function setUp(): void
@@ -89,7 +90,7 @@ class InscriptionControllerTest extends TestCase
                 'date_debut' => '2026-09-01',
                 'date_fin' => '2027-02-28',
                 'prime_mensuelle' => 45000,
-            ]
+            ],
         ];
 
         $response = $this->actingAs($this->cip)->post('/inscriptions', $payload);

@@ -7,16 +7,15 @@ use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
-use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
-use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class CorbeilleWiringTest extends TestCase

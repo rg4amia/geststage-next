@@ -2,9 +2,9 @@
 
 namespace Tests\Feature\Company;
 
-use App\Models\Company\Entreprise;
 use App\Models\Reference\Agence;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -15,9 +15,9 @@ class EntrepriseControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
+
         // Ensure roles/permissions are set up
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+        $this->seed(RolePermissionSeeder::class);
     }
 
     public function test_cip_can_view_entreprises_index()

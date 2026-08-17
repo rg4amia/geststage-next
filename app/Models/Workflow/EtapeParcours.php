@@ -10,6 +10,7 @@ use Spatie\Permission\Models\Role;
 class EtapeParcours extends Model
 {
     use HasFactory;
+
     /**
      * The table associated with the model.
      *

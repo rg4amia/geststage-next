@@ -2,16 +2,16 @@
 
 namespace App\Models\Payment;
 
+use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use App\Domain\Audit\Traits\Auditable;
 
 class Paiement extends Model
 {
-    use HasFactory, HasPublicUuid, Auditable;
+    use Auditable, HasFactory, HasPublicUuid;
 
     protected $table = 'paiements';
 
@@ -25,7 +25,7 @@ class Paiement extends Model
         'corbeille_actuelle',
         'reference_externe',
         'paye_le',
-        'version_verrouillage'
+        'version_verrouillage',
     ];
 
     protected $casts = [
@@ -41,9 +41,9 @@ class Paiement extends Model
     public function dossiersPaiement(): BelongsToMany
     {
         return $this->belongsToMany(
-            DossierPaiement::class, 
-            'lignes_dossiers_paiement', 
-            'paiement_id', 
+            DossierPaiement::class,
+            'lignes_dossiers_paiement',
+            'paiement_id',
             'dossier_paiement_id'
         )->withPivot(['montant', 'ajoute_le', 'retire_le', 'motif_retrait']);
     }

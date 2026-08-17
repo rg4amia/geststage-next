@@ -10,6 +10,7 @@ use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SourceFinancement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -26,23 +27,23 @@ class PointageService
     {
         // En Eloquent moderne, on cherche les stages dont la date couvre le mois
         // et qui n'ont pas de pointage "VALIDE" ou "SOUMIS" pour ce mois
-        // Note: C'est une implémentation simplifiée par rapport au legacy, 
+        // Note: C'est une implémentation simplifiée par rapport au legacy,
         // mais elle respecte le même principe "whereDoesntHave".
-        
+
         $periode = Periode::where('code', $mois)->first();
-        if (!$periode) {
+        if (! $periode) {
             return collect();
         }
 
         return Stage::with(['beneficiaire', 'entreprise', 'agence'])
             // Le stage doit être actif
-            ->whereHas('instanceParcours', function($q) {
+            ->whereHas('instanceParcours', function ($q) {
                 // On peut vérifier l'état du workflow
             })
             // Il ne doit pas y avoir de pointage pour cette période
             ->whereDoesntHave('pointages', function ($query) use ($periode) {
                 $query->where('periode_id', $periode->id)
-                      ->whereIn('statut', ['SOUMIS', 'VALIDE']);
+                    ->whereIn('statut', ['SOUMIS', 'VALIDE']);
             })
             ->get();
     }
@@ -103,11 +104,11 @@ class PointageService
             // 3. Générer le Droit de Paiement de nature PRESENCE
             $stage = $pointage->stage;
             $contratActif = $stage->contrats()->latest()->first();
-            
+
             // Calcul au prorata si nécessaire. Simplifié ici :
-            $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 0; 
-            
-            $sourceFinancement = \App\Models\Reference\SourceFinancement::first();
+            $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 0;
+
+            $sourceFinancement = SourceFinancement::first();
 
             $droitPaiement = DroitPaiement::create([
                 'stage_id' => $stage->id,

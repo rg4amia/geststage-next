@@ -5,14 +5,16 @@ namespace App\Http\Controllers\ChefAgence;
 use App\Domain\Attendance\Services\PointageService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Http\Controllers\Controller;
+use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Carbon\Carbon;
 
 class PointageChefAgenceController extends Controller
 {
     protected $pointageService;
+
     protected $workflowService;
 
     public function __construct(PointageService $pointageService, WorkflowTransitionService $workflowService)
@@ -27,36 +29,36 @@ class PointageChefAgenceController extends Controller
 
         // Corbeille dynamique: Pointages SOUMIS
         $pointagesAValider = Pointage::with([
-            'stage.beneficiaire', 
-            'stage.entreprise', 
-            'stage.agence', 
-            'periode', 
-            'versionCourante.saisiPar'
+            'stage.beneficiaire',
+            'stage.entreprise',
+            'stage.agence',
+            'periode',
+            'versionCourante.saisiPar',
         ])
-        ->where('statut', 'SOUMIS')
-        ->whereHas('periode', function ($q) use ($mois) {
-            $q->where('code', 'like', "%$mois%");
-        })
-        ->get();
+            ->where('statut', 'SOUMIS')
+            ->whereHas('periode', function ($q) use ($mois) {
+                $q->where('code', 'like', "%$mois%");
+            })
+            ->get();
 
         // Corbeille dynamique: Pointage corrigés après ajournement DMG
         $pointagesAjournesAdp = Pointage::with([
-            'stage.beneficiaire', 
-            'stage.entreprise', 
-            'stage.agence', 
-            'periode', 
-            'versionCourante.saisiPar'
+            'stage.beneficiaire',
+            'stage.entreprise',
+            'stage.agence',
+            'periode',
+            'versionCourante.saisiPar',
         ])
-        ->where('statut', 'CORRIGE_CIP')
-        ->whereHas('periode', function ($q) use ($mois) {
-            $q->where('code', 'like', "%$mois%");
-        })
-        ->get();
+            ->where('statut', 'CORRIGE_CIP')
+            ->whereHas('periode', function ($q) use ($mois) {
+                $q->where('code', 'like', "%$mois%");
+            })
+            ->get();
 
         return Inertia::render('ChefAgence/Pointages/Index', [
             'pointagesAValider' => $pointagesAValider,
             'pointagesAjournesAdp' => $pointagesAjournesAdp,
-            'moisActuel' => $mois
+            'moisActuel' => $mois,
         ]);
     }
 
@@ -64,7 +66,7 @@ class PointageChefAgenceController extends Controller
     {
         $pointage = Pointage::findOrFail($id);
         $this->pointageService->validerMensuel($pointage, $request->user());
-        
+
         // Notification au Workflow pour passage à la DMG (Presence)
         $this->workflowService->caValidePointage($pointage->stage->instanceParcours);
 
@@ -74,19 +76,19 @@ class PointageChefAgenceController extends Controller
     public function ajourner(Request $request, $id)
     {
         $request->validate([
-            'motif' => 'required|string|min:5'
+            'motif' => 'required|string|min:5',
         ]);
 
         $pointage = Pointage::findOrFail($id);
-        
+
         $pointage->update(['statut' => 'AJOURNE_CA']);
-        
-        \App\Models\Attendance\DecisionPointage::create([
+
+        DecisionPointage::create([
             'pointage_id' => $pointage->id,
             'version_pointage_id' => $pointage->versionCourante->id,
             'auteur_id' => $request->user()->id,
             'decision' => 'AJOURNE',
-            'motif' => $request->motif
+            'motif' => $request->motif,
         ]);
 
         return redirect()->back()->with('success', 'Pointage ajourné vers le CIP.');
@@ -96,6 +98,7 @@ class PointageChefAgenceController extends Controller
     {
         $pointage = Pointage::findOrFail($id);
         $this->workflowService->caValideAjournementAdp($pointage);
+
         return redirect()->back()->with('success', 'Correction acceptée, le pointage a été resoumis.');
     }
 
@@ -103,6 +106,7 @@ class PointageChefAgenceController extends Controller
     {
         $pointage = Pointage::findOrFail($id);
         $this->workflowService->caRejetteAjournementAdp($pointage);
+
         return redirect()->back()->with('success', 'Dossier rejeté, renvoyé dans la corbeille "Mes Stagiaires" du CIP pour correction du contrat.');
     }
 }

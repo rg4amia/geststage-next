@@ -3,9 +3,11 @@
 namespace App\Domain\Payment\Services;
 
 use App\Domain\Workflow\Services\WorkflowTransitionService;
+use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierPaiement;
-use App\Models\Payment\Paiement;
 use App\Models\Payment\LigneDossierPaiement;
+use App\Models\Payment\OrdrePaiement;
+use App\Models\Payment\Paiement;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -36,22 +38,23 @@ class DmgService
             $groupes = $paiements->groupBy(function ($p) {
                 $agenceId = $p->droitPaiement->stage->agence_id;
                 $financementId = $p->droitPaiement->stage->source_financement_id;
-                return $agenceId . '-' . $financementId;
+
+                return $agenceId.'-'.$financementId;
             });
 
             // 3. Créer un DossierPaiement pour chaque groupe
             foreach ($groupes as $key => $paiementsGroupe) {
                 [$agenceId, $financementId] = explode('-', $key);
-                
+
                 $dossier = DossierPaiement::create([
                     'uuid_public' => Str::uuid(),
                     'periode_id' => $periodeId,
                     'agence_id' => $agenceId,
                     'source_financement_id' => $financementId,
-                    'numero' => 'BORD-' . date('Ym') . '-' . strtoupper(Str::random(5)),
+                    'numero' => 'BORD-'.date('Ym').'-'.strtoupper(Str::random(5)),
                     'nature' => $paiementsGroupe->first()->droitPaiement->nature,
                     'statut' => 'BROUILLON',
-                    'montant_total' => $paiementsGroupe->sum('montant')
+                    'montant_total' => $paiementsGroupe->sum('montant'),
                 ]);
 
                 // 4. Attacher les paiements via la table pivot
@@ -89,14 +92,14 @@ class DmgService
         DB::transaction(function () use ($dossier, $paiement, $motif) {
             $dossier->paiements()->updateExistingPivot($paiement->id, [
                 'retire_le' => now(),
-                'motif_retrait' => $motif
+                'motif_retrait' => $motif,
             ]);
             $paiement->update(['statut' => 'A_TRAITER']);
-            
+
             // Recalculer le montant
             $montantRetire = $dossier->paiements()->where('paiement_id', $paiement->id)->first()->pivot->montant ?? 0;
             $dossier->update([
-                'montant_total' => $dossier->montant_total - $montantRetire
+                'montant_total' => $dossier->montant_total - $montantRetire,
             ]);
         });
     }
@@ -104,24 +107,24 @@ class DmgService
     /**
      * Élabore un OP à partir de plusieurs dossiers validés par le CB.
      */
-    public function elaborerOp(array $dossierIds, int $periodeId): \App\Models\Payment\OrdrePaiement
+    public function elaborerOp(array $dossierIds, int $periodeId): OrdrePaiement
     {
         return DB::transaction(function () use ($dossierIds, $periodeId) {
             $dossiers = DossierPaiement::whereIn('id', $dossierIds)->where('statut', 'VALIDE_CB')->get();
             $montantTotal = $dossiers->sum('montant_total');
 
-            $op = \App\Models\Payment\OrdrePaiement::create([
+            $op = OrdrePaiement::create([
                 'uuid_public' => Str::uuid(),
-                'numero' => 'OP-' . date('Ym') . '-' . strtoupper(Str::random(5)),
+                'numero' => 'OP-'.date('Ym').'-'.strtoupper(Str::random(5)),
                 'periode_id' => $periodeId,
                 'montant_total' => $montantTotal,
-                'statut' => 'BROUILLON'
+                'statut' => 'BROUILLON',
             ]);
 
             foreach ($dossiers as $dossier) {
                 $dossier->update([
                     'ordre_paiement_id' => $op->id,
-                    'statut' => 'EN_OP'
+                    'statut' => 'EN_OP',
                 ]);
             }
 
@@ -134,24 +137,24 @@ class DmgService
     /**
      * Crée un Bordereau à partir de plusieurs OP.
      */
-    public function creerBordereau(array $opIds, int $periodeId): \App\Models\Payment\BordereauPaiement
+    public function creerBordereau(array $opIds, int $periodeId): BordereauPaiement
     {
         return DB::transaction(function () use ($opIds, $periodeId) {
-            $ops = \App\Models\Payment\OrdrePaiement::whereIn('id', $opIds)->where('statut', 'BROUILLON')->get();
+            $ops = OrdrePaiement::whereIn('id', $opIds)->where('statut', 'BROUILLON')->get();
             $montantTotal = $ops->sum('montant_total');
 
-            $bordereau = \App\Models\Payment\BordereauPaiement::create([
+            $bordereau = BordereauPaiement::create([
                 'uuid_public' => Str::uuid(),
-                'numero' => 'BORD-' . date('Ym') . '-' . strtoupper(Str::random(5)),
+                'numero' => 'BORD-'.date('Ym').'-'.strtoupper(Str::random(5)),
                 'periode_id' => $periodeId,
                 'montant_total' => $montantTotal,
-                'statut' => 'BROUILLON'
+                'statut' => 'BROUILLON',
             ]);
 
             foreach ($ops as $op) {
                 $op->update([
                     'bordereau_paiement_id' => $bordereau->id,
-                    'statut' => 'EN_BORDEREAU'
+                    'statut' => 'EN_BORDEREAU',
                 ]);
             }
 
@@ -162,7 +165,7 @@ class DmgService
     /**
      * Transmet un Bordereau à l'Agent Comptable.
      */
-    public function transmettreBordereauAc(\App\Models\Payment\BordereauPaiement $bordereau): void
+    public function transmettreBordereauAc(BordereauPaiement $bordereau): void
     {
         DB::transaction(function () use ($bordereau) {
             $bordereau->update(['statut' => 'TRANSMIS_AC']);

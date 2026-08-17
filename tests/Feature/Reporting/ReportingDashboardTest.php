@@ -11,6 +11,7 @@ use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -65,7 +66,7 @@ class ReportingDashboardTest extends TestCase
         ]);
 
         Paiement::create([
-            'uuid_public' => (string) \Illuminate\Support\Str::uuid(),
+            'uuid_public' => (string) Str::uuid(),
             'droit_paiement_id' => $droitPaiement?->id,
             'compte_paiement_beneficiaire_id' => null,
             'montant' => 12500,
@@ -87,7 +88,7 @@ class ReportingDashboardTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->get('/reporting?mois=2026-08&source_financement_id=' . $source->id)
+            ->get('/reporting?mois=2026-08&source_financement_id='.$source->id)
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Reporting/Index')

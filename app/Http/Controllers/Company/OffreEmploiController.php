@@ -5,7 +5,12 @@ namespace App\Http\Controllers\Company;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreOffreEmploiRequest;
 use App\Http\Requests\UpdateOffreEmploiRequest;
+use App\Models\Company\Entreprise;
 use App\Models\Company\OffreEmploi;
+use App\Models\Reference\Agence;
+use App\Models\Reference\Programme;
+use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -21,7 +26,7 @@ class OffreEmploiController extends Controller
         $offres = OffreEmploi::with(['entreprise', 'agence', 'typeStage', 'sourceFinancement'])
             ->when($request->search, function ($query, $search) {
                 $query->where('intitule', 'ilike', "%{$search}%")
-                      ->orWhere('numero', 'ilike', "%{$search}%");
+                    ->orWhere('numero', 'ilike', "%{$search}%");
             })
             ->latest()
             ->paginate(10)
@@ -41,11 +46,11 @@ class OffreEmploiController extends Controller
         $this->authorize('create', OffreEmploi::class);
 
         return Inertia::render('Offres/Create', [
-            'entreprises' => \App\Models\Company\Entreprise::orderBy('raison_sociale')->get(),
-            'agences' => \App\Models\Reference\Agence::all(),
-            'typesStage' => \App\Models\Reference\TypeStage::all(),
-            'sourcesFinancement' => \App\Models\Reference\SourceFinancement::all(),
-            'programmes' => \App\Models\Reference\Programme::all(),
+            'entreprises' => Entreprise::orderBy('raison_sociale')->get(),
+            'agences' => Agence::all(),
+            'typesStage' => TypeStage::all(),
+            'sourcesFinancement' => SourceFinancement::all(),
+            'programmes' => Programme::all(),
         ]);
     }
 
@@ -69,11 +74,11 @@ class OffreEmploiController extends Controller
 
         return Inertia::render('Offres/Edit', [
             'offre' => $offreEmploi,
-            'entreprises' => \App\Models\Company\Entreprise::orderBy('raison_sociale')->get(),
-            'agences' => \App\Models\Reference\Agence::all(),
-            'typesStage' => \App\Models\Reference\TypeStage::all(),
-            'sourcesFinancement' => \App\Models\Reference\SourceFinancement::all(),
-            'programmes' => \App\Models\Reference\Programme::all(),
+            'entreprises' => Entreprise::orderBy('raison_sociale')->get(),
+            'agences' => Agence::all(),
+            'typesStage' => TypeStage::all(),
+            'sourcesFinancement' => SourceFinancement::all(),
+            'programmes' => Programme::all(),
         ]);
     }
 

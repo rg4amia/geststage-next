@@ -3,14 +3,13 @@
 namespace App\Domain\Workflow\Services;
 
 use App\Enums\CorbeilleEnum;
-use App\Models\Workflow\InstanceParcours;
 use App\Models\Attendance\Pointage;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Workflow\InstanceParcours;
 use Carbon\Carbon;
-use Illuminate\Support\Facades\DB;
 
 class WorkflowTransitionService
 {
@@ -89,16 +88,16 @@ class WorkflowTransitionService
     }
 
     /**
-     * 8. Le CA rejette la correction du pointage -> Impact sur l'instance entière ! 
+     * 8. Le CA rejette la correction du pointage -> Impact sur l'instance entière !
      * Retourne au CIP "Mes Stagiaires" pour correction du dossier.
      */
     public function caRejetteAjournementAdp(Pointage $pointage): void
     {
         // Rétrograde l'instance au début
         $pointage->stage->instanceParcours()->update([
-            'corbeille_actuelle' => CorbeilleEnum::CIP_MES_STAGIAIRES
+            'corbeille_actuelle' => CorbeilleEnum::CIP_MES_STAGIAIRES,
         ]);
-        
+
         // Optionnel: on supprime le pointage erroné ? Ou on le passe en "REJETE_DEFINITIF"
         $pointage->update(['statut' => 'REJETE_DEFINITIF']);
     }

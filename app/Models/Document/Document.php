@@ -4,14 +4,16 @@ namespace App\Models\Document;
 
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
+use App\Models\Reference\TypeDocument;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Document extends Model
 {
-    use HasFactory, HasPublicUuid, Auditable;
+    use Auditable, HasFactory, HasPublicUuid;
 
     protected $table = 'documents';
+
     protected $guarded = [];
 
     /**
@@ -27,6 +29,6 @@ class Document extends Model
      */
     public function typeDocument()
     {
-        return $this->belongsTo(\App\Models\Reference\TypeDocument::class);
+        return $this->belongsTo(TypeDocument::class);
     }
 }

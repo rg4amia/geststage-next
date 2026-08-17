@@ -15,8 +15,8 @@ use App\Http\Controllers\Dmg\PaiementDmgController;
 use App\Http\Controllers\Dmg\RejetDmgController;
 use App\Http\Controllers\Dmg\ValidationDmgController;
 use App\Http\Controllers\Pejedec\AafController;
-use App\Http\Controllers\Reporting\TableauDeBordController;
 use App\Http\Controllers\Registration\InscriptionController;
+use App\Http\Controllers\Reporting\TableauDeBordController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');

@@ -5,16 +5,14 @@ namespace App\Domain\Registration\Services;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Contract\Contrat;
+use App\Models\Document\Document;
+use App\Models\Document\VersionDocument;
 use App\Models\Internship\Stage;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\InstanceParcours;
-use App\Models\Document\Document;
-use App\Models\Document\VersionDocument;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 
 class InscriptionStagiaireService
 {
@@ -54,7 +52,7 @@ class InscriptionStagiaireService
                 if ($file instanceof UploadedFile && $file->isValid()) {
                     // Création ou récupération du type de document
                     $typeDoc = DB::table('types_document')->where('code', strtoupper($key))->first();
-                    if (!$typeDoc) {
+                    if (! $typeDoc) {
                         $typeDocId = DB::table('types_document')->insertGetId([
                             'code' => strtoupper($key),
                             'nom' => ucfirst(str_replace('_', ' ', $key)),
@@ -67,7 +65,7 @@ class InscriptionStagiaireService
                     }
 
                     // Stockage du fichier (disque local 'documents' ou par défaut)
-                    $path = $file->store('dossiers_stagiaires/' . $beneficiaire->id);
+                    $path = $file->store('dossiers_stagiaires/'.$beneficiaire->id);
 
                     // Création du document racine
                     $document = Document::create([
@@ -98,7 +96,7 @@ class InscriptionStagiaireService
 
             // 4. Initialisation du Workflow
             $definition = DefinitionParcours::where('code', 'PAE')->where('active', true)->firstOrFail();
-            
+
             return $this->workflowService->initier(
                 $definition,
                 $cip,

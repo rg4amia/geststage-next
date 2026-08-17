@@ -2,16 +2,16 @@
 
 namespace App\Models\Workflow;
 
+use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Spatie\Permission\Models\Role;
-use App\Domain\Audit\Traits\Auditable;
 
 class TacheParcours extends Model
 {
-    use HasPublicUuid, Auditable;
+    use Auditable, HasPublicUuid;
 
     /**
      * The table associated with the model.
@@ -70,6 +70,4 @@ class TacheParcours extends Model
     {
         return $this->belongsTo(User::class, 'revendiquee_par_id');
     }
-
-
 }

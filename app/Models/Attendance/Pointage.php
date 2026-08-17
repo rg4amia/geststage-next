@@ -2,6 +2,7 @@
 
 namespace App\Models\Attendance;
 
+use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Periode;
@@ -11,11 +12,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Domain\Audit\Traits\Auditable;
 
 class Pointage extends Model
 {
-    use HasFactory, HasPublicUuid, SoftDeletes, Auditable;
+    use Auditable, HasFactory, HasPublicUuid, SoftDeletes;
 
     protected $table = 'pointages';
 

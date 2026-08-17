@@ -4,21 +4,23 @@ namespace App\Models\Internship;
 
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
-use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Attendance\Pointage;
+use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\Entreprise;
 use App\Models\Contract\Contrat;
+use App\Models\Document\Document;
 use App\Models\Reference\Agence;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
+use App\Models\Workflow\InstanceParcours;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 class Stage extends Model
 {
-    use HasPublicUuid, Auditable, HasFactory;
+    use Auditable, HasFactory, HasPublicUuid;
 
     /**
      * The table associated with the model.
@@ -71,7 +73,7 @@ class Stage extends Model
      */
     public function typeStage(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Reference\TypeStage::class);
+        return $this->belongsTo(TypeStage::class);
     }
 
     /**
@@ -95,7 +97,7 @@ class Stage extends Model
      */
     public function documents(): HasMany
     {
-        return $this->hasMany(\App\Models\Document\Document::class);
+        return $this->hasMany(Document::class);
     }
 
     /**
@@ -103,6 +105,6 @@ class Stage extends Model
      */
     public function instanceParcours()
     {
-        return $this->hasOne(\App\Models\Workflow\InstanceParcours::class);
+        return $this->hasOne(InstanceParcours::class);
     }
 }

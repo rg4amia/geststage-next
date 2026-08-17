@@ -17,7 +17,7 @@ class LigneDossierPaiement extends Pivot
         'montant',
         'ajoute_le',
         'retire_le',
-        'motif_retrait'
+        'motif_retrait',
     ];
 
     protected $casts = [

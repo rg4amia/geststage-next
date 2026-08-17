@@ -3,11 +3,11 @@
 namespace Tests\Feature\Company;
 
 use App\Models\Company\Entreprise;
-use App\Models\Company\OffreEmploi;
 use App\Models\Reference\Agence;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
 use App\Models\User;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -18,8 +18,8 @@ class OffreEmploiControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        
-        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
+
+        $this->seed(RolePermissionSeeder::class);
     }
 
     public function test_cip_can_view_offres_index()

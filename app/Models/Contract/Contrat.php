@@ -5,14 +5,13 @@ namespace App\Models\Contract;
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Internship\Stage;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 class Contrat extends Model
 {
-    use HasPublicUuid, Auditable, HasFactory;
+    use Auditable, HasFactory, HasPublicUuid;
 
     /**
      * The table associated with the model.

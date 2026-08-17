@@ -101,7 +101,7 @@ class LegacyMapperService
 
         $dateDebut = $this->normalizeLegacyDate($legacyContrat->date_debut ?? null);
 
-        if (!$dateDebut) {
+        if (! $dateDebut) {
             return CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE;
         }
 
@@ -135,10 +135,12 @@ class LegacyMapperService
      */
     public function sanitizeEmail(?string $email, string $nom, string $prenom, int $legacyId): string
     {
-        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
-            $base = Str::slug($prenom . '.' . $nom);
-            return $base . '.' . $legacyId . '@migration.local';
+        if (empty($email) || ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $base = Str::slug($prenom.'.'.$nom);
+
+            return $base.'.'.$legacyId.'@migration.local';
         }
+
         return $email;
     }
 }

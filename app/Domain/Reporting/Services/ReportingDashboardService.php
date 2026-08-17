@@ -2,8 +2,8 @@
 
 namespace App\Domain\Reporting\Services;
 
-use App\Models\Audit\JournalAudit;
 use App\Models\Attendance\Pointage;
+use App\Models\Audit\JournalAudit;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\DroitPaiement;

@@ -3,14 +3,14 @@
 namespace App\Models\Reference;
 
 use App\Domain\Audit\Traits\Auditable;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 class Agence extends Model
 {
-    use HasFactory, Auditable;
+    use Auditable, HasFactory;
+
     /**
      * The table associated with the model.
      *

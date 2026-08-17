@@ -5,7 +5,7 @@ namespace App\Http\Controllers\AgentCompt;
 use App\Domain\Payment\Services\AgentComptableService;
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
 use App\Http\Controllers\Controller;
-use App\Models\Payment\DossierPaiement;
+use App\Models\Payment\BordereauPaiement;
 use App\Models\Reference\Periode;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -23,11 +23,11 @@ class PaiementAcController extends Controller
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
         $periode = Periode::where('code', $mois)->first();
 
-        $bordereauxAttenteVisa = \App\Models\Payment\BordereauPaiement::where('statut', 'TRANSMIS_AC')
+        $bordereauxAttenteVisa = BordereauPaiement::where('statut', 'TRANSMIS_AC')
             ->where('periode_id', $periode?->id)
             ->get();
 
-        $bordereauxVises = \App\Models\Payment\BordereauPaiement::where('statut', 'VISE_AC')
+        $bordereauxVises = BordereauPaiement::where('statut', 'VISE_AC')
             ->where('periode_id', $periode?->id)
             ->get();
 
@@ -44,7 +44,7 @@ class PaiementAcController extends Controller
 
     public function viser(Request $request, $id)
     {
-        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $bordereau = BordereauPaiement::findOrFail($id);
         $this->acService->viserBordereau($bordereau);
 
         return redirect()->back()->with('success', 'Bordereau visé avec succès.');
@@ -54,7 +54,7 @@ class PaiementAcController extends Controller
     {
         $request->validate(['motif' => 'required|string|min:5']);
 
-        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $bordereau = BordereauPaiement::findOrFail($id);
         $this->acService->ajournerBordereau($bordereau, $request->motif);
 
         return redirect()->back()->with('success', 'Bordereau ajourné vers la DMG.');
@@ -64,7 +64,7 @@ class PaiementAcController extends Controller
     {
         $request->validate(['motif' => 'required|string|min:5']);
 
-        $bordereau = \App\Models\Payment\BordereauPaiement::findOrFail($id);
+        $bordereau = BordereauPaiement::findOrFail($id);
         $this->acService->rejeterBordereau($bordereau, $request->motif);
 
         return redirect()->back()->with('success', 'Bordereau rejeté définitivement.');

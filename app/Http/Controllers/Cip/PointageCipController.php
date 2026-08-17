@@ -8,18 +8,22 @@ use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
-use App\Models\Workflow\InstanceParcours;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
-use Illuminate\Http\Request;
-use Inertia\Inertia;
+use App\Models\Workflow\InstanceParcours;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Inertia\Inertia;
 
 class PointageCipController extends Controller
 {
     protected $pointageService;
+
     protected $workflowService;
+
     private const PEJEDEC_SOURCE_FINANCEMENT_ID = 3;
 
     public function __construct(
@@ -43,69 +47,82 @@ class PointageCipController extends Controller
     private function renderPointages(Request $request, ?int $sourceFinancementId = null, bool $pejedec = false)
     {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
-        $periode = Periode::where('code', $mois)->first();
+        $filters = $request->only(['mois']);
 
-        $attenteQuery = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'stage.pointages'])
-            ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
-            ->whereDoesntHave('stage.pointages', function ($q) use ($mois) {
-                $q->whereHas('periode', function ($p) use ($mois) {
-                    $p->where('code', 'like', "%$mois%");
-                });
-            })
-            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                    $stageQuery->where('source_financement_id', $sourceFinancementId);
-                });
+        if ($request->wantsJson()) {
+            $cacheKey = 'cip_pointages_'.Auth::id().'_'.md5(json_encode([$mois, $sourceFinancementId, $pejedec]));
+
+            $data = Cache::remember($cacheKey, 1800, function () use ($mois, $sourceFinancementId) {
+                $attente = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'stage.pointages'])
+                    ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
+                    ->whereDoesntHave('stage.pointages', function ($q) use ($mois) {
+                        $q->whereHas('periode', function ($p) use ($mois) {
+                            $p->where('code', 'like', "%$mois%");
+                        });
+                    })
+                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                            $stageQuery->where('source_financement_id', $sourceFinancementId);
+                        });
+                    })
+                    ->get();
+
+                $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante'])
+                    ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
+                    ->whereHas('periode', function ($q) use ($mois) {
+                        $q->where('code', 'like', "%$mois%");
+                    })
+                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                            $stageQuery->where('source_financement_id', $sourceFinancementId);
+                        });
+                    })
+                    ->get();
+
+                $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
+                    ->ajourneParCA()
+                    ->whereHas('periode', function ($q) use ($mois) {
+                        $q->where('code', 'like', "%$mois%");
+                    })
+                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                            $stageQuery->where('source_financement_id', $sourceFinancementId);
+                        });
+                    })
+                    ->get();
+
+                $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
+                    ->where('statut', 'AJOURNE_DMG')
+                    ->whereHas('periode', function ($q) use ($mois) {
+                        $q->where('code', 'like', "%$mois%");
+                    })
+                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
+                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
+                            $stageQuery->where('source_financement_id', $sourceFinancementId);
+                        });
+                    })
+                    ->get();
+
+                return [
+                    'attente' => $attente,
+                    'effectues' => $effectues,
+                    'ajournesCA' => $ajournesCA,
+                    'ajournesDMG' => $ajournesDMG,
+                ];
             });
 
-        $attente = $attenteQuery->get();
+            return response()->json(array_merge($data, ['filters' => $filters]));
+        }
 
-        $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante'])
-            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
-            ->whereHas('periode', function ($q) use ($mois) {
-                $q->where('code', 'like', "%$mois%");
-            })
-            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                    $stageQuery->where('source_financement_id', $sourceFinancementId);
-                });
-            })
-            ->get();
+        $periode = Cache::remember('periode_'.$mois, 1800, fn () => Periode::where('code', $mois)->first());
+        $moisManques = Cache::remember('filter_mois_manques', 1800, fn () => Periode::orderBy('date_debut')->pluck('code', 'id'));
 
-        $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
-            ->ajourneParCA()
-            ->whereHas('periode', function ($q) use ($mois) {
-                $q->where('code', 'like', "%$mois%");
-            })
-            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                    $stageQuery->where('source_financement_id', $sourceFinancementId);
-                });
-            })
-            ->get();
-
-        $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
-            ->where('statut', 'AJOURNE_DMG')
-            ->whereHas('periode', function ($q) use ($mois) {
-                $q->where('code', 'like', "%$mois%");
-            })
-            ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                    $stageQuery->where('source_financement_id', $sourceFinancementId);
-                });
-            })
-            ->get();
-
-        $moisManques = Periode::orderBy('date_debut')->pluck('code', 'id');
-        $sourceFinancement = $sourceFinancementId !== null
-            ? SourceFinancement::find($sourceFinancementId)
-            : null;
+        $sourceFinancement = null;
+        if ($sourceFinancementId !== null) {
+            $sourceFinancement = Cache::remember('source_financement_'.$sourceFinancementId, 1800, fn () => SourceFinancement::find($sourceFinancementId));
+        }
 
         return Inertia::render($pejedec ? 'Cip/Pointages/Pejedec' : 'Cip/Pointages/Index', [
-            'attente' => $attente,
-            'effectues' => $effectues,
-            'ajournesCA' => $ajournesCA,
-            'ajournesDMG' => $ajournesDMG,
             'moisManques' => $moisManques,
             'moisActuel' => $mois,
             'periode' => $periode,
@@ -114,6 +131,7 @@ class PointageCipController extends Controller
                 'code' => $sourceFinancement->code,
                 'nom' => $sourceFinancement->nom,
             ] : null,
+            'filters' => $filters,
         ]);
     }
 

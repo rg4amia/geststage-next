@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dmg;
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Payment\DossierPaiement;
 use Inertia\Inertia;
 
 class RejetDmgController extends Controller
@@ -13,7 +14,7 @@ class RejetDmgController extends Controller
 
     public function index()
     {
-        $dossiersAjournesCB = \App\Models\Payment\DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
+        $dossiersAjournesCB = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
             ->withCount('paiements')
             ->where('statut', 'AJOURNE_CB')
             ->get();

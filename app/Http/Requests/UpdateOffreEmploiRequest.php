@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateOffreEmploiRequest extends FormRequest
 {
@@ -28,7 +29,7 @@ class UpdateOffreEmploiRequest extends FormRequest
             'type_stage_id' => ['required', 'exists:types_stage,id'],
             'source_financement_id' => ['required', 'exists:sources_financement,id'],
             'programme_id' => ['nullable', 'exists:programmes,id'],
-            'numero' => ['required', 'string', \Illuminate\Validation\Rule::unique('offres_emploi')->ignore($this->route('offre_emploi')->id)],
+            'numero' => ['required', 'string', Rule::unique('offres_emploi')->ignore($this->route('offre_emploi')->id)],
             'intitule' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'nombre_places' => ['required', 'integer', 'min:1'],

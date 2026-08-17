@@ -19,7 +19,7 @@ class LegacyMapperServiceTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));
 
-        $mapper = new LegacyMapperService();
+        $mapper = new LegacyMapperService;
         $legacyContrat = (object) [
             'etat_chef_agence' => 0,
             'date_chef_agence' => '2026-08-05',
@@ -34,7 +34,7 @@ class LegacyMapperServiceTest extends TestCase
 
     public function test_normalize_legacy_date_returns_null_for_zero_dates(): void
     {
-        $mapper = new LegacyMapperService();
+        $mapper = new LegacyMapperService;
 
         $this->assertNull($mapper->normalizeLegacyDate('0000-00-00 00:00:00'));
         $this->assertNull($mapper->normalizeLegacyDate('0000-00-00'));
@@ -44,7 +44,7 @@ class LegacyMapperServiceTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));
 
-        $mapper = new LegacyMapperService();
+        $mapper = new LegacyMapperService;
 
         [$start, $end] = $mapper->normalizeLegacyDateRange('2024-03-01', '2024-02-29');
 
@@ -56,7 +56,7 @@ class LegacyMapperServiceTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));
 
-        $mapper = new LegacyMapperService();
+        $mapper = new LegacyMapperService;
 
         [$start, $end] = $mapper->normalizeLegacyDateRange('2024-03-01', null);
 
@@ -66,7 +66,7 @@ class LegacyMapperServiceTest extends TestCase
 
     public function test_map_type_user_to_role_uses_app_role_slugs(): void
     {
-        $mapper = new LegacyMapperService();
+        $mapper = new LegacyMapperService;
 
         $this->assertSame('administrateur', $mapper->mapTypeUserToRole(1));
         $this->assertSame('agent_comptable', $mapper->mapTypeUserToRole(2));
@@ -78,7 +78,7 @@ class LegacyMapperServiceTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));
 
-        $mapper = new LegacyMapperService();
+        $mapper = new LegacyMapperService;
         $legacyContrat = (object) [
             'etat_chef_agence' => 0,
             'date_chef_agence' => '0000-00-00 00:00:00',
@@ -95,7 +95,7 @@ class LegacyMapperServiceTest extends TestCase
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));
 
-        $mapper = new LegacyMapperService();
+        $mapper = new LegacyMapperService;
         $demarrage = (object) [
             'etat_chef_agence' => 0,
             'date_chef_agence' => null,

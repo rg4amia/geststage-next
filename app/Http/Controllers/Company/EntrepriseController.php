@@ -6,6 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreEntrepriseRequest;
 use App\Http\Requests\UpdateEntrepriseRequest;
 use App\Models\Company\Entreprise;
+use App\Models\Reference\Agence;
+use App\Models\Reference\Commune;
+use App\Models\Reference\TypeStructure;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -21,7 +24,7 @@ class EntrepriseController extends Controller
         $entreprises = Entreprise::with(['agence', 'typeStructure'])
             ->when($request->search, function ($query, $search) {
                 $query->where('raison_sociale', 'ilike', "%{$search}%")
-                      ->orWhere('sigle', 'ilike', "%{$search}%");
+                    ->orWhere('sigle', 'ilike', "%{$search}%");
             })
             ->latest()
             ->paginate(10)
@@ -41,9 +44,9 @@ class EntrepriseController extends Controller
         $this->authorize('create', Entreprise::class);
 
         return Inertia::render('Entreprises/Create', [
-            'agences' => \App\Models\Reference\Agence::all(),
-            'communes' => \App\Models\Reference\Commune::all(),
-            'typesStructure' => \App\Models\Reference\TypeStructure::all(),
+            'agences' => Agence::all(),
+            'communes' => Commune::all(),
+            'typesStructure' => TypeStructure::all(),
         ]);
     }
 
@@ -67,9 +70,9 @@ class EntrepriseController extends Controller
 
         return Inertia::render('Entreprises/Edit', [
             'entreprise' => $entreprise,
-            'agences' => \App\Models\Reference\Agence::all(),
-            'communes' => \App\Models\Reference\Commune::all(),
-            'typesStructure' => \App\Models\Reference\TypeStructure::all(),
+            'agences' => Agence::all(),
+            'communes' => Commune::all(),
+            'typesStructure' => TypeStructure::all(),
         ]);
     }
 

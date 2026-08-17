@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers\Desse;
 
-use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
+use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Workflow\InstanceParcours;

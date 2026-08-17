@@ -2,9 +2,9 @@
 
 namespace App\Models\Payment;
 
+use App\Models\Reference\Periode;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Reference\Periode;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 

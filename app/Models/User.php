@@ -34,7 +34,7 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements PasskeyUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable, HasRoles;
+    use HasFactory, HasRoles, Notifiable, PasskeyAuthenticatable, TwoFactorAuthenticatable;
 
     protected $table = 'users';
 
@@ -69,9 +69,7 @@ class User extends Authenticatable implements PasskeyUser
             'actif' => 'boolean',
             'derniere_connexion_le' => 'datetime',
             'password' => 'hashed',
-            /* @chisel-2fa */
             'two_factor_confirmed_at' => 'datetime',
-            /* @end-chisel-2fa */
         ];
     }
 }

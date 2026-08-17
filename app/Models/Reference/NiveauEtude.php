@@ -7,5 +7,6 @@ use Illuminate\Database\Eloquent\Model;
 class NiveauEtude extends Model
 {
     protected $table = 'niveaux_etude';
+
     protected $guarded = [];
 }

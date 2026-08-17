@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateEntrepriseRequest extends FormRequest
 {
@@ -28,8 +29,8 @@ class UpdateEntrepriseRequest extends FormRequest
             'type_structure_id' => ['nullable', 'exists:types_structure,id'],
             'raison_sociale' => ['required', 'string', 'max:255'],
             'sigle' => ['nullable', 'string', 'max:100'],
-            'numero_contribuable' => ['nullable', 'string', 'max:100', \Illuminate\Validation\Rule::unique('entreprises')->ignore($this->route('entreprise')->id)],
-            'registre_commerce' => ['nullable', 'string', 'max:100', \Illuminate\Validation\Rule::unique('entreprises')->ignore($this->route('entreprise')->id)],
+            'numero_contribuable' => ['nullable', 'string', 'max:100', Rule::unique('entreprises')->ignore($this->route('entreprise')->id)],
+            'registre_commerce' => ['nullable', 'string', 'max:100', Rule::unique('entreprises')->ignore($this->route('entreprise')->id)],
             'adresse' => ['nullable', 'string', 'max:255'],
             'telephone' => ['nullable', 'string', 'max:30'],
             'email' => ['nullable', 'email', 'max:255'],

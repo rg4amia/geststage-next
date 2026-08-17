@@ -5,14 +5,15 @@ namespace App\Models\Beneficiary;
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Internship\Stage;
+use App\Models\Reference\Commune;
+use App\Models\Reference\Diplome;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
 class Beneficiaire extends Model
 {
-    use HasPublicUuid, Auditable, HasFactory;
+    use Auditable, HasFactory, HasPublicUuid;
 
     /**
      * The table associated with the model.
@@ -38,11 +39,11 @@ class Beneficiaire extends Model
 
     public function communeResidence()
     {
-        return $this->belongsTo(\App\Models\Reference\Commune::class, 'commune_residence_id');
+        return $this->belongsTo(Commune::class, 'commune_residence_id');
     }
 
     public function diplome()
     {
-        return $this->belongsTo(\App\Models\Reference\Diplome::class, 'diplome_id');
+        return $this->belongsTo(Diplome::class, 'diplome_id');
     }
 }

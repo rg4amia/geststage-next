@@ -2,15 +2,15 @@
 
 namespace Tests\Feature\Domain\Workflow;
 
-use App\Enums\CorbeilleEnum;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
-use App\Models\User;
+use App\Enums\CorbeilleEnum;
 use App\Models\Internship\Stage;
+use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
+use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
 use App\Models\Workflow\TacheParcours;
-use App\Models\Workflow\EvenementParcours;
 use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -25,7 +25,7 @@ class WorkflowTransitionServiceTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->service = new WorkflowTransitionService();
+        $this->service = new WorkflowTransitionService;
     }
 
     public function test_initier_cree_instance_tache_et_evenement(): void
@@ -35,16 +35,16 @@ class WorkflowTransitionServiceTest extends TestCase
         $acteur->assignRole($roleCIP);
 
         $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
-        
+
         $etapeInitiale = EtapeParcours::factory()->create([
             'definition_parcours_id' => $definition->id,
             'role_responsable_id' => $roleCIP->id,
             'code' => 'CIP_INSCRIPTION',
             'initiale' => true,
-            'code_corbeille' => 'CORBEILLE_CIP'
+            'code_corbeille' => 'CORBEILLE_CIP',
         ]);
 
-        $stage = \App\Models\Internship\Stage::factory()->create();
+        $stage = Stage::factory()->create();
 
         $instance = $this->service->initier(
             $definition,

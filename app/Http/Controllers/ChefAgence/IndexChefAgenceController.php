@@ -23,8 +23,7 @@ class IndexChefAgenceController extends Controller
     public function __construct(
         private readonly WorkflowTransitionService $workflowService,
         private readonly ValidationChefAgenceService $validationService
-    ) {
-    }
+    ) {}
 
     public function listeStagiaireAttenteValidation(Request $request)
     {
@@ -128,19 +127,20 @@ class IndexChefAgenceController extends Controller
         foreach ($data['ids'] as $id) {
             $instance = $instances->get($id);
 
-            if (!$instance) {
+            if (! $instance) {
                 continue;
             }
 
             if ($data['type'] === 'demarrageOmis') {
                 $this->workflowService->caValideDemarrageOmis($instance);
+
                 continue;
             }
 
             $this->validationService->validerDemarrage($instance, $request->user());
         }
 
-        return back()->with('success', count($data['ids']) . ' dossier(s) validé(s) avec succès.');
+        return back()->with('success', count($data['ids']).' dossier(s) validé(s) avec succès.');
     }
 
     public function ajournerGroup(Request $request)
@@ -159,7 +159,7 @@ class IndexChefAgenceController extends Controller
             $this->workflowService->caAjourneSoumission($instance);
         }
 
-        return back()->with('success', count($data['ids']) . ' dossier(s) ajourné(s) avec succès.');
+        return back()->with('success', count($data['ids']).' dossier(s) ajourné(s) avec succès.');
     }
 
     public function genererAddGroup(Request $request)
@@ -170,7 +170,7 @@ class IndexChefAgenceController extends Controller
             'type' => ['nullable', 'string'],
         ]);
 
-        return back()->with('success', 'La génération d\'ADD a été déclenchée pour ' . count($data['ids']) . ' dossier(s).');
+        return back()->with('success', 'La génération d\'ADD a été déclenchée pour '.count($data['ids']).' dossier(s).');
     }
 
     private function baseQuery(Request $request): Builder
@@ -227,7 +227,7 @@ class IndexChefAgenceController extends Controller
             'type_stage' => $stage?->typeStage?->nom ?? '-',
             'type_structure' => $stage?->entreprise?->typeStructure?->nom ?? '-',
             'numero_aej' => $beneficiaire?->numero_aej ?? '-',
-            'nom_prenoms' => trim(($beneficiaire?->nom ?? '') . ' ' . ($beneficiaire?->prenoms ?? '')) ?: '-',
+            'nom_prenoms' => trim(($beneficiaire?->nom ?? '').' '.($beneficiaire?->prenoms ?? '')) ?: '-',
             'date_naissance' => $beneficiaire?->date_naissance ? Carbon::parse($beneficiaire->date_naissance)->format('d/m/Y') : '-',
             'sexe' => $beneficiaire?->sexe ?? '-',
             'contrat_label' => $contrat ? 'Avec Contrat' : 'Sans Contrat',
@@ -239,7 +239,7 @@ class IndexChefAgenceController extends Controller
     }
 
     /**
-     * @param array<int, CorbeilleEnum> $corbeilles
+     * @param  array<int, CorbeilleEnum>  $corbeilles
      */
     private function findInstanceForChefAgence(int $id, array $corbeilles): InstanceParcours
     {

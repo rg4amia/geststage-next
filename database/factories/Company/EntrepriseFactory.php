@@ -3,6 +3,7 @@
 namespace Database\Factories\Company;
 
 use App\Models\Company\Entreprise;
+use App\Models\Reference\Agence;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,7 +19,7 @@ class EntrepriseFactory extends Factory
     public function definition(): array
     {
         return [
-            'agence_id' => \App\Models\Reference\Agence::factory() ?? 1,
+            'agence_id' => Agence::factory() ?? 1,
             'commune_id' => null,
             'type_structure_id' => null,
             'raison_sociale' => $this->faker->company(),

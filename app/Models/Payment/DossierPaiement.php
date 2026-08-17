@@ -30,7 +30,7 @@ class DossierPaiement extends Model
     ];
 
     protected $casts = [
-        'montant_total' => 'decimal:2'
+        'montant_total' => 'decimal:2',
     ];
 
     public function periode(): BelongsTo
