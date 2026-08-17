@@ -479,9 +479,12 @@ class MigrateLegacyDataCommand extends Command
                     ['nom' => 'Parcours Legacy', 'active' => true]
                 );
 
+                $etapeCode = strtoupper($corbeilleEnum->value);
+                $etapeNom = str_replace('_', ' ', $etapeCode);
+
                 $etape = EtapeParcours::firstOrCreate(
-                    ['definition_parcours_id' => $definition->id, 'code' => 'INIT_LEGACY'],
-                    ['nom' => 'Initiale Legacy', 'initiale' => true, 'finale' => false]
+                    ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                    ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
                 );
 
                 InstanceParcours::updateOrCreate(
@@ -672,6 +675,14 @@ class MigrateLegacyDataCommand extends Command
                     $instance = $instancesMap[$stage_id] ?? null;
                     if ($instance) {
                         $corbeilleCible = $this->mapper->mapStatutStageToCorbeille($legacyEvent->etape_id ?? 1)->value;
+                        
+                        $etapeCode = strtoupper($corbeilleCible);
+                        $etapeNom = str_replace('_', ' ', $etapeCode);
+
+                        $etapeCible = EtapeParcours::firstOrCreate(
+                            ['definition_parcours_id' => $instance->definition_parcours_id, 'code' => $etapeCode],
+                            ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
+                        );
 
                         EvenementParcours::updateOrCreate(
                             [
@@ -679,7 +690,7 @@ class MigrateLegacyDataCommand extends Command
                                 'cle_idempotence' => 'mig_'.$legacyEvent->id.'_'.$instance->id,
                             ],
                             [
-                                'etape_cible_id' => $instance->etape_courante_id, // we might not know the exact target step, default to current
+                                'etape_cible_id' => $etapeCible->id,
                                 'type' => 'MIGRATION_STATUT',
                                 'donnees' => json_encode([
                                     'commentaire' => $legacyEvent->commentaire,
