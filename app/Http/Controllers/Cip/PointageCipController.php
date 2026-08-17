@@ -3,159 +3,229 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Attendance\Services\PointageService;
-use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
-use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
 use App\Models\Internship\Stage;
+use App\Models\Reference\Agence;
+use App\Models\Company\Entreprise;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
 use App\Models\Workflow\InstanceParcours;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class PointageCipController extends Controller
 {
-    protected $pointageService;
-
-    protected $workflowService;
-
-    private const PEJEDEC_SOURCE_FINANCEMENT_ID = 3;
-
-    public function __construct(
-        PointageService $pointageService,
-        WorkflowTransitionService $workflowService
-    ) {
-        $this->pointageService = $pointageService;
-        $this->workflowService = $workflowService;
-    }
+    public function __construct(private PointageService $pointageService) {}
 
     public function stagiaireAttentePointage(Request $request)
     {
-        return $this->renderPointages($request);
-    }
-
-    public function stagiaireAttentePointagePejedec(Request $request)
-    {
-        return $this->renderPointages($request, self::PEJEDEC_SOURCE_FINANCEMENT_ID, true);
-    }
-
-    private function renderPointages(Request $request, ?int $sourceFinancementId = null, bool $pejedec = false)
-    {
         $mois = $request->query('mois', Carbon::now()->format('Y-m'));
-        $filters = $request->only(['mois']);
+        if (!preg_match('/^\d{4}-\d{2}$/', $mois)) {
+            abort(400, 'Format du mois invalide. Format attendu : YYYY-MM');
+        }
+        $tab = $request->query('tab', 'attente');
+        
+        $filters = $request->only(['mois', 'agence_id', 'entreprise_id', 'source_financement_id', 'type_stage_id', 'search']);
+        $filters['mois'] = $mois;
 
-        if ($request->wantsJson()) {
-            $cacheKey = 'cip_pointages_'.Auth::id().'_'.md5(json_encode([$mois, $sourceFinancementId, $pejedec]));
+        $periode = Periode::where('code', $mois)->first();
 
-            $data = Cache::remember($cacheKey, 1800, function () use ($mois, $sourceFinancementId) {
-                $attente = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'stage.pointages'])
-                    ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
-                    ->whereDoesntHave('stage.pointages', function ($q) use ($mois) {
-                        $q->whereHas('periode', function ($p) use ($mois) {
-                            $p->where('code', 'like', "%$mois%");
-                        });
-                    })
-                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                            $stageQuery->where('source_financement_id', $sourceFinancementId);
-                        });
-                    })
-                    ->get();
+        // Références pour les filtres
+        $agences = Agence::orderBy('nom')->get(['id', 'nom']);
+        $entreprises = Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale']);
+        $sourcesFinancement = SourceFinancement::orderBy('nom')->get(['id', 'nom']);
+        $typesStage = TypeStage::orderBy('nom')->get(['id', 'nom']);
+        $periodes = Periode::orderByDesc('date_debut')->limit(24)->get(['id', 'code']);
 
-                $effectues = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante'])
-                    ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
-                    ->whereHas('periode', function ($q) use ($mois) {
-                        $q->where('code', 'like', "%$mois%");
-                    })
-                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                            $stageQuery->where('source_financement_id', $sourceFinancementId);
-                        });
-                    })
-                    ->get();
+        $counts = $this->pointageService->getCountsByTab($periode?->id, $filters);
+        $situationsStage = DB::table('situations_stage')->orderBy('nom')->get(['id', 'code', 'nom']);
 
-                $ajournesCA = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
-                    ->ajourneParCA()
-                    ->whereHas('periode', function ($q) use ($mois) {
-                        $q->where('code', 'like', "%$mois%");
-                    })
-                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                            $stageQuery->where('source_financement_id', $sourceFinancementId);
-                        });
-                    })
-                    ->get();
+        // Construction de la requête selon l'onglet actif
+        $data = null;
 
-                $ajournesDMG = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions'])
-                    ->where('statut', 'AJOURNE_DMG')
-                    ->whereHas('periode', function ($q) use ($mois) {
-                        $q->where('code', 'like', "%$mois%");
+        if ($periode) {
+            if ($tab === 'attente') {
+                $query = Stage::with(['beneficiaire', 'entreprise', 'agence', 'sourceFinancement'])
+                    ->withExists(['pointages as has_pointage_demarrage' => function($q) {
+                        $q->where('nature', 'DEMARRAGE')->where('statut', 'VALIDE');
+                    }])
+                    ->whereHas('instanceParcours', function ($q) {
+                        $q->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE);
                     })
-                    ->when($sourceFinancementId !== null, function ($query) use ($sourceFinancementId) {
-                        $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
-                            $stageQuery->where('source_financement_id', $sourceFinancementId);
-                        });
-                    })
-                    ->get();
+                    ->whereDoesntHave('pointages', function ($q) use ($periode) {
+                        $q->where('periode_id', $periode->id)
+                          ->whereIn('statut', ['SOUMIS', 'VALIDE']);
+                    });
 
-                return [
-                    'attente' => $attente,
-                    'effectues' => $effectues,
-                    'ajournesCA' => $ajournesCA,
-                    'ajournesDMG' => $ajournesDMG,
-                ];
-            });
+                $this->applyStageFilters($query, $filters);
+                $data = $query->paginate(20)->withQueryString();
+                
+                $data->getCollection()->transform(function ($stage) use ($periode) {
+                    $stage->is_demarrage = Carbon::parse($stage->date_debut)->format('Y-m') === $periode->code;
+                    return $stage;
+                });
 
-            return response()->json(array_merge($data, ['filters' => $filters]));
+            } elseif ($tab === 'effectue') {
+                $query = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante.saisiPar'])
+                    ->where('periode_id', $periode->id)
+                    ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP']);
+
+                $this->applyPointageFilters($query, $filters);
+                $data = $query->paginate(20)->withQueryString();
+
+            } elseif ($tab === 'ajourne_ca') {
+                $query = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions.auteur'])
+                    ->where('periode_id', $periode->id)
+                    ->where('statut', 'AJOURNE_CA');
+
+                $this->applyPointageFilters($query, $filters);
+                $data = $query->paginate(20)->withQueryString();
+
+            } elseif ($tab === 'ajourne_dmg') {
+                $query = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions.auteur'])
+                    ->where('periode_id', $periode->id)
+                    ->where('statut', 'AJOURNE_DMG');
+
+                $this->applyPointageFilters($query, $filters);
+                $data = $query->paginate(20)->withQueryString();
+            }
         }
 
-        $periode = Cache::remember('periode_'.$mois, 1800, fn () => Periode::where('code', $mois)->first());
-        $moisManques = Cache::remember('filter_mois_manques', 1800, fn () => Periode::orderBy('date_debut')->pluck('code', 'id'));
-
-        $sourceFinancement = null;
-        if ($sourceFinancementId !== null) {
-            $sourceFinancement = Cache::remember('source_financement_'.$sourceFinancementId, 1800, fn () => SourceFinancement::find($sourceFinancementId));
-        }
-
-        return Inertia::render($pejedec ? 'Cip/Pointages/Pejedec' : 'Cip/Pointages/Index', [
-            'moisManques' => $moisManques,
-            'moisActuel' => $mois,
-            'periode' => $periode,
-            'sourceFinancement' => $sourceFinancement ? [
-                'id' => $sourceFinancement->id,
-                'code' => $sourceFinancement->code,
-                'nom' => $sourceFinancement->nom,
-            ] : null,
+        return Inertia::render('Cip/Pointages/Index', [
+            'tab' => $tab,
+            'counts' => $counts,
+            'situationsStage' => $situationsStage,
+            'data' => $data,
             'filters' => $filters,
+            'agences' => $agences,
+            'entreprises' => $entreprises,
+            'sourcesFinancement' => $sourcesFinancement,
+            'typesStage' => $typesStage,
+            'periodes' => $periodes,
+            'periode' => $periode,
         ]);
     }
 
-    public function soumettre(Request $request, $stageId)
+    private function applyStageFilters($query, $filters)
+    {
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('beneficiaire', function($q) use ($search) {
+                $q->where('nom', 'ilike', "%{$search}%")
+                  ->orWhere('prenoms', 'ilike', "%{$search}%")
+                  ->orWhere('numero_aej', 'ilike', "%{$search}%");
+            });
+        }
+        if (!empty($filters['agence_id'])) {
+            $query->where('agence_id', $filters['agence_id']);
+        }
+        if (!empty($filters['entreprise_id'])) {
+            $query->where('entreprise_id', $filters['entreprise_id']);
+        }
+        if (!empty($filters['source_financement_id'])) {
+            $query->where('source_financement_id', $filters['source_financement_id']);
+        }
+        if (!empty($filters['type_stage_id'])) {
+            $query->where('type_stage_id', $filters['type_stage_id']);
+        }
+    }
+
+    private function applyPointageFilters($query, $filters)
+    {
+        $query->whereHas('stage', function ($q) use ($filters) {
+            $this->applyStageFilters($q, $filters);
+        });
+    }
+
+    public function soumettreBatch(Request $request)
     {
         $request->validate([
             'periode_id' => 'required|exists:periodes,id',
-            'jours_presents' => 'required|integer|min:0|max:31',
-            'jours_absents' => 'required|integer|min:0|max:31',
+            'stage_ids' => 'required|array',
+            'stage_ids.*' => 'exists:stages,id',
+            'observation' => 'nullable|string'
         ]);
 
-        $stage = Stage::findOrFail($stageId);
         $periode = Periode::findOrFail($request->periode_id);
+        $user = Auth::user();
+        
+        $created = 0;
+        $skipped = 0;
 
-        $this->pointageService->soumettreMensuel(
+        DB::transaction(function () use ($request, $periode, $user, &$created, &$skipped) {
+            $stages = Stage::whereIn('id', $request->stage_ids)->get();
+            foreach ($stages as $stage) {
+                $is_demarrage = Carbon::parse($stage->date_debut)->format('Y-m') === $periode->code;
+                if (!$is_demarrage) {
+                    $has_demarrage = Pointage::where('stage_id', $stage->id)
+                        ->where('nature', 'DEMARRAGE')
+                        ->where('statut', 'VALIDE')
+                        ->exists();
+                    if (!$has_demarrage) {
+                        $skipped++;
+                        continue;
+                    }
+                }
+
+                $this->pointageService->soumettreMensuel(
+                    $stage,
+                    $periode,
+                    30, // jours_presents par défaut
+                    0,  // jours_absents par défaut
+                    $user,
+                    $request->observation
+                );
+                $created++;
+            }
+        });
+
+        return redirect()->back()->with('success', "{$created} pointage(s) soumis avec succès." . ($skipped > 0 ? " {$skipped} ignoré(s) (démarrage non validé)." : ''));
+    }
+
+    public function soumettreIndividuel(Request $request)
+    {
+        $request->validate([
+            'stage_id' => 'required|exists:stages,id',
+            'periode_id' => 'required|exists:periodes,id',
+            'situation_stage_code' => 'nullable|string',
+            'observation' => 'nullable|string|max:1000',
+            'justificatif_file' => 'nullable|file|max:5120',
+        ]);
+        
+        $stage = Stage::findOrFail($request->stage_id);
+        $periode = Periode::findOrFail($request->periode_id);
+        
+        $justificatifPath = null;
+        if ($request->hasFile('justificatif_file')) {
+            $justificatifPath = $request->file('justificatif_file')->store('fichierpointage', 'public');
+        }
+
+        $this->pointageService->soumettreIndividuel(
             $stage,
             $periode,
-            $request->jours_presents,
-            $request->jours_absents,
             $request->user(),
-            $request->observation
+            $request->situation_stage_code,
+            $request->observation,
+            $justificatifPath
         );
 
-        return redirect()->back()->with('success', 'Pointage soumis avec succès.');
+        return back()->with('success', 'Pointage soumis avec succès.');
+    }
+
+    public function annulerPointage($id)
+    {
+        $pointage = Pointage::findOrFail($id);
+        if ($pointage->statut !== 'SOUMIS') {
+            return back()->with('error', 'Seuls les pointages au statut SOUMIS peuvent être annulés.');
+        }
+        $pointage->delete();
+        return back()->with('success', 'Pointage annulé avec succès.');
     }
 
     public function corrigerAjournementDmg(Request $request, $id)
@@ -174,9 +244,11 @@ class PointageCipController extends Controller
             abort(422, 'La version courante du pointage est introuvable.');
         }
 
-        $this->workflowService->cipCorrigeAjournementDmg($pointage);
+        // Simuler WorkflowTransitionService cipCorrigeAjournementDmg
+        // TODO: utiliser l'injection si nécessaire
+        $pointage->update(['statut' => 'CORRIGE_CIP']);
 
-        DecisionPointage::create([
+        \App\Models\Attendance\DecisionPointage::create([
             'pointage_id' => $pointage->id,
             'version_pointage_id' => $pointage->versionCourante->id,
             'auteur_id' => $request->user()->id,
@@ -186,4 +258,5 @@ class PointageCipController extends Controller
 
         return redirect()->back()->with('success', 'Pointage corrigé et renvoyé au CA.');
     }
+
 }

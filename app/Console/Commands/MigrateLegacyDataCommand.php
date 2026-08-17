@@ -14,6 +14,7 @@ use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\NiveauEtude;
+use App\Models\Reference\TypePaiement;
 use App\Models\Reference\Region;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
@@ -152,6 +153,21 @@ class MigrateLegacyDataCommand extends Command
                     [
                         'code' => 'SF-'.$s->id,
                         'nom' => $s->libelle_financement ?? 'Source '.$s->id,
+                    ]
+                );
+            }
+        }
+
+        // Types de paiement
+        if (Schema::connection('legacy')->hasTable('type_paiements')) {
+            $typesPaiement = DB::connection('legacy')->table('type_paiements')->get();
+            foreach ($typesPaiement as $tp) {
+                TypePaiement::updateOrCreate(
+                    ['ancien_id' => $tp->id],
+                    [
+                        'code' => 'TP-'.$tp->id,
+                        'nom' => $tp->libelle ?? 'Paiement '.$tp->id,
+                        'actif' => true,
                     ]
                 );
             }
@@ -335,10 +351,13 @@ class MigrateLegacyDataCommand extends Command
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
 
+        // Load type_paiement mapping once (legacy id → new id) to avoid FK violations
+        $typesPaiementMap = TypePaiement::pluck('id', 'ancien_id')->toArray();
+
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$bar) {
+        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$bar, $typesPaiementMap) {
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->numero_aej)) {
                     $bar->advance();
@@ -378,7 +397,7 @@ class MigrateLegacyDataCommand extends Command
                         'autre_handicap' => ! empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non' ? ($legacyContrat->type_handicap ?? 'Handicap signalé') : null,
                         'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
                         'numero_wave' => $legacyContrat->numero_wave ?? null,
-                        'type_paiement_id' => $legacyContrat->type_paiement_id ?? null,
+                        'type_paiement_id' => isset($legacyContrat->type_paiement_id) ? ($typesPaiementMap[$legacyContrat->type_paiement_id] ?? null) : null,
                     ]
                 );
                 $bar->advance();

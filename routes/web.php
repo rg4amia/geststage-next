@@ -55,8 +55,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Phase 5 : Pointages CIP
     Route::get('/cip/pointages', [PointageCipController::class, 'stagiaireAttentePointage'])->name('cip.pointages.index');
     Route::get('/cip/pointages/pejedec', [PointageCipController::class, 'stagiaireAttentePointagePejedec'])->name('cip.pointages.pejedec');
-    Route::post('/cip/pointages/soumettre/{stageId}', [PointageCipController::class, 'soumettre'])->name('cip.pointages.soumettre');
+    Route::post('/cip/pointages/soumettre-batch', [PointageCipController::class, 'soumettreBatch'])->name('cip.pointages.soumettre_batch');
     Route::post('/cip/pointages/corriger-ajournement-dmg/{id}', [PointageCipController::class, 'corrigerAjournementDmg'])->name('cip.pointages.corriger_ajournement_dmg');
+    Route::post('/cip/pointages/soumettre-individuel', [PointageCipController::class, 'soumettreIndividuel'])->name('cip.pointages.soumettre_individuel');
+    Route::delete('/cip/pointages/{id}/annuler', [PointageCipController::class, 'annulerPointage'])->name('cip.pointages.annuler');
 
     // Phase 5 : Pointages Chef d'Agence
     Route::get('/chefagence/pointages', [PointageChefAgenceController::class, 'pointageAttenteValidationByChefAgence'])->name('chefagence.pointages.index');

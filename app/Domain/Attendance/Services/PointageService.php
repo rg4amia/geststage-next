@@ -12,6 +12,7 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use App\Models\User;
+use App\Enums\CorbeilleEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -19,6 +20,107 @@ use InvalidArgumentException;
 class PointageService
 {
     public function __construct(private WorkflowTransitionService $workflowService) {}
+
+    public function getCountsByTab(?int $periodeId, $stageFilters = []): array
+    {
+        $counts = [
+            'attente' => 0,
+            'effectue' => 0,
+            'ajourne_ca' => 0,
+            'ajourne_dmg' => 0,
+        ];
+
+        if (!$periodeId) {
+            return $counts;
+        }
+
+        $queryAttente = Stage::whereHas('instanceParcours', function ($q) {
+            $q->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE);
+        })->whereDoesntHave('pointages', function ($q) use ($periodeId) {
+            $q->where('periode_id', $periodeId)
+              ->whereIn('statut', ['SOUMIS', 'VALIDE']);
+        });
+        
+        // Appliquer les filtres de stage si présents
+        if (!empty($stageFilters['agence_id'])) {
+            $queryAttente->where('agence_id', $stageFilters['agence_id']);
+        }
+        if (!empty($stageFilters['entreprise_id'])) {
+            $queryAttente->where('entreprise_id', $stageFilters['entreprise_id']);
+        }
+        if (!empty($stageFilters['source_financement_id'])) {
+            $queryAttente->where('source_financement_id', $stageFilters['source_financement_id']);
+        }
+        if (!empty($stageFilters['type_stage_id'])) {
+            $queryAttente->where('type_stage_id', $stageFilters['type_stage_id']);
+        }
+
+        $counts['attente'] = $queryAttente->count();
+
+        $counts['effectue'] = Pointage::where('periode_id', $periodeId)
+            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
+            ->whereHas('stage', function ($q) use ($stageFilters) {
+                if (!empty($stageFilters['agence_id'])) $q->where('agence_id', $stageFilters['agence_id']);
+                if (!empty($stageFilters['entreprise_id'])) $q->where('entreprise_id', $stageFilters['entreprise_id']);
+                if (!empty($stageFilters['source_financement_id'])) $q->where('source_financement_id', $stageFilters['source_financement_id']);
+                if (!empty($stageFilters['type_stage_id'])) $q->where('type_stage_id', $stageFilters['type_stage_id']);
+            })
+            ->count();
+
+        $counts['ajourne_ca'] = Pointage::where('periode_id', $periodeId)
+            ->where('statut', 'AJOURNE_CA')
+            ->whereHas('stage', function ($q) use ($stageFilters) {
+                if (!empty($stageFilters['agence_id'])) $q->where('agence_id', $stageFilters['agence_id']);
+                if (!empty($stageFilters['entreprise_id'])) $q->where('entreprise_id', $stageFilters['entreprise_id']);
+                if (!empty($stageFilters['source_financement_id'])) $q->where('source_financement_id', $stageFilters['source_financement_id']);
+                if (!empty($stageFilters['type_stage_id'])) $q->where('type_stage_id', $stageFilters['type_stage_id']);
+            })
+            ->count();
+
+        $counts['ajourne_dmg'] = Pointage::where('periode_id', $periodeId)
+            ->where('statut', 'AJOURNE_DMG')
+            ->whereHas('stage', function ($q) use ($stageFilters) {
+                if (!empty($stageFilters['agence_id'])) $q->where('agence_id', $stageFilters['agence_id']);
+                if (!empty($stageFilters['entreprise_id'])) $q->where('entreprise_id', $stageFilters['entreprise_id']);
+                if (!empty($stageFilters['source_financement_id'])) $q->where('source_financement_id', $stageFilters['source_financement_id']);
+                if (!empty($stageFilters['type_stage_id'])) $q->where('type_stage_id', $stageFilters['type_stage_id']);
+            })
+            ->count();
+
+        return $counts;
+    }
+
+    public function soumettreIndividuel(
+        Stage $stage, 
+        Periode $periode, 
+        User $cip, 
+        ?string $situationStageCode = null,
+        ?string $observation = null,
+        ?string $justificatifPath = null
+    ): Pointage
+    {
+        $isAbsent = false;
+        if ($situationStageCode) {
+            $code = strtolower($situationStageCode);
+            if (str_contains($code, 'abandon') || str_contains($code, 'suspension') || str_contains($code, 'fin')) {
+                $isAbsent = true;
+            }
+        }
+        
+        $joursPresents = $isAbsent ? 0 : 30;
+        $joursAbsents = $isAbsent ? 30 : 0;
+
+        return $this->soumettreMensuel(
+            $stage,
+            $periode,
+            $joursPresents,
+            $joursAbsents,
+            $cip,
+            $observation,
+            $situationStageCode,
+            $justificatifPath
+        );
+    }
 
     /**
      * Retourne la liste des stages actifs (validés CA) n'ayant pas encore de pointage pour ce mois.
@@ -51,9 +153,18 @@ class PointageService
     /**
      * Le CIP soumet les présences mensuelles d'un stagiaire.
      */
-    public function soumettreMensuel(Stage $stage, Periode $periode, int $joursPresents, int $joursAbsents, User $cip, ?string $observation = null): Pointage
+    public function soumettreMensuel(
+        Stage $stage, 
+        Periode $periode, 
+        int $joursPresents, 
+        int $joursAbsents, 
+        User $cip, 
+        ?string $observation = null,
+        ?string $situationStageCode = null,
+        ?string $justificatifPath = null
+    ): Pointage
     {
-        return DB::transaction(function () use ($stage, $periode, $joursPresents, $joursAbsents, $cip, $observation) {
+        return DB::transaction(function () use ($stage, $periode, $joursPresents, $joursAbsents, $cip, $observation, $situationStageCode, $justificatifPath) {
             // 1. Chercher s'il existe déjà un pointage pour cette période
             $pointage = Pointage::firstOrCreate(
                 ['stage_id' => $stage->id, 'periode_id' => $periode->id, 'nature' => 'MENSUEL'],
@@ -64,6 +175,14 @@ class PointageService
             $pointage->increment('version_courante');
             $pointage->update(['statut' => 'SOUMIS']);
 
+            $donneesComplementaires = [];
+            if ($situationStageCode) {
+                $donneesComplementaires['situation'] = $situationStageCode;
+            }
+            if ($justificatifPath) {
+                $donneesComplementaires['justificatif'] = $justificatifPath;
+            }
+
             // 3. Créer la nouvelle version (snapshot)
             $version = VersionPointage::create([
                 'pointage_id' => $pointage->id,
@@ -73,6 +192,7 @@ class PointageService
                 'jours_presents' => $joursPresents,
                 'jours_absents' => $joursAbsents,
                 'observation' => $observation,
+                'donnees_complementaires' => empty($donneesComplementaires) ? null : json_encode($donneesComplementaires),
             ]);
 
             return $pointage;
