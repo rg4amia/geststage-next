@@ -17,23 +17,26 @@ const MesStagiaires = ({
     filters,
     auth
 }: any) => {
-        const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+    const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+        setIsMounted(true);
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('mesStagiairesColumnVisibility');
-
             if (saved) {
                 try {
-                    return JSON.parse(saved);
+                    setColumnVisibility(JSON.parse(saved));
                 } catch (e) {}
             }
         }
-
-        return {};
-    });
+    }, []);
 
     useEffect(() => {
-        localStorage.setItem('mesStagiairesColumnVisibility', JSON.stringify(columnVisibility));
-    }, [columnVisibility]);
+        if (isMounted) {
+            localStorage.setItem('mesStagiairesColumnVisibility', JSON.stringify(columnVisibility));
+        }
+    }, [columnVisibility, isMounted]);
 
     const toggleColumn = (header: string) => {
         setColumnVisibility(prev => ({
@@ -425,22 +428,26 @@ e.preventDefault();
             },
             {
                 header: 'Entreprise',
-                accessorKey: 'stage.entreprise.raison_sociale',
+                id: 'entreprise',
+                accessorFn: (row: any) => row.stage?.entreprise?.raison_sociale,
                 cell: (cell: any) => cell.getValue() || '-',
             },
             {
                 header: 'Source de financement',
-                accessorKey: 'stage.source_financement.nom',
+                id: 'source_financement',
+                accessorFn: (row: any) => row.stage?.source_financement?.nom,
                 cell: (cell: any) => cell.getValue() || '-',
             },
             {
                 header: 'Type de stage',
-                accessorKey: 'stage.type_stage.nom',
+                id: 'type_stage',
+                accessorFn: (row: any) => row.stage?.type_stage?.nom,
                 cell: (cell: any) => cell.getValue() || '-',
             },
             {
                 header: 'Type Structure',
-                accessorKey: 'stage.entreprise.type_structure.nom',
+                id: 'type_structure',
+                accessorFn: (row: any) => row.stage?.entreprise?.type_structure?.nom,
                 cell: (cell: any) => {
                     const type = cell.getValue();
 

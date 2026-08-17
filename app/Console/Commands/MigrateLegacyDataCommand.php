@@ -572,6 +572,40 @@ class MigrateLegacyDataCommand extends Command
                                 'saisi_le' => $date,
                             ]
                         );
+
+                        // CREATE PARCOURS FOR POINTAGE
+                        $definition = \App\Models\Workflow\DefinitionParcours::firstOrCreate(
+                            ['code' => 'POINTAGE_LEGACY', 'version' => 1],
+                            ['nom' => 'Parcours Pointage Legacy', 'active' => true]
+                        );
+
+                        $corbeilleEnum = 'cip_mes_stagiaires';
+                        if ($statut === 'AJOURNE_DMG') {
+                            $corbeilleEnum = 'cip_pointage_ajourne_dmg';
+                        } elseif ($statut === 'AJOURNE_CA') {
+                            $corbeilleEnum = 'cip_ajourne_ca';
+                        } elseif ($statut === 'VALIDE') {
+                            $corbeilleEnum = 'dmg_attente_paiement_presence';
+                        } elseif ($statut === 'SOUMIS') {
+                            $corbeilleEnum = 'ca_validation_pointages';
+                        }
+
+                        $etapeCode = strtoupper($corbeilleEnum);
+                        $etapeNom = str_replace('_', ' ', $etapeCode);
+
+                        $etape = \App\Models\Workflow\EtapeParcours::firstOrCreate(
+                            ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                            ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
+                        );
+
+                        \App\Models\Workflow\InstanceParcours::updateOrCreate(
+                            ['pointage_id' => $pointage->id],
+                            [
+                                'definition_parcours_id' => $definition->id,
+                                'etape_courante_id' => $etape->id,
+                                'corbeille_actuelle' => $corbeilleEnum,
+                            ]
+                        );
                     } catch (UniqueConstraintViolationException $e) {
                         // Ignorer les doublons de pointages pour le même stage sur la même période
                     }
@@ -658,6 +692,8 @@ class MigrateLegacyDataCommand extends Command
     private function migrateEvenements()
     {
         $this->info("Migration de l'historique (contrat_etape)...");
+        \DB::unprepared('ALTER TABLE evenements_parcours DISABLE TRIGGER evenements_parcours_immuables;');
+
         $query = DB::connection('legacy')->table('contrat_etape');
         $total = $query->count();
 
@@ -665,15 +701,32 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         $query->orderBy('id')->chunk(5000, function ($historique) use (&$bar) {
+            // MAP STAGES
             $contratIds = $historique->pluck('contrat_id')->filter()->unique()->toArray();
             $stagesMap = Stage::whereIn('ancien_id', $contratIds)->pluck('id', 'ancien_id')->toArray();
-            $instancesMap = InstanceParcours::whereIn('stage_id', array_values($stagesMap))->get()->keyBy('stage_id');
+            $instancesStageMap = InstanceParcours::whereIn('stage_id', array_values($stagesMap))->get()->keyBy('stage_id');
+
+            // MAP POINTAGES
+            $legacyPointageIds = $historique->pluck('pointage_id')->filter()->unique()->toArray();
+            $pointagesMap = \App\Models\Attendance\Pointage::whereIn('ancien_id', $legacyPointageIds)->pluck('id', 'ancien_id')->toArray();
+            $instancesPointageMap = InstanceParcours::whereIn('pointage_id', array_values($pointagesMap))->get()->keyBy('pointage_id');
 
             foreach ($historique as $legacyEvent) {
-                $stage_id = $stagesMap[$legacyEvent->contrat_id] ?? null;
-                if ($stage_id) {
-                    $instance = $instancesMap[$stage_id] ?? null;
-                    if ($instance) {
+                $instance = null;
+                
+                if ($legacyEvent->pointage_id) {
+                    $pointage_id = $pointagesMap[$legacyEvent->pointage_id] ?? null;
+                    if ($pointage_id) {
+                        $instance = $instancesPointageMap[$pointage_id] ?? null;
+                    }
+                } else {
+                    $stage_id = $stagesMap[$legacyEvent->contrat_id] ?? null;
+                    if ($stage_id) {
+                        $instance = $instancesStageMap[$stage_id] ?? null;
+                    }
+                }
+
+                if ($instance) {
                         $corbeilleCible = $this->mapper->mapStatutStageToCorbeille($legacyEvent->etape_id ?? 1)->value;
                         
                         $etapeCode = strtoupper($corbeilleCible);
@@ -702,7 +755,6 @@ class MigrateLegacyDataCommand extends Command
                             ]
                         );
                     }
-                }
                 $bar->advance();
             }
         });
