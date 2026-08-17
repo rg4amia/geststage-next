@@ -115,18 +115,18 @@ class LegacyMapperService
     /**
      * Map les anciens type_user_id vers les rôles Spatie de la nouvelle application.
      */
-    public function mapTypeUserToRole(int $typeUserId): string
+    public function mapTypeUserToRole(int $typeUserId): ?string
     {
         return match ($typeUserId) {
-            1 => 'Admin',
-            2 => 'Agent Comptable',
-            3 => 'Chef Agence',
-            4 => 'CIP',
-            5 => 'DMG',
-            6 => 'DESSE',
-            7 => 'DAICG',
-            8 => 'Chef de Bureau',
-            default => 'Visiteur',
+            1 => 'administrateur',
+            2 => 'agent_comptable',
+            3 => 'chef_agence',
+            4 => 'cip',
+            5 => 'dmg',
+            6 => 'desse',
+            7 => 'daicg',
+            8 => 'cb',
+            default => null,
         };
     }
 

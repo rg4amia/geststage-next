@@ -64,6 +64,16 @@ class LegacyMapperServiceTest extends TestCase
         $this->assertSame('2024-09-01', $end->format('Y-m-d'));
     }
 
+    public function test_map_type_user_to_role_uses_app_role_slugs(): void
+    {
+        $mapper = new LegacyMapperService();
+
+        $this->assertSame('administrateur', $mapper->mapTypeUserToRole(1));
+        $this->assertSame('agent_comptable', $mapper->mapTypeUserToRole(2));
+        $this->assertSame('chef_agence', $mapper->mapTypeUserToRole(3));
+        $this->assertSame('cip', $mapper->mapTypeUserToRole(4));
+    }
+
     public function test_map_chef_agence_corbeille_ignores_zero_validation_dates(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));

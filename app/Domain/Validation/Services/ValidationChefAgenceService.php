@@ -39,9 +39,9 @@ class ValidationChefAgenceService
             $contratActif = $stage->contrats()->latest()->first();
             $montantDemarrage = $contratActif ? $contratActif->prime_mensuelle : 0; // Ou une autre règle métier.
 
-            // FIXME: Need to find Periode and SourceFinancement appropriately.
-            // For now, we will assume standard defaults or retrieve the first available.
-            $periodeCourante = \App\Models\Reference\Periode::where('actif', true)->first();
+            // The `periodes` table currently models a valid date-range period, not an `actif` flag.
+            // Use the most recent period as the current effective period.
+            $periodeCourante = \App\Models\Reference\Periode::orderByDesc('date_debut')->first();
             $sourceFinancement = \App\Models\Reference\SourceFinancement::first();
 
             $droitPaiement = DroitPaiement::create([

@@ -32,7 +32,7 @@ class MesStagiairesCipController extends Controller
             'stage.contrats',
             'stage.pointages.periode',
             'stage.pointages.versionCourante'
-        ])->where('corbeille_actuelle', CorbeilleEnum::CIP_MES_STAGIAIRES);
+        ]);
 
         // Apply filters
         if ($request->filled('agence_id')) {

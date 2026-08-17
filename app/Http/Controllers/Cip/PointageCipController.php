@@ -96,7 +96,7 @@ class PointageCipController extends Controller
             })
             ->get();
 
-        $moisManques = Periode::where('actif', true)->pluck('code', 'id');
+        $moisManques = Periode::orderBy('date_debut')->pluck('code', 'id');
         $sourceFinancement = $sourceFinancementId !== null
             ? SourceFinancement::find($sourceFinancementId)
             : null;

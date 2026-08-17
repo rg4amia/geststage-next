@@ -11,6 +11,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Hash;
+use Spatie\Permission\Models\Role;
 
 class MigrateLegacyDataCommand extends Command
 {
@@ -202,8 +203,8 @@ class MigrateLegacyDataCommand extends Command
 
             // Assigner le rôle Spatie
             $roleName = $this->mapper->mapTypeUserToRole($legacyUser->type_user_id);
-            if ($roleName && !$user->hasRole($roleName)) {
-                // $user->assignRole($roleName);
+            if ($roleName !== null && Role::where('name', $roleName)->exists() && !$user->hasRole($roleName)) {
+                $user->syncRoles([$roleName]);
             }
 
             $bar->advance();
