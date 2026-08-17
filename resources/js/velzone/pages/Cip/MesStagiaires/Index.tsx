@@ -1,22 +1,27 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import axios from 'axios';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner, Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
-const MesStagiaires = ({ 
-    instances, 
-    agences, 
-    entreprises, 
-    typesfinancements, 
-    typestages, 
-    typestructures, 
-    etapes, 
-    situationstages, 
-    filters,
-    auth
-}: any) => {
+const MesStagiaires = () => {
+    const {
+        instances,
+        agences,
+        entreprises,
+        typesfinancements,
+        typestages,
+        typestructures,
+        etapes,
+        situationstages,
+        filters,
+        stats,
+        auth,
+    } = usePage<any>().props;
+
+    const data = instances?.data || instances || [];
+    const paginationInfo = instances;
+
     const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({});
     const [isMounted, setIsMounted] = useState(false);
 
@@ -45,12 +50,7 @@ const MesStagiaires = ({
         }));
     };
 
-    const [dataList, setDataList] = useState<any[]>(instances || []);
-    const [stats, setStats] = useState<any>({ total: 0, avecContrat: 0, sansContrat: 0, enAttente: 0 });
-    const [paginationInfo, setPaginationInfo] = useState<any>(null);
-    const [isLoading, setIsLoading] = useState(false);
     const [columnsDropdownOpen, setColumnsDropdownOpen] = useState(false);
-    const data = dataList;
 
     const [modalAnalyse, setModalAnalyse] = useState(false);
     const [selectedStagiaire, setSelectedStagiaire] = useState<any>(null);
@@ -95,41 +95,13 @@ const MesStagiaires = ({
         search: filters?.search || '',
     });
 
-    const fetchData = async (filtersData: any) => {
-        setIsLoading(true);
-
-        try {
-            const response: any = await axios.get('/cip/mes-stagiaires', {
-                params: filtersData,
-                headers: { Accept: 'application/json' }
-            });
-            const responseData = response.data !== undefined ? response.data : response;
-            const fetchedInstances = responseData.instances;
-            setDataList(fetchedInstances?.data || fetchedInstances || []);
-            setPaginationInfo(fetchedInstances);
-
-            if (responseData.stats) {
-                setStats(responseData.stats);
-            }
-        } catch (error) {
-            console.error('Erreur lors du chargement des données:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (!instances || instances.length === 0) {
-            fetchData(formData);
-        }
-    }, []);
-
     const handleSearch = (e?: any) => {
-        if(e) {
-e.preventDefault();
-}
-
-        fetchData(formData);
+        if(e) e.preventDefault();
+        
+        get('/cip/mes-stagiaires', {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const handleReset = () => {
@@ -146,7 +118,10 @@ e.preventDefault();
             search: '',
         };
         Object.keys(resetData).forEach(key => setData(key as any, (resetData as any)[key]));
-        fetchData(resetData);
+        router.get('/cip/mes-stagiaires', resetData, {
+            preserveState: true,
+            preserveScroll: true,
+        });
     };
 
     const toggleAnalyse = (stagiaire: any = null) => {

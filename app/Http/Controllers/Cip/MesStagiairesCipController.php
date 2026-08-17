@@ -40,131 +40,114 @@ class MesStagiairesCipController extends Controller
         ]);
 
 
-        Log::info("wantsJson hit!", ["wantsJson" => $request->wantsJson(), "accept" => $request->header("Accept")]);
-        if ($request->wantsJson()) {
-            $cacheKey = 'mes_stagiaires_index_' . Auth::id() . '_' . md5(json_encode($filters));
-
-            $instances = Cache::remember($cacheKey, 1800, function () use ($request) {
-                $query = InstanceParcours::with([
-                    'stage.beneficiaire.typePaiement',
-                    'stage.entreprise.typeStructure',
-                    'stage.agence',
-                    'stage.sourceFinancement',
-                    'stage.typeStage',
-                    'stage.contrats',
-                    'stage.pointages.periode',
-                    'stage.pointages.versionCourante'
-                ]);
-
-                $user = Auth::user();
-
-                // Equivalent to legacy ->mine() scope for CIPs
-                if ($user && $user->agence_id) {
-                    $query->whereHas('stage', function ($q) use ($user) {
-                        $q->where('agence_id', $user->agence_id);
-                    });
-                }
-
-                // Apply filters
-                if ($request->filled('agence_id')) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('agence_id', $request->agence_id);
-                    });
-                }
-                if ($request->filled('entreprise_id')) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('entreprise_id', $request->entreprise_id);
-                    });
-                }
-                if ($request->filled('typesfinancement_id')) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('source_financement_id', $request->typesfinancement_id);
-                    });
-                }
-                if ($request->filled('typestage_id')) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('type_stage_id', $request->typestage_id);
-                    });
-                }
-                if ($request->filled('type_structure_id')) {
-                    $query->whereHas('stage.entreprise', function ($q) use ($request) {
-                        $q->where('type_structure_id', $request->type_structure_id);
-                    });
-                }
-                if ($request->filled('etape_id')) {
-                    $query->where('etape_courante_id', $request->etape_id);
-                }
-                if ($request->filled('situationstage_id')) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('situation_stage', $request->situationstage_id);
-                    });
-                }
-                if ($request->filled('date_debut')) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('date_debut', '>=', $request->date_debut);
-                    });
-                }
-                if ($request->filled('date_fin')) {
-                    $query->whereHas('stage', function ($q) use ($request) {
-                        $q->where('date_fin_prevue', '<=', $request->date_fin);
-                    });
-                }
-
-                $total = $query->count();
-                $avecContrat = (clone $query)->has('stage.contrats')->count();
-                $sansContrat = $total - $avecContrat;
-                $enAttente = (clone $query)->whereIn('corbeille_actuelle', [
-                    'ca_attente_validation_demarrage', 
-                    'ca_attente_validation_omis', 
-                    'dmg_attente_paiement_demarrage', 
-                    'ca_validation_pointages', 
-                    'desse_attente_verification_dmg', 
-                    'desse_attente_ca', 
-                    'daicg_attente_dmg'
-                ])->count();
-
-                $paginator = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString()->toArray();
-                
-                return [
-                    'instances' => $paginator,
-                    'stats' => [
-                        'total' => $total,
-                        'avecContrat' => $avecContrat,
-                        'sansContrat' => $sansContrat,
-                        'enAttente' => $enAttente,
-                    ]
-                ];
-            });
-
-            return response()->json([
-                'instances' => $instances['instances'], 
-                'stats' => $instances['stats'],
-                'filters' => $filters
-            ]);
-        }
-
         $user = Auth::user();
 
-        // Shell Inertia — données de filtres uniquement
-        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => \App\Models\Reference\Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $query = InstanceParcours::with([
+            'stage.beneficiaire.typePaiement',
+            'stage.entreprise.typeStructure',
+            'stage.agence',
+            'stage.sourceFinancement',
+            'stage.typeStage',
+            'stage.contrats',
+            'stage.pointages.periode',
+            'stage.pointages.versionCourante'
+        ]);
 
-        // Filter entreprises for the logged-in user's agency like in legacy
+        if ($user && $user->agence_id) {
+            $query->whereHas('stage', function ($q) use ($user) {
+                $q->where('agence_id', $user->agence_id);
+            });
+        }
+
+        // Apply filters
+        if (!empty($filters['agence_id'])) {
+            $query->whereHas('stage', function ($q) use ($filters) {
+                $q->where('agence_id', $filters['agence_id']);
+            });
+        }
+        if (!empty($filters['entreprise_id'])) {
+            $query->whereHas('stage', function ($q) use ($filters) {
+                $q->where('entreprise_id', $filters['entreprise_id']);
+            });
+        }
+        if (!empty($filters['typesfinancement_id'])) {
+            $query->whereHas('stage', function ($q) use ($filters) {
+                $q->where('source_financement_id', $filters['typesfinancement_id']);
+            });
+        }
+        if (!empty($filters['typestage_id'])) {
+            $query->whereHas('stage', function ($q) use ($filters) {
+                $q->where('type_stage_id', $filters['typestage_id']);
+            });
+        }
+        if (!empty($filters['type_structure_id'])) {
+            $query->whereHas('stage.entreprise', function ($q) use ($filters) {
+                $q->where('type_structure_id', $filters['type_structure_id']);
+            });
+        }
+        if (!empty($filters['etape_id'])) {
+            $query->where('etape_courante_id', $filters['etape_id']);
+        }
+        if (!empty($filters['situationstage_id'])) {
+            $query->whereHas('stage', function ($q) use ($filters) {
+                $q->where('situation_stage', $filters['situationstage_id']);
+            });
+        }
+        if (!empty($filters['date_debut'])) {
+            $query->whereHas('stage', function ($q) use ($filters) {
+                $q->where('date_debut', '>=', $filters['date_debut']);
+            });
+        }
+        if (!empty($filters['date_fin'])) {
+            $query->whereHas('stage', function ($q) use ($filters) {
+                $q->where('date_fin_prevue', '<=', $filters['date_fin']);
+            });
+        }
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('stage.beneficiaire', function($q) use ($search) {
+                $q->where('nom', 'ilike', "%{$search}%")
+                  ->orWhere('prenoms', 'ilike', "%{$search}%")
+                  ->orWhere('numero_aej', 'ilike', "%{$search}%");
+            });
+        }
+
+        $total = $query->count();
+        $avecContrat = (clone $query)->has('stage.contrats')->count();
+        $sansContrat = $total - $avecContrat;
+        $enAttente = (clone $query)->whereIn('corbeille_actuelle', [
+            'ca_attente_validation_demarrage', 
+            'ca_attente_validation_omis', 
+            'dmg_attente_paiement_demarrage', 
+            'ca_validation_pointages', 
+            'desse_attente_verification_dmg', 
+            'desse_attente_ca', 
+            'daicg_attente_dmg'
+        ])->count();
+
+        $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
+
+        // Shell Inertia — données de filtres
+        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => \App\Models\Reference\Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
         $entreprises = Cache::remember('filter_entreprises_mes_stagiaires_' . ($user->id ?? '0'), 1800, fn () =>
             \App\Models\Company\Entreprise::when($user && $user->agence_id, function ($q) use ($user) {
                 $q->where('agence_id', $user->agence_id);
             })->orderBy('raison_sociale')->pluck('raison_sociale', 'id')->toArray()
         );
-
         $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => \App\Models\Reference\SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
         $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
         $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
         $etapes = Cache::remember('filter_etapes_mes_stagiaires', 1800, fn () => \App\Models\Workflow\EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
-
-        // stages.situation_stage stocke le code (dénormalisé) et non l'id de la table de référence,
-        // donc on indexe les options du filtre par code pour que la comparaison reste cohérente.
         $situationstages = Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn () => \App\Models\Reference\SituationStage::orderBy('nom')->pluck('nom', 'code')->toArray());
 
         return Inertia::render('Cip/MesStagiaires/Index', [
+            'instances' => $instances,
+            'stats' => [
+                'total' => $total,
+                'avecContrat' => $avecContrat,
+                'sansContrat' => $sansContrat,
+                'enAttente' => $enAttente,
+            ],
             'agences' => $agences,
             'entreprises' => $entreprises,
             'typesfinancements' => $typesfinancements,

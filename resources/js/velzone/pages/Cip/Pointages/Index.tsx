@@ -129,7 +129,7 @@ const PointagesIndex = (props: PageProps) => {
             Object.entries(currentFilters).forEach(([key, val]) => {
                 if (val) params[key] = val;
             });
-            router.get(route('cip.pointages.index'), params, {
+            router.get('/cip/pointages', params, {
                 preserveState: true,
                 preserveScroll: true,
             });
@@ -175,7 +175,7 @@ const PointagesIndex = (props: PageProps) => {
 
         const stageIds = (data?.data || []).map((item: any) => item.id);
         router.post(
-            route('cip.pointages.soumettre_batch'),
+            '/cip/pointages/soumettre-batch',
             {
                 periode_id: periode?.id,
                 stage_ids: stageIds,
@@ -220,7 +220,7 @@ const PointagesIndex = (props: PageProps) => {
             formData.append('justificatif_file', justificatifRef.current.files[0]);
         }
 
-        router.post(route('cip.pointages.soumettre_individuel'), formData, {
+        router.post('/cip/pointages/soumettre-individuel', formData, {
             preserveScroll: true,
             forceFormData: true,
             onSuccess: () => {
