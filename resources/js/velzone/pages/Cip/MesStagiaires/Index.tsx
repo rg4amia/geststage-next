@@ -18,6 +18,7 @@ const MesStagiaires = ({
 }: any) => {
     const [dataList, setDataList] = useState<any[]>(instances || []);
     const [stats, setStats] = useState<any>({ total: 0, avecContrat: 0, sansContrat: 0, enAttente: 0 });
+    const [paginationInfo, setPaginationInfo] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
     const data = dataList;
 
@@ -47,6 +48,7 @@ const MesStagiaires = ({
             const responseData = response.data !== undefined ? response.data : response;
             const fetchedInstances = responseData.instances;
             setDataList(fetchedInstances?.data || fetchedInstances || []);
+            setPaginationInfo(fetchedInstances);
             if (responseData.stats) {
                 setStats(responseData.stats);
             }
@@ -623,7 +625,10 @@ const MesStagiaires = ({
                                         columns={columns}
                                         data={data}
                                         isGlobalFilter={false}
-                                        customPageSize={10}
+                                        customPageSize={data.length}
+                                        isServerPagination={true}
+                                        serverPagination={paginationInfo}
+                                        onPageChange={(page) => fetchData({ ...formData, page })}
                                         divClass="table-responsive"
                                         tableClass="table table-striped table-hover align-middle mb-0"
                                         theadClass="table-light"

@@ -87,6 +87,9 @@ interface TableContainerProps {
   handleCompanyClick?: any;
   handleContactClick?: any;
   handleTicketClick?: any;
+  isServerPagination?: boolean;
+  serverPagination?: any;
+  onPageChange?: (page: number) => void;
 }
 
 const TableContainer = ({
@@ -100,7 +103,9 @@ const TableContainer = ({
   thClass,
   divClass,
   SearchPlaceholder,
-
+  isServerPagination,
+  serverPagination,
+  onPageChange
 }: TableContainerProps) => {
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState('');
@@ -239,6 +244,7 @@ const TableContainer = ({
         </Table>
       </div>
 
+      {!isServerPagination && (
       <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
         <div className="col-sm">
           <div className="text-muted">Showing<span className="fw-semibold ms-1">{getState().pagination.pageSize}</span> of <span className="fw-semibold">{data.length}</span> Results
@@ -262,6 +268,45 @@ const TableContainer = ({
           </ul>
         </div>
       </Row>
+      )}
+
+      {isServerPagination && serverPagination && (
+      <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
+        <div className="col-sm">
+          <div className="text-muted">Affichage de <span className="fw-semibold ms-1">{data.length}</span> sur <span className="fw-semibold">{serverPagination.total}</span> résultats
+          </div>
+        </div>
+        <div className="col-sm-auto">
+          <ul className="pagination pagination-separated pagination-md justify-content-center justify-content-sm-start mb-0">
+            {serverPagination.links?.map((link: any, key: number) => {
+              const isActive = link.active;
+              const isDisabled = link.url === null;
+              
+              let label = link.label;
+              if (label.includes('Previous')) label = 'Précédent';
+              if (label.includes('Next')) label = 'Suivant';
+
+              return (
+                <li key={key} className={`page-item ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}>
+                  <button 
+                    className="page-link" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      if (!isDisabled && onPageChange && link.url) {
+                        const urlParams = new URL(link.url, window.location.origin).searchParams;
+                        const page = urlParams.get('page');
+                        if (page) onPageChange(Number(page));
+                      }
+                    }}
+                    dangerouslySetInnerHTML={{ __html: label }}
+                  />
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      </Row>
+      )}
     </Fragment>
   );
 };
