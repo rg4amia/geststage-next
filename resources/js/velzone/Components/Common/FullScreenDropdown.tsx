@@ -4,7 +4,7 @@ const FullScreenDropdown: React.FC = () => {
     const [isFullScreenMode, setIsFullScreenMode] = useState<boolean>(true);
 
     const toggleFullscreen = () => {
-        let document : any = window.document;
+        const document : any = window.document;
         document.body.classList.add("fullscreen-enable");
 
         if (
@@ -13,6 +13,7 @@ const FullScreenDropdown: React.FC = () => {
             !document.webkitFullscreenElement
         ) {
             setIsFullScreenMode(false);
+
             if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen();
             } else if (document.documentElement.mozRequestFullScreen) {
@@ -22,6 +23,7 @@ const FullScreenDropdown: React.FC = () => {
             }
         } else {
             setIsFullScreenMode(true);
+
             if (document.cancelFullScreen) {
                 document.cancelFullScreen();
             } else if (document.mozCancelFullScreen) {
@@ -36,8 +38,9 @@ const FullScreenDropdown: React.FC = () => {
                 !document.webkitIsFullScreen &&
                 !document.mozFullScreen &&
                 !document.msFullscreenElement
-            )
-                document.body.classList.remove("fullscreen-enable");
+            ) {
+document.body.classList.remove("fullscreen-enable");
+}
         };
         document.addEventListener("fullscreenchange", exitHandler);
         document.addEventListener("webkitfullscreenchange", exitHandler);

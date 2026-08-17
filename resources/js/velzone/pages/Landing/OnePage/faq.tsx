@@ -1,6 +1,6 @@
+import classnames from "classnames";
 import React, { useState } from 'react';
 import { Col, Container, Row, Collapse } from 'reactstrap';
-import classnames from "classnames";
 
 const Faqs = () => {
 

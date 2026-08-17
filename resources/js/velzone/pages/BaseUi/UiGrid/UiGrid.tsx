@@ -1,16 +1,17 @@
 import React from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, } from 'reactstrap';
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 // Import Content
 import UiContent from '../../../Components/Common/UiContent';
 //import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 import { VerticalStartExample, VerticalCenterExample, VerticalEndExample, AlignSelfExample, HorizontalAlignExample } from "./UiGridCode";
 
 
 const UiGrid = () => {
     document.title="Grid | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

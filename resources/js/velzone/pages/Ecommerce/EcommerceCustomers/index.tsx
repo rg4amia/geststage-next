@@ -1,4 +1,10 @@
+import { useFormik } from "formik";
+import { isEmpty } from "lodash";
+import moment from "moment";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux";
+import { toast, ToastContainer } from 'react-toastify';
 import {
   Container,
   Row,
@@ -14,20 +20,18 @@ import {
   Input,
   FormFeedback
 } from "reactstrap";
+import { createSelector } from "reselect";
+import * as Yup from "yup";
 import { Link } from '@/velzone/inertia-router';
-import Flatpickr from "react-flatpickr";
-import { isEmpty } from "lodash";
-import moment from "moment";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
 
 //Import Breadcrumb
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import DeleteModal from "../../../Components/Common/DeleteModal";
 
+import TableContainer from "../../../Components/Common/TableContainer";
 import {
   getCustomers as onGetCustomers,
   addNewCustomer as onAddNewCustomer,
@@ -36,16 +40,12 @@ import {
 } from "../../../slices/thunks";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
-import TableContainer from "../../../Components/Common/TableContainer";
 
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Loader from "../../../Components/Common/Loader";
 
 // Export Modal
 import ExportCSVModal from "../../../Components/Common/ExportCSVModal";
-import { createSelector } from "reselect";
 
 const EcommerceCustomers = () => {
   const dispatch: any = useDispatch();
@@ -144,6 +144,7 @@ const EcommerceCustomers = () => {
         dispatch(onAddNewCustomer(newCustomer));
         validation.resetForm();
       }
+
       toggle();
     },
   });
@@ -205,6 +206,7 @@ const EcommerceCustomers = () => {
 
   const handleValidDate = (date: any) => {
     const date1 = moment(new Date(date)).format("DD MMM Y");
+
     return date1;
   };
 
@@ -222,6 +224,7 @@ const EcommerceCustomers = () => {
         ele.checked = false;
       });
     }
+
     deleteCheckbox();
   }, []);
 
@@ -233,7 +236,9 @@ const EcommerceCustomers = () => {
     const checkall: any = document.getElementById("checkBoxAll");
     selectedCheckBoxDelete.forEach((element: any) => {
       dispatch(onDeleteCustomer(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
     });
     setIsMultiDeleteButton(false);
     checkall.checked = false;
@@ -307,7 +312,9 @@ const EcommerceCustomers = () => {
                 <Link
                   to="#"
                   className="text-primary d-inline-block edit-item-btn"
-                  onClick={() => { const customerData = cellProps.row.original; handleCustomerClick(customerData); }}
+                  onClick={() => {
+ const customerData = cellProps.row.original; handleCustomerClick(customerData); 
+}}
                 >
 
                   <i className="ri-pencil-fill fs-16"></i>
@@ -317,7 +324,9 @@ const EcommerceCustomers = () => {
                 <Link
                   to="#"
                   className="text-danger d-inline-block remove-item-btn"
-                  onClick={() => { const customerData = cellProps.row.original; onClickDelete(customerData); }}
+                  onClick={() => {
+ const customerData = cellProps.row.original; onClickDelete(customerData); 
+}}
                 >
                   <i className="ri-delete-bin-5-fill fs-16"></i>
                 </Link>
@@ -334,6 +343,7 @@ const EcommerceCustomers = () => {
   const [isExportCSV, setIsExportCSV] = useState<boolean>(false);
 
   document.title = "Customers | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">
@@ -376,7 +386,9 @@ const EcommerceCustomers = () => {
                           type="button"
                           className="btn btn-success add-btn me-1"
                           id="create-btn"
-                          onClick={() => { setIsEdit(false); toggle(); }}
+                          onClick={() => {
+ setIsEdit(false); toggle(); 
+}}
                         >
                           <i className="ri-add-line align-bottom me-1"></i> Add
                           Customer
@@ -407,11 +419,12 @@ const EcommerceCustomers = () => {
 
                   <Modal id="showModal" isOpen={modal} toggle={toggle} centered>
                     <ModalHeader className="bg-light p-3" toggle={toggle}>
-                      {!!isEdit ? "Edit Customer" : "Add Customer"}
+                      {isEdit ? "Edit Customer" : "Add Customer"}
                     </ModalHeader>
                     <Form className="tablelist-form" onSubmit={(e: any) => {
                       e.preventDefault();
                       validation.handleSubmit();
+
                       return false;
                     }}>
                       <ModalBody>
@@ -565,9 +578,11 @@ const EcommerceCustomers = () => {
                       </ModalBody>
                       <ModalFooter>
                         <div className="hstack gap-2 justify-content-end">
-                          <button type="button" className="btn btn-light" onClick={() => { setModal(false); }}> Close </button>
+                          <button type="button" className="btn btn-light" onClick={() => {
+ setModal(false); 
+}}> Close </button>
 
-                          <button type="submit" className="btn btn-success"> {!!isEdit ? "Update" : "Add Customer"} </button>
+                          <button type="submit" className="btn btn-success"> {isEdit ? "Update" : "Add Customer"} </button>
                         </div>
                       </ModalFooter>
                     </Form>

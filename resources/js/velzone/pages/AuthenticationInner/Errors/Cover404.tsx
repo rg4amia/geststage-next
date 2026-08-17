@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 // Import Images
 // import error400cover from "../../../assets/images/error400-cover.png";
@@ -8,6 +8,7 @@ import error400cover from "../../../assets/images/error400-cover.png"
 
 const Cover404 = () => {
 document.title="404 Error Cover | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="auth-page-content">

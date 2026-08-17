@@ -3,7 +3,7 @@ import { getLoggedinUser } from "../../helpers/api_helper";
 
 const useProfile = () => {
   const userProfileSession = getLoggedinUser();
-  var token =
+  const token =
   userProfileSession &&
   userProfileSession["token"];
   const [loading, setLoading] = useState(userProfileSession ? false : true);
@@ -13,7 +13,7 @@ const useProfile = () => {
 
   useEffect(() => {
     const userProfileSession = getLoggedinUser();
-    var token =
+    const token =
       userProfileSession &&
       userProfileSession["token"];
     setUserProfile(userProfileSession ? userProfileSession : null);

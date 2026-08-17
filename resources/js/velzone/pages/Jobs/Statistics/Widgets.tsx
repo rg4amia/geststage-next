@@ -1,6 +1,6 @@
 import React from "react";
-import { jobWidgets } from "../../../common/data/appsJobs";
 import { Card, Col } from "reactstrap";
+import { jobWidgets } from "../../../common/data/appsJobs";
 import Charts from "./Charts";
 
 const Widgets = () => {

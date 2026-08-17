@@ -4,11 +4,12 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 function generateData(count : any, yrange : any) {
-    var i = 0;
-    var series = [];
+    let i = 0;
+    const series = [];
+
     while (i < count) {
-        var x = (i + 1).toString();
-        var y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
+        const x = (i + 1).toString();
+        const y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
 
         series.push({
             x: x,
@@ -16,11 +17,12 @@ function generateData(count : any, yrange : any) {
         });
         i++;
     }
+
     return series;
 }
 
 const BasicHeatmap = ({ dataColors } : any) => {
-    var chartHeatMapBasicColors = getChartColorsArray(dataColors);
+    const chartHeatMapBasicColors = getChartColorsArray(dataColors);
     generateData('','');
     const series = [{
         name: 'Metric1',
@@ -86,7 +88,7 @@ const BasicHeatmap = ({ dataColors } : any) => {
         })
     }
     ];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 450,
             type: 'heatmap',
@@ -105,6 +107,7 @@ const BasicHeatmap = ({ dataColors } : any) => {
             },
         },
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -118,7 +121,7 @@ const BasicHeatmap = ({ dataColors } : any) => {
 
 
 const MultipleHeatmap = ({ dataColors } : any) => {
-    var chartHeatMapMultipleColors = getChartColorsArray(dataColors);
+    const chartHeatMapMultipleColors = getChartColorsArray(dataColors);
     generateData('', '');
     const data = [{
         name: 'W1',
@@ -228,7 +231,7 @@ const MultipleHeatmap = ({ dataColors } : any) => {
     ]
 
     const series = data
-    var options : any = {
+    const options : any = {
         chart: {
             height: 450,
             type: 'heatmap',
@@ -256,6 +259,7 @@ const MultipleHeatmap = ({ dataColors } : any) => {
             }
         }
     };
+
     return (
 
         <ReactApexChart dir="ltr"
@@ -272,7 +276,7 @@ const MultipleHeatmap = ({ dataColors } : any) => {
 
 
 const ColorRange = ({ dataColors } : any) => {
-    var chartHeatMapColors = getChartColorsArray(dataColors);
+    const chartHeatMapColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Jan',
         data: generateData(20, {
@@ -337,7 +341,7 @@ const ColorRange = ({ dataColors } : any) => {
         })
     }
     ]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'heatmap',
@@ -392,6 +396,7 @@ const ColorRange = ({ dataColors } : any) => {
             },
         },
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -404,7 +409,7 @@ const ColorRange = ({ dataColors } : any) => {
 }
 
 const RangeWithoutShades = ({ dataColors } : any) => {
-    var chartHeatMapShadesColors = getChartColorsArray(dataColors);
+    const chartHeatMapShadesColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Metric1',
         data: generateData(20, {
@@ -469,7 +474,7 @@ const RangeWithoutShades = ({ dataColors } : any) => {
         })
     }
     ]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'heatmap',
@@ -516,6 +521,7 @@ const RangeWithoutShades = ({ dataColors } : any) => {
             },
         },
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"

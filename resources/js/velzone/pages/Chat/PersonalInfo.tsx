@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { Link } from '@/velzone/inertia-router';
 import {
   Button,
   Offcanvas,
@@ -10,6 +9,7 @@ import {
   DropdownItem,
   UncontrolledDropdown
 } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 import Img9 from "../../assets/images/small/img-9.jpg";
 import dummyImage from "../../assets/images/users/user-dummy-img.jpg";
 import { attachements } from "../../common/data/chat";

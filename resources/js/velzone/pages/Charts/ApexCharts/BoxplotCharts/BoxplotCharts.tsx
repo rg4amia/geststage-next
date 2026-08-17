@@ -5,7 +5,7 @@ import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColo
 
 // Candlestick Chart 
 const Basic = ({ dataColors }: any) => {
-  var chartBoxBasicColors = getChartColorsArray(dataColors);
+  const chartBoxBasicColors = getChartColorsArray(dataColors);
   const series = [
     {
       type: "boxPlot",
@@ -41,7 +41,7 @@ const Basic = ({ dataColors }: any) => {
       ],
     },
   ];
-  var options : any = {
+  const options : any = {
     chart: {
       type: 'boxPlot',
       height: 350,
@@ -84,7 +84,7 @@ const Basic = ({ dataColors }: any) => {
 
 // Scatter Chart
 const Scatter = ({ dataColors }: any) => {
-  var chartBoxBasicColors = getChartColorsArray(dataColors);
+  const chartBoxBasicColors = getChartColorsArray(dataColors);
   const series = [
     {
       name: "Box",
@@ -143,7 +143,7 @@ const Scatter = ({ dataColors }: any) => {
       ]
     }
   ];
-  var options : any = {
+  const options : any = {
     chart: {
       toolbar: {
         show: !1
@@ -197,7 +197,7 @@ const Scatter = ({ dataColors }: any) => {
 
 // Horizontal BoxPlot
 const Horizontal = ({ dataColors }: any) => {
-  var chartBoxBasicColors = getChartColorsArray(dataColors);
+  const chartBoxBasicColors = getChartColorsArray(dataColors);
   const series = [
     {
       type: "boxPlot",
@@ -233,7 +233,7 @@ const Horizontal = ({ dataColors }: any) => {
       ],
     },
   ];
-  var options : any = {
+  const options : any = {
     chart: {
       type: 'boxPlot',
       height: 350,
@@ -257,6 +257,7 @@ const Horizontal = ({ dataColors }: any) => {
       colors: [chartBoxBasicColors[2]]
     },
   };
+
   return (
     <React.Fragment>
       <ReactApexChart dir="ltr"

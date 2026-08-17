@@ -1,8 +1,8 @@
+import React, { useMemo } from 'react'
+import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap'
+import { Link } from '@/velzone/inertia-router';
 import { recentTable } from 'common/data';
 import TableContainer from 'Components/Common/TableContainer'
-import React, { useMemo } from 'react'
-import { Link } from '@/velzone/inertia-router';
-import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap'
 
 const RecentArticleTable = () => {
 

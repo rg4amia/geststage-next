@@ -18,19 +18,24 @@ import {
 
 export const getBalanceChartsData = createAsyncThunk("dashboardCrm/getBalanceChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "today") {
       response = getTodayBalanceDataApi();
     }
+
     if (data === "lastWeek") {
       response = getLastWeekBalanceDataApi();
     }
+
     if (data === "lastMonth") {
       response = getLastMonthBalanceDataApi();
     }
+
     if (data === "currentYear") {
       response = getCurrentYearBalanceDataApi();
     }
+
     return response;
   } catch (error) {
     return error;
@@ -39,22 +44,26 @@ export const getBalanceChartsData = createAsyncThunk("dashboardCrm/getBalanceCha
 
 export const getDialChartsData = createAsyncThunk("dashboardCrm/getDialChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "today") {
       response = getTodayDealDataApi();
     }
+
     if (data === "weekly") {
       response = getWeeklyDealDataApi();
     }
+
     if (data === "monthly") {
       response = getMonthlyDealDataApi();
     }
+
     if (data === "yearly") {
       response = getYearlyDealDataApi();
     }
+
     return response;
-  }
-  catch (error) {
+  } catch (error) {
     return error;
   }
 });
@@ -62,21 +71,25 @@ export const getDialChartsData = createAsyncThunk("dashboardCrm/getDialChartsDat
 export const getSalesChartsData = createAsyncThunk("dashboardCrm/getSalesChartsData", async (data:any) => {
   try {
     var response;
+
     if (data === "oct") {
       response = getOctSalesDataApi();
     }
+
     if (data === "nov") {
       response = getNovSalesDataApi();
     }
+
     if (data === "dec") {
       response = getDecSalesDataApi();
     }
+
     if (data === "jan") {
       response = getJanSalesDataApi();
     }
+
     return response;
-  }
-  catch (error) {
+  } catch (error) {
     return response;
   }
 });

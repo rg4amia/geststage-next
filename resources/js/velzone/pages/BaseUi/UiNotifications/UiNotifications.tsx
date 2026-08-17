@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
+import { ToastContainer, toast } from 'react-toastify';
 import { Button, Card, CardBody, Col, Container, Form, Row, Toast, ToastBody, ToastHeader, } from 'reactstrap';
 import { Link } from '@/velzone/inertia-router';
-import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
-//import Components
+import logosm from "../../../assets/images/logo-sm.png";
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
+//import Components
 
 // Import Images
-import logosm from "../../../assets/images/logo-sm.png";
 
 import { BootstrapToastsExample, ToastPlacementExample, BorderIconExample, ToastifyExample } from './UiNotificationsCode';
 

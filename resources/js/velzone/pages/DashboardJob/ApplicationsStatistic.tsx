@@ -1,11 +1,11 @@
 import React from "react";
-import { Col, Card, CardBody, CardHeader, Row } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
 import CountUp from "react-countup";
+import { Col, Card, CardBody, CardHeader, Row } from "reactstrap";
 import useChartColors from "Components/Common/useChartColors";
 
 const ApplicationsStatistic = ({ chartId }: any) => {
-  var applicationsStatisticColors = useChartColors(chartId);
+  const applicationsStatisticColors = useChartColors(chartId);
 
   const series = [
     {

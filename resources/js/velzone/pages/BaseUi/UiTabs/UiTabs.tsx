@@ -1,14 +1,18 @@
+import classnames from "classnames";
 import React, { useState } from 'react';
 import { Card, CardBody, Col, Container, Nav, NavItem, NavLink, Row, TabContent, TabPane, UncontrolledTooltip } from "reactstrap";
 import { Link } from '@/velzone/inertia-router';
-import classnames from "classnames";
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 // Import Images
+import img3 from "../../../assets/images/small/img-3.jpg";
+import img4 from "../../../assets/images/small/img-4.jpg";
+import img5 from "../../../assets/images/small/img-5.jpg";
+import img6 from "../../../assets/images/small/img-6.jpg";
+import img7 from "../../../assets/images/small/img-7.jpg";
+import img8 from "../../../assets/images/small/img-8.jpg";
 import avatar1 from "../../../assets/images/users/avatar-1.jpg";
 import avatar2 from "../../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
@@ -18,12 +22,8 @@ import avatar6 from "../../../assets/images/users/avatar-6.jpg";
 import avatar7 from "../../../assets/images/users/avatar-7.jpg";
 import avatar8 from "../../../assets/images/users/avatar-8.jpg";
 
-import img3 from "../../../assets/images/small/img-3.jpg";
-import img4 from "../../../assets/images/small/img-4.jpg";
-import img5 from "../../../assets/images/small/img-5.jpg";
-import img6 from "../../../assets/images/small/img-6.jpg";
-import img7 from "../../../assets/images/small/img-7.jpg";
-import img8 from "../../../assets/images/small/img-8.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import UiContent from '../../../Components/Common/UiContent';
 
 
 const UiTabs = () => {
@@ -207,22 +207,30 @@ const UiTabs = () => {
 
                                     <Nav tabs className="nav-tabs mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "1", })} onClick={() => { toggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "1", })} onClick={() => {
+ toggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "2", })} onClick={() => { toggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "2", })} onClick={() => {
+ toggle("2"); 
+}} >
                                                 Product
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "3", })} onClick={() => { toggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "3", })} onClick={() => {
+ toggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "4", })} onClick={() => { toggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "4", })} onClick={() => {
+ toggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -279,22 +287,30 @@ const UiTabs = () => {
 
                                     <Nav tabs className="nav-tabs nav-justified mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "1", })} onClick={() => { justifyToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "1", })} onClick={() => {
+ justifyToggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "2", })} onClick={() => { justifyToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "2", })} onClick={() => {
+ justifyToggle("2"); 
+}} >
                                                 Product
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "3", })} onClick={() => { justifyToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "3", })} onClick={() => {
+ justifyToggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "4", })} onClick={() => { justifyToggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyTab === "4", })} onClick={() => {
+ justifyToggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -352,22 +368,30 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav-success mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "1", })} onClick={() => { pillsToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "1", })} onClick={() => {
+ pillsToggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "2", })} onClick={() => { pillsToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "2", })} onClick={() => {
+ pillsToggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "3", })} onClick={() => { pillsToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "3", })} onClick={() => {
+ pillsToggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "4", })} onClick={() => { pillsToggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: pillsTab === "4", })} onClick={() => {
+ pillsToggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -463,22 +487,30 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav-justified mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "1", })} onClick={() => { justifyPillsToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "1", })} onClick={() => {
+ justifyPillsToggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "2", })} onClick={() => { justifyPillsToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "2", })} onClick={() => {
+ justifyPillsToggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "3", })} onClick={() => { justifyPillsToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "3", })} onClick={() => {
+ justifyPillsToggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "4", })} onClick={() => { justifyPillsToggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: justifyPillsTab === "4", })} onClick={() => {
+ justifyPillsToggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -715,17 +747,23 @@ const UiTabs = () => {
 
                                         <Nav tabs className="nav justify-content-end nav-tabs-custom rounded card-header-tabs border-bottom-0">
                                             <NavItem>
-                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: cardHeaderTab === "1", })} onClick={() => { cardHeaderToggle("1"); }} >
+                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: cardHeaderTab === "1", })} onClick={() => {
+ cardHeaderToggle("1"); 
+}} >
                                                     Home
                                                 </NavLink>
                                             </NavItem>
                                             <NavItem>
-                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: cardHeaderTab === "2", })} onClick={() => { cardHeaderToggle("2"); }} >
+                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: cardHeaderTab === "2", })} onClick={() => {
+ cardHeaderToggle("2"); 
+}} >
                                                     Profile
                                                 </NavLink>
                                             </NavItem>
                                             <NavItem>
-                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: cardHeaderTab === "3", })} onClick={() => { cardHeaderToggle("3"); }} >
+                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: cardHeaderTab === "3", })} onClick={() => {
+ cardHeaderToggle("3"); 
+}} >
                                                     Messages
                                                 </NavLink>
                                             </NavItem>
@@ -986,17 +1024,23 @@ const UiTabs = () => {
 
                                         <Nav pills className="card-header-pills">
                                             <NavItem>
-                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: headerJustifyTab === "1", })} onClick={() => { headerJustifyToggle("1"); }} >
+                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: headerJustifyTab === "1", })} onClick={() => {
+ headerJustifyToggle("1"); 
+}} >
                                                     Developers
                                                 </NavLink>
                                             </NavItem>
                                             <NavItem>
-                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: headerJustifyTab === "2", })} onClick={() => { headerJustifyToggle("2"); }} >
+                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: headerJustifyTab === "2", })} onClick={() => {
+ headerJustifyToggle("2"); 
+}} >
                                                     Designers
                                                 </NavLink>
                                             </NavItem>
                                             <NavItem>
-                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: headerJustifyTab === "3", })} onClick={() => { headerJustifyToggle("3"); }} >
+                                                <NavLink style={{ cursor: "pointer" }} className={classnames({ active: headerJustifyTab === "3", })} onClick={() => {
+ headerJustifyToggle("3"); 
+}} >
                                                     Managers
                                                 </NavLink>
                                             </NavItem>
@@ -1240,19 +1284,25 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav-justified card-footer-tabs fs-17">
                                         <NavItem id="home">
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: bottomCardTab === "1", })} onClick={() => { bottonCardToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: bottomCardTab === "1", })} onClick={() => {
+ bottonCardToggle("1"); 
+}} >
                                                 <i className="ri-home-3-line"></i>
                                             </NavLink>
                                             <UncontrolledTooltip placement="top" target="home" > Home </UncontrolledTooltip>
                                         </NavItem>
                                         <NavItem id="profile">
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: bottomCardTab === "2", })} onClick={() => { bottonCardToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: bottomCardTab === "2", })} onClick={() => {
+ bottonCardToggle("2"); 
+}} >
                                                 <i className="ri-user-2-line"></i>
                                             </NavLink>
                                             <UncontrolledTooltip placement="top" target="profile" > Profile </UncontrolledTooltip>
                                         </NavItem>
                                         <NavItem id="messages">
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: bottomCardTab === "3", })} onClick={() => { bottonCardToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: bottomCardTab === "3", })} onClick={() => {
+ bottonCardToggle("3"); 
+}} >
                                                 <i className="ri-mail-line"></i>
                                             </NavLink>
                                             <UncontrolledTooltip placement="top" target="messages" > Messages </UncontrolledTooltip>
@@ -1274,19 +1324,25 @@ const UiTabs = () => {
                                 <div className="border">
                                     <Nav pills className="nav nav-pills custom-hover-nav-tabs">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customHoverTab === "1", })} onClick={() => { customHovertoggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customHoverTab === "1", })} onClick={() => {
+ customHovertoggle("1"); 
+}} >
                                                 <i className="ri-user-fill nav-icon nav-tab-position"></i>
                                                 <h5 className="nav-titl nav-tab-position m-0">Customer</h5>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customHoverTab === "2", })} onClick={() => { customHovertoggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customHoverTab === "2", })} onClick={() => {
+ customHovertoggle("2"); 
+}} >
                                                 <i className="ri-file-text-line nav-icon nav-tab-position"></i>
                                                 <h5 className="nav-titl nav-tab-position m-0">Description</h5>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customHoverTab === "3", })} onClick={() => { customHovertoggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customHoverTab === "3", })} onClick={() => {
+ customHovertoggle("3"); 
+}} >
                                                 <i className="ri-star-half-line nav-icon nav-tab-position"></i>
                                                 <h5 className="nav-titl nav-tab-position m-0">Reviews</h5>
                                             </NavLink>
@@ -1524,22 +1580,30 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav nav-pills animation-nav nav-justified gap-2 mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "1", })} onClick={() => { animationNavToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "1", })} onClick={() => {
+ animationNavToggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "2", })} onClick={() => { animationNavToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "2", })} onClick={() => {
+ animationNavToggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "3", })} onClick={() => { animationNavToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "3", })} onClick={() => {
+ animationNavToggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "4", })} onClick={() => { animationNavToggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: animationNavTab === "4", })} onClick={() => {
+ animationNavToggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -1635,22 +1699,30 @@ const UiTabs = () => {
 
                                     <Nav tabs className="nav-tabs nav-justified mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "1", })} onClick={() => { navBadgeToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "1", })} onClick={() => {
+ navBadgeToggle("1"); 
+}} >
                                                 Explore
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "2", })} onClick={() => { navBadgeToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "2", })} onClick={() => {
+ navBadgeToggle("2"); 
+}} >
                                                 Profile <span className="badge bg-success">Done</span>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "3", })} onClick={() => { navBadgeToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "3", })} onClick={() => {
+ navBadgeToggle("3"); 
+}} >
                                                 Messages <span className="badge bg-danger rounded-circle">5</span>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "4", })} onClick={() => { navBadgeToggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: navBadgeTab === "4", })} onClick={() => {
+ navBadgeToggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -1748,22 +1820,30 @@ const UiTabs = () => {
 
                                     <Nav tabs className="nav nav-tabs nav-border-top nav-border-top-primary mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "1", })} onClick={() => { topBorderJustifytoggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "1", })} onClick={() => {
+ topBorderJustifytoggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "2", })} onClick={() => { topBorderJustifytoggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "2", })} onClick={() => {
+ topBorderJustifytoggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "3", })} onClick={() => { topBorderJustifytoggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "3", })} onClick={() => {
+ topBorderJustifytoggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "4", })} onClick={() => { topBorderJustifytoggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderjustifyTab === "4", })} onClick={() => {
+ topBorderJustifytoggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -1838,17 +1918,23 @@ const UiTabs = () => {
 
                                     <Nav tabs className="nav nav-tabs nav-justified nav-border-top nav-border-top-success mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderTab === "1", })} onClick={() => { topBordertoggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderTab === "1", })} onClick={() => {
+ topBordertoggle("1"); 
+}} >
                                                 <i className="ri-home-5-line align-middle me-1"></i> Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderTab === "2", })} onClick={() => { topBordertoggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderTab === "2", })} onClick={() => {
+ topBordertoggle("2"); 
+}} >
                                                 <i className="ri-user-line me-1 align-middle"></i> Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderTab === "3", })} onClick={() => { topBordertoggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: topBorderTab === "3", })} onClick={() => {
+ topBordertoggle("3"); 
+}} >
                                                 <i className="ri-question-answer-line align-middle me-1"></i>Messages
                                             </NavLink>
                                         </NavItem>
@@ -1890,22 +1976,30 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav-custom-outline nav-primary mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "1", })} onClick={() => { outlineBorderNavtoggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "1", })} onClick={() => {
+ outlineBorderNavtoggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "2", })} onClick={() => { outlineBorderNavtoggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "2", })} onClick={() => {
+ outlineBorderNavtoggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "3", })} onClick={() => { outlineBorderNavtoggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "3", })} onClick={() => {
+ outlineBorderNavtoggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "4", })} onClick={() => { outlineBorderNavtoggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: outlineBorderNav === "4", })} onClick={() => {
+ outlineBorderNavtoggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -2007,22 +2101,30 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav-customs nav-danger mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "1", })} onClick={() => { customNavtoggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "1", })} onClick={() => {
+ customNavtoggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "2", })} onClick={() => { customNavtoggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "2", })} onClick={() => {
+ customNavtoggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "3", })} onClick={() => { customNavtoggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "3", })} onClick={() => {
+ customNavtoggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "4", })} onClick={() => { customNavtoggle("4"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: customNav === "4", })} onClick={() => {
+ customNavtoggle("4"); 
+}} >
                                                 Settings
                                             </NavLink>
                                         </NavItem>
@@ -2136,17 +2238,23 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav nav-pills nav-custom nav-custom-success mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: colorNavTab === "1", })} onClick={() => { colorNavToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: colorNavTab === "1", })} onClick={() => {
+ colorNavToggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: colorNavTab === "2", })} onClick={() => { colorNavToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: colorNavTab === "2", })} onClick={() => {
+ colorNavToggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: colorNavTab === "3", })} onClick={() => { colorNavToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: colorNavTab === "3", })} onClick={() => {
+ colorNavToggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>
@@ -2225,17 +2333,23 @@ const UiTabs = () => {
 
                                     <Nav pills className="nav nav-pills nav-custom nav-custom-light mb-3">
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: lightNavTab === "1", })} onClick={() => { lightNavToggle("1"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: lightNavTab === "1", })} onClick={() => {
+ lightNavToggle("1"); 
+}} >
                                                 Home
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: lightNavTab === "2", })} onClick={() => { lightNavToggle("2"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: lightNavTab === "2", })} onClick={() => {
+ lightNavToggle("2"); 
+}} >
                                                 Profile
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: lightNavTab === "3", })} onClick={() => { lightNavToggle("3"); }} >
+                                            <NavLink style={{ cursor: "pointer" }} className={classnames({ active: lightNavTab === "3", })} onClick={() => {
+ lightNavToggle("3"); 
+}} >
                                                 Messages
                                             </NavLink>
                                         </NavItem>

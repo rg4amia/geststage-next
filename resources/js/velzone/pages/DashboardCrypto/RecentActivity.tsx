@@ -1,8 +1,8 @@
+import FeatherIcon from "feather-icons-react";
 import React from 'react';
 import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
 
 //SimpleBar
 import SimpleBar from "simplebar-react";

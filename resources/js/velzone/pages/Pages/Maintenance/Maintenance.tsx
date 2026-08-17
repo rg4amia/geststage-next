@@ -1,13 +1,14 @@
 import React from 'react'
-import { Link } from '@/velzone/inertia-router';
 import { Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
+import maintenanceImg from '../../../assets/images/maintenance.png';
 import ParticlesAuth from "../../AuthenticationInner/ParticlesAuth";
 
 //images import
-import maintenanceImg from '../../../assets/images/maintenance.png';
 
 const Maintenance = () => {
     document.title ="Maintenance | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>            
             <ParticlesAuth>

@@ -107,11 +107,12 @@ const currentYearDeviceData = [20.56, 89.02, 35.89];
 // Audiences Sessions by Country
 
 function generateData(count : any, yrange : any) {
-    var i = 0;
-    var series = [];
+    let i = 0;
+    const series = [];
+
     while (i < count) {
-        var x = (i + 1).toString() + "h";
-        var y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
+        const x = (i + 1).toString() + "h";
+        const y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
 
         series.push({
             x: x,
@@ -119,6 +120,7 @@ function generateData(count : any, yrange : any) {
         });
         i++;
     }
+
     return series;
 }
 

@@ -1,11 +1,11 @@
+import moment from "moment";
 import React from 'react';
 import ReactApexChart from "react-apexcharts";
-import moment from "moment";
 
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const Basic = ({ dataColors } : any) => {
-    var chartTimelineBasicColors = getChartColorsArray(dataColors);
+    const chartTimelineBasicColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [
@@ -72,7 +72,7 @@ const Basic = ({ dataColors } : any) => {
 };
 
 const DifferentColor = ({ dataColors } : any) => {
-    var chartTimelineColors = getChartColorsArray(dataColors);
+    const chartTimelineColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [
@@ -140,10 +140,11 @@ const DifferentColor = ({ dataColors } : any) => {
         dataLabels: {
             enabled: true,
             formatter: function (val : any, opts : any) {
-                var label = opts.w.globals.labels[opts.dataPointIndex]
-                var a = moment(val[0])
-                var b = moment(val[1])
-                var diff = b.diff(a, 'days')
+                const label = opts.w.globals.labels[opts.dataPointIndex]
+                const a = moment(val[0])
+                const b = moment(val[1])
+                const diff = b.diff(a, 'days')
+
                 return label + ': ' + diff + (diff > 1 ? ' days' : ' day')
             },
         },
@@ -169,7 +170,7 @@ const DifferentColor = ({ dataColors } : any) => {
 };
 
 const MultiSeries = ({ dataColors } : any) => {
-    var chartTimelineMultiSeriesColors = getChartColorsArray(dataColors);
+    const chartTimelineMultiSeriesColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Bob",
@@ -225,7 +226,7 @@ const MultiSeries = ({ dataColors } : any) => {
         },
     ];
 
-    var options : any = {
+    const options : any = {
         chart: {
             toolbar: {
                 show: false,
@@ -239,9 +240,10 @@ const MultiSeries = ({ dataColors } : any) => {
         dataLabels: {
             enabled: true,
             formatter: function (val : any) {
-                var a = moment(val[0]);
-                var b = moment(val[1]);
-                var diff = b.diff(a, "days");
+                const a = moment(val[0]);
+                const b = moment(val[1]);
+                const diff = b.diff(a, "days");
+
                 return diff + (diff > 1 ? " days" : " day");
             },
         },
@@ -281,7 +283,7 @@ const MultiSeries = ({ dataColors } : any) => {
 };
 
 const Advanced = ({ dataColors } : any) => {
-    var chartTimelineAdvancedColors = getChartColorsArray(dataColors);
+    const chartTimelineAdvancedColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Bob",
@@ -444,7 +446,7 @@ const Advanced = ({ dataColors } : any) => {
 // Multiple series � Group rows
 
 const MultipleSeries = ({ dataColors } : any) => {
-    var chartMultiSeriesColors = getChartColorsArray(dataColors);
+    const chartMultiSeriesColors = getChartColorsArray(dataColors);
     const series = [
         // George Washington
         {
@@ -663,7 +665,7 @@ const MultipleSeries = ({ dataColors } : any) => {
 };
 
 const Dumbbell = ({ dataColors } : any) => {
-    var dumbbellChartColors = getChartColorsArray(dataColors);
+    const dumbbellChartColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [

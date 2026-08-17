@@ -1,9 +1,9 @@
+import Cleave from "cleave.js/react";
 import React, { useState } from 'react';
 import { Card, CardBody, Col, Row } from 'reactstrap';
 // import Cards from 'react-credit-cards';
 // import 'react-credit-cards/es/styles-compiled.css';
 // import 'react-credit-cards/lib/styles.scss';
-import Cleave from "cleave.js/react";
 import "cleave.js/dist/addons/cleave-phone.in";
 
 const CreditCard = () => {
@@ -19,14 +19,11 @@ const CreditCard = () => {
     const onChangeHandler = (e : any, name : any) => {
         if (name === "cardNumber") {
             setState({ ...state, cardNumber: e.target.value })
-        }
-        else if (name === "cardHolder") {
+        } else if (name === "cardHolder") {
             setState({ ...state, cardHolder: e.target.value })
-        }
-        else if (name === "expiry") {
+        } else if (name === "expiry") {
             setState({ ...state, expiry: e.target.value })
-        }
-        else if (name === "cvc") {
+        } else if (name === "cvc") {
             setState({ ...state, cvc: e.target.value })
         }
     }

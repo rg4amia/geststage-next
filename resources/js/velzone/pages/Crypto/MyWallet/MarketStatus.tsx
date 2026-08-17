@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 import { Card, CardBody, CardHeader } from 'reactstrap';
-import TableContainer from '../../../Components/Common/TableContainer';
-import { marketStatus } from "../../../common/data";
 import { Link } from '@/velzone/inertia-router';
+import { marketStatus } from "../../../common/data";
+import TableContainer from '../../../Components/Common/TableContainer';
 
 import { Quantity, AvgPrice, CurrentValue, Returns } from "./MarketStatusCol";
 
@@ -70,6 +70,7 @@ const MarketStatus = () => {
         ],
         []
     );
+
     return (
         <React.Fragment>
             <Card>

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import TableContainer from "../../../Components/Common/TableContainerReactTable";
-import { Link } from '@/velzone/inertia-router';
 import { Spinner } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
+import TableContainer from "../../../Components/Common/TableContainerReactTable";
 
 const DefaultTable = () => {
   const defaultTable =

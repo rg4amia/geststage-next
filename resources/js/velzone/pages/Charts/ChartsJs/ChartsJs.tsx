@@ -9,7 +9,7 @@ import { Chart, CategoryScale } from 'chart.js';
 Chart.register(CategoryScale);
 
 const LineChart = ({dataColors} : any) => {
-    var lineChartColor =  getChartColorsArray(dataColors);
+    const lineChartColor =  getChartColorsArray(dataColors);
     const data : any = {
         labels: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October"],
         datasets: [
@@ -83,6 +83,7 @@ const LineChart = ({dataColors} : any) => {
             },
         },
     }
+
   return (
     <React.Fragment>
       <Line width={723} height={320} data={data} options={option} />
@@ -91,7 +92,7 @@ const LineChart = ({dataColors} : any) => {
 }
 //Bar Chart
 const BarChart = ({dataColors} : any) => {
-    var barChartColor =  getChartColorsArray(dataColors);
+    const barChartColor =  getChartColorsArray(dataColors);
     const data = {
         labels: ["January", "February", "March", "April", "May", "June", "July"],
         datasets: [
@@ -131,6 +132,7 @@ const BarChart = ({dataColors} : any) => {
             },
         }
     }
+
   return (
     <React.Fragment>
       <Bar width={723} height={320} data={data} options={option} />
@@ -139,7 +141,7 @@ const BarChart = ({dataColors} : any) => {
 }
 //Pie Chart
 const PieChart = ({dataColors} : any) => {
-    var pieChartColors =  getChartColorsArray(dataColors);
+    const pieChartColors =  getChartColorsArray(dataColors);
     const data={
         labels: [
             "Desktops",
@@ -164,6 +166,7 @@ const PieChart = ({dataColors} : any) => {
             },
         }
     }
+
   return (
     <React.Fragment>
       <Pie data={data} options={option} className="chartjs-chart" />
@@ -172,7 +175,7 @@ const PieChart = ({dataColors} : any) => {
 }
 //Donut Chart
 const DonutChart = ({dataColors} : any) => {
-    var doughnutChartColors =  getChartColorsArray(dataColors);
+    const doughnutChartColors =  getChartColorsArray(dataColors);
     const data = {
         labels: [
             "Desktops",
@@ -197,6 +200,7 @@ const DonutChart = ({dataColors} : any) => {
             },
         }
     }
+
   return (
     <React.Fragment>
       <Doughnut data={data} options={option} className="chartjs-chart" />
@@ -205,7 +209,7 @@ const DonutChart = ({dataColors} : any) => {
 }
 //Polar Chart
 const PolarChart = ({dataColors} : any) => {
-    var polarAreaChartColors =  getChartColorsArray(dataColors);
+    const polarAreaChartColors =  getChartColorsArray(dataColors);
     const data = {
         labels: [
             "Series 1",
@@ -236,6 +240,7 @@ const PolarChart = ({dataColors} : any) => {
             },
         }
     }
+
   return (
     <React.Fragment>
       <PolarArea className="chartjs-chart" data={data} options={option} />
@@ -244,7 +249,7 @@ const PolarChart = ({dataColors} : any) => {
 }
 //Radar Chart
 const RadarChart = ({dataColors} : any) => {
-    var radarChartColors =  getChartColorsArray(dataColors);
+    const radarChartColors =  getChartColorsArray(dataColors);
     const data = {
         labels: ["Eating", "Drinking", "Sleeping", "Designing", "Coding", "Cycling", "Running"],
         datasets: [
@@ -281,6 +286,7 @@ const RadarChart = ({dataColors} : any) => {
             },
         }
     }
+
   return (
     <React.Fragment>
       <Radar className="chartjs-chart" data={data} options={option} />

@@ -1,7 +1,8 @@
 import React from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
-import BreadCrumb from '../../../../Components/Common/BreadCrumb';
+import { Link } from '@/velzone/inertia-router';
 import user from "../../../../assets/images/users/avatar-2.jpg";
+import BreadCrumb from '../../../../Components/Common/BreadCrumb';
 
 import {
     BasicAreaCharts,
@@ -14,11 +15,11 @@ import {
     IrregularAreaCharts,
     AreaNullValueChart
 } from "./AreaCharts";
-import { Link } from '@/velzone/inertia-router';
 
 
 const AreaCharts = () => {
     document.title="Area Charts | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

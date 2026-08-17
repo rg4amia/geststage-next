@@ -1,15 +1,15 @@
 // Import Images
+import company1 from "../../assets/images/companies/img-1.png";
+import company2 from "../../assets/images/companies/img-2.png";
+import company3 from "../../assets/images/companies/img-3.png";
+import company5 from "../../assets/images/companies/img-5.png";
+import company8 from "../../assets/images/companies/img-8.png";
 import product1 from "../../assets/images/products/img-1.png";
 import product2 from "../../assets/images/products/img-2.png";
 import product3 from "../../assets/images/products/img-3.png";
 import product4 from "../../assets/images/products/img-4.png";
 import product5 from "../../assets/images/products/img-5.png";
 
-import company1 from "../../assets/images/companies/img-1.png";
-import company2 from "../../assets/images/companies/img-2.png";
-import company3 from "../../assets/images/companies/img-3.png";
-import company5 from "../../assets/images/companies/img-5.png";
-import company8 from "../../assets/images/companies/img-8.png";
 
 import avatar1 from "../../assets/images/users/avatar-1.jpg";
 import avatar2 from "../../assets/images/users/avatar-2.jpg";

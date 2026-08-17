@@ -25,8 +25,10 @@ const MailBoxSlice = createSlice({
       state.mailDetails = state.mailDetails.map((mail: any) => {
         if (mail.forId === action.payload) {
           const updatedMail = mail.unread === true ? false : true;
+
           return { ...mail, unread: updatedMail };
         }
+
         return mail;
       });
       state.isMailDetailsDeleted = false;
@@ -43,6 +45,7 @@ const MailBoxSlice = createSlice({
         if (mail.forId === action.payload) {
           return { ...mail, category: "trash" };
         }
+
         return mail;
       });
 
@@ -59,8 +62,10 @@ const MailBoxSlice = createSlice({
       state.mailDetails = state.mailDetails.map((mail: any) => {
         if (mail.forId === action.payload) {
           const newCategory = mail.category === "starred" ? "inbox" : "starred";
+
           return { ...mail, category: newCategory };
         }
+
         return mail;
       });
 
@@ -77,6 +82,7 @@ const MailBoxSlice = createSlice({
         if (mail.forId === action.payload.response) {
           return { ...mail, label: action.payload.label };
         }
+
         return mail;
       });
 

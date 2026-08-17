@@ -1,19 +1,19 @@
 import React from 'react';
 
-import Navbar from './navbar';
-import Home from './home';
 import Client from './client';
-import Services from './services';
-import Features from './features';
-import Plans from './plans';
-import Faqs from './faq';
-import Reviews from './reviews';
-import Counter from './counter';
-import WorkProcess from './workProcess';
-import Team from './team';
 import Contact from './contact';
+import Counter from './counter';
 import Cta from './cta';
+import Faqs from './faq';
+import Features from './features';
 import Footer from './footer';
+import Home from './home';
+import Navbar from './navbar';
+import Plans from './plans';
+import Reviews from './reviews';
+import Services from './services';
+import Team from './team';
+import WorkProcess from './workProcess';
 
 const Index = () => {
     document.title = " Landing | Velzon - React Admin & Dashboard Template";
@@ -24,6 +24,7 @@ const Index = () => {
 
     const scrollFunction = () => {
         const element = document.getElementById("back-to-top");
+
         if (element) {
             if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
                 element.style.display = "block";
@@ -37,6 +38,7 @@ const Index = () => {
         document.body.scrollTop = 0;
         document.documentElement.scrollTop = 0;
     };
+
     return (
         <React.Fragment>
             <div className="layout-wrapper landing">

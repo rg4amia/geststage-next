@@ -65,6 +65,7 @@ const TasksSlice = createSlice({
             const existingTaskList = state.tasks.find(
                 (kanbanList: any) => kanbanList.id === action.payload.kanId
             );
+
             if (existingTaskList) {
                 state.tasks = state.tasks.map((kanbanList: any) => {
                     if (kanbanList.id === action.payload.kanId) {
@@ -72,8 +73,10 @@ const TasksSlice = createSlice({
                             ...kanbanList,
                             cards: [...kanbanList.cards, action.payload],
                         };
+
                         return updatedTaskList;
                     }
+
                     return kanbanList;
                 });
             } else {
@@ -95,6 +98,7 @@ const TasksSlice = createSlice({
                         ),
                     };
                 }
+
                 return task;
             });
         });
@@ -109,6 +113,7 @@ const TasksSlice = createSlice({
                         return task.id.toString() !== action.payload.toString();
                     }),
                 };
+
                 return updatedTaskList;
             });
         });

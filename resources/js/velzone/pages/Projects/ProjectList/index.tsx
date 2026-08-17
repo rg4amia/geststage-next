@@ -1,6 +1,6 @@
 import React from 'react';
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import { Container } from 'reactstrap';
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 import List from './List';
 

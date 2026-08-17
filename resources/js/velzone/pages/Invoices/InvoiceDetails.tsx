@@ -1,10 +1,10 @@
 import React from "react";
 import { CardBody, Row, Col, Card, Table, CardHeader, Container } from "reactstrap";
-import BreadCrumb from "../../Components/Common/BreadCrumb";
 import { Link } from '@/velzone/inertia-router';
 
 import logoDark from "../../assets/images/logo-dark.png";
 import logoLight from "../../assets/images/logo-light.png";
+import BreadCrumb from "../../Components/Common/BreadCrumb";
 
 const InvoiceDetails = () => {
   //Print the Invoice

@@ -1,18 +1,18 @@
+import classnames from 'classnames';
 import React, { useState } from 'react';
 import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, Nav, NavItem, NavLink, Row, TabContent, Table, TabPane, UncontrolledDropdown } from 'reactstrap';
-import classnames from 'classnames';
+import SimpleBar from "simplebar-react";
 import { Link } from '@/velzone/inertia-router';
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 //import images
-import avatar7 from "../../../assets/images/users/avatar-7.jpg";
-import avatar10 from "../../../assets/images/users/avatar-10.jpg";
-import avatar8 from "../../../assets/images/users/avatar-8.jpg";
-import avatar6 from "../../../assets/images/users/avatar-6.jpg";
 import image4 from "../../../assets/images/small/img-4.jpg";
 import image5 from "../../../assets/images/small/img-5.jpg";
+import avatar10 from "../../../assets/images/users/avatar-10.jpg";
+import avatar6 from "../../../assets/images/users/avatar-6.jpg";
+import avatar7 from "../../../assets/images/users/avatar-7.jpg";
+import avatar8 from "../../../assets/images/users/avatar-8.jpg";
 
 const Comments = () => {
     const [activeTab, setActiveTab] = useState<any>('1');
@@ -21,6 +21,7 @@ const Comments = () => {
             setActiveTab(tab);
         }
     };
+
     return (
         <React.Fragment>
             <Card>
@@ -31,7 +32,9 @@ const Comments = () => {
                                 <NavLink
                                     href="#"
                                     className={classnames({ active: activeTab === '1' })}
-                                    onClick={() => { toggleTab('1'); }}
+                                    onClick={() => {
+ toggleTab('1'); 
+}}
                                 >
                                     Comments (5)
                                 </NavLink>
@@ -40,7 +43,9 @@ const Comments = () => {
                                 <NavLink
                                     href="#"
                                     className={classnames({ active: activeTab === '2' })}
-                                    onClick={() => { toggleTab('2'); }}
+                                    onClick={() => {
+ toggleTab('2'); 
+}}
                                 >
                                     Attachments File (4)
                                 </NavLink>
@@ -49,7 +54,9 @@ const Comments = () => {
                                 <NavLink
                                     href="#"
                                     className={classnames({ active: activeTab === '3' })}
-                                    onClick={() => { toggleTab('3'); }}
+                                    onClick={() => {
+ toggleTab('3'); 
+}}
                                 >
                                     Time Entries (9 hrs 13 min)
                                 </NavLink>

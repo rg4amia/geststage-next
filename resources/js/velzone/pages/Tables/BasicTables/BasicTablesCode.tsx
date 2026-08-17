@@ -47,6 +47,7 @@ const DefaultTables = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -102,6 +103,7 @@ const StrippedRow = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -227,6 +229,7 @@ const TablesColors = () => {
 </Col>
 </Row>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -382,6 +385,7 @@ const HoverableRows = () => {
 </Col>
 </Row>
     `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -480,6 +484,7 @@ const CardTables = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -565,6 +570,7 @@ const ActiveTables = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -674,6 +680,7 @@ const BorderedTables = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -782,6 +789,7 @@ const TablesBorderColors = () => {
 </Table>
 </div>
     `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -862,6 +870,7 @@ const TablesWithoutBorders = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -918,6 +927,7 @@ const SmallTables = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -982,6 +992,7 @@ const TableHead = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -1036,6 +1047,7 @@ const TableFoot = () => {
 </Table>
 </div>
     `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -1081,6 +1093,7 @@ const Captions = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -1126,6 +1139,7 @@ const TableNesting = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -1206,6 +1220,7 @@ const Variants = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -1250,6 +1265,7 @@ const VerticalAlignment = () => {
 </Table>
 </div>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -1405,6 +1421,7 @@ const ResponsiveTables = () => {
 </Table>                                                
 </div> 
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -1503,6 +1520,7 @@ const StripedColumnsTables = () => {
     </table>
 </div>
     `
+
     return (
         <React.Fragment>
             <PrismCode

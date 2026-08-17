@@ -3,17 +3,17 @@ import { useDispatch, useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
 
 import { Link } from '@/velzone/inertia-router';
-import FullScreenDropdown from '../Components/Common/FullScreenDropdown';
-import LanguageDropdown from '../Components/Common/LanguageDropdown';
-import LightDark from '../Components/Common/LightDark';
-import ProfileDropdown from '../Components/Common/ProfileDropdown';
-import SearchOption from '../Components/Common/SearchOption';
-import WebAppsDropdown from '../Components/Common/WebAppsDropdown';
-import MyCartDropdown from '../Components/Common/MyCartDropdown';
-import NotificationDropdown from '../Components/Common/NotificationDropdown';
 import logoDark from '../assets/images/logo-dark.png';
 import logoLight from '../assets/images/logo-light.png';
 import logoSm from '../assets/images/logo-sm.png';
+import FullScreenDropdown from '../Components/Common/FullScreenDropdown';
+import LanguageDropdown from '../Components/Common/LanguageDropdown';
+import LightDark from '../Components/Common/LightDark';
+import MyCartDropdown from '../Components/Common/MyCartDropdown';
+import NotificationDropdown from '../Components/Common/NotificationDropdown';
+import ProfileDropdown from '../Components/Common/ProfileDropdown';
+import SearchOption from '../Components/Common/SearchOption';
+import WebAppsDropdown from '../Components/Common/WebAppsDropdown';
 import { changeSidebarVisibility } from '../slices/thunks';
 
 type HeaderProps = {

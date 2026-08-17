@@ -1,6 +1,7 @@
-import { useFlashToast } from '@/old/hooks/use-flash-toast';
+import { Toaster as Sonner  } from 'sonner';
+import type {ToasterProps} from 'sonner';
 import { useAppearance } from '@/old/hooks/use-appearance';
-import { Toaster as Sonner, type ToasterProps } from 'sonner';
+import { useFlashToast } from '@/old/hooks/use-flash-toast';
 
 function Toaster({ ...props }: ToasterProps) {
     const { appearance } = useAppearance();

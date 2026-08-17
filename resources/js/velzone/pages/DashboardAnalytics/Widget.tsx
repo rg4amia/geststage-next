@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, CardBody, Col, Row } from 'reactstrap';
 import CountUpModule from 'react-countup';
+import { Card, CardBody, Col, Row } from 'reactstrap';
 
 //Import Icons
 const CountUp = (CountUpModule as any).default ?? CountUpModule;

@@ -1,7 +1,7 @@
-import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Col, Container, Row, Button, Nav, NavItem, NavLink, TabContent, TabPane, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import classnames from 'classnames';
+import React, { useMemo, useState } from 'react';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Nav, NavItem, NavLink, TabContent, TabPane, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -11,7 +11,9 @@ const PointagesIndex = ({ pointagesSoumis, pointagesAjournesADP }: any) => {
     const [selectedInstance, setSelectedInstance] = useState<any>(null);
 
     const toggleTab = (tab: string) => {
-        if (activeTab !== tab) setActiveTab(tab);
+        if (activeTab !== tab) {
+setActiveTab(tab);
+}
     };
 
     const handleAjourner = (instance: any) => {
@@ -44,6 +46,7 @@ const PointagesIndex = ({ pointagesSoumis, pointagesAjournesADP }: any) => {
             cell: (cell: any) => {
                 const pointages = cell.row.original.stage?.pointages || [];
                 const ptg = pointages[pointages.length - 1]; // Assume last pointage
+
                 return ptg ? ptg.jours_presence : '-';
             },
         },
@@ -97,7 +100,9 @@ const PointagesIndex = ({ pointagesSoumis, pointagesAjournesADP }: any) => {
                                         <NavItem>
                                             <NavLink
                                                 className={classnames({ active: activeTab === '1' })}
-                                                onClick={() => { toggleTab('1'); }}
+                                                onClick={() => {
+ toggleTab('1'); 
+}}
                                                 style={{ cursor: 'pointer' }}
                                             >
                                                 Nouveaux Pointages ({pointagesSoumis?.length || 0})
@@ -106,7 +111,9 @@ const PointagesIndex = ({ pointagesSoumis, pointagesAjournesADP }: any) => {
                                         <NavItem>
                                             <NavLink
                                                 className={classnames({ active: activeTab === '2' })}
-                                                onClick={() => { toggleTab('2'); }}
+                                                onClick={() => {
+ toggleTab('2'); 
+}}
                                                 style={{ cursor: 'pointer' }}
                                             >
                                                 Ajournements ADP ({pointagesAjournesADP?.length || 0})

@@ -2,10 +2,7 @@ import React from 'react';
 import { Card, CardBody, Col, Container, Row, } from 'reactstrap';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 
 // Import Images
 import avatar2 from "../../../assets/images/users/avatar-2.jpg";
@@ -13,12 +10,16 @@ import avatar3 from "../../../assets/images/users/avatar-3.jpg";
 import avatar4 from "../../../assets/images/users/avatar-4.jpg";
 import avatar6 from "../../../assets/images/users/avatar-6.jpg";
 import avatar8 from "../../../assets/images/users/avatar-8.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
 
 import { DefultExample, NestingExample, MediaExample } from './UiMediaobjectCode';
 
 
 const UiMediaobject = () => {
     document.title="Media object | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

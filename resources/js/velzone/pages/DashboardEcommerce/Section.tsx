@@ -1,6 +1,6 @@
 import React from 'react';
-import { Col, Row } from 'reactstrap';
 import Flatpickr from "react-flatpickr";
+import { Col, Row } from 'reactstrap';
 
 const Section = (props:any) => {
     return (

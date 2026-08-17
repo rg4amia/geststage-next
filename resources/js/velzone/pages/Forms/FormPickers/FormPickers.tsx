@@ -1,11 +1,11 @@
+import { ColorPicker } from "@vtaits/react-color-picker";
 import React, { useState } from 'react';
+import { SketchPicker } from "react-color";
+import Flatpickr from "react-flatpickr";
 import { Card, CardBody, CardHeader, Container, Form, Row, Col, Label } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import { ColorPicker } from "@vtaits/react-color-picker";
-import { SketchPicker } from "react-color";
 
 //Import Flatepicker
-import Flatpickr from "react-flatpickr";
 // import 'flatpickr/dist/themes/material_green.css';
 
 const FormPickers = () => {

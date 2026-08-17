@@ -4,7 +4,7 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const RangeAreaChartCode = ({ dataColors }: any) => {
-    var rangeAreaBasicColors = getChartColorsArray(dataColors);
+    const rangeAreaBasicColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: 'New York Temperature',

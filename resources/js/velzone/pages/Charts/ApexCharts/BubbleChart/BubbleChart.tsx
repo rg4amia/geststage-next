@@ -4,20 +4,22 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const Simple = ({ dataColors } : any) => {
-  var chartBubbleSimpleColors = getChartColorsArray(dataColors);
+  const chartBubbleSimpleColors = getChartColorsArray(dataColors);
   const generateData = (baseval : any, count : any, yrange : any) => {
-    var i = 0;
-    var series = [];
+    let i = 0;
+    const series = [];
+
     while (i < count) {
-      var x = Math.floor(Math.random() * (750 - 1 + 1)) + 1;
-      var y =
+      const x = Math.floor(Math.random() * (750 - 1 + 1)) + 1;
+      const y =
         Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
-      var z = Math.floor(Math.random() * (75 - 15 + 1)) + 15;
+      const z = Math.floor(Math.random() * (75 - 15 + 1)) + 15;
 
       series.push([x, y, z]);
       baseval += 86400000;
       i++;
     }
+
     return series;
   };
 
@@ -50,7 +52,7 @@ const Simple = ({ dataColors } : any) => {
     })
   }
   ];
-  var options : any = {
+  const options : any = {
 
     chart: {
       height: 350,
@@ -95,20 +97,22 @@ const Simple = ({ dataColors } : any) => {
 };
 
 const ThreeDBubble = ({ dataColors } : any) => {
-  var chartBubbleColors = getChartColorsArray(dataColors);
+  const chartBubbleColors = getChartColorsArray(dataColors);
   const generateData = (baseval : any, count : any, yrange : any) => {
-    var i = 0;
-    var series = [];
+    let i = 0;
+    const series = [];
+
     while (i < count) {
-      var x = Math.floor(Math.random() * (750 - 1 + 1)) + 1;
-      var y =
+      const x = Math.floor(Math.random() * (750 - 1 + 1)) + 1;
+      const y =
         Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
-      var z = Math.floor(Math.random() * (75 - 15 + 1)) + 15;
+      const z = Math.floor(Math.random() * (75 - 15 + 1)) + 15;
 
       series.push([x, y, z]);
       baseval += 86400000;
       i++;
     }
+
     return series;
   };
 
@@ -176,6 +180,7 @@ const ThreeDBubble = ({ dataColors } : any) => {
     },
     colors: chartBubbleColors,
   };
+
   return (
     <React.Fragment>
       <ReactApexChart dir="ltr"

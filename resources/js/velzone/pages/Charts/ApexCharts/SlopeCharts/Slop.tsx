@@ -1,12 +1,12 @@
 import React, { useEffect } from 'react'
 import Chart from 'react-apexcharts';
-import { createSelector } from 'reselect';
 import { useSelector } from 'react-redux';
+import { createSelector } from 'reselect';
 import getChartColorsArray from 'Components/Common/ChartsDynamicColor';
 
 const BasicSlop = ({ dataColors }: any) => {
 
-    var basicSlopeColors = getChartColorsArray(dataColors);
+    const basicSlopeColors = getChartColorsArray(dataColors);
 
     // chart re-render
     const selectLayoutThemeType = createSelector(
@@ -62,7 +62,7 @@ const BasicSlop = ({ dataColors }: any) => {
         },
     ]
 
-    var options = {
+    const options = {
         chart: {
             height: 350,
             width: 400,
@@ -75,6 +75,7 @@ const BasicSlop = ({ dataColors }: any) => {
         },
         colors: basicSlopeColors
     }
+
     return (
         <React.Fragment>
             <Chart
@@ -105,7 +106,7 @@ const MultiGroup = ({ dataColors }: any) => {
         document.getElementsByClassName('apex-charts');
     }, [layoutThemeType]);
 
-    var chartMultiColors = getChartColorsArray(dataColors);
+    const chartMultiColors = getChartColorsArray(dataColors);
 
     const series = [
         {
@@ -178,7 +179,7 @@ const MultiGroup = ({ dataColors }: any) => {
         },
     ]
 
-    var options = {
+    const options = {
         chart: {
             height: 350,
             width: 600,
@@ -200,6 +201,7 @@ const MultiGroup = ({ dataColors }: any) => {
             },
             formatter(val: null, opts: { w: { config: { series: { [x: string]: { name: any; }; }; }; }; seriesIndex: string | number; }) {
                 const seriesName = opts.w.config.series[opts.seriesIndex].name
+
                 return val !== null ? seriesName : ''
             },
         },

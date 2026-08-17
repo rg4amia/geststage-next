@@ -12,6 +12,7 @@ use App\Models\Document\Document;
 use App\Models\Reference\Agence;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
+use App\Models\Reference\Programme;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -74,6 +75,11 @@ class Stage extends Model
     public function typeStage(): BelongsTo
     {
         return $this->belongsTo(TypeStage::class);
+    }
+
+    public function programme(): BelongsTo
+    {
+        return $this->belongsTo(Programme::class, 'programme_id');
     }
 
     /**

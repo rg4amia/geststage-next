@@ -1,12 +1,10 @@
-import React, { Fragment, useEffect, useState } from "react";
-import { CardBody, Col, Row, Table } from "reactstrap";
-import { Link } from '@/velzone/inertia-router';
-
-import {
+import { rankItem } from '@tanstack/match-sorter-utils';
+import type {
   Column,
   Table as ReactTable,
   ColumnFiltersState,
-  FilterFn,
+  FilterFn} from '@tanstack/react-table';
+import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
@@ -14,8 +12,11 @@ import {
   getSortedRowModel,
   flexRender
 } from '@tanstack/react-table';
+import React, { Fragment, useEffect, useState } from "react";
+import { CardBody, Col, Row, Table } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 
-import { rankItem } from '@tanstack/match-sorter-utils';
+
 
 import {
   ProductsGlobalFilter,
@@ -146,6 +147,7 @@ const TableContainer = ({
     addMeta({
       itemRank
     });
+
     return itemRank.passed;
   };
 

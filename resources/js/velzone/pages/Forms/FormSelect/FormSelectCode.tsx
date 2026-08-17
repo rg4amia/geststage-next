@@ -32,6 +32,7 @@ const DefaultSelect = () => {
 </Col>
 </Row>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -73,6 +74,7 @@ const MenuSize = () => {
     </Col>
     </Row>
     `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -114,6 +116,7 @@ const SelectSize = () => {
 </Col>
 </Row>
 `;
+
     return (
         <React.Fragment>
             <PrismCode

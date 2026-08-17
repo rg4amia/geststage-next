@@ -4,12 +4,12 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const SimpleRadar = ({ dataColors } : any) => {
-    var chartRadarBasicColors = getChartColorsArray(dataColors);
+    const chartRadarBasicColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Series 1',
         data: [80, 50, 30, 40, 100, 20],
     }]
-    var options : any = {
+    const options : any = {
 
         chart: {
             height: 350,
@@ -23,6 +23,7 @@ const SimpleRadar = ({ dataColors } : any) => {
             categories: ['January', 'February', 'March', 'April', 'May', 'June']
         }
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -35,7 +36,7 @@ const SimpleRadar = ({ dataColors } : any) => {
 }
 
 const MultipleRadar = ({ dataColors } : any) => {
-    var chartRadarMultiColors = getChartColorsArray(dataColors);
+    const chartRadarMultiColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Series 1',
         data: [80, 50, 30, 40, 100, 20],
@@ -49,7 +50,7 @@ const MultipleRadar = ({ dataColors } : any) => {
         data: [44, 76, 78, 13, 43, 10],
     }
     ]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'radar',
@@ -77,6 +78,7 @@ const MultipleRadar = ({ dataColors } : any) => {
             categories: ['2014', '2015', '2016', '2017', '2018', '2019']
         }
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -89,12 +91,12 @@ const MultipleRadar = ({ dataColors } : any) => {
 }
 
 const PolygonRadar = ({ dataColors } : any) => {
-    var chartRadarPolyradarColors = getChartColorsArray(dataColors);
+    const chartRadarPolyradarColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Series 1',
         data: [20, 100, 40, 30, 50, 80, 33],
     }]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'radar',
@@ -147,6 +149,7 @@ const PolygonRadar = ({ dataColors } : any) => {
             }
         }
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"

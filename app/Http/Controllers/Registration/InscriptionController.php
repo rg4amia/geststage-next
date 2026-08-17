@@ -106,6 +106,13 @@ class InscriptionController extends Controller
     {
         $instance = InstanceParcours::with([
             'stage.beneficiaire.communeResidence',
+            'stage.beneficiaire.typePaiement',
+            'stage.beneficiaire.niveauEtude',
+            'stage.beneficiaire.handicap',
+            'stage.beneficiaire.typeHandicap',
+            'stage.typeStage',
+            'stage.sourceFinancement',
+            'stage.programme',
             'stage.beneficiaire.diplome',
             'stage.entreprise',
             'stage.agence',

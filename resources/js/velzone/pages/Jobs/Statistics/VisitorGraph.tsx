@@ -1,10 +1,10 @@
 import React from "react";
-import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
+import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import useChartColors from "Components/Common/useChartColors";
 
 const VisitorGraph = ({ chartId }:any) => {
-  var chartTreemapDiffColor = useChartColors(chartId);
+  const chartTreemapDiffColor = useChartColors(chartId);
 
   const series = [
     {
@@ -64,7 +64,7 @@ const VisitorGraph = ({ chartId }:any) => {
       ],
     },
   ];
-  var options:any = {
+  const options:any = {
     legend: {
       show: false,
     },
@@ -90,6 +90,7 @@ const VisitorGraph = ({ chartId }:any) => {
       },
     },
   };
+
   return (
     <React.Fragment>
       <Col className="col-xl-8">

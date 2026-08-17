@@ -1,11 +1,11 @@
 import React from 'react';
-import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
 import ReactApexChart from "react-apexcharts";
+import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
 
 import getChartColorsArray from "../../../Components/Common/ChartsDynamicColor";
 
 const MarketGraph = ({ dataColors }:any) => {
-    var MarketchartColors = getChartColorsArray(dataColors);
+    const MarketchartColors = getChartColorsArray(dataColors);
     const series = [{
         data: [{
             x: new Date(1538778600000),
@@ -249,7 +249,7 @@ const MarketGraph = ({ dataColors }:any) => {
         },
         ]
     }];
-    var options:any = {
+    const options:any = {
         chart: {
             type: 'candlestick',
             height: 360,
@@ -285,6 +285,7 @@ const MarketGraph = ({ dataColors }:any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0);
                     }
+
                     return y;
 
                 }
@@ -293,6 +294,7 @@ const MarketGraph = ({ dataColors }:any) => {
                     if (typeof y !== "undefined") {
                         return "$" + y.toFixed(2) + "k";
                     }
+
                     return y;
 
                 }
@@ -301,12 +303,14 @@ const MarketGraph = ({ dataColors }:any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0) + " Sales";
                     }
+
                     return y;
 
                 }
             }]
         }
     };
+
     return (
         <React.Fragment>
             <Col xxl={9}>

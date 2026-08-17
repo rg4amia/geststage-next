@@ -1,10 +1,10 @@
 import React from 'react';
-import { Card, CardBody, Col, DropdownItem, DropdownMenu, DropdownToggle, Row, UncontrolledDropdown } from 'reactstrap';
 import CountUp from "react-countup";
+import { Card, CardBody, Col, DropdownItem, DropdownMenu, DropdownToggle, Row, UncontrolledDropdown } from 'reactstrap';
 
 // Import Images
-import Bgd from "../../assets/images/bg-d.png";
 import { Link } from '@/velzone/inertia-router';
+import Bgd from "../../assets/images/bg-d.png";
 
 const Widgets = () => {
     return (

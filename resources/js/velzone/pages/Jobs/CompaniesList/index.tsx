@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Link, NavLink } from '@/velzone/inertia-router';
+import Flatpickr from "react-flatpickr";
 import {
   Card,
   CardBody,
@@ -10,11 +10,11 @@ import {
   Row,
   Table,
 } from "reactstrap";
-import Flatpickr from "react-flatpickr";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
+import { Link, NavLink } from '@/velzone/inertia-router';
+import Pagination from "Components/Common/Pagination";
 import img6 from "../../../assets/images/companies/img-6.png";
 import { jobCompanies } from "../../../common/data/appsJobs";
-import Pagination from "Components/Common/Pagination";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 const CompaniesList = () => {
   const [companiesList, setCompaniesList] = useState<any>();
   const [currentPage, setCurrentPage] = useState<any>(1);

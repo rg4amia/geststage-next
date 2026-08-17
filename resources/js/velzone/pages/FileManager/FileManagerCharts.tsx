@@ -4,9 +4,9 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../Components/Common/ChartsDynamicColor";
 
 const SimpleDonutCharts = ({ dataColors }:any) => {
-    var chartDonutBasicColors = getChartColorsArray(dataColors);
+    const chartDonutBasicColors = getChartColorsArray(dataColors);
     const series = [27.01, 20.87, 33.54, 37.58]
-    var options:any = {
+    const options:any = {
         chart: {
             height: 330,
             type: 'donut',
@@ -22,6 +22,7 @@ const SimpleDonutCharts = ({ dataColors }:any) => {
         },
         colors: chartDonutBasicColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             series={series}

@@ -1,15 +1,15 @@
+import { useFormik } from "formik";
 import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, Col, Container, Input, Label, Row, Button, FormFeedback, Form } from 'reactstrap';
 
 // Formik validation
 import * as Yup from "yup";
-import { useFormik } from "formik";
+import { Link } from '@/velzone/inertia-router';
 
+import logoLight from "../../../assets/images/logo-light.png";
 import ParticlesAuth from "../ParticlesAuth";
 
 //import images
-import logoLight from "../../../assets/images/logo-light.png";
 
 const BasicSignIn = () => {
     document.title = "Basic SignIn | Velzon - React Admin & Dashboard Template";
@@ -64,6 +64,7 @@ const BasicSignIn = () => {
                                                 onSubmit={(e) => {
                                                     e.preventDefault();
                                                     validation.handleSubmit();
+
                                                     return false;
                                                 }}
                                                 action="#">

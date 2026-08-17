@@ -1,5 +1,10 @@
+import classnames from "classnames";
+import Nouislider from "nouislider-react";
 import React, { useEffect, useState, useMemo } from "react";
 
+import { useSelector, useDispatch } from "react-redux";
+import Select from "react-select";
+import { toast, ToastContainer } from "react-toastify";
 import {
   Container,
   UncontrolledDropdown,
@@ -15,29 +20,24 @@ import {
   CardHeader,
   Col,
 } from "reactstrap";
-import classnames from "classnames";
 
 // RangeSlider
-import Nouislider from "nouislider-react";
 import "nouislider/distribute/nouislider.css";
+import { createSelector } from "reselect";
+import { Link } from '@/velzone/inertia-router';
+import { productsData } from "../../../common/data";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import DeleteModal from "../../../Components/Common/DeleteModal";
 
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import TableContainer from "../../../Components/Common/TableContainer";
+import { getProducts as onGetProducts, deleteProducts } from "../../../slices/thunks";
 import { Rating, Published, Price } from "./EcommerceProductCol";
 //Import data
-import { productsData } from "../../../common/data";
 
 //Import actions
-import { getProducts as onGetProducts, deleteProducts } from "../../../slices/thunks";
 import { isEmpty } from "lodash";
-import Select from "react-select";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
-import { Link } from '@/velzone/inertia-router';
-import { toast, ToastContainer } from "react-toastify";
-import { createSelector } from "reselect";
 
 const SingleOptions = [
   { value: 'Watches', label: 'Watches' },
@@ -77,16 +77,20 @@ const EcommerceProducts = (props: any) => {
   }, [products]);
 
   useEffect(() => {
-    if (!isEmpty(products)) setProductList(products);
+    if (!isEmpty(products)) {
+setProductList(products);
+}
   }, [products]);
 
   const toggleTab = (tab: any, type: any) => {
     if (activeTab !== tab) {
       setActiveTab(tab);
       let filteredProducts = products;
+
       if (type !== "all") {
         filteredProducts = products.filter((product: any) => product.status === type);
       }
+
       setProductList(filteredProducts);
     }
   };
@@ -95,9 +99,11 @@ const EcommerceProducts = (props: any) => {
 
   const categories = (category: any) => {
     let filteredProducts = products;
+
     if (category !== "all") {
       filteredProducts = products.filter((product: any) => product.category === category);
     }
+
     setProductList(filteredProducts);
     setCate(category);
   };
@@ -138,14 +144,16 @@ const EcommerceProducts = (props: any) => {
   };
 
   const onUncheckMark = (value: any) => {
-    var modifiedRating = [...ratingvalues];
+    const modifiedRating = [...ratingvalues];
     const modifiedData = (modifiedRating || []).filter(x => x !== value);
     /*
     find min values
     */
-    var filteredProducts = productsData;
+    let filteredProducts = productsData;
+
     if (modifiedData && modifiedData.length && value !== 1) {
-      var minValue = Math.min(...modifiedData);
+      const minValue = Math.min(...modifiedData);
+
       if (minValue && minValue !== Infinity) {
         filteredProducts = productsData.filter(
           product => product.rating >= minValue
@@ -155,6 +163,7 @@ const EcommerceProducts = (props: any) => {
     } else {
       filteredProducts = productsData;
     }
+
     setProductList(filteredProducts);
   };
 
@@ -182,6 +191,7 @@ const EcommerceProducts = (props: any) => {
     const ele = document.querySelectorAll(".productCheckBox:checked");
     const del = document.getElementById("selection-element") as HTMLElement;
     setDele(ele.length);
+
     if (ele.length === 0) {
       del.style.display = 'none';
     } else {
@@ -195,7 +205,9 @@ const EcommerceProducts = (props: any) => {
     const del = document.getElementById("selection-element") as HTMLElement;
     ele.forEach((element: any) => {
       dispatch(deleteProducts(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
       del.style.display = 'none';
     });
   };

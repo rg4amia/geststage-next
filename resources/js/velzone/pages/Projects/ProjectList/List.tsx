@@ -1,21 +1,21 @@
+import FeatherIcon from "feather-icons-react";
 import React, { useState, useEffect } from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Card, CardBody, Col, DropdownItem, DropdownMenu, DropdownToggle, Input, Row, UncontrolledDropdown } from 'reactstrap';
-import DeleteModal from "../../../Components/Common/DeleteModal";
+import { useSelector, useDispatch } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
+import { Card, CardBody, Col, DropdownItem, DropdownMenu, DropdownToggle, Input, Row, UncontrolledDropdown } from 'reactstrap';
+import { createSelector } from 'reselect';
+import { Link } from '@/velzone/inertia-router';
+import DeleteModal from "../../../Components/Common/DeleteModal";
 
 //redux
-import { useSelector, useDispatch } from 'react-redux';
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
 
 //import action
 import {
     getProjectList as onGetProjectList,
     deleteProjectList as onDeleteProjectList,
 } from "../../../slices/thunks";
-import { createSelector } from 'reselect';
 
 const List = () => {
     const dispatch:any = useDispatch();

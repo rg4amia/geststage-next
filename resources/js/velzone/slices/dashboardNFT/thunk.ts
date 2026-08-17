@@ -9,19 +9,24 @@ import {
 
 export const getMarketChartsDatas = createAsyncThunk("dashboardNFT/getMarketChartsDatas", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "all") {
       response = getAllMarketplaceDataApi();
     }
+
     if (data === "month") {
       response = getMonthMarketplaceDataApi();
     }
+
     if (data === "halfyear") {
       response = gethalfYearMarketplaceDataApi();
     }
+
     if (data === "year") {
       response = getYearMarketplaceDataApi();
     }
+
     return response;
   } catch (error) {
     return error;

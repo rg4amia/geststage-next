@@ -1,15 +1,16 @@
 import React from 'react';
 import { Col, Container, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import Watchlist from './Watchlist';
-import PortfolioStatistics from './PortfolioStatistics';
 import MarketStatus from './MarketStatus';
-import Widgets from './Widgets';
+import PortfolioStatistics from './PortfolioStatistics';
 import RecentTransaction from './RecentTransaction';
+import Watchlist from './Watchlist';
+import Widgets from './Widgets';
 
 
 const MyWallet = () => {
     document.title="My Wallet | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

@@ -1,10 +1,10 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, Col, Container, Row, Button } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
+import logoLight from "../../../assets/images/logo-light.png";
 import ParticlesAuth from "../ParticlesAuth";
 
 //import images
-import logoLight from "../../../assets/images/logo-light.png";
 
 
 const BasicTwosVerify = () => {

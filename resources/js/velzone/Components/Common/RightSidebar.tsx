@@ -1,13 +1,27 @@
+import classnames from "classnames";
 import React, { useEffect, useState } from 'react';
+import { useSelector, useDispatch } from "react-redux";
 import {
     Offcanvas,
     OffcanvasHeader,
     OffcanvasBody,
     Collapse,
 } from "reactstrap";
-import withRouter from './withRouter';
+import { createSelector } from 'reselect';
+import SimpleBar from "simplebar-react";
 
 //redux
+
+
+//import Constant
+
+//SimpleBar
+
+//import Images
+import img01 from "../../assets/images/sidebar/img-1.jpg";
+import img02 from "../../assets/images/sidebar/img-2.jpg";
+import img03 from "../../assets/images/sidebar/img-3.jpg";
+import img04 from "../../assets/images/sidebar/img-4.jpg";
 import {
     changeLayout,
     changeSidebarTheme,
@@ -24,10 +38,6 @@ import {
     changeLayoutThemeColor
     // resetValue
 } from "../../slices/thunks";
-
-import { useSelector, useDispatch } from "react-redux";
-
-//import Constant
 import {
     LAYOUT_THEME,
     LAYOUT_TYPES,
@@ -43,17 +53,7 @@ import {
     SIDEBAR_VISIBILITY_TYPES,
     LAYOUT_THEME_COLOR
 } from "../constants/layout";
-
-//SimpleBar
-import SimpleBar from "simplebar-react";
-import classnames from "classnames";
-
-//import Images
-import img01 from "../../assets/images/sidebar/img-1.jpg";
-import img02 from "../../assets/images/sidebar/img-2.jpg";
-import img03 from "../../assets/images/sidebar/img-3.jpg";
-import img04 from "../../assets/images/sidebar/img-4.jpg";
-import { createSelector } from 'reselect';
+import withRouter from './withRouter';
 
 const RightSidebar = (props: any) => {
     const dispatch: any = useDispatch();
@@ -119,6 +119,7 @@ const RightSidebar = (props: any) => {
 
     const scrollFunction = () => {
         const element = document.getElementById("back-to-top");
+
         if (element) {
             if (document.body.scrollTop > 100 || document.documentElement.scrollTop > 100) {
                 element.style.display = "block";
@@ -1208,6 +1209,7 @@ const RightSidebar = (props: any) => {
                                                             checked={leftSidebarType === LAYOUT_SIDEBAR_TYPES.LIGHT}
                                                             onChange={e => {
                                                                 setShow(false);
+
                                                                 if (e.target.checked) {
                                                                     dispatch(changeSidebarTheme(e.target.value));
                                                                 }
@@ -1245,6 +1247,7 @@ const RightSidebar = (props: any) => {
                                                             checked={leftSidebarType === LAYOUT_SIDEBAR_TYPES.DARK}
                                                             onChange={e => {
                                                                 setShow(false);
+
                                                                 if (e.target.checked) {
                                                                     dispatch(changeSidebarTheme(e.target.value));
                                                                 }

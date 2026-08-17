@@ -12,22 +12,22 @@ import Img6 from "../../assets/images/nft/img-06.jpg";
 // import ImgGif4 from "../../assets/images/nft/gif/img-4.gif";
 // import ImgGif5 from "../../assets/images/nft/gif/img-5.gif";
 
+import alpha from "../../assets/images/nft/wallet/alpha.png";
+import binance from "../../assets/images/nft/wallet/binance.png";
+import coinbase from "../../assets/images/nft/wallet/coinbase.png";
+import enjin from "../../assets/images/nft/wallet/enjin.png";
+import kukai from "../../assets/images/nft/wallet/kukai.png";
+import math from "../../assets/images/nft/wallet/math.png";
+import metaMask from "../../assets/images/nft/wallet/metamask.png";
 import avatar1 from "../../assets/images/users/avatar-1.jpg";
+import avatar10 from "../../assets/images/users/avatar-10.jpg";
 import avatar2 from "../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../assets/images/users/avatar-3.jpg";
 import avatar5 from "../../assets/images/users/avatar-5.jpg";
 import avatar6 from "../../assets/images/users/avatar-6.jpg";
 import avatar8 from "../../assets/images/users/avatar-8.jpg";
 import avatar9 from "../../assets/images/users/avatar-9.jpg";
-import avatar10 from "../../assets/images/users/avatar-10.jpg";
 
-import metaMask from "../../assets/images/nft/wallet/metamask.png";
-import coinbase from "../../assets/images/nft/wallet/coinbase.png";
-import kukai from "../../assets/images/nft/wallet/kukai.png";
-import binance from "../../assets/images/nft/wallet/binance.png";
-import enjin from "../../assets/images/nft/wallet/enjin.png";
-import alpha from "../../assets/images/nft/wallet/alpha.png";
-import math from "../../assets/images/nft/wallet/math.png";
 
 const expolreNow = [
     {

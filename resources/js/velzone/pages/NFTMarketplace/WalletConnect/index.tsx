@@ -1,15 +1,16 @@
 import React from "react";
 import { Card, CardBody, Col, Container, Row } from "reactstrap";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { Link } from '@/velzone/inertia-router';
 
 // Import Images
 import metaMask from "../../../assets/images/nft/wallet/metamask.png";
 
 import { walletConnectData } from "../../../common/data/index";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 const WalletConnect = () => {
     document.title = "Wallet Connect | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

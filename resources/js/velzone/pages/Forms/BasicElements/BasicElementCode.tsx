@@ -162,6 +162,7 @@ const InputExample = () => {
     </div>
 </Col>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -187,6 +188,7 @@ const InputSizing = () => {
 <Input className="form-control form-control-lg" type="text" placeholder=".form-control-lg" />
 </Col>
 `
+
     return (
         <React.Fragment>
             <PrismCode
@@ -254,6 +256,7 @@ const FileInput = () => {
 
 </Row>
 `
+
 return (
     <React.Fragment>
         <PrismCode
@@ -324,6 +327,7 @@ const code =
 </div>
 </div>
 `
+
 return (
     <React.Fragment>
         <PrismCode
@@ -359,6 +363,7 @@ const InputGroupSizing = () => {
     </Col>
 </Row>
 `
+
 return (
     <React.Fragment>
         <PrismCode
@@ -391,6 +396,7 @@ const MultipleInputs = () => {
     <span className="input-group-text">0.00</span>
 </div>
 `
+
 return (
     <React.Fragment>
         <PrismCode
@@ -440,6 +446,7 @@ const code =
     <button className="btn btn-success" type="button">Button</button>
 </div>
 `
+
         return (
             <React.Fragment>
                 <PrismCode
@@ -500,6 +507,7 @@ const ButtonsWithDropdowns = () => {
     </ul>
 </div>
 `
+
         return (
             <React.Fragment>
                 <PrismCode
@@ -569,6 +577,7 @@ const CustomForms = () => {
     <button className="btn btn-outline-success" type="button" id="inputGroupFileAddon04">Button</button>
 </div>
 `
+
         return (
             <React.Fragment>
                 <PrismCode

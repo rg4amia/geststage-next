@@ -1,8 +1,8 @@
+import { useFormik } from "formik";
 import React, { useEffect, useState } from "react";
+import { useDispatch } from "react-redux";
 import { Form, FormFeedback, Input, Label, Modal, ModalBody, ModalHeader } from "reactstrap";
 
-import { useDispatch } from "react-redux";
-import { useFormik } from "formik";
 import * as Yup from "yup";
 
 import dummy from "assets/images/users/user-dummy-img.jpg"
@@ -110,6 +110,7 @@ const AddEditJobCandidateList = ({ show, handleClose, handleShow, editItem }: mo
                 <Form className="tablelist-form" onSubmit={(e: any) => {
                     e.preventDefault();
                     validation.handleSubmit();
+
                     return false;
                 }}>
                     <ModalBody>

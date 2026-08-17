@@ -1,5 +1,6 @@
 import { Form, Head } from '@inertiajs/react';
 import InputError from '@/old/components/input-error';
+import PasskeyVerify from '@/old/components/passkey-verify';
 import PasswordInput from '@/old/components/password-input';
 import TextLink from '@/old/components/text-link';
 import { Button } from '@/old/components/ui/button';
@@ -13,7 +14,6 @@ import { register } from '@/routes';
 import { store } from '@/routes/login';
 import { request } from '@/routes/password';
 /* @chisel-passkeys */
-import PasskeyVerify from '@/old/components/passkey-verify';
 /* @end-chisel-passkeys */
 
 type Props = {

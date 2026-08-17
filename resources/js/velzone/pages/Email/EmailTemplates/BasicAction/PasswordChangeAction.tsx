@@ -1,9 +1,9 @@
+import FeatherIcon from "feather-icons-react";
 import React from 'react';
 import { Row, Col } from 'reactstrap';
 import { Link } from '@/velzone/inertia-router';
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
 
 const PasswordChangeAction = () => {
     return (

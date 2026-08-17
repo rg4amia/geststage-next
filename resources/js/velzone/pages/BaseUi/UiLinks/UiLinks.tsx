@@ -1,13 +1,14 @@
     import React from 'react'
-    import UiContent from '../../../Components/Common/UiContent';
     import { Card, CardBody, Col, Container, Row } from 'reactstrap';
-    import BreadCrumb from '../../../Components/Common/BreadCrumb';
     import { Link } from '@/velzone/inertia-router';
+    import BreadCrumb from '../../../Components/Common/BreadCrumb';
     import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+    import UiContent from '../../../Components/Common/UiContent';
     import { ColorExample, DefaultLinkExample, OffsetExample, OpacityExample, OpacityHoverExample, UtilitiesExample, UtilityOpacityExample } from './UiLinkCode';
 
 const UiLink = () => {
     document.title = "Link | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

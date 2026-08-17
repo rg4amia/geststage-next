@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import classnames from 'classnames';
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -13,7 +13,9 @@ const DmgOperationsIndex = ({
     const [activeTab, setActiveTab] = useState('1');
 
     const toggleTab = (tab: string) => {
-        if (activeTab !== tab) setActiveTab(tab);
+        if (activeTab !== tab) {
+setActiveTab(tab);
+}
     };
 
     const commonColumns = [

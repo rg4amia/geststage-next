@@ -3,20 +3,21 @@ import { Card, CardBody, Col, Container, Row, } from 'reactstrap';
 import { Link } from '@/velzone/inertia-router';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
+import img1 from "../../../assets/images/small/img-1.jpg";
+import img2 from "../../../assets/images/small/img-2.jpg";
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 
 // Import Images
-import img1 from "../../../assets/images/small/img-1.jpg";
-import img2 from "../../../assets/images/small/img-2.jpg";
+import UiContent from '../../../Components/Common/UiContent';
 
 import { DefaultPlaceholderExample, WidthExample, SizingExample, ColorExample } from './UiPlaceholdersCode';
 
 
 const UiPlaceholders = () => {
     document.title="Placeholders | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from "react";
+import { useFormik } from "formik";
 import { isEmpty } from "lodash";
+import React, { useState, useEffect } from "react";
 
+import { useSelector, useDispatch } from "react-redux";
 import {
   Container,
   Row,
@@ -16,16 +18,14 @@ import {
 } from "reactstrap";
 
 // Formik Validation
+import { createSelector } from "reselect";
 import * as Yup from "yup";
-import { useFormik } from "formik";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 
 import avatar from "../../assets/images/users/avatar-1.jpg";
 // actions
 import { editProfile, resetProfileFlag } from "../../slices/thunks";
-import { createSelector } from "reselect";
 
 const UserProfile = () => {
   const dispatch: any = useDispatch();
@@ -55,6 +55,7 @@ const UserProfile = () => {
   useEffect(() => {
     if (sessionStorage.getItem("authUser")) {
       const storedUser = sessionStorage.getItem("authUser");
+
       if (storedUser) {
         const obj = JSON.parse(storedUser);
 
@@ -78,6 +79,7 @@ const UserProfile = () => {
           setidx(obj.data._id || "1");
 
         }
+
         setTimeout(() => {
           dispatch(resetProfileFlag());
         }, 3000);
@@ -104,6 +106,7 @@ const UserProfile = () => {
   });
 
   document.title = "Profile | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content mt-lg-5">
@@ -145,6 +148,7 @@ const UserProfile = () => {
                 onSubmit={(e) => {
                   e.preventDefault();
                   validation.handleSubmit();
+
                   return false;
                 }}
               >

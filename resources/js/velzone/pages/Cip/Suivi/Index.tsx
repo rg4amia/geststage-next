@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import classnames from 'classnames';
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -16,7 +16,9 @@ const CipSuiviIndex = ({
     const [selectedAction, setSelectedAction] = useState<any>(null);
 
     const toggleTab = (tab: string) => {
-        if (activeTab !== tab) setActiveTab(tab);
+        if (activeTab !== tab) {
+setActiveTab(tab);
+}
     };
 
     const handleAction = (type: string, item: any) => {
@@ -127,7 +129,8 @@ const CipSuiviIndex = ({
             header: 'Type',
             accessorKey: 'type_evenement',
             cell: (cell: any) => {
-                let color = cell.getValue() === 'Abandon' ? 'danger' : 'warning';
+                const color = cell.getValue() === 'Abandon' ? 'danger' : 'warning';
+
                 return <Badge color={color}>{cell.getValue()}</Badge>;
             },
         },

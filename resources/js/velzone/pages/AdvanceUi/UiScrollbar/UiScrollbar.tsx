@@ -1,12 +1,11 @@
 import React from 'react';
 import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
-import { Link } from '@/velzone/inertia-router';
 
 // Import Scroll Bar - SimpleBar
 import SimpleBar from 'simplebar-react';
+import { Link } from '@/velzone/inertia-router';
 
 //import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 // Import Images
 import avatar2 from "../../../assets/images/users/avatar-2.jpg";
@@ -14,11 +13,13 @@ import avatar3 from "../../../assets/images/users/avatar-3.jpg";
 import avatar4 from "../../../assets/images/users/avatar-4.jpg";
 import avatar5 from "../../../assets/images/users/avatar-5.jpg";
 import avatar8 from "../../../assets/images/users/avatar-8.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 
 const UiScrollbar = () => {
 
 document.title="Scrollbar | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

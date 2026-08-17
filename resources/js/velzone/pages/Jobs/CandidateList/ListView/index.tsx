@@ -1,14 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Link } from '@/velzone/inertia-router';
-import { Card, CardBody, Col, Container, Input, Row } from "reactstrap";
-import BreadCrumb from "../../../../Components/Common/BreadCrumb";
-import { ToastContainer } from "react-toastify";
 import { useDispatch, useSelector } from "react-redux";
+import { ToastContainer } from "react-toastify";
+import { Card, CardBody, Col, Container, Input, Row } from "reactstrap";
 import { createSelector } from "reselect";
+import { Link } from '@/velzone/inertia-router';
 
-import { getCandidateList as onGetCandidateList } from "slices/thunks";
 import AddEditJobCandidateList from "Components/Common/AddEditJobCandidateList";
 import Pagination from "Components/Common/Pagination";
+import { getCandidateList as onGetCandidateList } from "slices/thunks";
+import BreadCrumb from "../../../../Components/Common/BreadCrumb";
 
 
 const CandidateList = () => {
@@ -34,7 +34,9 @@ const CandidateList = () => {
 
   //add modal state
   const [modal, setModal] = useState<boolean>(false);
-  const handleAddModal = useCallback(() => { setModal(!modal); setEditItem(null); }, [modal]);
+  const handleAddModal = useCallback(() => {
+ setModal(!modal); setEditItem(null); 
+}, [modal]);
   const handleShow = () => setModal(true)
 
   const [editItem, setEditItem] = useState<any>();
@@ -71,7 +73,7 @@ const CandidateList = () => {
 
   // search
   const handleSearch = (ele: any) => {
-    let item = ele.value;
+    const item = ele.value;
 
     if (item === "All Tasks") {
       setCandidate([...candidatelist]);

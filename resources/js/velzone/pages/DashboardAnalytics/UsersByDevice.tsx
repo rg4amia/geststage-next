@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, Col, DropdownMenu, DropdownToggle, Dropdown, DropdownItem, CardBody } from 'reactstrap';
 import { useSelector, useDispatch } from "react-redux";
+import { Card, CardHeader, Col, DropdownMenu, DropdownToggle, Dropdown, DropdownItem, CardBody } from 'reactstrap';
 //Import Icons
+import { createSelector } from 'reselect';
 import { getUserDeviceChartsData } from "../../slices/thunks";
 
 import { UsersByDeviceCharts } from './DashboardAnalyticsCharts';
-import { createSelector } from 'reselect';
 
 
 const UsersByDevice = () => {
@@ -50,10 +50,18 @@ const UsersByDevice = () => {
                                     <span className="text-muted fs-16"><i className="mdi mdi-dots-vertical align-middle"></i></span>
                                 </DropdownToggle>
                                 <DropdownMenu className="dropdown-menu-end" >
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("today"); }} className={seletedMonth === "today" ? "active" : ""}>Today</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("lastWeek"); }} className={seletedMonth === "lastWeek" ? "active" : ""}>Last Week</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("lastMonth"); }} className={seletedMonth === "lastMonth" ? "active" : ""}>Last Month</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("currentYear"); }} className={seletedMonth === "currentYear" ? "active" : ""}>Current Year</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("today"); 
+}} className={seletedMonth === "today" ? "active" : ""}>Today</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("lastWeek"); 
+}} className={seletedMonth === "lastWeek" ? "active" : ""}>Last Week</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("lastMonth"); 
+}} className={seletedMonth === "lastMonth" ? "active" : ""}>Last Month</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("currentYear"); 
+}} className={seletedMonth === "currentYear" ? "active" : ""}>Current Year</DropdownItem>
                                 </DropdownMenu>
                             </Dropdown>
                         </div>

@@ -1,9 +1,10 @@
+import moment from "moment";
 import React from "react";
 import { Link } from '@/velzone/inertia-router';
-import moment from "moment";
 
 const handleValidDate = (date:any) => {
     const date1 = moment(new Date(date)).format("DD MMM Y");
+
     return date1;
 };
 

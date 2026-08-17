@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 // Import Images
 import img1 from "../../../assets/images/landing/features/img-1.png";

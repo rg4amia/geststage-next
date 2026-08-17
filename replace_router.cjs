@@ -4,6 +4,7 @@ const path = require('path');
 function replaceInDir(dir) {
     fs.readdirSync(dir).forEach(file => {
         const fullPath = path.join(dir, file);
+
         if (fs.statSync(fullPath).isDirectory()) {
             if (fullPath.endsWith(path.join('velzone', 'Routes'))) {
                 return;
@@ -16,6 +17,7 @@ function replaceInDir(dir) {
             }
 
             let content = fs.readFileSync(fullPath, 'utf8');
+
             if (content.includes('react-router-dom')) {
                 content = content.replace(/'react-router-dom'/g, "'@/velzone/inertia-router'");
                 content = content.replace(/"react-router-dom"/g, "'@/velzone/inertia-router'");

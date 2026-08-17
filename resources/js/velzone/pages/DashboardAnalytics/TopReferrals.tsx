@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 //import Images
 import illustrator from "../../assets/images/illustrator-1.png";

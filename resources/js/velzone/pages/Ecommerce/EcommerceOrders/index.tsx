@@ -1,4 +1,11 @@
+import classnames from "classnames";
+import { useFormik } from "formik";
+import { isEmpty } from "lodash";
+import moment from "moment";
 import React, { useEffect, useState, useMemo, useCallback } from "react";
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux";
+import { toast, ToastContainer } from 'react-toastify';
 import {
   Card,
   CardBody,
@@ -17,23 +24,20 @@ import {
   Input,
   FormFeedback
 } from "reactstrap";
+import { createSelector } from "reselect";
+import * as Yup from "yup";
 import { Link } from '@/velzone/inertia-router';
-import classnames from "classnames";
-import Flatpickr from "react-flatpickr";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
-import TableContainer from "../../../Components/Common/TableContainer";
 import DeleteModal from "../../../Components/Common/DeleteModal";
-import { isEmpty } from "lodash";
+import ExportCSVModal from "../../../Components/Common/ExportCSVModal";
+import Loader from "../../../Components/Common/Loader";
+import TableContainer from "../../../Components/Common/TableContainer";
 
 // Export Modal
-import ExportCSVModal from "../../../Components/Common/ExportCSVModal";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 
 //Import actions
 import {
@@ -43,11 +47,7 @@ import {
   deleteOrder as onDeleteOrder,
 } from "../../../slices/thunks";
 
-import Loader from "../../../Components/Common/Loader";
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { createSelector } from "reselect";
-import moment from "moment";
 
 const EcommerceOrders = () => {
 
@@ -159,16 +159,20 @@ const EcommerceOrders = () => {
   }, [orders]);
 
   useEffect(() => {
-    if (!isEmpty(orders)) setOrderList(orders);
+    if (!isEmpty(orders)) {
+setOrderList(orders);
+}
   }, [orders]);
 
   const toggleTab = (tab: any, type: any) => {
     if (activeTab !== tab) {
       setActiveTab(tab);
       let filteredOrders = orders;
+
       if (type !== "all") {
         filteredOrders = orders.filter((order: any) => order.status === type);
       }
+
       setOrderList(filteredOrders);
     }
   };
@@ -226,6 +230,7 @@ const EcommerceOrders = () => {
         dispatch(onAddNewOrder(newOrder));
         validation.resetForm();
       }
+
       toggle();
     },
   });
@@ -280,6 +285,7 @@ const EcommerceOrders = () => {
   const checkedAll = useCallback(() => {
     const checkall: any = document.getElementById("checkBoxAll");
     const ele = document.querySelectorAll(".orderCheckBox");
+
     if (checkall.checked) {
       ele.forEach((ele: any) => {
         ele.checked = true;
@@ -289,6 +295,7 @@ const EcommerceOrders = () => {
         ele.checked = false;
       });
     }
+
     deleteCheckbox();
   }, []);
 
@@ -300,7 +307,9 @@ const EcommerceOrders = () => {
     const checkall: any = document.getElementById("checkBoxAll");
     selectedCheckBoxDelete.forEach((element: any) => {
       dispatch(onDeleteOrder(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
     });
     setIsMultiDeleteButton(false);
     checkall.checked = false;
@@ -436,6 +445,7 @@ const EcommerceOrders = () => {
 
   const handleValidDate = (date: any) => {
     const date1 = moment(new Date(date)).format("DD MMM Y");
+
     return date1;
   };
 
@@ -444,13 +454,16 @@ const EcommerceOrders = () => {
     const getHour = time1.getUTCHours();
     const getMin = time1.getUTCMinutes();
     const getTime = `${getHour}:${getMin}`;
-    var meridiem = "";
+    let meridiem = "";
+
     if (getHour >= 12) {
       meridiem = "PM";
     } else {
       meridiem = "AM";
     }
+
     const updateTime = moment(getTime, 'hh:mm').format('hh:mm') + " " + meridiem;
+
     return updateTime;
   };
 
@@ -458,6 +471,7 @@ const EcommerceOrders = () => {
   const [isExportCSV, setIsExportCSV] = useState<boolean>(false);
 
   document.title = "Orders | Velzon - React Admin & Dashboard Template";
+
   return (
     <div className="page-content">
       <ExportCSVModal
@@ -494,7 +508,9 @@ const EcommerceOrders = () => {
                         type="button"
                         className="btn btn-success add-btn"
                         id="create-btn"
-                        onClick={() => { setIsEdit(false); toggle(); }}
+                        onClick={() => {
+ setIsEdit(false); toggle(); 
+}}
                       >
                         <i className="ri-add-line align-bottom me-1"></i> Create
                         Order
@@ -606,11 +622,12 @@ const EcommerceOrders = () => {
                 </div>
                 <Modal id="showModal" isOpen={modal} toggle={toggle} centered>
                   <ModalHeader className="bg-light p-3" toggle={toggle}>
-                    {!!isEdit ? "Edit Order" : "Add Order"}
+                    {isEdit ? "Edit Order" : "Add Order"}
                   </ModalHeader>
                   <Form className="tablelist-form" onSubmit={(e: any) => {
                     e.preventDefault();
                     validation.handleSubmit();
+
                     return false;
                   }}>
                     <ModalBody>
@@ -833,7 +850,7 @@ const EcommerceOrders = () => {
                         </button>
 
                         <button type="submit" className="btn btn-success">
-                          {!!isEdit
+                          {isEdit
                             ? "Update"
                             : "Add Customer"}
                         </button>

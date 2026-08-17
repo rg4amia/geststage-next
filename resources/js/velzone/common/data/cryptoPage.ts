@@ -1,3 +1,13 @@
+import img6 from "../../assets/images/companies/img-6.png";
+import img8 from "../../assets/images/companies/img-8.png";
+import aaveCoin from "../../assets/images/svg/crypto-icons/aave.svg";
+import adaCoin from "../../assets/images/svg/crypto-icons/ada.svg";
+import addCoin from "../../assets/images/svg/crypto-icons/add.svg";
+import antCoin from "../../assets/images/svg/crypto-icons/ant.svg";
+import arkCoin from "../../assets/images/svg/crypto-icons/ark.svg";
+import arnCoin from "../../assets/images/svg/crypto-icons/arn.svg";
+import atmCoin from "../../assets/images/svg/crypto-icons/atm.svg";
+import belaCoin from "../../assets/images/svg/crypto-icons/bela.svg";
 import btc from "../../assets/images/svg/crypto-icons/btc.svg";
 import eth from "../../assets/images/svg/crypto-icons/eth.svg";
 import eur from "../../assets/images/svg/crypto-icons/eur.svg";
@@ -9,30 +19,20 @@ import xmr from "../../assets/images/svg/crypto-icons/xmr.svg";
 import xpm from "../../assets/images/svg/crypto-icons/xpm.svg";
 import ppt from "../../assets/images/svg/crypto-icons/ppt.svg";
 
-import img6 from "../../assets/images/companies/img-6.png";
-import img8 from "../../assets/images/companies/img-8.png";
 
 import vtcCoin from "../../assets/images/svg/crypto-icons/vtc.svg";
 import xsgCoin from "../../assets/images/svg/crypto-icons/xsg.svg";
-import belaCoin from "../../assets/images/svg/crypto-icons/bela.svg";
-import arnCoin from "../../assets/images/svg/crypto-icons/arn.svg";
 import csCoin from "../../assets/images/svg/crypto-icons/cs.svg";
-import addCoin from "../../assets/images/svg/crypto-icons/add.svg";
-import atmCoin from "../../assets/images/svg/crypto-icons/atm.svg";
 import bcbcCoin from "../../assets/images/svg/crypto-icons/bcbc.svg";
 import bixCoin from "../../assets/images/svg/crypto-icons/bix.svg";
 import riseCoin from "../../assets/images/svg/crypto-icons/rise.svg";
-import arkCoin from "../../assets/images/svg/crypto-icons/ark.svg";
 
 // Import Images
 import btcCoin from "../../assets/images/svg/crypto-icons/btc.svg";
 import ltcCoin from "../../assets/images/svg/crypto-icons/ltc.svg";
 import ethCoin from "../../assets/images/svg/crypto-icons/eth.svg";
-import aaveCoin from "../../assets/images/svg/crypto-icons/aave.svg";
 import dotCoin from "../../assets/images/svg/crypto-icons/dot.svg";
-import adaCoin from "../../assets/images/svg/crypto-icons/ada.svg";
 import fillCoin from "../../assets/images/svg/crypto-icons/fil.svg";
-import antCoin from "../../assets/images/svg/crypto-icons/ant.svg";
 import solCoin from "../../assets/images/svg/crypto-icons/sol.svg";
 import moneroCoin from "../../assets/images/svg/crypto-icons/xmr.svg";
 import makerCoin from "../../assets/images/svg/crypto-icons/mkr.svg";

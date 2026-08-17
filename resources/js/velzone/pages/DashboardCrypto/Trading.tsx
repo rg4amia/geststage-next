@@ -1,6 +1,6 @@
+import classnames from 'classnames';
 import React, { useState } from 'react';
 import { Card, CardHeader, Col, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
-import classnames from 'classnames';
 
 const Trading = () => {
     //Tab 
@@ -10,6 +10,7 @@ const Trading = () => {
             setActiveTab(tab);
         }
     };
+
     return (
         <React.Fragment>
             <Col xl={4}>
@@ -22,7 +23,9 @@ const Trading = () => {
                                     <NavLink
                                         href="#"
                                         className={classnames({ active: activeTab === '1' })}
-                                        onClick={() => { toggleTab('1'); }}
+                                        onClick={() => {
+ toggleTab('1'); 
+}}
                                     >
                                         Buy</NavLink>
                                 </NavItem>
@@ -30,7 +33,9 @@ const Trading = () => {
                                     <NavLink
                                         href="#"
                                         className={classnames({ active: activeTab === '2' })}
-                                        onClick={() => { toggleTab('2'); }}
+                                        onClick={() => {
+ toggleTab('2'); 
+}}
                                     >
                                         Sell</NavLink>
                                 </NavItem>

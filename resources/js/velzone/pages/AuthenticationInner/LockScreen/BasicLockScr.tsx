@@ -1,16 +1,16 @@
-import React from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Button, Card, CardBody, Col, Container, Form, FormFeedback, Input, Row } from 'reactstrap';
 
 //formik
 import { useFormik } from 'formik';
+import React from 'react';
+import { Button, Card, CardBody, Col, Container, Form, FormFeedback, Input, Row } from 'reactstrap';
 import * as Yup from 'yup';
+import { Link } from '@/velzone/inertia-router';
 
-import ParticlesAuth from "../ParticlesAuth";
 
 //import images
 import logoLight from "../../../assets/images/logo-light.png";
 import avatar1 from "../../../assets/images/users/avatar-1.jpg";
+import ParticlesAuth from "../ParticlesAuth";
 
 
 const BasicLockScreen = () => {
@@ -64,6 +64,7 @@ const BasicLockScreen = () => {
                                             <Form onSubmit={(e) => {
                                                 e.preventDefault();
                                                 validation.handleSubmit();
+
                                                 return false;
                                             }} action="#">
                                                 <div className="mb-3">

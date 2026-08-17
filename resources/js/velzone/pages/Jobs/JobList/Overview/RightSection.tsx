@@ -1,11 +1,12 @@
 import React, { useState } from "react";
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Table } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 import img3 from "../../../../assets/images/companies/img-3.png";
 
 const RightSection = () => {
 
   const [isBookmarkClick , setIsBookmarkClick] = useState<boolean>(false);
+
   return (
     <React.Fragment>
       <Card className="card">

@@ -1,5 +1,9 @@
+import { useFormik } from "formik";
 import React, { useEffect, useState } from "react";
 
+import Flatpickr from "react-flatpickr";
+import { useDispatch } from "react-redux";
+import Select from "react-select";
 import {
   CardBody,
   Row,
@@ -13,21 +17,17 @@ import {
   FormFeedback,
 } from "reactstrap";
 
+import * as Yup from "yup";
 import { Link, useNavigate } from '@/velzone/inertia-router';
-import Flatpickr from "react-flatpickr";
-
-import BreadCrumb from "../../Components/Common/BreadCrumb";
-import Select from "react-select";
 
 import logoDark from "../../assets/images/logo-dark.png";
 import logoLight from "../../assets/images/logo-light.png";
+import BreadCrumb from "../../Components/Common/BreadCrumb";
+
 
 //formik
-import { useFormik } from "formik";
-import * as Yup from "yup";
 
 //redux
-import { useDispatch } from "react-redux";
 import { addNewInvoice as onAddNewInvoice } from "../../slices/thunks";
 
 const InvoiceCreate = () => {
@@ -86,8 +86,8 @@ const InvoiceCreate = () => {
   const [charge, setCharge] = useState<number>(0);
 
   useEffect(() => {
-    let tax = (0.125 * rate * count);
-    let dis = (0.15 * rate * count);
+    const tax = (0.125 * rate * count);
+    const dis = (0.15 * rate * count);
 
     // if ((rate && count) && isNaN !== 0) {
       if (rate && count && !isNaN(rate) && !isNaN(count)) {
@@ -96,13 +96,15 @@ const InvoiceCreate = () => {
       setCharge(0);
 
     }
+
     setTax(tax);
     setDis(dis);
   }, [rate, count]);
 
   const dateFormat = () => {
-    let d = new Date(),
+    const d = new Date(),
       months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
     return ((d.getDate() + ' ' + months[d.getMonth()] + ', ' + d.getFullYear()).toString());
   };
 
@@ -200,6 +202,7 @@ const InvoiceCreate = () => {
                 onSubmit={(e) => {
                   e.preventDefault();
                   validation.handleSubmit();
+
                   return false;
                 }}
                 className="needs-validation"

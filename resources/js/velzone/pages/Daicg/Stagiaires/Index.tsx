@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge } from 'reactstrap';
 import classnames from 'classnames';
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -13,7 +13,9 @@ const DaicgStagiairesIndex = ({
     const [activeTab, setActiveTab] = useState('1');
 
     const toggleTab = (tab: string) => {
-        if (activeTab !== tab) setActiveTab(tab);
+        if (activeTab !== tab) {
+setActiveTab(tab);
+}
     };
 
     const commonColumns = [
@@ -46,8 +48,13 @@ const DaicgStagiairesIndex = ({
             accessorKey: 'statut',
             cell: (cell: any) => {
                 let badgeClass = 'primary';
-                if (cell.getValue() === 'Valide DESSE') badgeClass = 'success';
-                else if (cell.getValue() === 'Sans Contrat') badgeClass = 'danger';
+
+                if (cell.getValue() === 'Valide DESSE') {
+badgeClass = 'success';
+} else if (cell.getValue() === 'Sans Contrat') {
+badgeClass = 'danger';
+}
+
                 return <Badge color={badgeClass}>{cell.getValue() || 'Consultation'}</Badge>;
             },
         },

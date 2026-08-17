@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Card, CardBody, CardHeader, Col, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Input, Nav, NavItem, NavLink, Offcanvas, OffcanvasBody, Pagination, PaginationItem, PaginationLink, Row, TabContent, TabPane } from 'reactstrap';
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import classnames from "classnames";
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Col, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Input, Nav, NavItem, NavLink, Offcanvas, OffcanvasBody, Pagination, PaginationItem, PaginationLink, Row, TabContent, TabPane } from 'reactstrap';
+import { Autoplay } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Link } from '@/velzone/inertia-router';
 
 // import Images
 import smallImage1 from '../../../assets/images/small/img-1.jpg';
@@ -11,9 +12,8 @@ import smallImage4 from '../../../assets/images/small/img-4.jpg';
 import smallImage5 from '../../../assets/images/small/img-5.jpg';
 
 import { SearchGallery, news, video, swiper  } from '../../../common/data';
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
-import { Swiper, SwiperSlide } from "swiper/react";
-import { Autoplay } from "swiper/modules";
 
 const SearchResults = () => {
 
@@ -96,7 +96,9 @@ document.title="Search Results | Velzon - React Admin & Dashboard Template";
                                             <NavLink
                                                 href="#"
                                                 className={classnames({ active: activeTab === '1' })}
-                                                onClick={() => { toggleTab('1'); }}
+                                                onClick={() => {
+ toggleTab('1'); 
+}}
                                             >
                                                 <i className="ri-search-2-line text-muted align-bottom me-1"></i> All Results
                                             </NavLink>
@@ -105,7 +107,9 @@ document.title="Search Results | Velzon - React Admin & Dashboard Template";
                                             <NavLink
                                                 href="#"
                                                 className={classnames({ active: activeTab === '2' })}
-                                                onClick={() => { toggleTab('2'); }}
+                                                onClick={() => {
+ toggleTab('2'); 
+}}
                                             >
                                                 <i className="ri-image-fill text-muted align-bottom me-1"></i> Images
                                             </NavLink>
@@ -114,7 +118,9 @@ document.title="Search Results | Velzon - React Admin & Dashboard Template";
                                             <NavLink
                                                 href="#"
                                                 className={classnames({ active: activeTab === '3' })}
-                                                onClick={() => { toggleTab('3'); }}
+                                                onClick={() => {
+ toggleTab('3'); 
+}}
                                             >
                                                 <i className="ri-list-unordered text-muted align-bottom me-1"></i> News
                                             </NavLink>
@@ -123,7 +129,9 @@ document.title="Search Results | Velzon - React Admin & Dashboard Template";
                                             <NavLink
                                                 href="#"
                                                 className={classnames({ active: activeTab === '4' })}
-                                                onClick={() => { toggleTab('4'); }}
+                                                onClick={() => {
+ toggleTab('4'); 
+}}
                                             >
                                                 <i className="ri-video-line text-muted align-bottom me-1"></i> Videos
                                             </NavLink>

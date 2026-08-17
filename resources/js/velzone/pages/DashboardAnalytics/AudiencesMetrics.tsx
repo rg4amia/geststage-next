@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
 import CountUpModule from 'react-countup';
 import { useSelector, useDispatch } from "react-redux";
-import { AudiencesCharts } from './DashboardAnalyticsCharts';
-import { getAudiencesMetricsChartsData } from "../../slices/thunks";
+import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
 import { createSelector } from 'reselect';
+import { getAudiencesMetricsChartsData } from "../../slices/thunks";
+import { AudiencesCharts } from './DashboardAnalyticsCharts';
 
 const AudiencesMetrics = () => {
     const CountUp = (CountUpModule as any).default ?? CountUpModule;
@@ -40,16 +40,24 @@ const AudiencesMetrics = () => {
                     <CardHeader className="border-0 align-items-center d-flex">
                         <h4 className="card-title mb-0 flex-grow-1">Audiences Metrics</h4>
                         <div className="d-flex gap-1">
-                            <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("all"); }}>
+                            <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("all"); 
+}}>
                                 ALL
                             </button>
-                            <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("monthly"); }}>
+                            <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("monthly"); 
+}}>
                                 1M
                             </button>
-                            <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("halfyearly"); }}>
+                            <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("halfyearly"); 
+}}>
                                 6M
                             </button>
-                            <button type="button" className="btn btn-soft-primary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("yearly"); }}>
+                            <button type="button" className="btn btn-soft-primary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("yearly"); 
+}}>
                                 1Y
                             </button>
                         </div>

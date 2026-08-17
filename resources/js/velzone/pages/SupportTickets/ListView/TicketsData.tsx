@@ -1,26 +1,26 @@
+import { useFormik } from "formik";
+import { isEmpty } from "lodash";
+import moment from "moment";
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux";
+import { toast, ToastContainer } from 'react-toastify';
 import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, Form, FormFeedback, Input, Label, Modal, ModalBody, ModalHeader, Row, UncontrolledDropdown } from 'reactstrap';
 //redux
-import { useSelector, useDispatch } from "react-redux";
+import { createSelector } from 'reselect';
+import * as Yup from "yup";
+import DeleteModal from "../../../Components/Common/DeleteModal";
 import TableContainer from '../../../Components/Common/TableContainer';
 import { getTicketsList as onGetTicketsList, addNewTicket as onAddNewTicket, updateTicket, deleteTicket } from "../../../slices/thunks";
 
 import { TicketsId, Title, Client, AssignedTo, CreateDate, DueDate, Status, Priority } from "./TicketCol";
 //Import Flatepicker
-import Flatpickr from "react-flatpickr";
-import moment from "moment";
-import { isEmpty } from "lodash";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
-import DeleteModal from "../../../Components/Common/DeleteModal";
 
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Loader from "../../../Components/Common/Loader";
-import { createSelector } from 'reselect';
 
 const TicketsData = () => {
     const dispatch: any = useDispatch();
@@ -119,6 +119,7 @@ const TicketsData = () => {
                 validation.resetForm();
 
             }
+
             toggle();
         },
     });
@@ -190,6 +191,7 @@ const TicketsData = () => {
                 ele.checked = false;
             });
         }
+
         deleteCheckbox();
     }, []);
 
@@ -201,7 +203,9 @@ const TicketsData = () => {
         const checkall: any = document.getElementById("checkBoxAll");
         selectedCheckBoxDelete.forEach((element: any) => {
             dispatch(deleteTicket(element.value));
-            setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+            setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
         });
         setIsMultiDeleteButton(false);
         checkall.checked = false;
@@ -299,7 +303,9 @@ const TicketsData = () => {
                             </DropdownToggle>
                             <DropdownMenu className="dropdown-menu-end">
                                 <li><DropdownItem href="/apps-tickets-details"><i className="ri-eye-fill align-bottom me-2 text-muted"></i> View</DropdownItem></li>
-                                <li><DropdownItem className="edit-item-btn" href="#showModal" data-bs-toggle="modal" onClick={() => { const TicketData = cell.row.original; handleTicketsClick(TicketData); }}><i className="ri-pencil-fill align-bottom me-2 text-muted"></i> Edit</DropdownItem></li>
+                                <li><DropdownItem className="edit-item-btn" href="#showModal" data-bs-toggle="modal" onClick={() => {
+ const TicketData = cell.row.original; handleTicketsClick(TicketData); 
+}}><i className="ri-pencil-fill align-bottom me-2 text-muted"></i> Edit</DropdownItem></li>
                                 <li>
                                     <DropdownItem className="remove-item-btn" data-bs-toggle="modal" href="#deleteOrder"
                                         onClick={() => {
@@ -341,7 +347,9 @@ const TicketsData = () => {
                                 <h5 className="card-title mb-0 flex-grow-1">Tickets</h5>
                                 <div className="flex-shrink-0">
                                     <div className="d-flex flex-wrap gap-2">
-                                        <button className="btn btn-primary add-btn" onClick={() => { setIsEdit(false); toggle(); }}><i className="ri-add-line align-bottom"></i> Create Tickets</button>
+                                        <button className="btn btn-primary add-btn" onClick={() => {
+ setIsEdit(false); toggle(); 
+}}><i className="ri-add-line align-bottom"></i> Create Tickets</button>
                                         {" "}{isMultiDeleteButton && <button className="btn btn-soft-danger"
                                             onClick={() => setDeleteModalMulti(true)}
                                         ><i className="ri-delete-bin-2-line"></i></button>}
@@ -372,11 +380,12 @@ const TicketsData = () => {
 
             <Modal isOpen={modal} toggle={toggle} centered size="lg" className="border-0" modalClassName="zoomIn">
                 <ModalHeader toggle={toggle} className="p-3 bg-info-subtle">
-                    {!!isEdit ? "Edit Ticket" : "Add Ticket"}
+                    {isEdit ? "Edit Ticket" : "Add Ticket"}
                 </ModalHeader>
                 <Form className="tablelist-form" onSubmit={(e: any) => {
                     e.preventDefault();
                     validation.handleSubmit();
+
                     return false;
                 }}>
                     <ModalBody>
@@ -540,7 +549,7 @@ const TicketsData = () => {
                     <div className="modal-footer">
                         <div className="hstack gap-2 justify-content-end">
                             <button onClick={toggle} type="button" className="btn btn-light">Close</button>
-                            <button type="submit" className="btn btn-success" id="add-btn">{!!isEdit ? "Update" : "Add Ticket"}</button>
+                            <button type="submit" className="btn btn-success" id="add-btn">{isEdit ? "Update" : "Add Ticket"}</button>
                         </div>
                     </div>
                 </Form>

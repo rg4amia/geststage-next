@@ -1,32 +1,33 @@
 import React from 'react';
 import { Card, CardBody, Col, Container, Row, UncontrolledTooltip, } from 'reactstrap';
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
-
-// Import Content
-import UiContent from '../../../Components/Common/UiContent';
-//import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
-
-// Import Images
-import avatar2 from "../../../assets/images/users/avatar-2.jpg";
-import avatar3 from "../../../assets/images/users/avatar-3.jpg";
-import avatar4 from "../../../assets/images/users/avatar-4.jpg";
-import avatar5 from "../../../assets/images/users/avatar-5.jpg";
-import avatar8 from "../../../assets/images/users/avatar-8.jpg";
-import avatar10 from "../../../assets/images/users/avatar-10.jpg";
-
-
+import { Link } from '@/velzone/inertia-router';
 import img2 from "../../../assets/images/small/img-2.jpg";
 import img3 from "../../../assets/images/small/img-3.jpg";
 import img4 from "../../../assets/images/small/img-4.jpg";
 import img5 from "../../../assets/images/small/img-5.jpg";
-import { Link } from '@/velzone/inertia-router';
+import avatar10 from "../../../assets/images/users/avatar-10.jpg";
+import avatar2 from "../../../assets/images/users/avatar-2.jpg";
+
+// Import Content
+import UiContent from '../../../Components/Common/UiContent';
+//import Components
+
+// Import Images
+import avatar3 from "../../../assets/images/users/avatar-3.jpg";
+import avatar4 from "../../../assets/images/users/avatar-4.jpg";
+import avatar5 from "../../../assets/images/users/avatar-5.jpg";
+import avatar8 from "../../../assets/images/users/avatar-8.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+
+
 
 import { ImgRoundedCircleExample, ImgThumbnailsExample, ImgSizesExample, AvatarExample, AvatarGroupExample, FiguresExample, ResponsiveExample } from './UiImagesCode';
 
 
 const UiImages = () => {
     document.title="Images | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

@@ -1,11 +1,11 @@
+import FeatherIcon from "feather-icons-react";
 import React from 'react';
+import CountUp from "react-countup";
 import { Card, CardBody, Col, DropdownItem, DropdownMenu, DropdownToggle, Row, UncontrolledDropdown } from 'reactstrap';
 import { Link } from '@/velzone/inertia-router';
 
-import CountUp from "react-countup";
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
 
 import { tileBoxs1, tileBoxs2, tileBoxs3, tileBoxes4, tileBoxes5 } from "../../common/data/index";
 

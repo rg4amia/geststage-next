@@ -1,6 +1,6 @@
 import React, { useEffect } from "react";
-import { Link } from '@/velzone/inertia-router';
 import { Row } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 
 const Pagination = ({ data, currentPage, setCurrentPage, perPageData }: any) => {
 
@@ -9,15 +9,17 @@ const Pagination = ({ data, currentPage, setCurrentPage, perPageData }: any) => 
     };
 
     const pageNumbers = [];
+
     for (let i = 1; i <= Math.ceil(data?.length / perPageData); i++) {
         pageNumbers.push(i);
     }
+
     const handleprevPage = () => {
-        let prevPage = currentPage - 1;
+        const prevPage = currentPage - 1;
         setCurrentPage(prevPage);
     };
     const handlenextPage = () => {
-        let nextPage = currentPage + 1;
+        const nextPage = currentPage + 1;
         setCurrentPage(nextPage);
     };
 
@@ -27,6 +29,7 @@ const Pagination = ({ data, currentPage, setCurrentPage, perPageData }: any) => 
         }
 
     }, [pageNumbers.length, currentPage, setCurrentPage])
+
     return (
         <React.Fragment>
             <Row className="g-0 justify-content-end mb-4">

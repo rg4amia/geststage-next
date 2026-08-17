@@ -1,9 +1,9 @@
-import { blogwidget, socialShares } from 'common/data'
+import FeatherIcon from "feather-icons-react";
 import React from 'react'
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
 import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
+import { blogwidget, socialShares } from 'common/data'
 import { DashboardBlogCharts } from './DashboardBlogCharts';
 
 const Widget = () => {

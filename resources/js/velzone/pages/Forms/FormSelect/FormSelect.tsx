@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
+import Select from "react-select";
+import makeAnimated from "react-select/animated";
 import { Card, CardBody, CardHeader, Col, Input, Label, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 import UiContent from "../../../Components/Common/UiContent";
 
 import { DefaultSelect, MenuSize, SelectSize } from './FormSelectCode';
-import Select from "react-select";
-import makeAnimated from "react-select/animated";
 const animatedComponents = makeAnimated();
 
 const SingleOptions = [

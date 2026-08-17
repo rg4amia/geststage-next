@@ -1,8 +1,5 @@
 import axios from "axios";
 import MockAdapter from "axios-mock-adapter";
-import * as url from "../url_helper";
-import { accessToken, nodeApiToken } from "../jwt-token-access/accessToken";
-
 import {
   calenderDefaultCategories,
   events,
@@ -86,8 +83,11 @@ import {
   crmcontacts,
   tasklist
 } from "../../common/data";
+import { accessToken, nodeApiToken } from "../jwt-token-access/accessToken";
+import * as url from "../url_helper";
 
-let users = [
+
+const users = [
   {
     uid: 1,
     username: "admin",
@@ -144,7 +144,7 @@ const fakeBackend = () => {
 
     const one = config.headers;
 
-    let finalToken = one.Authorization;
+    const finalToken = one.Authorization;
 
     const validUser = users.filter(usr => usr.uid === user.idx);
 
@@ -178,6 +178,7 @@ const fakeBackend = () => {
 
   mock.onPost("/social-login").reply((config: any) => {
     const user = JSON.parse(config["data"]);
+
     return new Promise((resolve, reject) => {
 
       setTimeout(() => {

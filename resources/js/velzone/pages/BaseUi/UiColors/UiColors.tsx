@@ -2,13 +2,14 @@ import React from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Table, } from 'reactstrap';
 
 // Import Content
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import UiContent from '../../../Components/Common/UiContent';
 //import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 
 const UiColors = () => {
     document.title = "Colors | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

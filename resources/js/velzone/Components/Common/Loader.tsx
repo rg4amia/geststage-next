@@ -1,7 +1,7 @@
 import React from 'react';
+import { toast } from 'react-toastify';
 import { Spinner } from 'reactstrap';
 
-import { toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 const Loader = (props : any) => {

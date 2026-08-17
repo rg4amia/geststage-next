@@ -8,6 +8,7 @@ export const getApplicationsStatistic = createAsyncThunk("dashboardJob/getApplic
     try {
         const response = getApplicationsStatisticApi(roomId);
         const data = await response;
+
         return data;
     } catch (error) {
         return error;

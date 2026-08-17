@@ -1,10 +1,10 @@
 import React from 'react';
+import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
+import SimpleBar from "simplebar-react";
 import { Link } from '@/velzone/inertia-router';
 import { tasks } from "../../common/data";
-import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 const MyTasks = () => {
     return (

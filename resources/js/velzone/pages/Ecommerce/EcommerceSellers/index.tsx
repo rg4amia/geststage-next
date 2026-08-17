@@ -1,9 +1,12 @@
+import classnames from "classnames";
+import { isEmpty } from "lodash";
 import React, { useEffect, useState } from "react";
 //Import Flatepicker
 import Flatpickr from "react-flatpickr";
 
 //Import Breadcrumb
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
+import { useSelector, useDispatch } from "react-redux";
+import Select from "react-select";
 import {
   CardBody,
   CardHeader,
@@ -23,17 +26,14 @@ import {
   Label,
   Form,
 } from "reactstrap";
-import classnames from "classnames";
+import { createSelector } from "reselect";
 import { Link } from '@/velzone/inertia-router';
-import { isEmpty } from "lodash";
-import Select from "react-select";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 // Import actions
 import { getSellers as onGetSellers } from "../../../slices/thunks";
 import SellerChats from "./SellerChats";
-import { createSelector } from "reselect";
 
 const EcommerceSellers = () => {
   const dispatch:any = useDispatch();
@@ -58,7 +58,9 @@ const EcommerceSellers = () => {
   }, [dispatch]);
 
   useEffect(() => {
-    if (!isEmpty(sellers)) setSellerList(sellers);
+    if (!isEmpty(sellers)) {
+setSellerList(sellers);
+}
   }, [sellers]);
 
   const toggle = () => {
@@ -100,10 +102,12 @@ const EcommerceSellers = () => {
     } else {
       filter = sellers.filter((item:any) => item.category === e);
     }
+
     setSellerList(filter);
   };
 
   document.title = "Sellers | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">

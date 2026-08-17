@@ -9,6 +9,7 @@ import { HtmlHighlightExample, CssHighlightExample, JavaScriptExample } from './
 
 const UiHighlight = () => {
 document.title="Highlight | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

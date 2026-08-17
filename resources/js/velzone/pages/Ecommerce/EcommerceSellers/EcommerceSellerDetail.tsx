@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useMemo } from "react";
 
+import { useSelector, useDispatch } from "react-redux";
 import {
   CardBody,
   Container,
@@ -14,26 +15,25 @@ import {
 } from "reactstrap";
 
 //Import Breadcrumb
+import { createSelector } from "reselect";
+import { Link } from '@/velzone/inertia-router';
+import Img2 from "../../../assets/images/companies/img-2.png";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
-import Img2 from "../../../assets/images/companies/img-2.png";
 import ReviewSlider from "../../../Components/Common/ReviewSlider";
 import TableContainer from "../../../Components/Common/TableContainer";
 //Import actions
 import { getProducts as onGetProducts } from "../../../slices/thunks";
 
+import Revenue from "../../DashboardEcommerce/Revenue";
 import {
   Rating,
   Published,
   Price,
 } from "../EcommerceProducts/EcommerceProductCol";
 
-import Revenue from "../../DashboardEcommerce/Revenue";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
-import { Link } from '@/velzone/inertia-router';
-import { createSelector } from "reselect";
 
 const EcommerceSellerDetail = () => {
   const dispatch: any = useDispatch();

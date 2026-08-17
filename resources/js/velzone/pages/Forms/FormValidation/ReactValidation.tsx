@@ -31,11 +31,11 @@ const ReactValidation = () => {
     function handleSubmit(e: any) {
         e.preventDefault();
         const modifiedV = { ...validation };
-        var fnm = (document.getElementById("validationTooltip01") as HTMLInputElement)?.value;
-        var lnm = (document.getElementById("validationTooltip02") as HTMLInputElement)?.value;
-        var unm = (document.getElementById("validationTooltipUsername") as HTMLInputElement)?.value;
-        var city = (document.getElementById("validationTooltip03") as HTMLInputElement)?.value;
-        var stateV = (document.getElementById("validationTooltip04") as HTMLInputElement)?.value;
+        const fnm = (document.getElementById("validationTooltip01") as HTMLInputElement)?.value;
+        const lnm = (document.getElementById("validationTooltip02") as HTMLInputElement)?.value;
+        const unm = (document.getElementById("validationTooltipUsername") as HTMLInputElement)?.value;
+        const city = (document.getElementById("validationTooltip03") as HTMLInputElement)?.value;
+        const stateV = (document.getElementById("validationTooltip04") as HTMLInputElement)?.value;
 
         if (fnm === "") {
             modifiedV['fnm'] = false;
@@ -66,17 +66,20 @@ const ReactValidation = () => {
         } else {
             modifiedV['stateV'] = true;
         }
+
         setValidation(modifiedV);
     }
 
     //for change tooltip display propery
     const onChangeValidation = (fieldName: any, value: any) => {
         const modifiedV : any = { ...validation };
+
         if (value !== "") {
             modifiedV[fieldName] = true;
         } else {
             modifiedV[fieldName] = false;
         }
+
         setValidation(modifiedV);
     };
 

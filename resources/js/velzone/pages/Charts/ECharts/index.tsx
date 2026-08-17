@@ -9,6 +9,7 @@ import {LineChart,StackedLineChart,AreaChart,StackedAreaChart,StepLineChart,Line
         
         const Echarts = () => {
     document.title="E Charts| Velzon - React Admin & Dashboard Template";
+
     return (
         <div className="page-content">
             <Container fluid>

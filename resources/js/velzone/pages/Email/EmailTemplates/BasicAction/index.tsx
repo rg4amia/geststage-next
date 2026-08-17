@@ -2,9 +2,9 @@ import React from 'react';
 import { Container } from 'reactstrap';
 import BreadCrumb from "../../../../Components/Common/BreadCrumb";
 import BasicAction from "./BasicAction";
-import SubscribeAction from "./SubscribeAction";
 import EmailVerifyAction from "./EmailVerifyAction";
 import PasswordChangeAction from "./PasswordChangeAction";
+import SubscribeAction from "./SubscribeAction";
 
 const index = () => {
     document.title = "Basic Action | Velzon - React Admin & Dashboard Template";

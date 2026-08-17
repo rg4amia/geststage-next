@@ -1,6 +1,6 @@
 import React from 'react';
-import { Col, Container, Row } from 'reactstrap';
 import CountUp from "react-countup";
+import { Col, Container, Row } from 'reactstrap';
 
 const Counter = () => {
     return (

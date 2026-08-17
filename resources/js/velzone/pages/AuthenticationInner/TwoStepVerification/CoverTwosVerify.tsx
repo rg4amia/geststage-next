@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Button, Card, Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 //import images
 import AuthSlider from '../authCarousel';

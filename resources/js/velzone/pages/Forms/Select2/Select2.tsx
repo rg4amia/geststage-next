@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
+import Select from "react-select";
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import Select from "react-select";
 
 const Select2 = () => {
     document.title = "Select2 | Velzon - React Admin & Dashboard Template";

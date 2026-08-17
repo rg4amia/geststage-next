@@ -7,9 +7,11 @@ export const SorttingData = ({ data, item, setState }: any) => {
         if (item1 < item2) {
             return -1;
         }
+
         if (item1 > item2) {
             return 1;
         }
+
         return 0;
     });
     setState(manyTodos);
@@ -23,9 +25,11 @@ export const sortElementsById = ({ data, item, setState }: any) => {
         if (item1 > item2) {
             return -1;
         }
+
         if (item1 < item2) {
             return 1;
         }
+
         return 0;
     });
     setState(manyTodos);

@@ -28,8 +28,8 @@
 
 // export default PrismCode;
 
-import React, { useEffect, useRef } from "react";
 import Prism from "prismjs";
+import React, { useEffect, useRef } from "react";
 
 interface PrismCodeProps {
     code: string;
@@ -51,6 +51,7 @@ const PrismCode = (props: PrismCodeProps) => {
     };
 
     const { code, language = "markup", plugins = [] } = props;
+
     return (
         <React.Fragment>
             <pre className={`line-numbers ${plugins.includes('line-numbers') ? 'line-numbers' : ''}`}>

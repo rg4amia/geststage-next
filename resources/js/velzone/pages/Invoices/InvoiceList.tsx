@@ -1,4 +1,9 @@
+import FeatherIcon from "feather-icons-react";
+import moment from "moment";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import CountUp from "react-countup";
+import { useSelector, useDispatch } from "react-redux";
+import { toast, ToastContainer } from 'react-toastify';
 import {
   CardBody,
   Row,
@@ -11,16 +16,15 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "reactstrap";
+import { createSelector } from "reselect";
 import { Link } from '@/velzone/inertia-router';
-import moment from "moment";
-import CountUp from "react-countup";
+import { invoiceWidgets } from "../../common/data/invoiceList";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
-import TableContainer from "../../Components/Common/TableContainer";
 import DeleteModal from "../../Components/Common/DeleteModal";
+import Loader from "../../Components/Common/Loader";
+import TableContainer from "../../Components/Common/TableContainer";
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
-import { invoiceWidgets } from "../../common/data/invoiceList";
 
 //Import actions
 import {
@@ -29,13 +33,9 @@ import {
 } from "../../slices/thunks";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 
-import Loader from "../../Components/Common/Loader";
 
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { createSelector } from "reselect";
 
 const InvoiceList = () => {
   const dispatch: any = useDispatch();
@@ -87,6 +87,7 @@ const InvoiceList = () => {
 
   const handleValidDate = (date: any) => {
     const date1 = moment(new Date(date)).format("DD MMM Y");
+
     return date1;
   };
 
@@ -95,13 +96,16 @@ const InvoiceList = () => {
     const getHour = time1.getUTCHours();
     const getMin = time1.getUTCMinutes();
     const getTime = `${getHour}:${getMin}`;
-    var meridiem = "";
+    let meridiem = "";
+
     if (getHour >= 12) {
       meridiem = "PM";
     } else {
       meridiem = "AM";
     }
+
     const updateTime = moment(getTime, 'hh:mm').format('hh:mm') + " " + meridiem;
+
     return updateTime;
   };
 
@@ -119,6 +123,7 @@ const InvoiceList = () => {
         ele.checked = false;
       });
     }
+
     deleteCheckbox();
   }, []);
 
@@ -130,7 +135,9 @@ const InvoiceList = () => {
     const checkall: any = document.getElementById("checkBoxAll");
     selectedCheckBoxDelete.forEach((element: any) => {
       dispatch(onDeleteInvoice(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
     });
     setIsMultiDeleteButton(false);
     checkall.checked = false;
@@ -260,7 +267,9 @@ const InvoiceList = () => {
 
                 <DropdownItem
                   href="#"
-                  onClick={() => { const invoiceData = cellProps.row.original; onClickDelete(invoiceData); }}
+                  onClick={() => {
+ const invoiceData = cellProps.row.original; onClickDelete(invoiceData); 
+}}
                 >
                   <i className="ri-delete-bin-fill align-bottom me-2 text-muted"></i>{" "}
                   Delete

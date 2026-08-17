@@ -1,18 +1,18 @@
-import React,{useState} from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Card, CardBody, CardHeader, Col, Container, Input, Label, Row } from 'reactstrap';
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 //Import Flatepicker
-import Flatpickr from "react-flatpickr";
-import Select from "react-select";
-import { CKEditor } from "@ckeditor/ckeditor5-react";
 import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import React,{useState} from 'react';
 
 import Dropzone from "react-dropzone";
+import Flatpickr from "react-flatpickr";
+import Select from "react-select";
+import { Card, CardBody, CardHeader, Col, Container, Input, Label, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 //Import Images
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
 import avatar4 from "../../../assets/images/users/avatar-4.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 const CreateProject = () => {
     const SingleOptions = [
@@ -46,12 +46,16 @@ const CreateProject = () => {
      * Formats the size
      */
     const formatBytes = (bytes:any, decimals = 2) => {
-        if (bytes === 0) return "0 Bytes";
+        if (bytes === 0) {
+return "0 Bytes";
+}
+
         const k = 1024;
         const dm = decimals < 0 ? 0 : decimals;
         const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
         const i = Math.floor(Math.log(bytes) / Math.log(k));
+
         return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
     }
 

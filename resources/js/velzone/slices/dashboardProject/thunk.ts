@@ -13,19 +13,24 @@ import {
 
 export const getProjectChartsData = createAsyncThunk("dashboardProject/getProjectChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "all") {
       response = getAllProjectDataApi();
     }
+
     if (data === "month") {
       response = getMonthProjectDataApi();
     }
+
     if (data === "halfyear") {
       response = gethalfYearProjectDataApi();
     }
+
     if (data === "year") {
       response = getYearProjectDataApi();
     }
+
     return response;
   } catch (error) {
     return error;
@@ -34,19 +39,24 @@ export const getProjectChartsData = createAsyncThunk("dashboardProject/getProjec
 
 export const getProjectStatusChartsData = createAsyncThunk("dashboardProject/getProjectStatusChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "all") {
       response = getAllProjectStatusDataApi();
     }
+
     if (data === "week") {
       response = getWeekProjectStatusDataApi();
     }
+
     if (data === "month") {
       response = getMonthProjectStatusDataApi();
     }
+
     if (data === "quarter") {
       response = getQuarterProjectStatusDataApi();
     }
+
     return response;
   } catch (error) {
     return error;

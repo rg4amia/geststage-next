@@ -104,20 +104,24 @@ class FirebaseAuthBackend {
 
   socialLoginUser = async (type: any) => {
     let provider: firebase.auth.AuthProvider | null = null;
+
     if (type === "google") {
       provider = new firebase.auth.GoogleAuthProvider();
     } else if (type === "facebook") {
       provider = new firebase.auth.FacebookAuthProvider();
     }
+
     if (provider) {
       try {
         const result = await firebase.auth().signInWithPopup(provider);
         const user = result.user;
+
         return user;
       } catch (error : any) {
         throw this._handleError(error);
       }
     }
+
     throw new Error(`Invalid social login type: ${type}`);
   };
 
@@ -134,6 +138,7 @@ class FirebaseAuthBackend {
       lastLoginTime: firebase.firestore.FieldValue.serverTimestamp(),
     };
     collection.doc(firebase.auth().currentUser!.uid).set(details);
+
     return { user, details };
   };
 
@@ -143,7 +148,11 @@ class FirebaseAuthBackend {
 
   getAuthenticatedUser = (): firebase.User | null => {
     const authUser = sessionStorage.getItem("authUser");
-    if (!authUser) return null;
+
+    if (!authUser) {
+return null;
+}
+
     return JSON.parse(authUser);
   };
 
@@ -158,6 +167,7 @@ const initFirebaseBackend = (config: any): FirebaseAuthBackend => {
   if (!_fireBaseBackend) {
     _fireBaseBackend = new FirebaseAuthBackend(config);
   }
+
   return _fireBaseBackend;
 };
 

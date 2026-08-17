@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
-import getChartColorsArray from './DynamicChartsColor';
 import { useSelector } from 'react-redux';
 import { createSelector } from 'reselect';
+import getChartColorsArray from './DynamicChartsColor';
 
 const useChartColors = (chartId: string) => {
   const [chartColors, setChartColors] = useState<string[]>([]);

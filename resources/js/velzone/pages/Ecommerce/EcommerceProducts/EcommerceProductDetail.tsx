@@ -1,3 +1,4 @@
+import classnames from "classnames";
 import React, { useState } from "react";
 import {
   Card,
@@ -18,16 +19,16 @@ import {
 //Simple bar
 import SimpleBar from "simplebar-react";
 
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
+import { FreeMode, Navigation, Pagination, Thumbs } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Link } from '@/velzone/inertia-router';
 import product1 from "../../../assets/images/products/img-1.png";
 import product6 from "../../../assets/images/products/img-6.png";
 import product8 from "../../../assets/images/products/img-8.png";
 
 import { productDetailsWidgets, reviews } from "../../../common/data/ecommerce";
 
-import { Swiper, SwiperSlide } from "swiper/react";
-import classnames from "classnames";
 
 // Import Swiper styles
 import "swiper/css";
@@ -35,8 +36,7 @@ import "swiper/css/free-mode";
 import "swiper/css/navigation";
 import "swiper/css/thumbs";
 
-import { FreeMode, Navigation, Pagination, Thumbs } from "swiper/modules";
-import { Link } from '@/velzone/inertia-router';
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 const ProductReview = (props:any) => {
   return (
@@ -125,6 +125,7 @@ function EcommerceProductDetail(props:any) {
   };
 
 document.title ="Product Details | Velzon - React Admin & Dashboard Template";
+
   return (
     <div className="page-content">
       <Container fluid>        

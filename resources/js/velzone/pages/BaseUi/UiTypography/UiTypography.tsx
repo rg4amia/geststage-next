@@ -3,16 +3,17 @@ import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Row, } from 
 import { Link } from '@/velzone/inertia-router';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
 
 import { DisplayHeadingExample, HeadingsExample, BlockquotesExample, BlockquoteColorExample, BlockquoteBorderColorExample, InlineTextExample, UnstyleListExample, InlineListExample, DescriptionListExample, TextWrappingExample, FontSizeExample, WordBreakExample, FontWeightExample, LineHeightExample, TextTransformExample, TextDecrationExample, TextTruncationExample, VisibilityExample, ClearfixExample } from './UiTypographyCode';
 
 
 const UiTypography = () => {
     document.title="Typography | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

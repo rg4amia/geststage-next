@@ -18,6 +18,7 @@ const JobLanding = () => {
 
   const scrollFunction = () => {
     const element = document.getElementById("back-to-top");
+
     if (element) {
       if (
         document.body.scrollTop > 100 ||

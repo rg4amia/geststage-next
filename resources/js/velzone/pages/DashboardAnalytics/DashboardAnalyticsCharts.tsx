@@ -54,7 +54,7 @@ const ApexChart = ({ height, className, ...props }: any) => {
 const AudiencesCharts = ({ chartId, series }: any) => {
     const chartAudienceColumnChartsColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         chart: {
             type: 'bar',
             height: 309,
@@ -117,6 +117,7 @@ const AudiencesCharts = ({ chartId, series }: any) => {
             opacity: 1
         }
     };
+
     return (
         <React.Fragment>
             <ApexChart dir="ltr"
@@ -149,7 +150,7 @@ const AudiencesSessionsCharts = ({ chartId, series }: any) => {
     ];
 
 
-    var options: any = {
+    const options: any = {
         chart: {
             height: 400,
             type: 'heatmap',
@@ -202,11 +203,13 @@ const AudiencesSessionsCharts = ({ chartId, series }: any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0) + "k";
                     }
+
                     return y;
                 }
             }]
         }
     };
+
     return (
         <React.Fragment>
             <ApexChart dir="ltr"
@@ -234,7 +237,7 @@ const AudiencesSessionsCharts = ({ chartId, series }: any) => {
 const CountriesCharts = ({ chartId, series }: any) => {
     const barchartCountriesColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         chart: {
             type: 'bar',
             height: 436,
@@ -274,6 +277,7 @@ const CountriesCharts = ({ chartId, series }: any) => {
             categories: ['India', 'United States', 'China', 'Indonesia', 'Russia', 'Bangladesh', 'Canada', 'Brazil', 'Vietnam', 'UK'],
         },
     };
+
     return (
         <React.Fragment>
             <ApexChart dir="ltr"
@@ -344,6 +348,7 @@ const UsersByDeviceCharts = ({ chartId, series }: any) => {
         },
         colors: dountchartUserDeviceColors,
     };
+
     return (
         <React.Fragment>
             <ApexChart dir="ltr"

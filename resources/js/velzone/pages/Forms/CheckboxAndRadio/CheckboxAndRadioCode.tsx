@@ -393,6 +393,7 @@ const CustomRadio = () => {
     </div>
 </Col>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -482,6 +483,7 @@ const Switches = () => {
     </div>
 </Col>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -537,6 +539,7 @@ const SwitchColor = () => {
     </div>
 </Col>
     `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -592,6 +595,7 @@ const CustomSwitches = () => {
     </div>
 </Col>
         `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -655,6 +659,7 @@ const InlineCheckboxRadio = () => {
     </div>
 </Col>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -711,6 +716,7 @@ const WithoutLabels = () => {
     </div>
 </Col>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -737,6 +743,7 @@ const RadioToggleButtons = () => {
 <Label className="btn btn-secondary" for="option4">Radio</Label>
 </div>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -763,6 +770,7 @@ const OutlinedStyles = () => {
 <Label className="btn btn-outline-danger material-shadow" for="danger-outlined">Danger radio</Label>
 </div>
 `;
+
     return (
         <React.Fragment>
             <PrismCode

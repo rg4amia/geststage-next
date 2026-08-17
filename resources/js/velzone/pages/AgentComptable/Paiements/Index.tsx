@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Col, Container, Row, Button, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Table, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import classnames from 'classnames';
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Table, Modal, ModalHeader, ModalBody, ModalFooter, Input } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 const AcPaiementsIndex = ({
@@ -15,7 +15,9 @@ const AcPaiementsIndex = ({
     const [selectedDossier, setSelectedDossier] = useState<any>(null);
 
     const toggleTab = (tab: string) => {
-        if (activeTab !== tab) setActiveTab(tab);
+        if (activeTab !== tab) {
+setActiveTab(tab);
+}
     };
 
     const handleAjourner = (dossier: any) => {

@@ -1,3 +1,4 @@
+import classnames from "classnames";
 import React, { useState } from "react";
 import {
   Card,
@@ -17,11 +18,10 @@ import {
   Progress,
 } from "reactstrap";
 //Import images
-import dummyUser from "../../../assets/images/users/user-dummy-img.jpg";
 import logoDark from "../../../assets/images/logo-dark.png";
 import logoLight from "../../../assets/images/logo-light.png";
+import dummyUser from "../../../assets/images/users/user-dummy-img.jpg";
 
-import classnames from "classnames";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 const FormWizard = () => {
@@ -35,19 +35,20 @@ const FormWizard = () => {
 
   function toggleTab(tab : any, value : any) {
     if (activeTab !== tab) {
-      var modifiedSteps = [...passedSteps, tab];
+      const modifiedSteps = [...passedSteps, tab];
 
       if (tab >= 1 && tab <= 4) {
         setactiveTab(tab);
         setPassedSteps(modifiedSteps);
       }
     }
+
     setprogressbarvalue(value);
   }
 
   function toggleArrowTab(tab : any) {
     if (activeArrowTab !== tab) {
-      var modifiedSteps = [...passedarrowSteps, tab];
+      const modifiedSteps = [...passedarrowSteps, tab];
 
       if (tab >= 4 && tab <= 7) {
         setactiveArrowTab(tab);
@@ -58,7 +59,7 @@ const FormWizard = () => {
 
   function toggleVerticalTab(tab : any) {
     if (activeVerticalTab !== tab) {
-      var modifiedSteps = [...passedverticalSteps, tab];
+      const modifiedSteps = [...passedverticalSteps, tab];
 
       if (tab >= 7 && tab <= 11) {
         setactiveVerticalTab(tab);
@@ -68,6 +69,7 @@ const FormWizard = () => {
   }
 
 document.title ="Wizard | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">        

@@ -1,11 +1,11 @@
 import React from "react";
 import { Col, Container, Row } from "reactstrap";
+import { Swiper, SwiperSlide } from "swiper/react";
+import avatar10 from "../../../assets/images/users/avatar-10.jpg";
 import avatar2 from "../../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
-import avatar10 from "../../../assets/images/users/avatar-10.jpg";
-import avatar8 from "../../../assets/images/users/avatar-8.jpg";
 import avatar5 from "../../../assets/images/users/avatar-5.jpg";
-import { Swiper, SwiperSlide } from "swiper/react";
+import avatar8 from "../../../assets/images/users/avatar-8.jpg";
 import "swiper/css";
 
 const Candidates = () => {

@@ -1,8 +1,8 @@
-import React, { useState } from "react";
-import { Card, CardBody, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Nav, NavItem, NavLink, Row, TabContent, TabPane, UncontrolledDropdown } from "reactstrap";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import classnames from "classnames";
+import React, { useState } from "react";
 import Countdown from "react-countdown";
+import { Card, CardBody, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Nav, NavItem, NavLink, Row, TabContent, TabPane, UncontrolledDropdown } from "reactstrap";
+import SimpleBar from "simplebar-react";
 import { Link } from '@/velzone/inertia-router';
 
 // Import Images
@@ -12,17 +12,17 @@ import Img3 from "../../../assets/images/nft/img-03.jpg";
 import Img5 from "../../../assets/images/nft/img-05.jpg";
 import Img6 from "../../../assets/images/nft/img-06.jpg";
 
+import SImg10 from "../../../assets/images/small/img-10.jpg";
+import SImg11 from "../../../assets/images/small/img-11.jpg";
+import SImg12 from "../../../assets/images/small/img-12.jpg";
 import avatar1 from "../../../assets/images/users/avatar-1.jpg";
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
 import avatar5 from "../../../assets/images/users/avatar-5.jpg";
 import avatar8 from "../../../assets/images/users/avatar-8.jpg";
 
-import SImg10 from "../../../assets/images/small/img-10.jpg";
-import SImg11 from "../../../assets/images/small/img-11.jpg";
-import SImg12 from "../../../assets/images/small/img-12.jpg";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 
 const ItemDetails = () => {

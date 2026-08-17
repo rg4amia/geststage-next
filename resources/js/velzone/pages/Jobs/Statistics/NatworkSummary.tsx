@@ -1,11 +1,11 @@
 import React from "react";
-import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
+import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import useChartColors from "Components/Common/useChartColors";
 
 const NatworkSummary = ({ chartId }:any) => {
-  var dealTypeChartsColors = useChartColors(chartId);
-  var series = [
+  const dealTypeChartsColors = useChartColors(chartId);
+  const series = [
     {
       name: "Following",
       data: [80, 50, 30, 40, 100, 20],
@@ -16,7 +16,7 @@ const NatworkSummary = ({ chartId }:any) => {
     },
   ];
 
-  var options:any = {
+  const options:any = {
     chart: {
       height: 341,
       type: "radar",
@@ -59,6 +59,7 @@ const NatworkSummary = ({ chartId }:any) => {
       categories: ["2016", "2017", "2018", "2019", "2020", "2021"],
     },
   };
+
   return (
     <React.Fragment>
       <Col className="col-xxl-4 col-md-6">

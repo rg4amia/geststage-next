@@ -1,8 +1,9 @@
-import React from "react";
 import moment from "moment";
+import React from "react";
 
 const handleValidDate = (date:any) => {
   const date1 = moment(new Date(date)).format("DD MMM Y");
+
   return date1;
 };
 
@@ -11,13 +12,16 @@ const handleValidTime = (time:any) => {
   const getHour = time1.getUTCHours();
   const getMin = time1.getUTCMinutes();
   const getTime = `${getHour}:${getMin}`;
-  var meridiem = "";
+  let meridiem = "";
+
   if (getHour >= 12) {
     meridiem = "PM";
   } else {
     meridiem = "AM";
   }
+
   const updateTime = moment(getTime, 'hh:mm').format('hh:mm') + " " + meridiem;
+
   return updateTime;
 };
 

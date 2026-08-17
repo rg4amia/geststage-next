@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import TableContainer from '../../../Components/Common/TableContainer';
 import {
     Type,
@@ -91,6 +91,7 @@ const AllOrders = ({ orderList }: any) => {
         ],
         []
     );
+
     return (
         <React.Fragment>
             <Col lg={12}>

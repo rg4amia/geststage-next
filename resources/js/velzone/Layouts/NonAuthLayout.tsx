@@ -17,16 +17,19 @@ const NonAuthLayout = ({ children }: any) => {
     } = useSelector(selectLayoutProperties);
     useEffect(() => {
         document.body.setAttribute("data-theme", layoutThemeType);
+
         if (layoutModeType === "dark") {
             document.body.setAttribute("data-bs-theme", "dark");
         } else {
             document.body.setAttribute("data-bs-theme", "light");
         }
+
         return () => {
             document.body.removeAttribute("data-bs-theme");
             document.body.removeAttribute("data-theme");
         };
     }, [layoutModeType,layoutThemeType]);
+
     return (
         <div>
             {children}

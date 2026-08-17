@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import Flatpickr from "react-flatpickr";
+import Select from "react-select";
 import {
     Col,
     Row,
@@ -9,8 +11,6 @@ import {
     DropdownMenu,
 } from "reactstrap";
 import { Link } from '@/velzone/inertia-router';
-import Flatpickr from "react-flatpickr";
-import Select from "react-select";
 
 const ProductsGlobalFilter = () => {
     return (
@@ -46,6 +46,7 @@ const CustomersGlobalFilter = () => {
             ],
         },
     ];
+
     return (
         <React.Fragment>
             <Col xl={7}>
@@ -137,6 +138,7 @@ const OrderGlobalFilter = () => {
             ],
         },
     ];
+
     return (
         <React.Fragment>
             <Col sm={6} className="col-xxl-2">
@@ -243,6 +245,7 @@ const CompaniesGlobalFilter = () => {
             ],
         },
     ];
+
     return (
         <React.Fragment>
             <div className="col-md-auto ms-auto">
@@ -321,6 +324,7 @@ const InvoiceListGlobalSearch = () => {
             ],
         },
     ];
+
     return (
         <React.Fragment>
             <Col sm={4} xxl={3}>

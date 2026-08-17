@@ -7,7 +7,11 @@ const api = new APIClient();
 // Gets the logged in user data from local session
 export const getLoggedInUser = () => {
   const user = localStorage.getItem("user");
-  if (user) return JSON.parse(user);
+
+  if (user) {
+return JSON.parse(user);
+}
+
   return null;
 };
 
@@ -34,7 +38,8 @@ export const postFakeProfile = (data : any) => api.update(url.POST_EDIT_PROFILE 
 export const postJwtRegister = (url : string, data  :any) => {
   return api.create(url, data)
     .catch(err => {
-      var message;
+      let message;
+
       if (err.response && err.response.status) {
         switch (err.response.status) {
           case 404:
@@ -51,6 +56,7 @@ export const postJwtRegister = (url : string, data  :any) => {
             break;
         }
       }
+
       throw message;
     });
 };

@@ -1,6 +1,6 @@
 import React from "react";
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col, Table } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 import { featuredCompany } from "../../common/data/dashboardJobs";
 
 interface featuredCompanyType {

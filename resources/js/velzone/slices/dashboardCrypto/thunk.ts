@@ -13,16 +13,20 @@ import {
 
 export const getPortfolioChartsData = createAsyncThunk("dashboardCrypto/getPortfolioChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "btc") {
       response = getBtcPortfolioDataApi();
     }
+
     if (data === "usd") {
       response = getUsdPortfolioDataApi();
     }
+
     if (data === "euro") {
       response = getEuroPortfolioDataApi();
     }
+
     return response;
   } catch (error) {
     return error;
@@ -31,23 +35,28 @@ export const getPortfolioChartsData = createAsyncThunk("dashboardCrypto/getPortf
 
 export const getMarketChartsData = createAsyncThunk("dashboardCrypto/getMarketChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
 
     if (data === "all") {
       response = getAllMarketDataApi();
     }
+
     if (data === "year") {
       response = getYearMarketDataApi();
     }
+
     if (data === "month") {
       response = getMonthMarketDataApi();
     }
+
     if (data === "week") {
       response = getWeekMarketDataApi();
     }
+
     if (data === "hour") {
       response = getHourMarketDataApi();
     }
+
     return response;
   } catch (error) {
     return error;

@@ -1,17 +1,17 @@
+import classnames from 'classnames';
 import React, { useState } from 'react';
 import { Col, Dropdown, DropdownMenu, DropdownToggle, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
+import SimpleBar from "simplebar-react";
 import { Link } from '@/velzone/inertia-router';
-import classnames from 'classnames';
 
 //import images
+import bell from "../../assets/images/svg/bell.svg";
 import avatar2 from "../../assets/images/users/avatar-2.jpg";
-import avatar8 from "../../assets/images/users/avatar-8.jpg";
 import avatar3 from "../../assets/images/users/avatar-3.jpg";
 import avatar6 from "../../assets/images/users/avatar-6.jpg";
-import bell from "../../assets/images/svg/bell.svg";
+import avatar8 from "../../assets/images/users/avatar-8.jpg";
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 const NotificationDropdown = () => {
     //Dropdown Toggle
@@ -27,6 +27,7 @@ const NotificationDropdown = () => {
             setActiveTab(tab);
         }
     };
+
     return (
         <React.Fragment>
             <Dropdown isOpen={isNotificationDropdown} toggle={toggleNotificationDropdown} className="topbar-head-dropdown ms-1 header-item">
@@ -55,7 +56,9 @@ const NotificationDropdown = () => {
                                     <NavLink
                                         href="#"
                                         className={classnames({ active: activeTab === '1' })}
-                                        onClick={() => { toggleTab('1'); }}
+                                        onClick={() => {
+ toggleTab('1'); 
+}}
                                     >
                                         All (4)
                                     </NavLink>
@@ -64,7 +67,9 @@ const NotificationDropdown = () => {
                                     <NavLink
                                         href="#"
                                         className={classnames({ active: activeTab === '2' })}
-                                        onClick={() => { toggleTab('2'); }}
+                                        onClick={() => {
+ toggleTab('2'); 
+}}
                                     >
                                         Messages
                                     </NavLink>
@@ -73,7 +78,9 @@ const NotificationDropdown = () => {
                                     <NavLink
                                         href="#"
                                         className={classnames({ active: activeTab === '3' })}
-                                        onClick={() => { toggleTab('3'); }}
+                                        onClick={() => {
+ toggleTab('3'); 
+}}
                                     >
                                         Alerts
                                     </NavLink>

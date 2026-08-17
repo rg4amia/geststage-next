@@ -1,9 +1,9 @@
 import React, { useState } from "react";
+import { FilePond, registerPlugin } from 'react-filepond';
 import { Card, CardBody, CardHeader, Col, Container, Form, Row } from "reactstrap";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 // Import React FilePond
-import { FilePond, registerPlugin } from 'react-filepond';
 // Import FilePond styles
 import 'filepond/dist/filepond.min.css';
 import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation';

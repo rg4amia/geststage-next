@@ -1,3 +1,4 @@
+import classnames from "classnames";
 import React, { useState } from "react";
 import {
   Card,
@@ -9,13 +10,12 @@ import {
   Collapse
 } from "reactstrap";
 
-import classnames from "classnames";
 import { Link } from '@/velzone/inertia-router';
 
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
-import { productDetails } from "../../../common/data/ecommerce";
-import EcommerceOrderProduct from "./EcommerceOrderProduct";
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
+import { productDetails } from "../../../common/data/ecommerce";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
+import EcommerceOrderProduct from "./EcommerceOrderProduct";
 
 const EcommerceOrderDetail = (props:any) => {
   const [col1, setcol1] = useState<boolean>(true);
@@ -35,6 +35,7 @@ const EcommerceOrderDetail = (props:any) => {
   }
 
 document.title ="Order Details | Velzon - React Admin & Dashboard Template";
+
   return (
     <div className="page-content">
       <Container fluid>        

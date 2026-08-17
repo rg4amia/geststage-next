@@ -3,8 +3,8 @@ import { Alert, Card, CardBody, Col, Row } from 'reactstrap';
 
 //Import Icons
 //import images
-import illustarator from "../../assets/images/user-illustarator-2.png";
 import { Link } from '@/velzone/inertia-router';
+import illustarator from "../../assets/images/user-illustarator-2.png";
 
 const UpgradeAccountNotise = () => {
     return (

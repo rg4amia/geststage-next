@@ -1,11 +1,11 @@
 import React from 'react';
-import { Card, CardBody, CardHeader } from 'reactstrap';
 import ReactApexChart from "react-apexcharts";
+import { Card, CardBody, CardHeader } from 'reactstrap';
 
 import getChartColorsArray from "../../../Components/Common/ChartsDynamicColor";
 
 const PortfolioStatistics = ({ dataColors }:any) => {
-  var portfolioStatisticsColors = getChartColorsArray(dataColors);
+  const portfolioStatisticsColors = getChartColorsArray(dataColors);
   const series = [{
     data: [
       [1327359600000, 30.95],
@@ -285,7 +285,7 @@ const PortfolioStatistics = ({ dataColors }:any) => {
       [1361919600000, 39.60],
     ]
   }]
-  var option:any = {
+  const option:any = {
 
     chart: {
       id: 'area-datetime',

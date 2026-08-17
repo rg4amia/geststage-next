@@ -1,6 +1,6 @@
 import React from 'react';
-import { Card, CardBody, Col } from 'reactstrap';
 import CountUp from "react-countup";
+import { Card, CardBody, Col } from 'reactstrap';
 import { taskWidgets } from '../../../common/data';
 
 const Widgets = () => {

@@ -1,4 +1,5 @@
 // Import Images
+import avatar10 from "../../assets/images/users/avatar-10.jpg";
 import avatar2 from "../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../assets/images/users/avatar-3.jpg";
 import avatar4 from "../../assets/images/users/avatar-4.jpg";
@@ -7,7 +8,6 @@ import avatar6 from "../../assets/images/users/avatar-6.jpg";
 import avatar7 from "../../assets/images/users/avatar-7.jpg";
 import avatar8 from "../../assets/images/users/avatar-8.jpg";
 import avatar9 from "../../assets/images/users/avatar-9.jpg";
-import avatar10 from "../../assets/images/users/avatar-10.jpg";
 import userDummy from "../../assets/images/users/user-dummy-img.jpg";
 
 const mailbox = [

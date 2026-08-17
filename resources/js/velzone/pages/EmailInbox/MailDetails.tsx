@@ -1,16 +1,16 @@
 import React, { useEffect } from 'react';
+import Rating from "react-rating";
+import { useSelector, useDispatch } from "react-redux";
+import { createSelector } from 'reselect';
+import SimpleBar from "simplebar-react";
 import { Link } from '@/velzone/inertia-router';
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 import { getMailDetails } from '../../slices/thunks';
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 // Rating
-import Rating from "react-rating";
-import { createSelector } from 'reselect';
 
 const MailDetails = () => {
     const dispatch:any = useDispatch();
@@ -28,9 +28,10 @@ const MailDetails = () => {
     }, [dispatch]);
 
     function sidebar() {
-        var element = document.getElementsByTagName('body')[0];
+        const element = document.getElementsByTagName('body')[0];
         element.classList.add("email-detail-show");
     }
+
     return (
         <React.Fragment>
             <SimpleBar className="message-list-content mx-n4 px-4 message-list-scroll">

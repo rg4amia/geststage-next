@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
-import { MarkerCharts } from './DashboardCryptoCharts';
 import { useSelector, useDispatch } from "react-redux";
-import { getMarketChartsData } from '../../slices/thunks';
+import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
 import { createSelector } from 'reselect';
+import { getMarketChartsData } from '../../slices/thunks';
+import { MarkerCharts } from './DashboardCryptoCharts';
 
 const MarketGraph = () => {
     const dispatch:any = useDispatch();
@@ -38,19 +38,29 @@ const MarketGraph = () => {
                         <CardHeader className="border-0 align-items-center d-flex">
                             <h4 className="card-title mb-0 flex-grow-1">Market Graph</h4>
                             <div className="d-flex gap-1">
-                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("hour"); }}>
+                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("hour"); 
+}}>
                                     1H
                                 </button>
-                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("week"); }}>
+                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("week"); 
+}}>
                                     7D
                                 </button>
-                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("month"); }}>
+                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("month"); 
+}}>
                                     1M
                                 </button>
-                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("year"); }}>
+                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("year"); 
+}}>
                                     1Y
                                 </button>
-                                <button type="button" className="btn btn-soft-primary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("all"); }}>
+                                <button type="button" className="btn btn-soft-primary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("all"); 
+}}>
                                     ALL
                                 </button>
                             </div>

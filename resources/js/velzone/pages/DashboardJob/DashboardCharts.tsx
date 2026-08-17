@@ -39,6 +39,7 @@ const DashboardCharts = ({ seriesData, colors }:any) => {
     },
     colors: [colors],
   };
+
   return (
     <React.Fragment>
       <ReactApexChart dir="ltr"

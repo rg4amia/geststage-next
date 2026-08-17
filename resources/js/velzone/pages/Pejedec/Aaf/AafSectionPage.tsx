@@ -1,5 +1,5 @@
-import React from 'react';
 import { Head, router } from '@inertiajs/react';
+import React from 'react';
 import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';

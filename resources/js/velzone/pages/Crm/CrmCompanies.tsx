@@ -1,9 +1,8 @@
+import { useFormik } from "formik";
+import { isEmpty } from "lodash";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Link } from '@/velzone/inertia-router';
-
-// Import Images
-import multiUser from '../../assets/images/users/multi-user.jpg';
-
+import { useSelector, useDispatch } from "react-redux";
+import { toast, ToastContainer } from 'react-toastify';
 import {
   Col,
   Container,
@@ -25,13 +24,22 @@ import {
   DropdownItem,
   FormFeedback
 } from "reactstrap";
+import { createSelector } from "reselect";
+import * as Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
+
+// Import Images
+import chimp from "../../assets/images/brands/mail_chimp.png";
+import multiUser from '../../assets/images/users/multi-user.jpg';
+
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
-import { isEmpty } from "lodash";
 
-import chimp from "../../assets/images/brands/mail_chimp.png";
 
 //Import actions
+import ExportCSVModal from "../../Components/Common/ExportCSVModal";
+import Loader from "../../Components/Common/Loader";
+import TableContainer from "../../Components/Common/TableContainer";
 import {
   getCompanies as onGetCompanies,
   addNewCompanies as onAddNewCompanies,
@@ -39,20 +47,12 @@ import {
   deleteCompanies as onDeleteCompanies,
 } from "../../slices/thunks";
 //redux
-import { useSelector, useDispatch } from "react-redux";
-import TableContainer from "../../Components/Common/TableContainer";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
 // Export Modal
-import ExportCSVModal from "../../Components/Common/ExportCSVModal";
 
-import Loader from "../../Components/Common/Loader";
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { createSelector } from "reselect";
 
 const CrmCompanies = () => {
   const dispatch: any = useDispatch();
@@ -208,6 +208,7 @@ const CrmCompanies = () => {
         dispatch(onAddNewCompanies(newCompany));
         validation.resetForm();
       }
+
       toggle();
     },
   });
@@ -275,6 +276,7 @@ const CrmCompanies = () => {
         ele.checked = false;
       });
     }
+
     deleteCheckbox();
   }, []);
 
@@ -286,7 +288,9 @@ const CrmCompanies = () => {
     const checkall: any = document.getElementById("checkBoxAll");
     selectedCheckBoxDelete.forEach((element: any) => {
       dispatch(onDeleteCompanies(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
     });
     setIsMultiDeleteButton(false);
     checkall.checked = false;
@@ -383,14 +387,18 @@ const CrmCompanies = () => {
               </li>
               <li className="list-inline-item" title="View">
                 <Link to="#"
-                  onClick={() => { const companyData = cell.row.original; setInfo(companyData); }}
+                  onClick={() => {
+ const companyData = cell.row.original; setInfo(companyData); 
+}}
                 >
                   <i className="ri-eye-fill align-bottom text-muted"></i>
                 </Link>
               </li>
               <li className="list-inline-item" title="Edit">
                 <Link className="edit-item-btn" to="#"
-                  onClick={() => { const companyData = cell.row.original; handleCompanyClick(companyData); }}
+                  onClick={() => {
+ const companyData = cell.row.original; handleCompanyClick(companyData); 
+}}
                 >
                   <i className="ri-pencil-fill align-bottom text-muted"></i>
                 </Link>
@@ -398,7 +406,9 @@ const CrmCompanies = () => {
               <li className="list-inline-item" title="Delete">
                 <Link
                   className="remove-item-btn"
-                  onClick={() => { const companyData = cell.row.original; onClickDelete(companyData); }}
+                  onClick={() => {
+ const companyData = cell.row.original; onClickDelete(companyData); 
+}}
                   to="#"
                 >
                   <i className="ri-delete-bin-fill align-bottom text-muted"></i>
@@ -419,6 +429,7 @@ const CrmCompanies = () => {
   const [isExportCSV, setIsExportCSV] = useState<boolean>(false);
 
   document.title = "Companies | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">
@@ -450,7 +461,9 @@ const CrmCompanies = () => {
                 <CardHeader>
                   <div className="d-flex align-items-center flex-wrap gap-2">
                     <div className="flex-grow-1">
-                      <button className="btn btn-primary add-btn" onClick={() => { setIsEdit(false); toggle(); }}>
+                      <button className="btn btn-primary add-btn" onClick={() => {
+ setIsEdit(false); toggle(); 
+}}>
                         <i className="ri-add-fill me-1 align-bottom"></i> Add Company
                       </button>
                     </div>
@@ -515,11 +528,12 @@ const CrmCompanies = () => {
                   </div>
                   <Modal id="showModal" isOpen={modal} toggle={toggle} centered size="lg">
                     <ModalHeader className="bg-primary-subtle p-3" toggle={toggle}>
-                      {!!isEdit ? "Edit Company" : "Add Company"}
+                      {isEdit ? "Edit Company" : "Add Company"}
                     </ModalHeader>
                     <Form className="tablelist-form" onSubmit={(e) => {
                       e.preventDefault();
                       validation.handleSubmit();
+
                       return false;
                     }}>
                       <ModalBody>
@@ -829,8 +843,10 @@ const CrmCompanies = () => {
                       </ModalBody>
                       <ModalFooter>
                         <div className="hstack gap-2 justify-content-end">
-                          <Button color="light" onClick={() => { setModal(false); }} > Close </Button>
-                          <Button type="submit" color="success" id="add-btn" >  {!!isEdit ? "Update" : "Add Company"} </Button>
+                          <Button color="light" onClick={() => {
+ setModal(false); 
+}} > Close </Button>
+                          <Button type="submit" color="success" id="add-btn" >  {isEdit ? "Update" : "Add Company"} </Button>
                         </div>
                       </ModalFooter>
                     </Form>

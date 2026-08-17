@@ -2,10 +2,10 @@ import React, { useState } from 'react';
 import { Col, Container, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
-import { Swiper, SwiperSlide } from "swiper/react";
 
-import { Link } from '@/velzone/inertia-router';
 import { Navigation, Thumbs } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Link } from '@/velzone/inertia-router';
 
 // Import Swiper styles
 import "swiper/css";
@@ -13,18 +13,18 @@ import "swiper/css/free-mode";
 import "swiper/css/navigation";
 import "swiper/css/thumbs";
 //import Images
-import avatar5 from "../../../assets/images/users/avatar-5.jpg";
-import avatar4 from "../../../assets/images/users/avatar-4.jpg";
-import avatar3 from "../../../assets/images/users/avatar-3.jpg";
-import avatar7 from "../../../assets/images/users/avatar-7.jpg";
 
+import small10 from "../../../assets/images/small/img-10.jpg";
 import small2 from "../../../assets/images/small/img-2.jpg";
 import small3 from "../../../assets/images/small/img-3.jpg";
 import small4 from "../../../assets/images/small/img-4.jpg";
 import small6 from "../../../assets/images/small/img-6.jpg";
 import small7 from "../../../assets/images/small/img-7.jpg";
-import small10 from "../../../assets/images/small/img-10.jpg";
 import small9 from "../../../assets/images/small/img-9.jpg";
+import avatar3 from "../../../assets/images/users/avatar-3.jpg";
+import avatar4 from "../../../assets/images/users/avatar-4.jpg";
+import avatar5 from "../../../assets/images/users/avatar-5.jpg";
+import avatar7 from "../../../assets/images/users/avatar-7.jpg";
 
 
 const Timeline = () => {

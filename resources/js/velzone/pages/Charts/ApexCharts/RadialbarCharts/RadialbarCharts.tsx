@@ -8,9 +8,9 @@ import Img4 from "../../../../assets/images/small/img-4.jpg";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const SimpleRadialbar = ({ dataColors } : any) => {
-    var chartRadialbarBasicColors = getChartColorsArray(dataColors);
+    const chartRadialbarBasicColors = getChartColorsArray(dataColors);
     const series = [70];
-    var options : any = {
+    const options : any = {
 
         chart: {
             height: 350,
@@ -26,6 +26,7 @@ const SimpleRadialbar = ({ dataColors } : any) => {
         labels: ['Cricket'],
         colors: chartRadialbarBasicColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -38,9 +39,9 @@ const SimpleRadialbar = ({ dataColors } : any) => {
 };
 
 const MultipleRadialbar = ({ dataColors } : any) => {
-    var chartRadialbarMultipleColors = getChartColorsArray(dataColors);
+    const chartRadialbarMultipleColors = getChartColorsArray(dataColors);
     const series = [44, 55, 67, 83];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'radialBar',
@@ -67,6 +68,7 @@ const MultipleRadialbar = ({ dataColors } : any) => {
         labels: ['Apples', 'Oranges', 'Bananas', 'Berries'],
         colors: chartRadialbarMultipleColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -79,9 +81,9 @@ const MultipleRadialbar = ({ dataColors } : any) => {
 };
 
 const CircleRadialbar = ({ dataColors } : any) => {
-    var chartRadialbarCircleColors = getChartColorsArray(dataColors);
+    const chartRadialbarCircleColors = getChartColorsArray(dataColors);
     const series = [76, 67, 61, 55];
-    var options : any = {
+    const options : any = {
 
         chart: {
             height: 350,
@@ -139,6 +141,7 @@ const CircleRadialbar = ({ dataColors } : any) => {
             }
         }]
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -151,9 +154,9 @@ const CircleRadialbar = ({ dataColors } : any) => {
 };
 
 const GradientCircleRadialbar = ({ dataColors } : any) => {
-    var chartRadialbarGradientColors = getChartColorsArray(dataColors);
+    const chartRadialbarGradientColors = getChartColorsArray(dataColors);
     const series = [75];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'radialBar',
@@ -216,6 +219,7 @@ const GradientCircleRadialbar = ({ dataColors } : any) => {
         },
         labels: ['Percent'],
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -229,7 +233,7 @@ const GradientCircleRadialbar = ({ dataColors } : any) => {
 
 const ImageRadialbar = () => {
     const series = [67];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 315,
             type: 'radialBar',
@@ -269,6 +273,7 @@ const ImageRadialbar = () => {
         },
         labels: ['Volatility'],
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -281,9 +286,9 @@ const ImageRadialbar = () => {
 };
 
 const StrokedCircleRadial = ({ dataColors } : any) => {
-    var chartStorkeRadialbarColors = getChartColorsArray(dataColors);
+    const chartStorkeRadialbarColors = getChartColorsArray(dataColors);
     const series = [67];
-    var options : any = {
+    const options : any = {
 
         chart: {
             height: 326,
@@ -328,6 +333,7 @@ const StrokedCircleRadial = ({ dataColors } : any) => {
         labels: ['Median Ratio'],
         colors: chartStorkeRadialbarColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -340,9 +346,9 @@ const StrokedCircleRadial = ({ dataColors } : any) => {
 };
 
 const SemiCircularRadial = ({ dataColors } : any) => {
-    var chartStorkeRadialbarColors = getChartColorsArray(dataColors);
+    const chartStorkeRadialbarColors = getChartColorsArray(dataColors);
     const series = [76];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'radialBar',
             height: 350,
@@ -398,6 +404,7 @@ const SemiCircularRadial = ({ dataColors } : any) => {
         labels: ['Average Results'],
         colors: chartStorkeRadialbarColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"

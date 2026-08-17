@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Head, Link } from '@inertiajs/react';
-import { Container, Row, Col, Card, CardBody, CardHeader, Nav, NavItem, NavLink, TabContent, TabPane, Table, Badge, Button } from 'reactstrap';
 import classnames from 'classnames';
+import React, { useState } from 'react';
+import { Container, Row, Col, Card, CardBody, CardHeader, Nav, NavItem, NavLink, TabContent, TabPane, Table, Badge, Button } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
 
 interface CorbeillesProps {
@@ -37,7 +37,9 @@ const Corbeilles = ({ pointagesAValider, dossiersAValider }: CorbeillesProps) =>
                                             <NavLink
                                                 style={{ cursor: 'pointer' }}
                                                 className={classnames({ active: activeTab === '1' })}
-                                                onClick={() => { toggleTab('1'); }}
+                                                onClick={() => {
+ toggleTab('1'); 
+}}
                                             >
                                                 <i className="ri-folder-2-line align-middle me-1"></i> Attente Démarrage
                                                 <Badge color="danger" className="ms-1">{dossiersAValider.length}</Badge>
@@ -47,7 +49,9 @@ const Corbeilles = ({ pointagesAValider, dossiersAValider }: CorbeillesProps) =>
                                             <NavLink
                                                 style={{ cursor: 'pointer' }}
                                                 className={classnames({ active: activeTab === '2' })}
-                                                onClick={() => { toggleTab('2'); }}
+                                                onClick={() => {
+ toggleTab('2'); 
+}}
                                             >
                                                 <i className="ri-calendar-check-line align-middle me-1"></i> Pointages Mensuels
                                                 <Badge color="warning" className="ms-1">{pointagesAValider.length}</Badge>

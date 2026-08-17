@@ -1,12 +1,13 @@
 import React from "react";
 import { Card, CardBody, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Row, UncontrolledDropdown } from "reactstrap";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { Link } from '@/velzone/inertia-router';
 
 import { creatorsData, creatorsListData } from "../../../common/data/index";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 const Creators = () => {
     document.title = "Creators | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

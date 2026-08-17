@@ -1,10 +1,10 @@
 import React, { useMemo } from "react";
 import { Container } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
+import { NFTRanking } from "../../../common/data";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import TableContainer from "../../../Components/Common/TableContainer";
-import { Link } from '@/velzone/inertia-router';
 
-import { NFTRanking } from "../../../common/data";
 
 const Ranking = () => {
     document.title = "Ranking | Velzon - React Admin & Dashboard Template";

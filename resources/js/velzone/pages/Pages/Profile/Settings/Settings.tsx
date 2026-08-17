@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Card, CardBody, CardHeader, Col, Container, Form, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
 import classnames from "classnames";
+import React, { useState } from 'react';
 import Flatpickr from "react-flatpickr";
+import { Card, CardBody, CardHeader, Col, Container, Form, Input, Label, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 //import images
 import progileBg from '../../../../assets/images/profile-bg.jpg';
@@ -12,7 +12,9 @@ const Settings = () => {
     const [activeTab, setActiveTab] = useState("1");
 
     const tabChange = (tab : any) => {
-        if (activeTab !== tab) setActiveTab(tab);
+        if (activeTab !== tab) {
+setActiveTab(tab);
+}
     };
 
     document.title = "Profile Settings | Velzon - React Admin & Dashboard Template";

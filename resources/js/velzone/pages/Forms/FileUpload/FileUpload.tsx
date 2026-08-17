@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { Card, CardBody, Col, Row, Container, CardHeader } from 'reactstrap';
 import Dropzone from "react-dropzone";
+import { FilePond,  registerPlugin } from 'react-filepond';
+import { Card, CardBody, Col, Row, Container, CardHeader } from 'reactstrap';
 import { Link } from '@/velzone/inertia-router';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 // Import React FilePond
-import { FilePond,  registerPlugin } from 'react-filepond';
 // Import FilePond styles
 import 'filepond/dist/filepond.min.css';
 import FilePondPluginImageExifOrientation from 'filepond-plugin-image-exif-orientation';
@@ -32,15 +32,20 @@ const FileUpload  = () => {
    * Formats the size
    */
   function formatBytes(bytes : any, decimals = 2) {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) {
+return "0 Bytes";
+}
+
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   }
   document.title ="File Upload | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">

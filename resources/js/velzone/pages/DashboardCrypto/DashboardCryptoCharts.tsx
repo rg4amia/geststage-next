@@ -5,7 +5,7 @@ import useChartColors from 'Components/Common/useChartColors';
 const PortfolioCharts = ({ chartId, series }: any) => {
     const chartColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         labels: ["Bitcoin", "Ethereum", "Litecoin", "Dash"],
         chart: {
             type: "donut",
@@ -71,6 +71,7 @@ const PortfolioCharts = ({ chartId, series }: any) => {
         },
         colors: chartColors,
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -94,7 +95,7 @@ const PortfolioCharts = ({ chartId, series }: any) => {
 const MarkerCharts = ({ chartId, series }: any) => {
     const chartColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         chart: {
             type: 'candlestick',
             height: 294,
@@ -130,6 +131,7 @@ const MarkerCharts = ({ chartId, series }: any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0);
                     }
+
                     return y;
 
                 }
@@ -138,6 +140,7 @@ const MarkerCharts = ({ chartId, series }: any) => {
                     if (typeof y !== "undefined") {
                         return "$" + y.toFixed(2) + "k";
                     }
+
                     return y;
 
                 }
@@ -146,12 +149,14 @@ const MarkerCharts = ({ chartId, series }: any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0) + " Sales";
                     }
+
                     return y;
 
                 }
             }]
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -171,7 +176,7 @@ const MarkerCharts = ({ chartId, series }: any) => {
 
 const WidgetsCharts = ({ seriesData, chartsColor }: any) => {
     const areachartlitecoinColors = [chartsColor];
-    var options: any = {
+    const options: any = {
         chart: {
             width: 130,
             height: 46,
@@ -202,6 +207,7 @@ const WidgetsCharts = ({ seriesData, chartsColor }: any) => {
         },
         colors: areachartlitecoinColors
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"

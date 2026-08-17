@@ -1,4 +1,11 @@
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
+import { useFormik } from "formik"
+import moment from "moment";
 import React, { useState, useEffect} from "react"
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux"
+import Select from "react-select";
+import { ToastContainer } from "react-toastify"
 import {
   Card,
   CardBody,
@@ -16,11 +23,14 @@ import {
   Input,
   FormFeedback,
 } from "reactstrap"
-import { useFormik } from "formik"
+import { createSelector } from "reselect"
+import SimpleBar from "simplebar-react"
 import * as Yup from "yup"
-import Select from "react-select";
 
 
+import { Link } from '@/velzone/inertia-router'
+import { AddTeamMember, headData } from "common/data"
+import Spinners from "Components/Common/Spinner"
 import {
   getTasks as onGetTasks,
   addCardData as onAddCardData,
@@ -29,18 +39,8 @@ import {
 } from "../../../slices/thunks"
 
 //redux
-import { useSelector, useDispatch } from "react-redux"
-import { createSelector } from "reselect"
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
-import { Link } from '@/velzone/inertia-router'
-import SimpleBar from "simplebar-react"
 // import moment from "moment"
-import { ToastContainer } from "react-toastify"
-import Spinners from "Components/Common/Spinner"
-import { AddTeamMember, headData } from "common/data"
 import DeleteModal from "Components/Common/DeleteModal";
-import Flatpickr from "react-flatpickr";
-import moment from "moment";
 
 
 //Import Breadcrumb
@@ -98,9 +98,12 @@ const TasksKanban = () => {
 
 
   const handleDragEnd = (result: any) => {
-    if (!result.destination) return // If dropped outside a valid drop area, do nothing
+    if (!result.destination) {
+return
+} // If dropped outside a valid drop area, do nothing
 
     const { source, destination } = result
+
     // Reorder cards within the same card line
     if (source.droppableId === destination.droppableId) {
       const line = cards.find((line: any) => line.id === source.droppableId)
@@ -112,6 +115,7 @@ const TasksKanban = () => {
         if (line.id === source.droppableId) {
           return { ...line, cards: reorderedCards }
         }
+
         return line
       })
 
@@ -133,6 +137,7 @@ const TasksKanban = () => {
         } else if (line.id === destination.droppableId) {
           return { ...line, cards: destinationCards }
         }
+
         return line
       })
 
@@ -282,6 +287,7 @@ const TasksKanban = () => {
         dispatch(onAddCardData(newCardData))
         validation.resetForm()
       }
+
       toggle()
     },
   })
@@ -292,7 +298,7 @@ const TasksKanban = () => {
     setModal(true)
     setCard(arg)
 
-    let card = arg
+    const card = arg
     setCard({
       id: card.id,
       title: card.title,
@@ -601,6 +607,7 @@ const TasksKanban = () => {
             <Form onSubmit={(event: any) => {
               event.preventDefault();
               formik.handleSubmit();
+
               return false
             }}>
               <Row>
@@ -639,13 +646,14 @@ const TasksKanban = () => {
 
       <Modal id="modalForm" isOpen={modal} toggle={toggle} centered={true} size="lg">
         <ModalHeader toggle={toggle}>
-          {!!isEdit ? "Update Task" : "Add New Task"}
+          {isEdit ? "Update Task" : "Add New Task"}
         </ModalHeader>
         <ModalBody>
           <Form
             onSubmit={e => {
               e.preventDefault()
               validation.handleSubmit()
+
               return false
             }}
           >
@@ -711,6 +719,7 @@ const TasksKanban = () => {
                     const isChecked = images.some((item: any) => {
                       return item.id === image.id
                     });
+
                     return (
                       <li key={index}>
                         <div className="form-check form-check-primary mb-2 d-flex align-items-center">
@@ -884,7 +893,7 @@ const TasksKanban = () => {
                   className="btn btn-primary"
                   id="updatetaskdetail"
                 >
-                  {!!isEdit ? "Update Task" : "Create Task"}
+                  {isEdit ? "Update Task" : "Create Task"}
                 </button>
               </Col>
             </Row>

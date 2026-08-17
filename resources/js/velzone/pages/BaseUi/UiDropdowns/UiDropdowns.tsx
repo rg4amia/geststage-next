@@ -1,21 +1,21 @@
+import classnames from "classnames";
 import React, { useState } from 'react';
 import { Button, ButtonGroup, Card, CardBody, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Input, Nav, NavItem, NavLink, Row, TabContent, TabPane, UncontrolledButtonDropdown, UncontrolledDropdown, } from 'reactstrap';
-import { Link } from '@/velzone/inertia-router';
-import classnames from "classnames";
 import SimpleBar from 'simplebar-react';
+import { Link } from '@/velzone/inertia-router';
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
+import bell from "../../../assets/images/svg/bell.svg";
+import avatar2 from "../../../assets/images/users/avatar-2.jpg";
 //import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 
 // Import Images
-import avatar2 from "../../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
 import avatar6 from "../../../assets/images/users/avatar-6.jpg";
 import avatar8 from "../../../assets/images/users/avatar-8.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
 
-import bell from "../../../assets/images/svg/bell.svg";
 
 
 import { SingleButtonDropdownExample, ColorDropdownExample, SplitButtonDropdownExample, SizingDropdownExample, DarkDropdownExample, AlignDropdownExample, OptionDropdownExample, AutoCloseDropdownExample, MenuItemDropdownExample, MenuContentDropdownExample, NotificationDropdownExample } from './UiDropdownsCode';
@@ -1022,17 +1022,23 @@ const UiDropdowns = () => {
                                                         <div className="px-2 pt-2">
                                                             <Nav tabs className="dropdown-tabs nav-tabs-custom">
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "1", })} onClick={() => { toggle("1"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "1", })} onClick={() => {
+ toggle("1"); 
+}} >
                                                                         All (4)
                                                                     </NavLink>
                                                                 </NavItem>
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "2", })} onClick={() => { toggle("2"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "2", })} onClick={() => {
+ toggle("2"); 
+}} >
                                                                         Messages
                                                                     </NavLink>
                                                                 </NavItem>
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "3", })} onClick={() => { toggle("3"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: activeTab === "3", })} onClick={() => {
+ toggle("3"); 
+}} >
                                                                         Alerts
                                                                     </NavLink>
                                                                 </NavItem>
@@ -1238,17 +1244,23 @@ const UiDropdowns = () => {
                                                         <div className="px-2 pt-2">
                                                             <Nav tabs className="dropdown-tabs nav-tabs-custom">
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: NotificationTab === "1", })} onClick={() => { toggleNotification("1"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: NotificationTab === "1", })} onClick={() => {
+ toggleNotification("1"); 
+}} >
                                                                         All (4)
                                                                     </NavLink>
                                                                 </NavItem>
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: NotificationTab === "2", })} onClick={() => { toggleNotification("2"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: NotificationTab === "2", })} onClick={() => {
+ toggleNotification("2"); 
+}} >
                                                                         Messages
                                                                     </NavLink>
                                                                 </NavItem>
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: NotificationTab === "3", })} onClick={() => { toggleNotification("3"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: NotificationTab === "3", })} onClick={() => {
+ toggleNotification("3"); 
+}} >
                                                                         Alerts
                                                                     </NavLink>
                                                                 </NavItem>
@@ -1454,17 +1466,23 @@ const UiDropdowns = () => {
                                                         <div className="px-2 pt-2">
                                                             <Nav tabs className="dropdown-tabs nav-tabs-custom">
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: Notification1Tab === "1", })} onClick={() => { toggleNotification1("1"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: Notification1Tab === "1", })} onClick={() => {
+ toggleNotification1("1"); 
+}} >
                                                                         All (4)
                                                                     </NavLink>
                                                                 </NavItem>
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: Notification1Tab === "2", })} onClick={() => { toggleNotification1("2"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: Notification1Tab === "2", })} onClick={() => {
+ toggleNotification1("2"); 
+}} >
                                                                         Messages
                                                                     </NavLink>
                                                                 </NavItem>
                                                                 <NavItem>
-                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: Notification1Tab === "3", })} onClick={() => { toggleNotification1("3"); }} >
+                                                                    <NavLink style={{ cursor: "pointer" }} className={classnames({ active: Notification1Tab === "3", })} onClick={() => {
+ toggleNotification1("3"); 
+}} >
                                                                         Alerts
                                                                     </NavLink>
                                                                 </NavItem>

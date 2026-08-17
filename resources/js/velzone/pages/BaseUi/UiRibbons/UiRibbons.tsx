@@ -2,16 +2,17 @@ import React from 'react';
 import { Card, CardBody, Col, Container, Row, } from 'reactstrap';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
 
 import { RoundedRibbonExample, RibbonShapeExample, FilledRibbonsExample, BoxedRibbonsExample, RibbonsExample, RibbonsHoverExample } from './UiRibbonsCode';
 
 
 const UiRibbons = () => {
     document.title="Ribbons | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

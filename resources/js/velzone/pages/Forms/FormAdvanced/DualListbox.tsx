@@ -67,6 +67,7 @@ const DualListbox = () => {
       "toyota",
     ]);
     const [selectedFilter, setSelectedFilter] = useState(["luna"]);
+
   return (
     <React.Fragment>
  <Row>
@@ -109,6 +110,7 @@ const DualListbox = () => {
                 if (filterInput === "") {
                   return true;
                 }
+
                 return new RegExp(filterInput, "i").test(Optgroup.label);
               }}
               filterPlaceholder="Search..."
@@ -149,6 +151,7 @@ const DualListbox = () => {
                 if (filterInput === "") {
                   return true;
                 }
+
                 return new RegExp(filterInput, "i").test(Optgroup.label);
               }}
               filterPlaceholder="Search..."

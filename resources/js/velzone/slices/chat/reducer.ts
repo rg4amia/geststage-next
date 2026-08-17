@@ -41,6 +41,7 @@ const chatSlice = createSlice({
     builder.addCase(deleteMessage.fulfilled, (state: any, action: any) => {
       state.messages = (state.messages || []).map((data: any) => {
         const updateUserMsg = data.usermessages.filter((userMsg: any) => userMsg.id !== action.payload);
+
         return { ...data, usermessages: updateUserMsg }
       })
     });

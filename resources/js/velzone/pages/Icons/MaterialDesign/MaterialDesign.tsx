@@ -6,6 +6,7 @@ import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 const Materialdesign = () => {
   document.title = "Material Design Icons | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">

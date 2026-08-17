@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Input } from 'reactstrap';
+import SimpleBar from "simplebar-react";
+import { Link } from '@/velzone/inertia-router';
 import Navdata from 'Layouts/LayoutMenuData';
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 //import images
 import image2 from "../../assets/images/users/avatar-2.jpg";
@@ -24,6 +24,7 @@ const SearchOption = () => {
     
       const handleSearchInput = () => {
         const inputLength = searchInput.value.length;
+
         if (inputLength > 0) {
           dropdown.classList.add("show");
           searchOptions.classList.remove("d-none");
@@ -52,6 +53,7 @@ const SearchOption = () => {
     
     const onKeyDownPress = (e : any) => {
         const  { key} = e;
+
         if(key === "Enter"){
 			e.preventDefault();
             setSearchTerm(e.target.value);

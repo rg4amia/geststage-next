@@ -1,10 +1,10 @@
 import React from 'react'
-import { Col, Container, Input, InputGroup, Row } from 'reactstrap'
-import ParticlesAuth from "../../AuthenticationInner/ParticlesAuth";
 import Countdown from "react-countdown"
+import { Col, Container, Input, InputGroup, Row } from 'reactstrap'
+import comingsoon from '../../../assets/images/comingsoon.png';
+import ParticlesAuth from "../../AuthenticationInner/ParticlesAuth";
 
 //import images
-import comingsoon from '../../../assets/images/comingsoon.png';
 
 const ComingSoon = () => {
     const renderer = ({ days, hours, minutes, seconds, completed } : any) => {

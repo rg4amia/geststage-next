@@ -1,8 +1,8 @@
 import React from "react";
-import { NavLink } from '@/velzone/inertia-router';
 import { Button, Card, CardBody, Col, Container, Row } from "reactstrap";
-import img8 from "../../../assets/images/small/img-8.jpg";
+import { NavLink } from '@/velzone/inertia-router';
 import img6 from "../../../assets/images/small/img-6.jpg";
+import img8 from "../../../assets/images/small/img-8.jpg";
 import img9 from "../../../assets/images/small/img-9.jpg";
 const Blog = () => {
   return (

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
+import React, { useState } from 'react';
 import { Badge, Button } from 'reactstrap';
 import AafSectionPage from './AafSectionPage';
 

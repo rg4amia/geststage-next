@@ -48,6 +48,7 @@ const code = `<form className="row g-3">
 </Col>
 </form>
 `;
+
   return (
     <React.Fragment>
       <PrismCode
@@ -226,6 +227,7 @@ onSubmit={(e) => {
 </Button>
 </Form>
 `;
+
   return (
     <React.Fragment>
       <PrismCode
@@ -283,6 +285,7 @@ const code = `<Form className="was-validated">
 </div>
 </Form>
  `;
+
   return (
     <React.Fragment>
       <PrismCode

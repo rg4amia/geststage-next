@@ -6,6 +6,7 @@ import { SimpleRadialbar, MultipleRadialbar, CircleRadialbar, GradientCircleRadi
 
 const RadialbarCharts = () => {
     document.title = "Radialbar Charts | Velzon - React Admin & Dashboard Template";
+
     return (
         <div className="page-content">
             <Container fluid>

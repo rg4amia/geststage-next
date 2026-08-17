@@ -1,16 +1,16 @@
 import React, { useEffect } from 'react';
-import SimpleBar from 'simplebar-react';
 import { Container } from 'reactstrap';
+import SimpleBar from 'simplebar-react';
 import { Link } from '@/velzone/inertia-router';
 //import logo
-import logoSm from '../assets/images/logo-sm.png';
 import logoDark from '../assets/images/logo-dark.png';
 import logoLight from '../assets/images/logo-light.png';
+import logoSm from '../assets/images/logo-sm.png';
 
 //Import Components
-import VerticalLayout from './VerticalLayouts';
-import TwoColumnLayout from './TwoColumnLayout';
 import HorizontalLayout from './HorizontalLayout';
+import TwoColumnLayout from './TwoColumnLayout';
+import VerticalLayout from './VerticalLayouts';
 
 const Sidebar = ({ layoutType }: any) => {
     useEffect(() => {

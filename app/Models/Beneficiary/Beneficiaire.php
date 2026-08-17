@@ -8,6 +8,9 @@ use App\Models\Internship\Stage;
 use App\Models\Reference\Commune;
 use App\Models\Reference\Diplome;
 use App\Models\Reference\TypePaiement;
+use App\Models\Reference\NiveauEtude;
+use App\Models\Reference\Handicap;
+use App\Models\Reference\TypeHandicap;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -55,5 +58,20 @@ class Beneficiaire extends Model
     public function typePaiement(): BelongsTo
     {
         return $this->belongsTo(TypePaiement::class);
+    }
+
+    public function niveauEtude(): BelongsTo
+    {
+        return $this->belongsTo(NiveauEtude::class, 'niveau_etude_id');
+    }
+
+    public function handicap(): BelongsTo
+    {
+        return $this->belongsTo(Handicap::class, 'handicap_id');
+    }
+
+    public function typeHandicap(): BelongsTo
+    {
+        return $this->belongsTo(TypeHandicap::class, 'type_handicap_id');
     }
 }

@@ -1,9 +1,16 @@
 import React from 'react'
 import { Card, CardBody, Col, Container, Input, Label, Row, Table } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
+
+//Import images
+import avtarImage1 from '../../../assets/images/users/avatar-1.jpg';
+import avtarImage3 from '../../../assets/images/users/avatar-3.jpg';
+import avtarImage4 from '../../../assets/images/users/avatar-4.jpg';
+import avtarImage5 from '../../../assets/images/users/avatar-5.jpg';
+import avtarImage6 from '../../../assets/images/users/avatar-6.jpg';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 import UiContent from "../../../Components/Common/UiContent";
-import { Link } from '@/velzone/inertia-router';
 import {
     DefaultTables,
     StrippedRow,
@@ -25,17 +32,11 @@ import {
     StripedColumnsTables
 } from './BasicTablesCode';
 
-//Import images
-import avtarImage1 from '../../../assets/images/users/avatar-1.jpg';
-import avtarImage3 from '../../../assets/images/users/avatar-3.jpg';
-import avtarImage4 from '../../../assets/images/users/avatar-4.jpg';
-import avtarImage5 from '../../../assets/images/users/avatar-5.jpg';
-import avtarImage6 from '../../../assets/images/users/avatar-6.jpg';
-
 
 
 const BasicTables = () => {
     document.title = "Basic Tables | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

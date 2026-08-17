@@ -1,12 +1,19 @@
-import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Card, CardBody, CardHeader, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Input, Label, Nav, NavItem, NavLink, Pagination, PaginationItem, PaginationLink, Progress, Row, TabContent, Table, TabPane, UncontrolledCollapse, UncontrolledDropdown } from 'reactstrap';
 import classnames from 'classnames';
-import { Swiper, SwiperSlide } from "swiper/react";
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, Input, Label, Nav, NavItem, NavLink, Pagination, PaginationItem, PaginationLink, Progress, Row, TabContent, Table, TabPane, UncontrolledCollapse, UncontrolledDropdown } from 'reactstrap';
 import { Autoplay } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Link } from '@/velzone/inertia-router';
 
 //Images
 import profileBg from '../../../../assets/images/profile-bg.jpg';
+import smallImage2 from '../../../../assets/images/small/img-2.jpg';
+import smallImage3 from '../../../../assets/images/small/img-3.jpg';
+import smallImage4 from '../../../../assets/images/small/img-4.jpg';
+import smallImage5 from '../../../../assets/images/small/img-5.jpg';
+import smallImage6 from '../../../../assets/images/small/img-6.jpg';
+import smallImage7 from '../../../../assets/images/small/img-7.jpg';
+import smallImage9 from '../../../../assets/images/small/img-9.jpg';
 import avatar1 from '../../../../assets/images/users/avatar-1.jpg';
 import avatar2 from '../../../../assets/images/users/avatar-2.jpg';
 import avatar3 from '../../../../assets/images/users/avatar-3.jpg';
@@ -16,13 +23,6 @@ import avatar6 from '../../../../assets/images/users/avatar-6.jpg';
 import avatar7 from '../../../../assets/images/users/avatar-7.jpg';
 import avatar8 from '../../../../assets/images/users/avatar-8.jpg';
 
-import smallImage2 from '../../../../assets/images/small/img-2.jpg';
-import smallImage3 from '../../../../assets/images/small/img-3.jpg';
-import smallImage4 from '../../../../assets/images/small/img-4.jpg';
-import smallImage5 from '../../../../assets/images/small/img-5.jpg';
-import smallImage6 from '../../../../assets/images/small/img-6.jpg';
-import smallImage7 from '../../../../assets/images/small/img-7.jpg';
-import smallImage9 from '../../../../assets/images/small/img-9.jpg';
 
 import { projects, documents } from '../../../../common/data';
 
@@ -107,7 +107,9 @@ const SimplePage = () => {
                                             <NavLink
                                                 href="#overview-tab"
                                                 className={classnames({ active: activeTab === '1' })}
-                                                onClick={() => { toggleTab('1'); }}
+                                                onClick={() => {
+ toggleTab('1'); 
+}}
 
                                             >
                                                 <i className="ri-airplay-fill d-inline-block d-md-none"></i> <span
@@ -118,7 +120,9 @@ const SimplePage = () => {
                                             <NavLink
                                                 href="#activities"
                                                 className={classnames({ active: activeTab === '2' })}
-                                                onClick={() => { toggleTab('2'); }}
+                                                onClick={() => {
+ toggleTab('2'); 
+}}
 
                                             >
                                                 <i className="ri-list-unordered d-inline-block d-md-none"></i> <span
@@ -129,7 +133,9 @@ const SimplePage = () => {
                                             <NavLink
                                                 href="#projects"
                                                 className={classnames({ active: activeTab === '3' })}
-                                                onClick={() => { toggleTab('3'); }}
+                                                onClick={() => {
+ toggleTab('3'); 
+}}
 
                                             >
                                                 <i className="ri-price-tag-line d-inline-block d-md-none"></i> <span
@@ -140,7 +146,9 @@ const SimplePage = () => {
                                             <NavLink
                                                 href="#documents"
                                                 className={classnames({ active: activeTab === '4' })}
-                                                onClick={() => { toggleTab('4'); }}
+                                                onClick={() => {
+ toggleTab('4'); 
+}}
 
                                             >
                                                 <i className="ri-folder-4-line d-inline-block d-md-none"></i> <span
@@ -468,7 +476,9 @@ const SimplePage = () => {
                                                                             <NavLink
                                                                                 to="#today-tab"
                                                                                 className={classnames({ active: activityTab === '1' })}
-                                                                                onClick={() => { toggleActivityTab('1'); }}
+                                                                                onClick={() => {
+ toggleActivityTab('1'); 
+}}
                                                                             >
                                                                                 Today
                                                                             </NavLink>
@@ -477,7 +487,9 @@ const SimplePage = () => {
                                                                             <NavLink
                                                                                 to="#weekly-tab"
                                                                                 className={classnames({ active: activityTab === '2' })}
-                                                                                onClick={() => { toggleActivityTab('2'); }}
+                                                                                onClick={() => {
+ toggleActivityTab('2'); 
+}}
                                                                             >
                                                                                 Weekly
                                                                             </NavLink>
@@ -486,7 +498,9 @@ const SimplePage = () => {
                                                                             <NavLink
                                                                                 to="#monthly-tab"
                                                                                 className={classnames({ active: activityTab === '3' })}
-                                                                                onClick={() => { toggleActivityTab('3'); }}
+                                                                                onClick={() => {
+ toggleActivityTab('3'); 
+}}
                                                                             >
                                                                                 Monthly
                                                                             </NavLink>

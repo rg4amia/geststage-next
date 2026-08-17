@@ -4,7 +4,7 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const FunnelChartCode = ({ dataColors } : any) => {
-    var funnelChartColors = getChartColorsArray(dataColors);
+    const funnelChartColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Funnel Series",
@@ -67,7 +67,7 @@ const FunnelChartCode = ({ dataColors } : any) => {
 }
 
 const PyramidChartCode = ({ dataColors } : any) => {
-    var pyramidChartColors = getChartColorsArray(dataColors);
+    const pyramidChartColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "",

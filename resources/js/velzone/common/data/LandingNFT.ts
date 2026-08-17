@@ -1,25 +1,25 @@
 //import Images
-import metamask from "../../assets/images/nft/wallet/metamask.png";
-import coinbase from "../../assets/images/nft/wallet/coinbase.png";
+import add from "../../assets/images/nft/add.png";
+import img5 from "../../assets/images/nft/gif/img-5.gif";
+import img01 from "../../assets/images/nft/img-01.jpg";
+import img02 from "../../assets/images/nft/img-02.jpg";
+import img03 from "../../assets/images/nft/img-03.jpg";
+import img05 from "../../assets/images/nft/img-05.jpg";
+import img06 from "../../assets/images/nft/img-06.jpg";
+import money from "../../assets/images/nft/money.png";
 import binance from "../../assets/images/nft/wallet/binance.png";
+import coinbase from "../../assets/images/nft/wallet/coinbase.png";
+import metamask from "../../assets/images/nft/wallet/metamask.png";
 
 import wallet from "../../assets/images/nft/wallet.png";
-import money from "../../assets/images/nft/money.png";
-import add from "../../assets/images/nft/add.png";
 import sell from "../../assets/images/nft/sell.png";
 
+import avatar10 from "../../assets/images/users/avatar-10.jpg";
 import avatar02 from "../../assets/images/users/avatar-2.jpg";
 import avatar05 from "../../assets/images/users/avatar-5.jpg";
 import avatar08 from "../../assets/images/users/avatar-8.jpg";
 import avatar09 from "../../assets/images/users/avatar-9.jpg";
-import avatar10 from "../../assets/images/users/avatar-10.jpg";
 
-import img01 from "../../assets/images/nft/img-01.jpg";
-import img02 from "../../assets/images/nft/img-02.jpg";
-import img03 from "../../assets/images/nft/img-03.jpg";
-import img5 from "../../assets/images/nft/gif/img-5.gif";
-import img05 from "../../assets/images/nft/img-05.jpg";
-import img06 from "../../assets/images/nft/img-06.jpg";
 
 // import gifImg01 from "../../assets/images/nft/gif/img-1.gif";
 

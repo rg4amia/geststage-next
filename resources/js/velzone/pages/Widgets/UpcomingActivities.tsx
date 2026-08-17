@@ -1,14 +1,14 @@
 import React from 'react';
 import { Button, Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, ListGroup, ListGroupItem, Pagination, PaginationItem, PaginationLink, Row, UncontrolledDropdown } from 'reactstrap';
+import SimpleBar from 'simplebar-react';
 import { Link } from '@/velzone/inertia-router';
 
-import SimpleBar from 'simplebar-react';
 
 // Import Images
 
+import product10 from "../../assets/images/products/img-10.png";
 import product2 from "../../assets/images/products/img-2.png";
 import product8 from "../../assets/images/products/img-8.png";
-import product10 from "../../assets/images/products/img-10.png";
 
 import avatar2 from "../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../assets/images/users/avatar-3.jpg";
@@ -50,6 +50,7 @@ const UpcomingActivity = () => {
             dataColors: '["--vz-success" , "--vz-transparent"]'
         },
     ];
+
     return (
         <React.Fragment>
             <Row>

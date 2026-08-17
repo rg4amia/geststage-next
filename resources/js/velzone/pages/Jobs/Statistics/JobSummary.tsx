@@ -1,11 +1,11 @@
 import React from "react";
-import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import ReactApexChart from "react-apexcharts";
+import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from "reactstrap";
 import useChartColors from "Components/Common/useChartColors";
 
 const JobSummary = ({ chartId }:any) => {
-  var revenueExpensesChartsColors = useChartColors(chartId);
-  var series = [
+  const revenueExpensesChartsColors = useChartColors(chartId);
+  const series = [
     {
       name: "Application Sent  ",
       data: [33, 28, 30, 35, 40, 55, 70, 110, 150, 180, 210, 250],
@@ -23,7 +23,7 @@ const JobSummary = ({ chartId }:any) => {
       data: [8, 13, 22, 27, 32, 34, 46, 59, 65, 97, 100, 110],
     },
   ];
-  var options:any = {
+  const options:any = {
     chart: {
       height: 320,
       type: "area",
@@ -59,6 +59,7 @@ const JobSummary = ({ chartId }:any) => {
       type: "solid",
     },
   };
+
   return (
     <React.Fragment>
       <Col xxl={8} md={6}>

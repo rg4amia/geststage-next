@@ -1,12 +1,12 @@
+import classnames from 'classnames';
 import React, { useState } from 'react';
 import { Card, CardBody, Col, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
-import classnames from 'classnames';
 
 //import images
 import slack from '../../../assets/images/brands/slack.png';
-import OverviewTab from './OverviewTab';
-import DocumentsTab from './DocumentsTab';
 import ActivitiesTab from './ActivitiesTab';
+import DocumentsTab from './DocumentsTab';
+import OverviewTab from './OverviewTab';
 import TeamTab from './TeamTab';
 
 const Section = () => {
@@ -17,6 +17,7 @@ const Section = () => {
             setActiveTab(tab);
         }
     };
+
     return (
         <React.Fragment>
             <Row>
@@ -70,7 +71,9 @@ const Section = () => {
                                     <NavItem>
                                         <NavLink
                                             className={classnames({ active: activeTab === '1' }, "fw-semibold")}
-                                            onClick={() => { toggleTab('1'); }}
+                                            onClick={() => {
+ toggleTab('1'); 
+}}
                                             href="#">
                                             Overview
                                         </NavLink>
@@ -78,7 +81,9 @@ const Section = () => {
                                     <NavItem>
                                         <NavLink
                                             className={classnames({ active: activeTab === '2' }, "fw-semibold")}
-                                            onClick={() => { toggleTab('2'); }}
+                                            onClick={() => {
+ toggleTab('2'); 
+}}
                                             href="#">
                                             Documents
                                         </NavLink>
@@ -86,7 +91,9 @@ const Section = () => {
                                     <NavItem>
                                         <NavLink
                                             className={classnames({ active: activeTab === '3' }, "fw-semibold")}
-                                            onClick={() => { toggleTab('3'); }}
+                                            onClick={() => {
+ toggleTab('3'); 
+}}
                                             href="#">
                                             Activities
                                         </NavLink>
@@ -94,7 +101,9 @@ const Section = () => {
                                     <NavItem>
                                         <NavLink
                                             className={classnames({ active: activeTab === '4' }, "fw-semibold")}
-                                            onClick={() => { toggleTab('4'); }}
+                                            onClick={() => {
+ toggleTab('4'); 
+}}
                                             href="#">
                                             Team
                                         </NavLink>

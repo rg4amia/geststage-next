@@ -8,9 +8,9 @@ import {
 } from '@/old/components/ui/dropdown-menu';
 import { UserInfo } from '@/old/components/user-info';
 import { useMobileNavigation } from '@/old/hooks/use-mobile-navigation';
+import type { User } from '@/old/types';
 import { logout } from '@/routes';
 import { edit } from '@/routes/profile';
-import type { User } from '@/old/types';
 
 type Props = {
     user: User;

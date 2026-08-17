@@ -5,7 +5,7 @@ import useChartColors from "Components/Common/useChartColors";
 const RevenueCharts = ({ chartId, series }: any) => {
   const chartColors = useChartColors(chartId);
 
-  var options: any = {
+  const options: any = {
     chart: {
       height: 370,
       type: "line",
@@ -99,6 +99,7 @@ const RevenueCharts = ({ chartId, series }: any) => {
             if (typeof y !== "undefined") {
               return y.toFixed(0);
             }
+
             return y;
           },
         },
@@ -107,6 +108,7 @@ const RevenueCharts = ({ chartId, series }: any) => {
             if (typeof y !== "undefined") {
               return "$" + y.toFixed(2) + "k";
             }
+
             return y;
           },
         },
@@ -115,12 +117,14 @@ const RevenueCharts = ({ chartId, series }: any) => {
             if (typeof y !== "undefined") {
               return y.toFixed(0) + " Sales";
             }
+
             return y;
           },
         },
       ],
     },
   };
+
   return (
     <React.Fragment>
       <ReactApexChart 
@@ -151,7 +155,7 @@ const StoreVisitsCharts = ({ chartId }: any) => {
   const chartColors = useChartColors(chartId);
   
   const series = [44, 55, 41, 17, 15];
-  var options: any = {
+  const options: any = {
     labels: ["Direct", "Social", "Email", "Other", "Referrals"],
     chart: {
       height: 333,
@@ -170,6 +174,7 @@ const StoreVisitsCharts = ({ chartId }: any) => {
     },
     colors: chartColors,
   };
+
   return (
     <React.Fragment>
       <ReactApexChart dir="ltr"

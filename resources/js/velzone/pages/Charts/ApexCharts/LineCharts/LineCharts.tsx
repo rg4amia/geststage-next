@@ -1,17 +1,17 @@
 import React from 'react';
 import ReactApexChart from "react-apexcharts";
-import { seriesData } from "../series";
 import logoSm from "../../../../assets/images/logo-sm.png";
 
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
+import { seriesData } from "../series";
 
 const BasicLineCharts = ({ dataColors } : any) => {
-    var linechartBasicColors = getChartColorsArray(dataColors);
+    const linechartBasicColors = getChartColorsArray(dataColors);
     const series = [{
         name: "Desktops",
         data: [10, 41, 35, 51, 49, 62, 69, 91, 148]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'line',
@@ -44,6 +44,7 @@ const BasicLineCharts = ({ dataColors } : any) => {
             categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -58,7 +59,7 @@ const BasicLineCharts = ({ dataColors } : any) => {
 };
 
 const ZoomableTimeseries = ({ dataColors } : any) => {
-    var ZoomableTimeseriesColors = getChartColorsArray(dataColors);
+    const ZoomableTimeseriesColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'XYZ MOTORS',
         data: [{
@@ -441,7 +442,7 @@ const ZoomableTimeseries = ({ dataColors } : any) => {
             y: 162
         },]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'area',
             stacked: false,
@@ -507,6 +508,7 @@ const ZoomableTimeseries = ({ dataColors } : any) => {
             }
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -521,8 +523,8 @@ const ZoomableTimeseries = ({ dataColors } : any) => {
 };
 
 const LinewithDataLabels = ({ dataColors } : any) => {
-    var LinewithDataLabelsColors = getChartColorsArray(dataColors);
-    var series = [{
+    const LinewithDataLabelsColors = getChartColorsArray(dataColors);
+    const series = [{
         name: "High - 2018",
         data: [26, 24, 32, 36, 33, 31, 33]
     },
@@ -531,7 +533,7 @@ const LinewithDataLabels = ({ dataColors } : any) => {
         data: [14, 11, 16, 12, 17, 13, 12]
     }
     ];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 380,
             type: 'line',
@@ -602,6 +604,7 @@ const LinewithDataLabels = ({ dataColors } : any) => {
             }
         }]
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -616,8 +619,8 @@ const LinewithDataLabels = ({ dataColors } : any) => {
 };
 
 const DashedLine = ({ dataColors } : any) => {
-    var DashedLineColors = getChartColorsArray(dataColors);
-    var series = [{
+    const DashedLineColors = getChartColorsArray(dataColors);
+    const series = [{
         name: "Session Duration",
         data: [45, 52, 38, 24, 33, 26, 21, 20, 6, 8, 15, 10]
     },
@@ -630,7 +633,7 @@ const DashedLine = ({ dataColors } : any) => {
         data: [89, 56, 74, 98, 72, 38, 64, 46, 84, 58, 46, 49]
     }
     ];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 380,
             type: 'line',
@@ -694,6 +697,7 @@ const DashedLine = ({ dataColors } : any) => {
             borderColor: '#f1f1f1',
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -708,11 +712,11 @@ const DashedLine = ({ dataColors } : any) => {
 };
 
 const LinewithAnnotations = ({ dataColors } : any) => {
-    var LinewithAnnotationsColors = getChartColorsArray(dataColors);
+    const LinewithAnnotationsColors = getChartColorsArray(dataColors);
     const series = [{
         data: seriesData.monthDataSeries1.prices
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'line',
@@ -835,6 +839,7 @@ const LinewithAnnotations = ({ dataColors } : any) => {
             type: 'datetime',
         },
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -849,29 +854,31 @@ const LinewithAnnotations = ({ dataColors } : any) => {
 };
 
 const BrushChart = ({ dataColors } : any) => {
-    var BrushChartColors = getChartColorsArray(dataColors);
+    const BrushChartColors = getChartColorsArray(dataColors);
     const generateDayWiseTimeSeries = (baseval : any, count : any, yrange : any) => {
-        var i = 0;
-        var series = [];
+        let i = 0;
+        const series = [];
+
         while (i < count) {
-            var x = baseval;
-            var y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
+            const x = baseval;
+            const y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
 
             series.push([x, y]);
             baseval += 86400000;
             i++;
         }
+
         return series;
     };
 
-    var data = generateDayWiseTimeSeries(new Date("11 Feb 2017").getTime(), 185, {
+    const data = generateDayWiseTimeSeries(new Date("11 Feb 2017").getTime(), 185, {
         min: 30,
         max: 90
     });
     const series = [{
         data: data
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             id: 'chart2',
             type: 'line',
@@ -914,22 +921,24 @@ const BrushChart = ({ dataColors } : any) => {
 
 
 const BrushChart1 = ({ dataColors } : any) => {
-    var BrushChart1Colors = getChartColorsArray(dataColors);
+    const BrushChart1Colors = getChartColorsArray(dataColors);
     const generateDayWiseTimeSeries = (baseval : any, count : any, yrange : any) => {
-        var i = 0;
-        var series = [];
+        let i = 0;
+        const series = [];
+
         while (i < count) {
-            var x = baseval;
-            var y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
+            const x = baseval;
+            const y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
 
             series.push([x, y]);
             baseval += 86400000;
             i++;
         }
+
         return series;
     };
 
-    var data = generateDayWiseTimeSeries(new Date("11 Feb 2017").getTime(), 185, {
+    const data = generateDayWiseTimeSeries(new Date("11 Feb 2017").getTime(), 185, {
         min: 30,
         max: 90
     });
@@ -937,7 +946,7 @@ const BrushChart1 = ({ dataColors } : any) => {
     const series = [{
         data: data
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             id: "chart1",
             brush: {
@@ -986,7 +995,7 @@ const BrushChart1 = ({ dataColors } : any) => {
 
 
 const SteplineChart = ({ dataColors } : any) => {
-    var SteplineChartColors = getChartColorsArray(dataColors);
+    const SteplineChartColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [34, 44, 54, 21, 12, 43, 33, 23, 66, 66, 58],
@@ -1028,12 +1037,12 @@ const SteplineChart = ({ dataColors } : any) => {
 };
 
 const GradientCharts = ({ dataColors } : any) => {
-    var GradientChartsColors = getChartColorsArray(dataColors);
+    const GradientChartsColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Likes',
         data: [4, 3, 10, 9, 29, 19, 22, 9, 12, 7, 19, 5, 13, 9, 17, 2, 7, 5]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'line',
@@ -1101,7 +1110,7 @@ const GradientCharts = ({ dataColors } : any) => {
 };
 
 const MissingData = ({ dataColors } : any) => {
-    var MissingDataColors = getChartColorsArray(dataColors);
+    const MissingDataColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Peter',
         data: [5, 5, 10, 8, 7, 5, 4, null, null, null, 10, 10, 7, 8, 6, 9]
@@ -1112,7 +1121,7 @@ const MissingData = ({ dataColors } : any) => {
         name: 'David',
         data: [null, null, null, null, 3, 4, 1, 3, 4, 6, 7, 9, 5, null, null, null]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'line',
@@ -1153,28 +1162,30 @@ const MissingData = ({ dataColors } : any) => {
 
 
 function generateDayWiseTimeSeriesline(baseval : any, count : any, yrange : any) {
-    var i = 0;
-    var series = [];
+    let i = 0;
+    const series = [];
+
     while (i < count) {
-        var x = baseval;
-        var y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
+        const x = baseval;
+        const y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
 
         series.push([x, y]);
         baseval += 86400000;
         i++;
     }
+
     return series;
 }
 
 const ChartSyncingLine = ({ dataColors } : any) => {
-    var chartSyncingColors = getChartColorsArray(dataColors);
+    const chartSyncingColors = getChartColorsArray(dataColors);
     const series = [{
         data: generateDayWiseTimeSeriesline(new Date('11 Feb 2017').getTime(), 20, {
             min: 10,
             max: 60
         })
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             id: 'fb',
             group: 'social',
@@ -1224,6 +1235,7 @@ const ChartSyncingLine = ({ dataColors } : any) => {
             type: 'datetime'
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -1238,14 +1250,14 @@ const ChartSyncingLine = ({ dataColors } : any) => {
 };
 
 const ChartSyncingLine2 = ({ dataColors } : any) => {
-    var chartSyncingColors2 = getChartColorsArray(dataColors);
+    const chartSyncingColors2 = getChartColorsArray(dataColors);
     const series = [{
         data: generateDayWiseTimeSeriesline(new Date('11 Feb 2017').getTime(), 20, {
             min: 10,
             max: 30
         })
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             id: 'tw',
             group: 'social',
@@ -1295,6 +1307,7 @@ const ChartSyncingLine2 = ({ dataColors } : any) => {
             type: 'datetime'
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -1309,14 +1322,14 @@ const ChartSyncingLine2 = ({ dataColors } : any) => {
 };
 
 const ChartSyncingArea = ({ dataColors } : any) => {
-    var ChartSyncingAreaColors = getChartColorsArray(dataColors);
+    const ChartSyncingAreaColors = getChartColorsArray(dataColors);
     const series = [{
         data: generateDayWiseTimeSeriesline(new Date('11 Feb 2017').getTime(), 20, {
             min: 10,
             max: 60
         })
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             id: 'yt',
             group: 'social',
@@ -1371,6 +1384,7 @@ const ChartSyncingArea = ({ dataColors } : any) => {
             type: 'datetime'
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"

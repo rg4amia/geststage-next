@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import { market } from '../../../common/data';
 import TableContainer from '../../../Components/Common/TableContainer';
 import {
@@ -91,6 +91,7 @@ const Market = () => {
         ],
         []
     );
+
     return (
         <React.Fragment>
             <Card>

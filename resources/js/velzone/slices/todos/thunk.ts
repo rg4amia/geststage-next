@@ -15,6 +15,7 @@ import {
 export const getTodos = createAsyncThunk("todos/getTodos", async () => {
   try {
     const response = getTodosApi();
+
     return response;
   } catch (error) {
     return error;
@@ -26,9 +27,11 @@ export const addNewTodo = createAsyncThunk("todos/addNewTodo", async (todo:any) 
     const response = addNewTodoApi(todo);
     const data = await response;
     toast.success("Todo Added Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Todo Added Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -38,9 +41,11 @@ export const updateTodo = createAsyncThunk("todos/updateTodo", async (todo:any) 
     const response = updateTodoApi(todo);
     const data = await response;
     toast.success("Todo Updated Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Todo Updated Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -51,9 +56,11 @@ export const deleteTodo = createAsyncThunk("todos/deleteTodo", async (todo:any) 
     const response = deleteTodoApi(todo);
     const data = await response;
     toast.success("Todo Delete Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Todo Delete Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -61,6 +68,7 @@ export const deleteTodo = createAsyncThunk("todos/deleteTodo", async (todo:any) 
 export const getProjects = createAsyncThunk("todos/getProjects", async () => {
   try {
     const response = getProjectsApi();
+
     return response;
   } catch (error) {
     return error;
@@ -72,9 +80,11 @@ export const addNewProject = createAsyncThunk("todos/addNewProject", async (proj
     const response = addNewProjectApi(project);
     const data = await response;
     toast.success("Project Added Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Project Added Failed", { autoClose: 3000 });
+
     return error;
   }
 });

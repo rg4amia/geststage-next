@@ -1,4 +1,8 @@
+import classnames from "classnames";
 import React, { useState } from "react";
+import Dropzone from "react-dropzone";
+import Flatpickr from "react-flatpickr";
+import Select from "react-select";
 import {
   Card,
   CardBody,
@@ -17,10 +21,6 @@ import {
 } from "reactstrap";
 import { Link } from '@/velzone/inertia-router';
 import vertication from "../../../assets/images/verification-img.png";
-import classnames from "classnames";
-import Select from "react-select";
-import Flatpickr from "react-flatpickr";
-import Dropzone from "react-dropzone";
 
 const KYCVerification = () => {
   const [isKycVerification, setIsKycVerification] = useState<boolean>(false);
@@ -31,7 +31,7 @@ const KYCVerification = () => {
 
   function toggleTab(tab:any) {
     if (activeTab !== tab) {
-      var modifiedSteps = [...passedSteps, tab];
+      const modifiedSteps = [...passedSteps, tab];
 
       if (tab >= 1 && tab <= 4) {
         setActiveTab(tab);
@@ -49,12 +49,16 @@ const KYCVerification = () => {
    * Formats the size
    */
   function formatBytes(bytes:any, decimals = 2) {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) {
+return "0 Bytes";
+}
+
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   }
 

@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from '@/velzone/inertia-router';
 import {
   Card,
   CardBody,
@@ -7,6 +6,7 @@ import {
   CardFooter,
   Button
 } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 
 const  leadDiscover = (props:any) => {
   return (

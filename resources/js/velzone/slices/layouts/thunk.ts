@@ -1,4 +1,3 @@
-import { changeHTMLAttribute } from './utils';
 import {
     changeLayoutAction,
     changeLayoutThemeAction,
@@ -14,6 +13,7 @@ import {
     changePreLoaderAction,
     changeSidebarVisibilityAction
 } from './reducer';
+import { changeHTMLAttribute } from './utils';
 
 /**
  * Changes the layout type
@@ -29,6 +29,7 @@ export const changeLayout = (layout: any) => async (dispatch: any) => {
             changeHTMLAttribute("data-layout-width", "fluid");
             changeHTMLAttribute("data-layout-style", "default");
         }
+
         changeHTMLAttribute("data-layout", layout);
         dispatch(changeLayoutAction(layout));
     } catch (error) { }
@@ -61,9 +62,11 @@ export const changeLayoutMode = (layoutMode: any) => async (dispatch: any) => {
 export const changeLayoutTheme = (layoutTheme: any) => async (dispatch: any) => {
     try {
         dispatch(changeLayoutMode("light"))
+
         if (layoutTheme === "galaxy") {
             dispatch(changeLayoutMode("dark"))
         }
+
         changeHTMLAttribute("data-theme", layoutTheme);
         dispatch(changeLayoutThemeAction(layoutTheme));
     } catch (error) { }
@@ -104,6 +107,7 @@ export const changeLayoutWidth = (layoutWidth: any) => async (dispatch: any) => 
         } else {
             changeHTMLAttribute("data-layout-width", "boxed");
         }
+
         dispatch(changeLayoutWidthAction(layoutWidth));
     } catch (error) {
         return error;
@@ -185,6 +189,7 @@ export const changeLeftsidebarSizeType = (leftsidebarSizetype: any) => async (di
             default:
                 changeHTMLAttribute("data-sidebar-size", "lg");
         }
+
         dispatch(changeLeftsidebarSizeTypeAction(leftsidebarSizetype));
 
     } catch (error) {

@@ -1,28 +1,28 @@
 import React, { useState } from 'react';
 import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, Row, UncontrolledDropdown } from 'reactstrap';
+import { Pagination, Navigation, Autoplay } from "swiper/modules";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { Link } from '@/velzone/inertia-router';
+import { SorttingData, sortElementsById } from 'Components/Common/SorttingData';
+import germanyFlag from "../../assets/images/flags/germany.svg";
+import italyFlag from "../../assets/images/flags/italy.svg";
+import russiaFlag from "../../assets/images/flags/russia.svg";
+import spainFlag from "../../assets/images/flags/spain.svg";
+import usFlag from "../../assets/images/flags/us.svg";
 import { recentNFTsData } from "../../common/data/dashboardNFT";
 import { topCollectionData } from "../../common/data/dashboardNFT";
 import { popularCreatorsData } from "../../common/data/dashboardNFT";
 
 // Import Images
-import usFlag from "../../assets/images/flags/us.svg";
-import russiaFlag from "../../assets/images/flags/russia.svg";
-import spainFlag from "../../assets/images/flags/spain.svg";
-import italyFlag from "../../assets/images/flags/italy.svg";
-import germanyFlag from "../../assets/images/flags/germany.svg";
 
 // Swiper
-import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
-import { Pagination, Navigation, Autoplay } from "swiper/modules";
 
 // Vector Map
 import { VectorMap } from '@south-paw/react-vector-maps'
 import world from '../../common/world.svg.json';
-import { Link } from '@/velzone/inertia-router';
-import { SorttingData, sortElementsById } from 'Components/Common/SorttingData';
 
 interface recentNFTsType {
     id: number;
@@ -43,6 +43,7 @@ const RecentNFTs = () => {
 
     const handleSorting = (value: string) => {
         setRecentNFTDrop(value)
+
         if (value === "Popular") {
             SorttingData({ data: recentNFTsData, item: "title", setState: setRecentNFT })
         } else if (value === "Newest") {
@@ -52,6 +53,7 @@ const RecentNFTs = () => {
         }
 
     }
+
     return (
         <React.Fragment>
             <Row>

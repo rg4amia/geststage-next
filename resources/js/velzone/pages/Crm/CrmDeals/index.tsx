@@ -1,7 +1,10 @@
+import { useFormik } from "formik";
+import moment from "moment";
 import React, { useEffect, useState } from "react";
 import Flatpickr from "react-flatpickr";
-import moment from "moment";
 
+import { useSelector, useDispatch } from "react-redux";
+import Select from "react-select";
 import {
   Col,
   Container,
@@ -22,19 +25,16 @@ import {
   FormFeedback,
 } from "reactstrap";
 
+import { createSelector } from "reselect";
+import * as Yup from "yup";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
-import Select from "react-select";
+import { getDeals as onGetDeals } from "../../../slices/thunks";
 import LeadDiscover from "./leadDiscover";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
 // Import actions
-import { getDeals as onGetDeals } from "../../../slices/thunks";
 // redux
-import { useSelector, useDispatch } from "react-redux";
-import { createSelector } from "reselect";
 
 const CrmDeals = () => {
   const dispatch: any = useDispatch();
@@ -199,6 +199,7 @@ const CrmDeals = () => {
         <Form onSubmit={(e) => {
           e.preventDefault();
           validation.handleSubmit();
+
           return false;
         }}>
           <ModalBody>
@@ -341,7 +342,9 @@ const CrmDeals = () => {
             </div>
           </ModalBody>
           <ModalFooter>
-            <Button type="button" color="light" id="close-modal" onClick={() => { setModal(false); }}>
+            <Button type="button" color="light" id="close-modal" onClick={() => {
+ setModal(false); 
+}}>
               Close
             </Button>
             <Button type="submit" color="success">

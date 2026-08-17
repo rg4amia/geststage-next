@@ -1,5 +1,6 @@
+import { useFormik } from "formik";
 import React, { useCallback, useEffect, useState } from "react";
-import { Link } from '@/velzone/inertia-router';
+import { useDispatch, useSelector } from "react-redux";
 import {
   Card,
   CardBody,
@@ -17,12 +18,11 @@ import {
   Row,
   UncontrolledDropdown,
 } from "reactstrap";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { createSelector } from "reselect";
-import { useDispatch, useSelector } from "react-redux";
-import { getCategoryList as onGetCategoryList, addcategoryList as onAddCategoryList } from "slices/thunks";
-import { useFormik } from "formik";
 import * as  Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
+import { getCategoryList as onGetCategoryList, addcategoryList as onAddCategoryList } from "slices/thunks";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 
 const JobCategories = () => {
@@ -99,7 +99,7 @@ const JobCategories = () => {
 
   // search
   const handleSearch = (ele: any) => {
-    let item = ele.value;
+    const item = ele.value;
 
     if (item === "All Tasks") {
       setCategoryData([...categoryList]);
@@ -239,6 +239,7 @@ const JobCategories = () => {
                 onSubmit={(e) => {
                   e.preventDefault();
                   validation.handleSubmit();
+
                   return false;
                 }}
               >

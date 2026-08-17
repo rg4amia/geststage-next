@@ -1,8 +1,8 @@
 import { createInertiaApp } from '@inertiajs/react';
-import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
-import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
+import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { ComponentType } from 'react';
+import { Provider } from 'react-redux';
 
 import { Toaster } from '@/old/components/ui/sonner';
 import { TooltipProvider } from '@/old/components/ui/tooltip';
@@ -10,10 +10,10 @@ import { initializeTheme } from '@/old/hooks/use-appearance';
 import AppLayout from '@/old/layouts/app-layout';
 import AuthLayout from '@/old/layouts/auth-layout';
 import SettingsLayout from '@/old/layouts/settings/layout';
+import fakeBackend from '@/velzone/helpers/AuthType/fakeBackend';
 import VelzoneLayout from '@/velzone/Layouts';
 import NonAuthLayout from '@/velzone/Layouts/NonAuthLayout';
 import rootReducer from '@/velzone/slices';
-import fakeBackend from '@/velzone/helpers/AuthType/fakeBackend';
 
 import '@/velzone/i18n';
 import '@/velzone/assets/scss/themes.scss';

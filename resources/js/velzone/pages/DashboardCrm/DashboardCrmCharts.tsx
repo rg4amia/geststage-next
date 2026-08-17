@@ -5,7 +5,7 @@ import useChartColors from 'Components/Common/useChartColors';
 const SalesForecastCharts = ({ chartId, series }: any) => {
     const chartColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         chart: {
             type: 'bar',
             height: 341,
@@ -75,6 +75,7 @@ const SalesForecastCharts = ({ chartId, series }: any) => {
         },
         colors: chartColors
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -100,7 +101,7 @@ const DealTypeCharts = ({ chartId, series }: any) => {
     const chartColors = useChartColors(chartId);
 
 
-    var options: any = {
+    const options: any = {
         chart: {
             height: 341,
             type: 'radar',
@@ -143,6 +144,7 @@ const DealTypeCharts = ({ chartId, series }: any) => {
             categories: ['2016', '2017', '2018', '2019', '2020', '2021']
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -168,7 +170,7 @@ const BalanceOverviewCharts = ({ chartId, series }: any) => {
     const chartColors = useChartColors(chartId);
 
 
-    var options: any = {
+    const options: any = {
         chart: {
             height: 290,
             type: 'area',
@@ -201,6 +203,7 @@ const BalanceOverviewCharts = ({ chartId, series }: any) => {
             type: 'solid'
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"

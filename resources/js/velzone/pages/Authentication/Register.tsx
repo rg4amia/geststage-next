@@ -1,25 +1,25 @@
+import { useFormik } from "formik";
 import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { ToastContainer, toast } from 'react-toastify';
 import { Row, Col, CardBody, Card, Alert, Container, Input, Label, Form, FormFeedback, Button, Spinner } from "reactstrap";
 
 // Formik Validation
+import { createSelector } from "reselect";
 import * as Yup from "yup";
-import { useFormik } from "formik";
 
-import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 
 // action
+import { Link, useNavigate } from '@/velzone/inertia-router';
+import logoLight from "../../assets/images/logo-light.png";
 import { registerUser, resetRegisterFlag } from "../../slices/thunks";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 
-import { Link, useNavigate } from '@/velzone/inertia-router';
 
 //import images 
-import logoLight from "../../assets/images/logo-light.png";
 import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
-import { createSelector } from "reselect";
 
 const Register = () => {
     const history = useNavigate();
@@ -108,6 +108,7 @@ const Register = () => {
                                                 onSubmit={(e) => {
                                                     e.preventDefault();
                                                     validation.handleSubmit();
+
                                                     return false;
                                                 }}
                                                 className="needs-validation" action="#">

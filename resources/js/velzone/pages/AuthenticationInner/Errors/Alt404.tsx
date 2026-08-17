@@ -1,9 +1,10 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 const Alt404 = () => {
     document.title = "404 Error Alt | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">

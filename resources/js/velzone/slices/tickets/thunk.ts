@@ -13,6 +13,7 @@ import {
 export const getTicketsList = createAsyncThunk("tickets/getTicketsList", async () => {
     try {
         const response = getTicketsListApi();
+
         return response;
     } catch (error) {
         return error;
@@ -24,6 +25,7 @@ export const addNewTicket = createAsyncThunk("tickets/addNewTicket", async (tick
         const response = addNewTicketApi(ticket);
         const data = await response;
         toast.success("Ticket Added Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         return error;
@@ -35,9 +37,11 @@ export const updateTicket = createAsyncThunk("tickets/updateTicket", async (tick
         const response = updateTicketApi(ticket);
         const data = await response;
         toast.success("Ticket Updated Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         toast.error("Ticket Updated Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -46,9 +50,11 @@ export const deleteTicket = createAsyncThunk("tickets/deleteTicket", async (tick
     try {
         const response = deleteTicketApi(ticket);
         toast.success("Ticket Delete Successfully", { autoClose: 3000 });
+
         return { ticket, ...response };
     } catch (error) {
         toast.error("Ticket Delete Failed", { autoClose: 3000 });
+
         return error;
     }
 });

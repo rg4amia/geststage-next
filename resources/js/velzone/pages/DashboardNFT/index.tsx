@@ -2,14 +2,15 @@ import React from "react";
 import { Col, Container, Row } from "reactstrap";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 
-import Widgets from "./Widgets";
+import FeaturedNFT from "./FeaturedNFT";
 import Marketplace from "./Marketplace";
 import Popularity from "./Popularity";
-import FeaturedNFT from "./FeaturedNFT";
 import RecentNFTs from "./RecentNFTs";
+import Widgets from "./Widgets";
 
 const DashboardNFT = () => {
     document.title = "NFT Dashboard | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import { currencies } from '../../common/data';
 
 const MyCurrencies = () => {

@@ -1,5 +1,4 @@
 import React from "react";
-import { Link } from '@/velzone/inertia-router';
 import {
   Card,
   Col,
@@ -9,11 +8,12 @@ import {
   Row,
   UncontrolledTooltip,
 } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 
+import JobProfile2 from "../../../assets/images/job-profile2.png";
+import Avatar10 from "../../../assets/images/users/avatar-10.jpg";
 import Avatar3 from "../../../assets/images/users/avatar-3.jpg";
 import Avatar9 from "../../../assets/images/users/avatar-9.jpg";
-import Avatar10 from "../../../assets/images/users/avatar-10.jpg";
-import JobProfile2 from "../../../assets/images/job-profile2.png";
 
 const Home = () => {
   return (

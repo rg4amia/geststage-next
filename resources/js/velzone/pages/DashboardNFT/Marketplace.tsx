@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, Row, UncontrolledDropdown } from 'reactstrap';
-import CountUp from "react-countup";
 import Countdown from "react-countdown";
+import CountUp from "react-countup";
 import { useSelector, useDispatch } from "react-redux";
+import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, Row, UncontrolledDropdown } from 'reactstrap';
+import { createSelector } from 'reselect';
+import { Link } from '@/velzone/inertia-router';
 import { getMarketChartsDatas } from '../../slices/thunks';
 
 // Import Chart
 import {MarketplaceChart} from "./DashboardNFTCharts";
-import { Link } from '@/velzone/inertia-router';
-import { createSelector } from 'reselect';
 
 const Marketplace = () => {
     const dispatch:any = useDispatch();
@@ -57,6 +57,7 @@ const Marketplace = () => {
             )
         }
     }
+
     return (
         <React.Fragment>
             <Row>
@@ -69,16 +70,24 @@ const Marketplace = () => {
                                         <CardHeader className="border-0 align-items-center d-flex">
                                             <h4 className="card-title mb-0 flex-grow-1">Marketplace</h4>
                                             <div className='d-flex gap-1'>
-                                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("all"); }}>
+                                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("all"); 
+}}>
                                                     ALL
                                                 </button>
-                                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("month"); }}>
+                                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("month"); 
+}}>
                                                     1M
                                                 </button>
-                                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("halfyear"); }}>
+                                                <button type="button" className="btn btn-soft-secondary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("halfyear"); 
+}}>
                                                     6M
                                                 </button>
-                                                <button type="button" className="btn btn-soft-primary btn-sm material-shadow-none" onClick={() => { onChangeChartPeriod("year"); }}>
+                                                <button type="button" className="btn btn-soft-primary btn-sm material-shadow-none" onClick={() => {
+ onChangeChartPeriod("year"); 
+}}>
                                                     1Y
                                                 </button>
                                             </div>

@@ -12,6 +12,7 @@ const SubscribeAction = () => {
     function bgColor(e:any) {
         e.target.style.background = "#0ab39c";
     }
+
     return (
         <React.Fragment>
             <Row>

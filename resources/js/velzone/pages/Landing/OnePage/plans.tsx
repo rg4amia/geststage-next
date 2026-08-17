@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 const Plans = () => {
     const [plan, setPlan] = useState<boolean>(true);
     const toggle = () => setPlan(!plan);
+
     return (
         <React.Fragment>
             <section className="section bg-light" id="plans">

@@ -1,11 +1,12 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
 import AuthSlider from '../authCarousel';
 
 const CoverLogout = () => {
     document.title = "Log Out ---  | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">

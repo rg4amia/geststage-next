@@ -1,10 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { shoppingCart } from "../../common/data/ecommerce";
-
-//Import Breadcrumb
-import BreadCrumb from "../../Components/Common/BreadCrumb";
-import { Link } from '@/velzone/inertia-router';
-
 import {
   Card,
   CardBody,
@@ -15,6 +9,12 @@ import {
   CardHeader,
   UncontrolledAlert,
 } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
+import { shoppingCart } from "../../common/data/ecommerce";
+
+//Import Breadcrumb
+import BreadCrumb from "../../Components/Common/BreadCrumb";
+
 
 const EcommerceCart = () => {
   const [productList, setproductList] = useState<any>(shoppingCart);
@@ -25,25 +25,27 @@ const EcommerceCart = () => {
 
   const assigned = productList.map((item:any) => item.total);
   let subTotal = 0;
+
   for (let i = 0; i < assigned.length; i++) {
     subTotal += Math.round(assigned[i]);
   }
 
   useEffect(() => {
-    let dis = (0.15 * subTotal);
-    let tax = (0.125 * subTotal);
+    const dis = (0.15 * subTotal);
+    const tax = (0.125 * subTotal);
 
     if (subTotal !== 0) {
       setCharge(65);
     } else {
       setCharge(0);
     }
+
     setTax(dis);
     setDis(tax);
   }, [subTotal]);
 
   function removeCartItem(id:any) {
-    var filtered = productList.filter(function (item:any) {
+    const filtered = productList.filter(function (item:any) {
       return item.id !== id;
     });
 
@@ -67,6 +69,7 @@ const EcommerceCart = () => {
   }
 
 document.title ="Shopping Cart | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">

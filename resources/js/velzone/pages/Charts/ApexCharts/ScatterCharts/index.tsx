@@ -11,6 +11,7 @@ import {
 
 const ScatterCharts = () => {
     document.title="Scatter Charts | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

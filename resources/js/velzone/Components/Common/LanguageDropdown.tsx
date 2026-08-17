@@ -1,10 +1,10 @@
+import lodash from "lodash";
 import React, { useEffect, useState } from 'react';
 import { Dropdown, DropdownItem, DropdownMenu, DropdownToggle } from 'reactstrap';
-import lodash from "lodash";
 
 //i18n
-import i18n from "../../i18n";
 import languages from "../../common/languages";
+import i18n from "../../i18n";
 
 const { get } = lodash;
 
@@ -37,6 +37,7 @@ const LanguageDropdown = () => {
     const toggleLanguageDropdown = () => {
         setIsLanguageDropdown(!isLanguageDropdown);
     };
+
     return (
         <React.Fragment>
             <Dropdown isOpen={isLanguageDropdown} toggle={toggleLanguageDropdown} className="ms-1 topbar-head-dropdown header-item">

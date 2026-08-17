@@ -17,6 +17,7 @@ import {
 
 const BarCharts = () => {
     document.title="Apex Bar Charts | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">            

@@ -6,7 +6,7 @@ import avatar2 from "../../../../assets/images/users/avatar-2.jpg";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const Basic = ({ dataColors } : any) => {
-    var chartScatterBasicColors = getChartColorsArray(dataColors);
+    const chartScatterBasicColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "SAMPLE A",
@@ -155,18 +155,20 @@ const Basic = ({ dataColors } : any) => {
 };
 
 const Datetime = ({ dataColors } : any) => {
-    var chartScatterDateTimeColors = getChartColorsArray(dataColors);
+    const chartScatterDateTimeColors = getChartColorsArray(dataColors);
     const generateDayWiseTimeSeries = (baseval : any, count : any, yrange : any) => {
-        var i = 0;
-        var series = [];
+        let i = 0;
+        const series = [];
+
         while (i < count) {
-            var y =
+            const y =
                 Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
 
             series.push([baseval, y]);
             baseval += 86400000;
             i++;
         }
+
         return series;
     };
 
@@ -275,7 +277,7 @@ const Datetime = ({ dataColors } : any) => {
 };
 
 const ImagesChart = ({ dataColors } : any) => {
-    var chartScatterImagesColors = getChartColorsArray(dataColors);
+    const chartScatterImagesColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "User A",

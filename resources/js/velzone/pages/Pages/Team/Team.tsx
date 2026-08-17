@@ -1,18 +1,21 @@
+import { useFormik } from "formik";
 import React, { useState, useEffect, useCallback } from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Button, Card, CardBody, Col, Container, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Form, Input, Label, Modal, ModalBody, Offcanvas, OffcanvasBody, Row, UncontrolledDropdown, FormFeedback } from 'reactstrap';
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import DeleteModal from "../../../Components/Common/DeleteModal";
+import { useSelector, useDispatch } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
-
-//User Images
+import { Button, Card, CardBody, Col, Container, Dropdown, DropdownItem, DropdownMenu, DropdownToggle, Form, Input, Label, Modal, ModalBody, Offcanvas, OffcanvasBody, Row, UncontrolledDropdown, FormFeedback } from 'reactstrap';
+import { createSelector } from 'reselect';
+import * as Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
+import smallImage9 from '../../../assets/images/small/img-9.jpg';
 import avatar2 from '../../../assets/images/users/avatar-2.jpg';
 import userdummyimg from '../../../assets/images/users/user-dummy-img.jpg';
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import DeleteModal from "../../../Components/Common/DeleteModal";
+
+//User Images
 
 //Small Images
-import smallImage9 from '../../../assets/images/small/img-9.jpg';
 //redux
-import { useSelector, useDispatch } from 'react-redux';
 
 //import action
 import {
@@ -23,9 +26,6 @@ import {
 } from "../../../slices/thunks";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
-import { createSelector } from 'reselect';
 
 const Team = () => {
     document.title = "Team | Velzon - React Admin & Dashboard Template";
@@ -109,6 +109,7 @@ const Team = () => {
     useEffect(() => {
         const list = document.querySelectorAll(".team-list");
         const buttonGroups = document.querySelectorAll('.filter-button');
+
         for (let i = 0; i < buttonGroups.length; i++) {
             buttonGroups[i].addEventListener('click', onButtonGroupClick);
         }
@@ -148,7 +149,7 @@ const Team = () => {
     };
 
     const searchList = (e: any) => {
-        let inputVal = e.target.value.toLowerCase();
+        const inputVal = e.target.value.toLowerCase();
 
         const filterItems = (arr: any, query: string) => {
             return arr.filter((el: any) => {
@@ -156,7 +157,7 @@ const Team = () => {
             });
         };
 
-        let filterData = filterItems(teamData, inputVal);
+        const filterData = filterItems(teamData, inputVal);
         setTeamlist(filterData);
 
         const noResultElement = document.getElementById("noresult");
@@ -166,6 +167,7 @@ const Team = () => {
             if (noResultElement) {
                 noResultElement.style.display = "block";
             }
+
             if (teamListElement) {
                 teamListElement.style.display = "none";
             }
@@ -173,6 +175,7 @@ const Team = () => {
             if (noResultElement) {
                 noResultElement.style.display = "none";
             }
+
             if (teamListElement) {
                 teamListElement.style.display = "block";
             }
@@ -236,6 +239,7 @@ const Team = () => {
                 dispatch(onAddTeamData(newTeamData));
                 validation.resetForm();
             }
+
             toggle();
         },
     });
@@ -360,7 +364,9 @@ const Team = () => {
                                                                         </div>}
                                                                 </div>
                                                                 <div className="team-content">
-                                                                    <Link to="#" onClick={() => { setIsOpen(!isOpen); setSideBar(item); }}><h5 className="fs-16 mb-1">{item.name}</h5></Link>
+                                                                    <Link to="#" onClick={() => {
+ setIsOpen(!isOpen); setSideBar(item); 
+}}><h5 className="fs-16 mb-1">{item.name}</h5></Link>
                                                                     <p className="text-muted mb-0">{item.designation}</p>
                                                                 </div>
                                                             </div>
@@ -402,6 +408,7 @@ const Team = () => {
                                                 <Form onSubmit={(e) => {
                                                     e.preventDefault();
                                                     validation.handleSubmit();
+
                                                     return false;
                                                 }}>
                                                     <Row>

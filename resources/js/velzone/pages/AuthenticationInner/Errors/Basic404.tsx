@@ -1,13 +1,14 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
+import error from "../../../assets/images/error.svg";
 import ParticlesAuth from "../ParticlesAuth";
 
 // Import Images
-import error from "../../../assets/images/error.svg";
 
 const Basic404 = () => {
 document.title ="404 Error Basic | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
                 <ParticlesAuth>

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
 import { useSelector, useDispatch } from "react-redux";
-import { BalanceOverviewCharts } from "./DashboardCrmCharts";
-import { getBalanceChartsData } from '../../slices/thunks';
+import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
 import { createSelector } from 'reselect';
+import { getBalanceChartsData } from '../../slices/thunks';
+import { BalanceOverviewCharts } from "./DashboardCrmCharts";
 
 const BalanceOverview = () => {
     const dispatch:any = useDispatch();
@@ -46,10 +46,18 @@ const BalanceOverview = () => {
                                         </span>
                                 </DropdownToggle>
                                 <DropdownMenu className="dropdown-menu-end">
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("today"); }} className={seletedMonth === "today" ? "active" : ""}>Today</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("lastWeek"); }} className={seletedMonth === "lastWeek" ? "active" : ""}>Last Week</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("lastMonth"); }} className={seletedMonth === "lastMonth" ? "active" : ""}>Last Month</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("currentYear"); }} className={seletedMonth === "currentYear" ? "active" : ""}>Current Year</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("today"); 
+}} className={seletedMonth === "today" ? "active" : ""}>Today</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("lastWeek"); 
+}} className={seletedMonth === "lastWeek" ? "active" : ""}>Last Week</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("lastMonth"); 
+}} className={seletedMonth === "lastMonth" ? "active" : ""}>Last Month</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("currentYear"); 
+}} className={seletedMonth === "currentYear" ? "active" : ""}>Current Year</DropdownItem>
                                 </DropdownMenu>
                             </UncontrolledDropdown>
                         </div>

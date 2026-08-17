@@ -1,5 +1,6 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 //Include Both Helper File with needed methods
+import { toast } from "react-toastify";
 import {
     getJobApplicationList as getApplicationListApi,
     addNewJobApplicationList as addNewJobApplicationListApi,
@@ -17,13 +18,13 @@ import {
     getcategoryList as getcategoryListApi,
     addcategoryList as addcategoryListApi
 } from "../../helpers/fakebackend_helper";
-import { toast } from "react-toastify";
 import 'react-toastify/dist/ReactToastify.css';
 
 
 export const getApplicationList = createAsyncThunk("jobs/getJobApplicationList", async () => {
     try {
         const response = getApplicationListApi();
+
         return response;
     } catch (error) {
         return error;
@@ -35,9 +36,11 @@ export const addNewJobApplicationList = createAsyncThunk("jobs/addNewJobApplicat
         const response = addNewJobApplicationListApi(job);
         const data = await response;
         toast.success("Job Application Added Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         toast.error("Job Application Added Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -47,9 +50,11 @@ export const updateJobApplicationList = createAsyncThunk("jobs/updateJobApplicat
         const response = updateJobApplicationListApi(job);
         const data = await response;
         toast.success("Job Application Updated Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         toast.error("Job Application Updated Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -59,9 +64,11 @@ export const deleteJobApplicationList = createAsyncThunk("jobs/deleteJobApplicat
         const response = deleteJobApplicationListApi(job);
         const data = await response;
         toast.success("Job Application Deleted Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         toast.error("Job Application Deleted Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -70,6 +77,7 @@ export const deleteJobApplicationList = createAsyncThunk("jobs/deleteJobApplicat
 export const getCandidateList = createAsyncThunk("jobs/getJobCandidateList", async () => {
     try {
         const response = getCandidateListApi();
+
         return response;
     } catch (error) {
         return error;
@@ -81,9 +89,11 @@ export const addCandidate = createAsyncThunk("jobs/addJobCandidate", async (cand
         const response = addCandidateApi(candidate);
         const data = await response;
         toast.success("Candidate Added Successfully", { autoClose: 2000 });
+
         return data;
     } catch (error) {
         toast.error("Candidate Added Failed", { autoClose: 2000 });
+
         return error;
     }
 });
@@ -93,9 +103,11 @@ export const updateCandidate = createAsyncThunk("jobs/updateJobCandidate", async
         const response = updateCandidateApi(candidate);
         const data = await response;
         toast.success("Candidate Updated Successfully", { autoClose: 2000 });
+
         return data;
     } catch (error) {
         toast.error("Candidate Updated Failed", { autoClose: 2000 });
+
         return error;
     }
 });
@@ -104,9 +116,11 @@ export const deleteCandidate = createAsyncThunk("jobs/deleteJobCandidate", async
     try {
         const response = deleteCandidateApi(id);
         toast.success("Candidate Deleted Successfully", { autoClose: 2000 });
+
         return { id, ...response };
     } catch (error) {
         toast.error("Candidate Deleted Failed", { autoClose: 2000 });
+
         return error;
     }
 });
@@ -115,6 +129,7 @@ export const deleteCandidate = createAsyncThunk("jobs/deleteJobCandidate", async
 export const getCandidateGrid = createAsyncThunk("jobs/getJobCandidateGrid", async () => {
     try {
         const response = getCandidateGridApi();
+
         return response;
     } catch (error) {
         return error;
@@ -126,9 +141,11 @@ export const addCandidateGrid = createAsyncThunk("jobs/addJobCandidateGrid", asy
         const response = addCandidateGridApi(candidate);
         const data = await response;
         toast.success("Candidate Added Successfully", { autoClose: 2000 });
+
         return data;
     } catch (error) {
         toast.error("Candidate Added Failed", { autoClose: 2000 });
+
         return error;
     }
 });
@@ -138,6 +155,7 @@ export const addCandidateGrid = createAsyncThunk("jobs/addJobCandidateGrid", asy
 export const getCategoryList = createAsyncThunk("jobs/getcategoryList", async () => {
     try {
         const response = getcategoryListApi();
+
         return response;
     } catch (error) {
         return error;
@@ -149,9 +167,11 @@ export const addcategoryList = createAsyncThunk("jobs/addcategoryList", async (c
         const response = addcategoryListApi(category);
         const data = await response;
         toast.success("Category Added Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         toast.error("Category Added Failed", { autoClose: 3000 });
+
         return error;
     }
 });

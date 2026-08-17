@@ -1,18 +1,18 @@
 // export default CandidateGrid;
+import { useFormik } from "formik";
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Link } from '@/velzone/inertia-router';
+import { useDispatch, useSelector } from "react-redux";
+import { ToastContainer } from "react-toastify";
 import { Card, CardBody, Col, Container, Form, FormFeedback, Input, Label, Modal, ModalBody, ModalHeader, Row } from "reactstrap";
+import { createSelector } from "reselect";
+import * as Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
+import dummy from "assets/images/users/user-dummy-img.jpg"
+import { getCandidateGrid as onGetCandidateGrid, addCandidateGrid as onAddCandidateGrid } from "slices/thunks";
 import { jobCandidates } from "../../../../common/data/appsJobs";
 import BreadCrumb from "../../../../Components/Common/BreadCrumb";
 import Pagination from "../../../../Components/Common/Pagination";
-import { ToastContainer } from "react-toastify";
-import { useDispatch, useSelector } from "react-redux";
-import { createSelector } from "reselect";
 
-import { getCandidateGrid as onGetCandidateGrid, addCandidateGrid as onAddCandidateGrid } from "slices/thunks";
-import dummy from "assets/images/users/user-dummy-img.jpg"
-import { useFormik } from "formik";
-import * as Yup from "yup";
 
 interface ImgData {
   id: number,
@@ -44,7 +44,9 @@ const CandidateGrid = () => {
 
   //add modal state
   const [modal, setModal] = useState<boolean>(false);
-  const handleAddModal = useCallback(() => { setModal(!modal); setEditItem(null); }, [modal]);
+  const handleAddModal = useCallback(() => {
+ setModal(!modal); setEditItem(null); 
+}, [modal]);
   const handleShow = () => setModal(true)
 
   const [editItem, setEditItem] = useState<any>();
@@ -145,7 +147,7 @@ const CandidateGrid = () => {
 
   // search
   const handleSearch = (ele: any) => {
-    let item = ele.value;
+    const item = ele.value;
 
     if (item === "All Tasks") {
       setCalendarGrid([...candidategrid]);
@@ -275,6 +277,7 @@ const CandidateGrid = () => {
             <Form className="tablelist-form" onSubmit={(e: any) => {
               e.preventDefault();
               validation.handleSubmit();
+
               return false;
             }}>
               <ModalBody>

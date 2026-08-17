@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
+import classnames from 'classnames';
+import React, { useState } from 'react';
 import {
     Badge,
     Button,
@@ -20,7 +21,6 @@ import {
     TabContent,
     TabPane,
 } from 'reactstrap';
-import classnames from 'classnames';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -104,11 +104,25 @@ const PointagesPejedec = ({
     const statusBadge = (item: any, fallback = 'A Saisir') => {
         const statut = item?.statut || fallback;
 
-        if (statut === 'SOUMIS') return <span className="badge bg-info-subtle text-info">Soumis</span>;
-        if (statut === 'VALIDE') return <span className="badge bg-success-subtle text-success">Validé</span>;
-        if (statut === 'AJOURNE_CA') return <span className="badge bg-warning-subtle text-warning">Ajourné CA</span>;
-        if (statut === 'AJOURNE_DMG') return <span className="badge bg-danger-subtle text-danger">Ajourné DMG</span>;
-        if (statut === 'CORRIGE_CIP') return <span className="badge bg-primary-subtle text-primary">Corrigé CIP</span>;
+        if (statut === 'SOUMIS') {
+return <span className="badge bg-info-subtle text-info">Soumis</span>;
+}
+
+        if (statut === 'VALIDE') {
+return <span className="badge bg-success-subtle text-success">Validé</span>;
+}
+
+        if (statut === 'AJOURNE_CA') {
+return <span className="badge bg-warning-subtle text-warning">Ajourné CA</span>;
+}
+
+        if (statut === 'AJOURNE_DMG') {
+return <span className="badge bg-danger-subtle text-danger">Ajourné DMG</span>;
+}
+
+        if (statut === 'CORRIGE_CIP') {
+return <span className="badge bg-primary-subtle text-primary">Corrigé CIP</span>;
+}
 
         return <span className="badge bg-secondary-subtle text-secondary">{fallback}</span>;
     };

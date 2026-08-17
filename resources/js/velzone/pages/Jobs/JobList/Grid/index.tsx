@@ -1,5 +1,5 @@
 import React from "react";
-import { Link } from '@/velzone/inertia-router';
+import Flatpickr from "react-flatpickr";
 import {
   Card,
   CardBody,
@@ -12,7 +12,7 @@ import {
   Row,
   UncontrolledDropdown,
 } from "reactstrap";
-import Flatpickr from "react-flatpickr";
+import { Link } from '@/velzone/inertia-router';
 import { jobGrid } from "../../../../common/data/appsJobs";
 import BreadCrumb from "../../../../Components/Common/BreadCrumb";
 

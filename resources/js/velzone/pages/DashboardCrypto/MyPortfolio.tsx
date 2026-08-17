@@ -1,16 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
 import { useSelector, useDispatch } from "react-redux";
+import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
+import { createSelector } from 'reselect';
+import btc from "../../assets/images/svg/crypto-icons/btc.svg";
+import dash from "../../assets/images/svg/crypto-icons/dash.svg";
+import eth from "../../assets/images/svg/crypto-icons/eth.svg";
+import ltc from "../../assets/images/svg/crypto-icons/ltc.svg";
 import { getPortfolioChartsData } from '../../slices/thunks';
 
 //import Images
-import btc from "../../assets/images/svg/crypto-icons/btc.svg";
-import eth from "../../assets/images/svg/crypto-icons/eth.svg";
-import ltc from "../../assets/images/svg/crypto-icons/ltc.svg";
-import dash from "../../assets/images/svg/crypto-icons/dash.svg";
 
 import { PortfolioCharts } from './DashboardCryptoCharts';
-import { createSelector } from 'reselect';
 
 const MyPortfolio = () => {
     const dispatch:any = useDispatch();
@@ -38,6 +38,7 @@ const MyPortfolio = () => {
     useEffect(() => {
         dispatch(getPortfolioChartsData("btc"));
     }, [dispatch]);
+
     return (
         <React.Fragment>
             <div className="col-xxl-3">
@@ -50,9 +51,15 @@ const MyPortfolio = () => {
                                     <span className="text-uppercase">{seletedMonth}<i className="mdi mdi-chevron-down align-middle ms-1"></i></span>
                                 </DropdownToggle>
                                 <DropdownMenu className="dropdown-menu dropdown-menu-end">
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("btc"); }} className={seletedMonth === "Btc" ? "active" : ""}>BTC</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("usd"); }} className={seletedMonth === "usd" ? "active" : ""}>USD</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("euro"); }} className={seletedMonth === "euro" ? "active" : ""}>Euro</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("btc"); 
+}} className={seletedMonth === "Btc" ? "active" : ""}>BTC</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("usd"); 
+}} className={seletedMonth === "usd" ? "active" : ""}>USD</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("euro"); 
+}} className={seletedMonth === "euro" ? "active" : ""}>Euro</DropdownItem>
                                 </DropdownMenu>
                             </UncontrolledDropdown>
                         </div>

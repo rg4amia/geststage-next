@@ -1,12 +1,12 @@
+import { useFormik } from 'formik';
 import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Button, Card, Col, Container, Row, Form, Label, Input, FormFeedback } from 'reactstrap';
+import * as Yup from 'yup';
+import { Link } from '@/velzone/inertia-router';
 
 import AuthSlider from '../authCarousel';
 
 //formik
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
 
 const CoverPasswCreate = () => {
     document.title = "Create New Password | Velzon - React Admin & Dashboard Template";
@@ -36,6 +36,7 @@ const CoverPasswCreate = () => {
             // console.log(values);
         }
     });
+
     return (
         <React.Fragment>
             <div className="auth-page-wrapper auth-bg-cover py-5 d-flex justify-content-center align-items-center min-vh-100">

@@ -8,6 +8,7 @@ import {
 export const getTransationList = createAsyncThunk("crypto/getTransationList", async () => {
     try {
         const response = getTransationListApi();
+
         return response;
     } catch (error) {
         return error;
@@ -17,6 +18,7 @@ export const getTransationList = createAsyncThunk("crypto/getTransationList", as
 export const getOrderList = createAsyncThunk("crypto/getOrderList", async () => {
     try {
         const response = getOrderListApi();
+
         return response;
     } catch (error) {
         return error;

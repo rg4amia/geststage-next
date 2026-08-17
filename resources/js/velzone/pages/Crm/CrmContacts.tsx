@@ -1,10 +1,10 @@
-import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Link } from '@/velzone/inertia-router';
+import { useFormik } from "formik";
 import { isEmpty } from "lodash";
-
-// Import Images
-import avatar10 from "../../assets/images/users/avatar-10.jpg";
-
+import moment from "moment";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import Select from "react-select";
+import { toast, ToastContainer } from 'react-toastify';
 import {
   Col,
   Container,
@@ -26,8 +26,15 @@ import {
   Table,
   FormFeedback
 } from "reactstrap";
-import Select from "react-select";
+import { createSelector } from "reselect";
+import * as Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
 
+// Import Images
+import avatar10 from "../../assets/images/users/avatar-10.jpg";
+
+
+import dummyImg from "../../assets/images/users/user-dummy-img.jpg";
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 
@@ -35,6 +42,8 @@ import DeleteModal from "../../Components/Common/DeleteModal";
 import ExportCSVModal from "../../Components/Common/ExportCSVModal";
 
 //Import actions
+import Loader from "../../Components/Common/Loader";
+import TableContainer from "../../Components/Common/TableContainer";
 import {
   getContacts as onGetContacts,
   addNewContact as onAddNewContact,
@@ -42,20 +51,11 @@ import {
   deleteContact as onDeleteContact,
 } from "../../slices/thunks";
 //redux
-import { useSelector, useDispatch } from "react-redux";
-import TableContainer from "../../Components/Common/TableContainer";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
-import Loader from "../../Components/Common/Loader";
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { createSelector } from "reselect";
-import moment from "moment";
 
-import dummyImg from "../../assets/images/users/user-dummy-img.jpg";
 
 
 const CrmContacts = () => {
@@ -130,8 +130,9 @@ const CrmContacts = () => {
   // Date & Time Format
 
   const dateFormat = () => {
-    var d = new Date(),
+    const d = new Date(),
       months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
     return (d.getDate() + ' ' + months[d.getMonth()] + ', ' + d.getFullYear());
   };
 
@@ -196,6 +197,7 @@ const CrmContacts = () => {
         dispatch(onAddNewContact(newContact));
         validation.resetForm();
       }
+
       toggle();
     },
   });
@@ -224,6 +226,7 @@ const CrmContacts = () => {
 
   const handleValidDate = (date: any) => {
     const date1 = moment(new Date(date)).format("DD MMM Y");
+
     return date1;
   };
 
@@ -232,13 +235,16 @@ const CrmContacts = () => {
     const getHour = time1.getUTCHours();
     const getMin = time1.getUTCMinutes();
     const getTime = `${getHour}:${getMin}`;
-    var meridiem = "";
+    let meridiem = "";
+
     if (getHour >= 12) {
       meridiem = "PM";
     } else {
       meridiem = "AM";
     }
+
     const updateTime = moment(getTime, 'hh:mm').format('hh:mm') + " " + meridiem;
+
     return updateTime;
   };
 
@@ -257,6 +263,7 @@ const CrmContacts = () => {
         ele.checked = false;
       });
     }
+
     deleteCheckbox();
   }, []);
 
@@ -268,7 +275,9 @@ const CrmContacts = () => {
     const checkall: any = document.getElementById("checkBoxAll");
     selectedCheckBoxDelete.forEach((element: any) => {
       dispatch(onDeleteContact(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
     });
     setIsMultiDeleteButton(false);
     checkall.checked = false;
@@ -381,7 +390,9 @@ const CrmContacts = () => {
                   </DropdownToggle>
                   <DropdownMenu className="dropdown-menu-end">
                     <DropdownItem className="dropdown-item" href="#"
-                      onClick={() => { const contactData = cellProps.row.original; setInfo(contactData); }}
+                      onClick={() => {
+ const contactData = cellProps.row.original; setInfo(contactData); 
+}}
                     >
                       <i className="ri-eye-fill align-bottom me-2 text-muted"></i>{" "}
                       View
@@ -389,7 +400,9 @@ const CrmContacts = () => {
                     <DropdownItem
                       className="dropdown-item edit-item-btn"
                       href="#"
-                      onClick={() => { const contactData = cellProps.row.original; handleContactClick(contactData); }}
+                      onClick={() => {
+ const contactData = cellProps.row.original; handleContactClick(contactData); 
+}}
                     >
                       <i className="ri-pencil-fill align-bottom me-2 text-muted"></i>{" "}
                       Edit
@@ -397,7 +410,9 @@ const CrmContacts = () => {
                     <DropdownItem
                       className="dropdown-item remove-item-btn"
                       href="#"
-                      onClick={() => { const contactData = cellProps.row.original; onClickDelete(contactData); }}
+                      onClick={() => {
+ const contactData = cellProps.row.original; onClickDelete(contactData); 
+}}
                     >
                       <i className="ri-delete-bin-fill align-bottom me-2 text-muted"></i>{" "}
                       Delete
@@ -461,6 +476,7 @@ const CrmContacts = () => {
   const [isExportCSV, setIsExportCSV] = useState<boolean>(false);
 
   document.title = "Contacts | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">
@@ -554,12 +570,13 @@ const CrmContacts = () => {
 
                   <Modal id="showModal" isOpen={modal} toggle={toggle} centered>
                     <ModalHeader className="bg-primary-subtle p-3" toggle={toggle}>
-                      {!!isEdit ? "Edit Contact" : "Add Contact"}
+                      {isEdit ? "Edit Contact" : "Add Contact"}
                     </ModalHeader>
 
                     <Form className="tablelist-form" onSubmit={(e) => {
                       e.preventDefault();
                       validation.handleSubmit();
+
                       return false;
                     }}>
                       <ModalBody>
@@ -809,8 +826,10 @@ const CrmContacts = () => {
                       </ModalBody>
                       <ModalFooter>
                         <div className="hstack gap-2 justify-content-end">
-                          <button type="button" className="btn btn-light" onClick={() => { setModal(false); }} > Close </button>
-                          <button type="submit" className="btn btn-success" id="add-btn"> {!!isEdit ? "Update" : "Add Contact"} </button>
+                          <button type="button" className="btn btn-light" onClick={() => {
+ setModal(false); 
+}} > Close </button>
+                          <button type="submit" className="btn btn-success" id="add-btn"> {isEdit ? "Update" : "Add Contact"} </button>
                         </div>
                       </ModalFooter>
                     </Form>

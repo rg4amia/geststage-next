@@ -1,25 +1,26 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import PropTypes from 'prop-types';
+import React, { useCallback, useEffect, useState } from 'react';
+import { withTranslation } from 'react-i18next';
 import { Collapse, Container } from 'reactstrap';
+import SimpleBar from 'simplebar-react';
+import { Link } from '@/velzone/inertia-router';
+import logoSm from '../../assets/images/logo-sm.png';
 import withRouter from '../../Components/Common/withRouter';
 
-import logoSm from '../../assets/images/logo-sm.png';
 //i18n
-import { withTranslation } from 'react-i18next';
 
 // Import Data
 import navdata from '../LayoutMenuData';
 import VerticalLayout from '../VerticalLayouts';
 
 //SimpleBar
-import SimpleBar from 'simplebar-react';
 
 const TwoColumnLayout = (props: any) => {
     const navData = navdata().props.children;
     const activateParentDropdown = useCallback((item: any) => {
         item.classList.add('active');
-        let parentCollapseDiv = item.closest('.collapse.menu-dropdown');
+        const parentCollapseDiv = item.closest('.collapse.menu-dropdown');
+
         if (parentCollapseDiv) {
             // to set aria expand true remaining
             parentCollapseDiv.classList.add('show');
@@ -28,6 +29,7 @@ const TwoColumnLayout = (props: any) => {
                 'aria-expanded',
                 'true',
             );
+
             if (
                 parentCollapseDiv.parentElement.closest(
                     '.collapse.menu-dropdown',
@@ -40,8 +42,10 @@ const TwoColumnLayout = (props: any) => {
                     parentCollapseDiv.parentElement.closest(
                         '.collapse',
                     ).previousElementSibling;
+
                 if (parentParentCollapse) {
                     parentParentCollapse.classList.add('active');
+
                     if (
                         parentParentCollapse.closest('.collapse.menu-dropdown')
                     ) {
@@ -51,9 +55,12 @@ const TwoColumnLayout = (props: any) => {
                     }
                 }
             }
+
             activateIconSidebarActive(parentCollapseDiv.getAttribute('id'));
+
             return false;
         }
+
         return false;
     }, []);
 
@@ -63,16 +70,21 @@ const TwoColumnLayout = (props: any) => {
         const pathName = path;
         const ul = document.getElementById('navbar-nav') as HTMLElement;
         const items: any = ul.getElementsByTagName('a');
-        let itemsArray = [...items]; // converts NodeList to Array
+        const itemsArray = [...items]; // converts NodeList to Array
         removeActivation(itemsArray);
-        let matchingMenuItem = itemsArray.find((x) => {
+        const matchingMenuItem = itemsArray.find((x) => {
             return x.pathname === pathName;
         });
+
         if (matchingMenuItem) {
             activateParentDropdown(matchingMenuItem);
         } else {
             const id = pathName.replace('/', '');
-            if (id) document.body.classList.add('twocolumn-panel');
+
+            if (id) {
+document.body.classList.add('twocolumn-panel');
+}
+
             activateIconSidebarActive(id);
         }
     }, [path, activateParentDropdown]);
@@ -83,18 +95,19 @@ const TwoColumnLayout = (props: any) => {
     }, [path, initMenu]);
 
     function activateIconSidebarActive(id: any) {
-        var menu = document.querySelector(
+        const menu = document.querySelector(
             "#two-column-menu .simplebar-content-wrapper a[sub-items='" +
                 id +
                 "'].nav-icon",
         );
+
         if (menu !== null) {
             menu.classList.add('active');
         }
     }
 
     const removeActivation = (items: any) => {
-        let activeItems = items.filter((x: any) =>
+        const activeItems = items.filter((x: any) =>
             x.classList.contains('active'),
         );
         activeItems.forEach((item: any) => {
@@ -102,28 +115,35 @@ const TwoColumnLayout = (props: any) => {
                 if (!item.classList.contains('active')) {
                     item.setAttribute('aria-expanded', false);
                 }
+
                 item.nextElementSibling.classList.remove('show');
             }
+
             if (item.classList.contains('nav-link')) {
                 if (item.nextElementSibling) {
                     item.nextElementSibling.classList.remove('show');
                 }
+
                 item.setAttribute('aria-expanded', false);
             }
+
             item.classList.remove('active');
         });
 
         const ul = document.getElementById('two-column-menu') as HTMLElement;
         const iconItems: any = ul.getElementsByTagName('a');
-        let itemsArray = [...iconItems];
-        let activeIconItems = itemsArray.filter((x) =>
+        const itemsArray = [...iconItems];
+        const activeIconItems = itemsArray.filter((x) =>
             x.classList.contains('active'),
         );
         activeIconItems.forEach((item) => {
             item.classList.remove('active');
-            var id = item.getAttribute('sub-items');
-            var getId = document.getElementById(id) as HTMLElement;
-            if (getId) getId.classList.remove('show');
+            const id = item.getAttribute('sub-items');
+            const getId = document.getElementById(id) as HTMLElement;
+
+            if (getId) {
+getId.classList.remove('show');
+}
         });
     };
 
@@ -131,7 +151,8 @@ const TwoColumnLayout = (props: any) => {
     const [isMenu, setIsMenu] = useState('twocolumn');
     const windowResizeHover = () => {
         initMenu();
-        var windowSize = document.documentElement.clientWidth;
+        const windowSize = document.documentElement.clientWidth;
+
         if (windowSize < 767) {
             document.documentElement.setAttribute('data-layout', 'vertical');
             setIsMenu('vertical');
@@ -151,6 +172,7 @@ const TwoColumnLayout = (props: any) => {
             };
         }
     });
+
     return (
         <React.Fragment>
             {isMenu === 'twocolumn' ? (

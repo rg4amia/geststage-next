@@ -1,11 +1,11 @@
 import React from "react";
 import { Card, CardBody, Col, Container, Row } from "reactstrap";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { Link } from '@/velzone/inertia-router';
 
+import BgPattern from "../../../assets/images/nft/bg-pattern.png";
 import { nftArtworkData, tradingArtworkData, popularCreatorsNFT, marketPlacewidget } from "../../../common/data";
 
-import BgPattern from "../../../assets/images/nft/bg-pattern.png";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 const Marketplace = () => {
     document.title = "Marketplace | Velzon - React Admin & Dashboard Template";
@@ -17,6 +17,7 @@ const Marketplace = () => {
             ele.closest("button").classList.add("active");
         }
     };
+
     return (
         <React.Fragment>
             <div className="page-content">

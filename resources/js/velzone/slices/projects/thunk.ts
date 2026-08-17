@@ -13,6 +13,7 @@ import {
 export const getProjectList = createAsyncThunk("projects/getProjectList", async () => {
     try {
         const response = getProjectListApi();
+
         return response;
     } catch (error) {
         return error;
@@ -24,9 +25,11 @@ export const addProjectList = createAsyncThunk("projects/addProjectList", async 
         const response = addProjectListApi(project);
         const data = await response;
         toast.success("project-list Added Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         toast.error("project-list Added Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -36,9 +39,11 @@ export const updateProjectList = createAsyncThunk("projects/updateProjectList", 
         const response = updateProjectListApi(project);
         const data = await response;
         toast.success("project-list Updated Successfully", { autoClose: 3000 });
+
         return data;
     } catch (error) {
         toast.error("project-list Updated Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -48,9 +53,11 @@ export const deleteProjectList = createAsyncThunk("projects/deleteProjectList", 
         const response = deleteProjectListApi(data);
         const newdata = await response;
         toast.success("project-list Delete Successfully", { autoClose: 3000 });
+
         return newdata;
     } catch (error) {
         toast.error("project-list Delete Failed", { autoClose: 3000 });
+
         return error;
     }
 });

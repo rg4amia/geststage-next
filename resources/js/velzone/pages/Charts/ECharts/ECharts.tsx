@@ -1,13 +1,13 @@
-import React from "react";
-import ReactEcharts from "echarts-for-react";
 import * as echarts from 'echarts/core';
+import ReactEcharts from "echarts-for-react";
+import React from "react";
 
 import getChartColorsArray from "../../../Components/Common/ChartsDynamicColor";
 
 //LineChart
 const LineChart = ({ dataColors } : any ) => {
-    var chartLineColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartLineColors = getChartColorsArray(dataColors);
+    const option = {
         grid: {
             left: '0%',
             right: '0%',
@@ -56,8 +56,8 @@ const LineChart = ({ dataColors } : any ) => {
 
 //Stacked Line Chart
 const StackedLineChart = ({ dataColors } : any ) => {
-    var chartLineStackedColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartLineStackedColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             trigger: 'axis'
         },
@@ -148,8 +148,8 @@ const StackedLineChart = ({ dataColors } : any ) => {
 
 //AreaChart
 const AreaChart = ({ dataColors } : any ) => {
-    var chartAreaColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartAreaColors = getChartColorsArray(dataColors);
+    const option = {
         grid: {
             left: '0%',
             right: '0%',
@@ -201,8 +201,8 @@ const AreaChart = ({ dataColors } : any ) => {
 
 //StackedAreaChart
 const StackedAreaChart = ({ dataColors } : any ) => {
-    var chartAreaStackedColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartAreaStackedColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             trigger: 'axis',
             axisPointer: {
@@ -322,8 +322,8 @@ const StackedAreaChart = ({ dataColors } : any ) => {
 
 //StepLine Chart
 const StepLineChart = ({ dataColors } : any ) => {
-    var chartStepLineColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartStepLineColors = getChartColorsArray(dataColors);
+    const option = {
 
         tooltip: {
             trigger: 'axis'
@@ -402,8 +402,8 @@ const StepLineChart = ({ dataColors } : any ) => {
 
 //Line Y Chart
 const LineYChart = ({ dataColors } : any ) => {
-    var chartLineYColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartLineYColors = getChartColorsArray(dataColors);
+    const option = {
         legend: {
             data: ['Altitude (km) vs. temperature (°C)'],
             textStyle: { //The style of the legend text
@@ -484,8 +484,8 @@ const LineYChart = ({ dataColors } : any ) => {
 
 //Basic bar Chart
 const BasicBarChart = ({ dataColors } : any ) => {
-    var chartBarColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartBarColors = getChartColorsArray(dataColors);
+    const option = {
         grid: {
             left: '0%',
             right: '0%',
@@ -538,12 +538,12 @@ const BasicBarChart = ({ dataColors } : any ) => {
 
 //Bar Label Chart
 const BarLabelChart = ({ dataColors } : any ) => {
-    var chartBarLabelRotationColors = getChartColorsArray(dataColors);
-    var app : any = {};
-    var myChart : any ;
+    const chartBarLabelRotationColors = getChartColorsArray(dataColors);
+    const app : any = {};
+    let myChart : any ;
 
 
-    var posList = [
+    const posList = [
         'left',
         'right',
         'top',
@@ -580,6 +580,7 @@ const BarLabelChart = ({ dataColors } : any ) => {
         position: {
             options: posList.reduce(function (map : any, pos : any) {
                 map[pos] = pos;
+
                 return map;
             }, {})
         },
@@ -595,7 +596,7 @@ const BarLabelChart = ({ dataColors } : any ) => {
         position: 'insideBottom',
         distance: 15,
         onChange: function () {
-            var labelOption : any = {
+            const labelOption : any = {
                 rotate: app.config.rotate,
                 align: app.config.align,
                 verticalAlign: app.config.verticalAlign,
@@ -619,7 +620,7 @@ const BarLabelChart = ({ dataColors } : any ) => {
             });
         }
     };
-    var labelOption : any = {
+    const labelOption : any = {
         show: true,
         position: app.config.position,
         distance: app.config.distance,
@@ -632,7 +633,7 @@ const BarLabelChart = ({ dataColors } : any ) => {
             name: {}
         }
     };
-    var option = {
+    const option = {
         grid: {
             left: '0%',
             right: '0%',
@@ -754,8 +755,8 @@ const BarLabelChart = ({ dataColors } : any ) => {
 
 //Horizontal Bar Chart
 const HorizontalBarChart = ({ dataColors } : any ) => {
-    var chartBarLabelRotationColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartBarLabelRotationColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             trigger: 'axis',
             axisPointer: {
@@ -827,8 +828,8 @@ const HorizontalBarChart = ({ dataColors } : any ) => {
 
 //Stacked Horizontal Bar Chart
 const StackedHorizontalBarChart = ({ dataColors } : any ) => {
-    var chartBarStackedColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartBarStackedColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             trigger: 'axis',
             axisPointer: {
@@ -950,8 +951,8 @@ const StackedHorizontalBarChart = ({ dataColors } : any ) => {
 
 //Pie Chart
 const PieChart = ({ dataColors } : any ) => {
-    var chartPieColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartPieColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             trigger: 'item'
         },
@@ -1010,8 +1011,8 @@ const PieChart = ({ dataColors } : any ) => {
 
 //Doughnut Chart
 const DoughnutChart = ({ dataColors } : any ) => {
-    var chartDoughnutColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartDoughnutColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             trigger: 'item'
         },
@@ -1078,8 +1079,8 @@ const DoughnutChart = ({ dataColors } : any ) => {
 
 //Basic Scatter Chart
 const BasicScatterChart = ({ dataColors } : any ) => {
-    var chartDoughnutColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartDoughnutColors = getChartColorsArray(dataColors);
+    const option = {
         grid: {
             left: '1%',
             right: '0%',
@@ -1154,8 +1155,8 @@ const BasicScatterChart = ({ dataColors } : any ) => {
 
 //CandleStick Chart
 const CandleStickChart = ({ dataColors } : any ) => {
-    var chartCandlestickColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartCandlestickColors = getChartColorsArray(dataColors);
+    const option = {
         grid: {
             left: '1%',
             right: '0%',
@@ -1209,6 +1210,7 @@ const CandleStickChart = ({ dataColors } : any ) => {
             }
         }]
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1218,8 +1220,8 @@ const CandleStickChart = ({ dataColors } : any ) => {
 
 //Graph Chart
 const GraphChart = ({ dataColors } : any ) => {
-    var chartGraphColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartGraphColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {},
         animationDurationUpdate: 1500,
         animationEasingUpdate: 'quinticInOut',
@@ -1308,6 +1310,7 @@ const GraphChart = ({ dataColors } : any ) => {
             fontFamily: 'Poppins, sans-serif'
         },
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1317,8 +1320,8 @@ const GraphChart = ({ dataColors } : any ) => {
 
 //Treemap Chart
 const TreemapChart = ({ dataColors } : any ) => {
-    var chartTreemapColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartTreemapColors = getChartColorsArray(dataColors);
+    const option = {
         color: chartTreemapColors,
         series: [{
             type: 'treemap',
@@ -1353,6 +1356,7 @@ const TreemapChart = ({ dataColors } : any ) => {
             fontFamily: 'Poppins, sans-serif'
         },
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1362,7 +1366,7 @@ const TreemapChart = ({ dataColors } : any ) => {
 
 //Sunburst Chart
 const SunburstChart = ({ dataColors } : any ) => {
-    var chartSunburstColors = getChartColorsArray(dataColors);
+    const chartSunburstColors = getChartColorsArray(dataColors);
     const data = [{
         name: 'Grandpa',
         children: [{
@@ -1417,7 +1421,7 @@ const SunburstChart = ({ dataColors } : any ) => {
         }]
     }
     ];
-    var option = {
+    const option = {
         color: chartSunburstColors,
         series: {
             type: 'sunburst',
@@ -1434,6 +1438,7 @@ const SunburstChart = ({ dataColors } : any ) => {
             fontFamily: 'Poppins, sans-serif'
         },
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1443,8 +1448,8 @@ const SunburstChart = ({ dataColors } : any ) => {
 
 //Parallel Chart
 const ParallelChart = ({ dataColors } : any ) => {
-    var chartParallelColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartParallelColors = getChartColorsArray(dataColors);
+    const option = {
         parallelAxis: [{
             dim: 0,
             name: 'Price'
@@ -1487,6 +1492,7 @@ const ParallelChart = ({ dataColors } : any ) => {
             fontFamily: 'Poppins, sans-serif'
         },
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1496,8 +1502,8 @@ const ParallelChart = ({ dataColors } : any ) => {
 
 //Sankey Chart
 const SankeyChart = ({ dataColors } : any ) => {
-    var chartSankeyColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartSankeyColors = getChartColorsArray(dataColors);
+    const option = {
         color: chartSankeyColors,
         series: {
             type: 'sankey',
@@ -1560,6 +1566,7 @@ const SankeyChart = ({ dataColors } : any ) => {
             fontFamily: 'Poppins, sans-serif'
         },
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1569,8 +1576,8 @@ const SankeyChart = ({ dataColors } : any ) => {
 
 //funnel Chart
 const FunnelChart = ({dataColors}  : any ) => {
-    var FunnelColors = getChartColorsArray(dataColors);
-    var option = {
+    const FunnelColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             trigger: 'item',
             formatter: '{a} <br/>{b} : {c}%'
@@ -1650,6 +1657,7 @@ const FunnelChart = ({dataColors}  : any ) => {
             fontFamily: 'Poppins, sans-serif'
         },
     };
+
     return (
         <React.Fragment>
              <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1659,8 +1667,8 @@ const FunnelChart = ({dataColors}  : any ) => {
 
 //Gauge Chart
 const GaugeChart = ({ dataColors } : any ) => {
-    var chartGaugeColors = getChartColorsArray(dataColors);
-    var option = {
+    const chartGaugeColors = getChartColorsArray(dataColors);
+    const option = {
         tooltip: {
             formatter: '{a} <br/>{b} : {c}%'
         },
@@ -1691,6 +1699,7 @@ const GaugeChart = ({ dataColors } : any ) => {
             }]
         }]
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />
@@ -1700,22 +1709,24 @@ const GaugeChart = ({ dataColors } : any ) => {
 
 //Heatmap Chart
 const HeatmapChart = ({ dataColors } : any ) => {
-    var chartHeatmapColors = getChartColorsArray(dataColors);
+    const chartHeatmapColors = getChartColorsArray(dataColors);
     function getVirtulData(year : any ) {
         year = year || '2017';
-        var date = +echarts.number.parseDate(year + '-01-01');
-        var end = +echarts.number.parseDate(+year + 1 + '-01-01');
-        var dayTime = 3600 * 24 * 1000;
-        var data = [];
-        for (var time = date; time < end; time += dayTime) {
+        const date = +echarts.number.parseDate(year + '-01-01');
+        const end = +echarts.number.parseDate(+year + 1 + '-01-01');
+        const dayTime = 3600 * 24 * 1000;
+        const data = [];
+
+        for (let time = date; time < end; time += dayTime) {
             data.push([
                 echarts.format.formatTime('yyyy-MM-dd', time),
                 Math.floor(Math.random() * 10000)
             ]);
         }
+
         return data;
     }
-    var option = {
+    const option = {
         visualMap: {
             show: false,
             min: 0,
@@ -1734,6 +1745,7 @@ const HeatmapChart = ({ dataColors } : any ) => {
             data: getVirtulData('2017'),
         },
     };
+
     return (
         <React.Fragment>
             <ReactEcharts style={{ height: "350px" }} option={option} />

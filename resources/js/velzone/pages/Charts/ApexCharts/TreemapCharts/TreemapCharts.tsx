@@ -4,7 +4,7 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const BasicTreemap = ({dataColors} : any) => {
-    var chartTreemapBasicColors = getChartColorsArray(dataColors);  
+    const chartTreemapBasicColors = getChartColorsArray(dataColors);  
     const series= [{
         data: [{
                 x: 'New Delhi',
@@ -60,7 +60,7 @@ const BasicTreemap = ({dataColors} : any) => {
             }
         ]
     }]
-    var options : any = {
+    const options : any = {
         
         legend: {
             show: false
@@ -80,6 +80,7 @@ const BasicTreemap = ({dataColors} : any) => {
             }
         },
     };
+
     return (
         <ReactApexChart dir="ltr"
             series={series}
@@ -94,7 +95,7 @@ const BasicTreemap = ({dataColors} : any) => {
 
 
 const MultiTreemap = ({dataColors} : any) => {
-    var chartTreemapMultiColors = getChartColorsArray(dataColors); 
+    const chartTreemapMultiColors = getChartColorsArray(dataColors); 
     const series = [{
         name: 'Desktops',
         data: [{
@@ -140,7 +141,7 @@ const MultiTreemap = ({dataColors} : any) => {
         ]
     }
 ]
-    var options : any = {
+    const options : any = {
         
         legend: {
             show: false
@@ -161,6 +162,7 @@ const MultiTreemap = ({dataColors} : any) => {
         },
         colors: chartTreemapMultiColors
     };
+
   return (
     <ReactApexChart dir="ltr"
             series={series}
@@ -174,7 +176,7 @@ const MultiTreemap = ({dataColors} : any) => {
 
 //Different color
 const DiffColorTreemap = ({dataColors} : any) => {
-    var chartTreemapDiffColor = getChartColorsArray(dataColors); 
+    const chartTreemapDiffColor = getChartColorsArray(dataColors); 
     const series= [{
         data: [{
                 x: 'New Delhi',
@@ -230,7 +232,7 @@ const DiffColorTreemap = ({dataColors} : any) => {
             }
         ]
     }]
-    var options : any = {        
+    const options : any = {        
         legend: {
             show: false
         },
@@ -256,6 +258,7 @@ const DiffColorTreemap = ({dataColors} : any) => {
             }
         }
     };
+
   return (
     <ReactApexChart dir="ltr"
             series={series}
@@ -269,7 +272,7 @@ const DiffColorTreemap = ({dataColors} : any) => {
 
 //color range
 const ColorRangeTreemap = ({dataColors} : any) => {
-    var chartTreemapRangeColors = getChartColorsArray(dataColors); 
+    const chartTreemapRangeColors = getChartColorsArray(dataColors); 
     const series= [{
         data: [{
                 x: 'INTC',
@@ -325,7 +328,7 @@ const ColorRangeTreemap = ({dataColors} : any) => {
             }
         ]
     }]
-    var options : any = {
+    const options : any = {
         
         legend: {
             show: false
@@ -374,6 +377,7 @@ const ColorRangeTreemap = ({dataColors} : any) => {
             }
         }
     };
+
   return (
     <ReactApexChart dir="ltr"
             series={series}

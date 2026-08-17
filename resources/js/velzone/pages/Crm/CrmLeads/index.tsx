@@ -1,5 +1,11 @@
+import { useFormik } from "formik";
+import { isEmpty } from "lodash";
+import moment from "moment";
 import React, { useEffect, useState, useCallback, useMemo } from "react";
-import { Link } from '@/velzone/inertia-router';
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux";
+import Select from "react-select";
+import { toast, ToastContainer } from 'react-toastify';
 import {
   Col,
   Container,
@@ -20,17 +26,19 @@ import {
   DropdownItem,
   FormFeedback,
 } from "reactstrap";
-import Select from "react-select";
-import Flatpickr from "react-flatpickr";
-import moment from "moment";
+import { createSelector } from "reselect";
+import * as Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
 
+import dummyImg from "../../../assets/images/users/user-dummy-img.jpg";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
-import { isEmpty } from "lodash";
 
 // Import Images
-import dummyImg from "../../../assets/images/users/user-dummy-img.jpg";
 
 //Import actions
+import DeleteModal from "../../../Components/Common/DeleteModal";
+import Loader from "../../../Components/Common/Loader";
+import TableContainer from "../../../Components/Common/TableContainer";
 import {
   getLeads as onGetLeads,
   addNewLead as onAddNewLead,
@@ -38,19 +46,11 @@ import {
   deleteLead as onDeleteLead,
 } from "../../../slices/thunks";
 //redux
-import { useSelector, useDispatch } from "react-redux";
-import TableContainer from "../../../Components/Common/TableContainer";
-import DeleteModal from "../../../Components/Common/DeleteModal";
 import CrmFilter from "./CrmFilter";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
-import Loader from "../../../Components/Common/Loader";
-import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
-import { createSelector } from "reselect";
 
 const CrmLeads = () => {
   const dispatch: any = useDispatch();
@@ -199,6 +199,7 @@ const CrmLeads = () => {
         dispatch(onAddNewLead(newLead));
         validation.resetForm();
       }
+
       toggle();
     },
   });
@@ -262,6 +263,7 @@ const CrmLeads = () => {
 
   const handleValidDate = (date: any) => {
     const date1 = moment(new Date(date)).format("DD MMM Y");
+
     return date1;
   };
 
@@ -279,6 +281,7 @@ const CrmLeads = () => {
         ele.checked = false;
       });
     }
+
     deleteCheckbox();
   }, []);
 
@@ -290,7 +293,9 @@ const CrmLeads = () => {
     const checkall: any = document.getElementById("checkBoxAll");
     selectedCheckBoxDelete.forEach((element: any) => {
       dispatch(onDeleteLead(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
     });
     setIsMultiDeleteButton(false);
     checkall.checked = false;
@@ -411,7 +416,9 @@ const CrmLeads = () => {
               </li>
               <li className="list-inline-item" title="Edit">
                 <Link className="edit-item-btn" to="#"
-                  onClick={() => { const LeadData = cellProps.row.original; handleLeadClick(LeadData); }}
+                  onClick={() => {
+ const LeadData = cellProps.row.original; handleLeadClick(LeadData); 
+}}
                 >
                   <i className="ri-pencil-fill align-bottom text-muted"></i>
                 </Link>
@@ -419,7 +426,9 @@ const CrmLeads = () => {
               <li className="list-inline-item" title="Delete">
                 <Link
                   className="remove-item-btn"
-                  onClick={() => { const LeadData = cellProps.row.original; onClickDelete(LeadData); }}
+                  onClick={() => {
+ const LeadData = cellProps.row.original; onClickDelete(LeadData); 
+}}
                   to="#"
                 >
                   <i className="ri-delete-bin-fill align-bottom text-muted"></i>
@@ -483,7 +492,9 @@ const CrmLeads = () => {
                           type="button"
                           className="btn btn-primary add-btn"
                           id="create-btn"
-                          onClick={() => { setIsEdit(false); toggle(); }}
+                          onClick={() => {
+ setIsEdit(false); toggle(); 
+}}
                         >
                           <i className="ri-add-line align-bottom me-1"></i> Add
                           Leads
@@ -552,11 +563,12 @@ const CrmLeads = () => {
 
                   <Modal id="showModal" isOpen={modal} toggle={toggle} centered>
                     <ModalHeader className="bg-light p-3" toggle={toggle}>
-                      {!!isEdit ? "Edit Lead" : "Add Lead"}
+                      {isEdit ? "Edit Lead" : "Add Lead"}
                     </ModalHeader>
                     <Form className="tablelist-form" onSubmit={(e) => {
                       e.preventDefault();
                       validation.handleSubmit();
+
                       return false;
                     }}>
                       <ModalBody>
@@ -796,8 +808,10 @@ const CrmLeads = () => {
                       </ModalBody>
                       <ModalFooter>
                         <div className="hstack gap-2 justify-content-end">
-                          <button type="button" className="btn btn-light" onClick={() => { setModal(false); }} > Close </button>
-                          <button type="submit" className="btn btn-success" id="add-btn"> {!!isEdit ? "Update" : "Add Lead"} </button>
+                          <button type="button" className="btn btn-light" onClick={() => {
+ setModal(false); 
+}} > Close </button>
+                          <button type="submit" className="btn btn-success" id="add-btn"> {isEdit ? "Update" : "Add Lead"} </button>
                         </div>
                       </ModalFooter>
                     </Form>

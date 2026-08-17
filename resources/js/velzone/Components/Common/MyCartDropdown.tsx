@@ -1,16 +1,16 @@
 import React, { useState } from 'react';
 import { Col, Dropdown, DropdownMenu, DropdownToggle, Row } from 'reactstrap';
+import SimpleBar from "simplebar-react";
 import { Link } from '@/velzone/inertia-router';
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 //import images
 import image1 from "../../assets/images/products/img-1.png";
 import image2 from "../../assets/images/products/img-2.png";
 import image3 from "../../assets/images/products/img-3.png";
-import image6 from "../../assets/images/products/img-6.png";
 import image5 from "../../assets/images/products/img-5.png";
+import image6 from "../../assets/images/products/img-6.png";
 
 const MyCartDropdown = () => {
 
@@ -107,7 +107,9 @@ const MyCartDropdown = () => {
                                         <h5 className="m-0 fw-normal">$<span className="cart-item-price">{item.quantity * item.price}</span></h5>
                                     </div>
                                     <div className="ps-2">
-                                        <button type="button" className="btn btn-icon btn-sm btn-ghost-secondary remove-item-btn" onClick={(e : any) => { removeItem(e.target); }}><i
+                                        <button type="button" className="btn btn-icon btn-sm btn-ghost-secondary remove-item-btn" onClick={(e : any) => {
+ removeItem(e.target); 
+}}><i
                                             className="ri-close-fill fs-16"></i></button>
                                     </div>
                                 </div>

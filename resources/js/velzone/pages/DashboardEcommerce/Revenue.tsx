@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
-import { Card, CardBody, CardHeader, Col, Row } from "reactstrap";
-import { RevenueCharts } from "./DashboardEcommerceCharts";
 import CountUp from "react-countup";
 import { useSelector, useDispatch } from "react-redux";
-import { getRevenueChartsData } from "../../slices/thunks";
+import { Card, CardBody, CardHeader, Col, Row } from "reactstrap";
 import { createSelector } from "reselect";
+import { getRevenueChartsData } from "../../slices/thunks";
+import { RevenueCharts } from "./DashboardEcommerceCharts";
 
 const Revenue = () => {
   const dispatch: any = useDispatch();
@@ -30,22 +30,31 @@ const Revenue = () => {
   useEffect(() => {
     dispatch(getRevenueChartsData("all"));
   }, [dispatch]);
+
   return (
     <React.Fragment>
       <Card>
         <CardHeader className="border-0 align-items-center d-flex">
           <h4 className="card-title mb-0 flex-grow-1">Revenue</h4>
           <div className="d-flex gap-1">
-            <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => { onChangeChartPeriod("all"); }}>
+            <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => {
+ onChangeChartPeriod("all"); 
+}}>
               ALL
             </button>
-            <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => { onChangeChartPeriod("month"); }}>
+            <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => {
+ onChangeChartPeriod("month"); 
+}}>
               1M
             </button>
-            <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => { onChangeChartPeriod("halfyear"); }}>
+            <button type="button" className="btn btn-soft-secondary btn-sm" onClick={() => {
+ onChangeChartPeriod("halfyear"); 
+}}>
               6M
             </button>
-            <button type="button" className="btn btn-soft-primary btn-sm" onClick={() => { onChangeChartPeriod("year"); }}>
+            <button type="button" className="btn btn-soft-primary btn-sm" onClick={() => {
+ onChangeChartPeriod("year"); 
+}}>
               1Y
             </button>
           </div>

@@ -1,19 +1,19 @@
 import React from 'react';
 import { Card, CardBody, Col, Row } from 'reactstrap';
-import { topartWork } from "../../common/data/index";
-import { featuredNFTData } from "../../common/data/dashboardNFT";
-// Swiper
+import SimpleBar from "simplebar-react";
+import { Navigation, Autoplay  } from "swiper/modules";
 import { Swiper, SwiperSlide } from "swiper/react";
+import { Link } from '@/velzone/inertia-router';
+import { featuredNFTData } from "../../common/data/dashboardNFT";
+import { topartWork } from "../../common/data/index";
+// Swiper
 import "swiper/css";
 import "swiper/css/pagination";
 import "swiper/css/navigation";
 // import { Navigation, Autoplay } from "swiper";
-import { Navigation, Autoplay  } from "swiper/modules";
 // Import Chart
 import { TopArtworkChart } from "./DashboardNFTCharts";
 //SimpleBar
-import SimpleBar from "simplebar-react";
-import { Link } from '@/velzone/inertia-router';
 const FeaturedNFT = () => {
     return (
         <React.Fragment>

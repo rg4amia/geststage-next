@@ -1,12 +1,12 @@
+import moment from "moment";
 import React from "react";
 import ReactApexChart from "react-apexcharts";
-import { seriesData1, seriesDataLinear } from "../series";
-import moment from "moment";
-
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
+import { seriesData1, seriesDataLinear } from "../series";
+
 
 const Basic = ({ dataColors } : any) => {
-    var chartCandlestickBasicColors = getChartColorsArray(dataColors);
+    const chartCandlestickBasicColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [
@@ -301,11 +301,11 @@ const Basic = ({ dataColors } : any) => {
 };
 
 const ComboCandlestick = ({ dataColors } : any) => {
-    var chartCandlestickBasicColors = getChartColorsArray(dataColors);
+    const chartCandlestickBasicColors = getChartColorsArray(dataColors);
     const series = [{
         data: seriesData1
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'candlestick',
             height: 200,
@@ -330,6 +330,7 @@ const ComboCandlestick = ({ dataColors } : any) => {
             type: 'datetime'
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -344,14 +345,14 @@ const ComboCandlestick = ({ dataColors } : any) => {
 };
 
 const ComboCandlestick1 = ({ dataColors } : any) => {
-    var chartCandlestickBasicColors = getChartColorsArray(dataColors);
+    const chartCandlestickBasicColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "volume",
             data: seriesDataLinear,
         },
     ];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 150,
             type: 'bar',
@@ -409,6 +410,7 @@ const ComboCandlestick1 = ({ dataColors } : any) => {
             },
         },
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -424,7 +426,7 @@ const ComboCandlestick1 = ({ dataColors } : any) => {
 
 
 const Category = ({ dataColors } : any) => {
-    var chartCandlestickCategoryColors = getChartColorsArray(dataColors);
+    const chartCandlestickCategoryColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'candle',
         data: [{
@@ -669,7 +671,7 @@ const Category = ({ dataColors } : any) => {
         },
         ]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'candlestick',
@@ -739,7 +741,7 @@ const Category = ({ dataColors } : any) => {
 
 
 const CandlestickLine = ({ dataColors } : any) => {
-    var chartCandlestickCategoryColors = getChartColorsArray(dataColors);
+    const chartCandlestickCategoryColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: 'line',
@@ -943,7 +945,7 @@ const CandlestickLine = ({ dataColors } : any) => {
                 y: [6604.98, 6606, 6604.07, 6606]
             }]
         }];
-    var options : any = {
+    const options : any = {
         chart: {
             height: 350,
             type: 'line',

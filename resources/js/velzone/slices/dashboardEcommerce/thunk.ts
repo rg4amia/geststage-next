@@ -9,19 +9,24 @@ import {
 
 export const getRevenueChartsData = createAsyncThunk("dashboardEcommerce/getRevenueChartsData", async (data : any) => {
   try {
-    var response;
+    let response;
+
     if (data === "all") {
       response = getAllRevenueDataApi();
     }
+
     if (data === "month") {
       response = getMonthRevenueDataApi();
     }
+
     if (data === "halfyear") {
       response = getHalfYearRevenueDataApi();
     }
+
     if (data === "year") {
       response = getYearRevenueDataApi();
     }
+
     return response;
   } catch (error) {
     return error;

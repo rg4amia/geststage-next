@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
+import React, { useEffect, useState } from 'react';
+import Select from 'react-select';
 import { Card, CardBody, CardHeader, Col, Container, Row, Button, Input, Label, Form } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
-import Select from 'react-select';
 
 interface Props {
     offres: any[];
@@ -108,7 +108,10 @@ const Create = ({
     }));
 
     const handleOffreSelect = (selectedOption: any) => {
-        if (!selectedOption) return;
+        if (!selectedOption) {
+return;
+}
+
         const offre = selectedOption.offre;
         setData('stage', {
             ...data.stage,
@@ -150,9 +153,19 @@ const Create = ({
     // Available types de stage based on logic
     const availableTypesStage = typesStage.filter(ts => {
         const nom = ts.nom.toUpperCase();
-        if (isFinancement4 || isFinancementBMZ) return nom.includes('QUALIFICATION');
-        if (isFinancementBailleurs && isPEJEDEC) return nom.includes('ECOLE');
-        if (isFinancementBailleurs && isAEJ) return nom.includes('ECOLE') || nom.includes('QUALIFICATION');
+
+        if (isFinancement4 || isFinancementBMZ) {
+return nom.includes('QUALIFICATION');
+}
+
+        if (isFinancementBailleurs && isPEJEDEC) {
+return nom.includes('ECOLE');
+}
+
+        if (isFinancementBailleurs && isAEJ) {
+return nom.includes('ECOLE') || nom.includes('QUALIFICATION');
+}
+
         return true;
     });
 

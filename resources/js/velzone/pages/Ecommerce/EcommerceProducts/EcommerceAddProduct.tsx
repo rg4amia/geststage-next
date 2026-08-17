@@ -1,5 +1,25 @@
 import React, { useState } from "react";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
+
+// Redux
+
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import classnames from "classnames";
+
+//formik
+
+// Import React FilePond
+// Import FilePond styles
+import "filepond/dist/filepond.min.css";
+import FilePondPluginImageExifOrientation from "filepond-plugin-image-exif-orientation";
+import FilePondPluginImagePreview from "filepond-plugin-image-preview";
+import { useFormik } from "formik";
+import Dropzone from "react-dropzone";
+import { registerPlugin } from "react-filepond";
+import Flatpickr from "react-flatpickr";
+import { useDispatch } from "react-redux";
+import Select from "react-select";
 import {
   Card,
   CardBody,
@@ -17,29 +37,9 @@ import {
   FormFeedback,
   Form,
 } from "reactstrap";
-
-// Redux
-import { useDispatch } from "react-redux";
-import { addNewProduct as onAddNewProduct } from "../../../slices/thunks";
-
-import { CKEditor } from "@ckeditor/ckeditor5-react";
-import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
-import classnames from "classnames";
-import Dropzone from "react-dropzone";
-import { Link, useNavigate } from '@/velzone/inertia-router';
-
-//formik
-import { useFormik } from "formik";
 import * as Yup from "yup";
-
-// Import React FilePond
-import { registerPlugin } from "react-filepond";
-import Flatpickr from "react-flatpickr";
-import Select from "react-select";
-// Import FilePond styles
-import "filepond/dist/filepond.min.css";
-import FilePondPluginImageExifOrientation from "filepond-plugin-image-exif-orientation";
-import FilePondPluginImagePreview from "filepond-plugin-image-preview";
+import { Link, useNavigate } from '@/velzone/inertia-router';
+import { addNewProduct as onAddNewProduct } from "../../../slices/thunks";
 import "filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css";
 
 // Register the plugins
@@ -78,12 +78,16 @@ const EcommerceAddProduct = (props: any) => {
    * Formats the size
    */
   function formatBytes(bytes: any, decimals = 2) {
-    if (bytes === 0) return "0 Bytes";
+    if (bytes === 0) {
+return "0 Bytes";
+}
+
     const k = 1024;
     const dm = decimals < 0 ? 0 : decimals;
     const sizes = ["Bytes", "KB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"];
 
     const i = Math.floor(Math.log(bytes) / Math.log(k));
+
     return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   }
 
@@ -103,7 +107,7 @@ const EcommerceAddProduct = (props: any) => {
   ];
 
   const dateFormat = () => {
-    let d = new Date(),
+    const d = new Date(),
       months = [
         "Jan",
         "Feb",
@@ -118,8 +122,9 @@ const EcommerceAddProduct = (props: any) => {
         "Nov",
         "Dec",
       ];
-    let h = d.getHours() % 12 || 12;
-    let ampm = d.getHours() < 12 ? "AM" : "PM";
+    const h = d.getHours() % 12 || 12;
+    const ampm = d.getHours() < 12 ? "AM" : "PM";
+
     return (
       d.getDate() +
       " " +
@@ -140,10 +145,10 @@ const EcommerceAddProduct = (props: any) => {
   const dateformate = (e: any) => {
     const dateString = e.toString().split(" ");
     let time = dateString[4];
-    let H = +time.substr(0, 2);
+    const H = +time.substr(0, 2);
     let h: any = H % 12 || 12;
     h = h <= 9 ? (h = "0" + h) : h;
-    let ampm = H < 12 ? "AM" : "PM";
+    const ampm = H < 12 ? "AM" : "PM";
     time = h + time.substr(2, 3) + " " + ampm;
 
     const date = dateString[2] + " " + dateString[1] + ", " + dateString[3];
@@ -239,6 +244,7 @@ const EcommerceAddProduct = (props: any) => {
       validation.resetForm();
     },
   });
+
   return (
     <div className="page-content">
       <Container fluid>
@@ -250,6 +256,7 @@ const EcommerceAddProduct = (props: any) => {
               onSubmit={(e) => {
                 e.preventDefault();
                 validation.handleSubmit();
+
                 return false;
               }}
             >

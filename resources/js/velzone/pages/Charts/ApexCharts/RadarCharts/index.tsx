@@ -6,6 +6,7 @@ import {SimpleRadar,MultipleRadar,PolygonRadar} from './RadarCharts';
 
 const RadarCharts = () => {
     document.title="Radar Charts | Velzon - React Admin & Dashboard Template";
+
     return (
         <div className="page-content">
             <Container fluid>

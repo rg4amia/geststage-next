@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
+import Rating from "react-rating";
 import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
 
 //import Components
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 // Rating
-import Rating from "react-rating";
 
 import { BasicRaterExample, RaterWithStepExample, CustomMsgExample, ReadOnlyRaterExample, OnHoverExample, ReasetRaterExample } from './UiRatingsCode';
 
@@ -14,6 +14,7 @@ const UiRatings = () => {
     const [reset, setreset] = useState("");
     
     document.title="Ratings | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

@@ -1,8 +1,8 @@
+import React, { useMemo, useState } from 'react'
+import { Card, CardBody, Col, Row } from 'reactstrap'
+import { Link } from '@/velzone/inertia-router'
 import { listData } from 'common/data'
 import Pagination from 'Components/Common/Pagination'
-import React, { useMemo, useState } from 'react'
-import { Link } from '@/velzone/inertia-router'
-import { Card, CardBody, Col, Row } from 'reactstrap'
 
 const MainList = () => {
     //pagination

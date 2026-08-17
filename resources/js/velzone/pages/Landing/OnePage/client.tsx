@@ -12,11 +12,11 @@ import { Swiper, SwiperSlide } from "swiper/react";
 
 // Import Images
 import amazon from "../../../assets/images/clients/amazon.svg";
-import walmart from "../../../assets/images/clients/walmart.svg";
 import lenovo from "../../../assets/images/clients/lenovo.svg";
 import paypal from "../../../assets/images/clients/paypal.svg";
 import shopify from "../../../assets/images/clients/shopify.svg";
 import verizon from "../../../assets/images/clients/verizon.svg";
+import walmart from "../../../assets/images/clients/walmart.svg";
 
 const Client = () => {
     return (

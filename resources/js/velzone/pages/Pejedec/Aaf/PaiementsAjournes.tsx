@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { router } from '@inertiajs/react';
+import React, { useState } from 'react';
 import { Badge, Button } from 'reactstrap';
 import AafSectionPage from './AafSectionPage';
 
@@ -44,8 +44,15 @@ const PaiementsAjournes = ({
             accessorKey: 'statut',
             cell: (cell: any) => {
                 const statut = cell.getValue();
-                if (statut === 'AJOURNE_DMG') return <Badge color="danger">Ajourné DMG</Badge>;
-                if (statut === 'AJOURNE_CA') return <Badge color="warning">Ajourné CA</Badge>;
+
+                if (statut === 'AJOURNE_DMG') {
+return <Badge color="danger">Ajourné DMG</Badge>;
+}
+
+                if (statut === 'AJOURNE_CA') {
+return <Badge color="warning">Ajourné CA</Badge>;
+}
+
                 return <Badge color="secondary">{statut || 'Inconnu'}</Badge>;
             },
         },

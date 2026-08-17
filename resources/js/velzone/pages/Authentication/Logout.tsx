@@ -1,14 +1,14 @@
 import PropTypes from "prop-types";
 import React, { useEffect } from "react";
+import { useSelector, useDispatch } from "react-redux";
+import { createSelector } from "reselect";
 import { Navigate } from '@/velzone/inertia-router';
 
+import withRouter from "../../Components/Common/withRouter";
 import { logoutUser } from "../../slices/thunks";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 
-import withRouter from "../../Components/Common/withRouter";
-import { createSelector } from "reselect";
 
 const Logout = () => {
   const dispatch: any = useDispatch();

@@ -3,7 +3,7 @@ import ReactApexChart from "react-apexcharts";
 
 const WatchListChart = ({ seriesData, chartsColor }:any) => {
     const areachartlitecoinColors = [chartsColor];
-    var options:any = {
+    const options:any = {
         chart: {
             width: 130,
             height: 46,
@@ -34,6 +34,7 @@ const WatchListChart = ({ seriesData, chartsColor }:any) => {
         },
         colors: areachartlitecoinColors
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"

@@ -14,13 +14,13 @@ import {
   Row,
 } from "reactstrap";
 
+import SimpleBar from "simplebar-react";
+import usflag from '../../../assets/images/flags/us.svg'
+import { country } from "../../../common/data";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 import DualListbox from './DualListbox';
 
-import usflag from '../../../assets/images/flags/us.svg'
-import SimpleBar from "simplebar-react";
-import { country } from "../../../common/data";
 
 const FormAdvanced = () => {
   const [defaultCounter, setdefaultCounter] = useState(5);
@@ -74,6 +74,7 @@ const FormAdvanced = () => {
   const toggle3 = () => setDropdownOpen3((prevState) => !prevState);
   const toggle4 = () => setDropdownOpen4((prevState) => !prevState);
   const toggle5 = () => setDropdownOpen5((prevState) => !prevState);
+
   return (
     <React.Fragment>
       <div className="page-content">

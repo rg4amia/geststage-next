@@ -1,7 +1,7 @@
+import Cleave from "cleave.js/react";
 import React, { useState } from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import Cleave from "cleave.js/react";
 import "cleave.js/dist/addons/cleave-phone.in";
 
 

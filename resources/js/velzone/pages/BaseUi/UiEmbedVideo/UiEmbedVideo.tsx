@@ -2,16 +2,17 @@ import React from 'react';
 import { Card, CardBody, Col, Container, Row, } from 'reactstrap';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
 
 import { Ratio169Example, Ratio219Example, Ratio43Example, Ratio11Example, CustomRationExample } from './UiEmbedVideoCode';
 
 
 const UiEmbedVideo = () => {
     document.title="Embed Video | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

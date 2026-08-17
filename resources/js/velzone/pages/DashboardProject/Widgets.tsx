@@ -1,10 +1,10 @@
+import FeatherIcon from "feather-icons-react";
 import React from 'react';
-import { projectsWidgets } from '../../common/data';
 import CountUp from "react-countup";
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
 import { Card, CardBody, Col, Row } from 'reactstrap';
+import { projectsWidgets } from '../../common/data';
 
 const Widgets = () => {
     return (

@@ -22,6 +22,7 @@ import {
 export const getProducts = createAsyncThunk("ecommerce/getProducts", async () => {
   try {
     const response = getProductsApi();
+
     return response;
   } catch (error) {
     return error;
@@ -31,6 +32,7 @@ export const getProducts = createAsyncThunk("ecommerce/getProducts", async () =>
 export const getOrders = createAsyncThunk("ecommerce/getOrders", async () => {
   try {
     const response = getOrdersApi();
+
     return response;
   } catch (error) {
     return error;
@@ -40,6 +42,7 @@ export const getOrders = createAsyncThunk("ecommerce/getOrders", async () => {
 export const getSellers = createAsyncThunk("ecommerce/getSellers", async () => {
   try {
     const response = getSellersApi();
+
     return response;
   } catch (error) {
     return error;
@@ -49,6 +52,7 @@ export const getSellers = createAsyncThunk("ecommerce/getSellers", async () => {
 export const getCustomers = createAsyncThunk("ecommerce/getCustomers", async () => {
   try {
     const response = getCustomersApi();
+
     return response;
   } catch (error) {
     return error;
@@ -59,9 +63,11 @@ export const deleteProducts = createAsyncThunk("ecommerce/deleteProducts", async
   try {
     const response = deleteProductsApi(product);
     toast.success("Product Delete Successfully", { autoClose: 3000 });
+
     return { product, ...response };
   } catch (error) {
     toast.error("Product Delete Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -71,9 +77,11 @@ export const updateOrder = createAsyncThunk("ecommerce/updateOrder", async (orde
     const response = updateOrderApi(order);
     const data = await response;
     toast.success("Order Updateded Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Order Updateded Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -83,9 +91,11 @@ export const addNewProduct = createAsyncThunk("ecommerce/addNewProduct", async (
     const response = addNewProductApi(product);
     const data = await response;
     toast.success("Product Added Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Product Added Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -95,10 +105,11 @@ export const updateProduct = createAsyncThunk("ecommerce/updateProduct", async (
     const response = updateProductApi(product);
     const data = await response;
     toast.success("Product Updateded Successfully", { autoClose: 3000 });
+
     return data;
-  }
-  catch (error) {
+  } catch (error) {
     toast.error("Product Updateded Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -107,9 +118,11 @@ export const deleteOrder = createAsyncThunk("ecommerce/deleteOrder", async (orde
   try {
     const response = deleteOrderApi(order);
     toast.success("Order Deleted Successfully", { autoClose: 3000 });
+
     return { order, ...response };
   } catch (error) {
     toast.error("Order Deleted Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -119,9 +132,11 @@ export const addNewOrder = createAsyncThunk("ecommerce/addNewOrder", async (orde
     const response = addNewOrderApi(order);
     const data = await response;
     toast.success("Order Added Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Order Added Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -131,9 +146,11 @@ export const updateCustomer = createAsyncThunk("ecommerce/updateCustomer", async
     const response = updateCustomerApi(customer);
     const data = await response;
     toast.success("Customer Updateded Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Customer Updateded Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -142,9 +159,11 @@ export const deleteCustomer = createAsyncThunk("ecommerce/deleteCustomer", async
   try {
     const response = deleteCustomerApi(customer);
     toast.success("Customer Deleted Successfully", { autoClose: 3000 });
+
     return { customer, ...response }
   } catch (error) {
     toast.error("Customer Deleted Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -154,9 +173,11 @@ export const addNewCustomer = createAsyncThunk("ecommerce/addNewCustomer", async
     const response = addNewCustomerApi(customer);
     const data = await response;
     toast.success("Customer Added Successfully", { autoClose: 3000 });
+
     return data;
   } catch (error) {
     toast.error("Customer Added Failed", { autoClose: 3000 });
+
     return error;
   }
 });

@@ -20,14 +20,16 @@ import {
 
 export const getAllData = createAsyncThunk("dashboardAnalytics/getAllData", async (data:any) => {
   try {
-    var response;
+    let response;
 
     if (data === "all") {
       response = getAllDataApi();
     }
+
     if (data === "halfyearly") {
       response = getHalfYearlyDataApi();
     }
+
     if (data === "monthly") {
       response = getMonthlyDataApi();
     }
@@ -40,17 +42,20 @@ export const getAllData = createAsyncThunk("dashboardAnalytics/getAllData", asyn
 
 export const getAudiencesMetricsChartsData = createAsyncThunk("dashboardAnalytics/getAudiencesMetricsChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
 
     if (data === "all") {
       response = getAllAudiencesMetricsDataApi();
     }
+
     if (data === "monthly") {
       response = getMonthlyAudiencesMetricsDataApi();
     }
+
     if (data === "halfyearly") {
       response = getHalfYearlyAudiencesMetricsDataApi();
     }
+
     if (data === "yearly") {
       response = getYearlyAudiencesMetricsDataApi();
     }
@@ -63,16 +68,20 @@ export const getAudiencesMetricsChartsData = createAsyncThunk("dashboardAnalytic
 
 export const getUserDeviceChartsData = createAsyncThunk("dashboardAnalytics/getUserDeviceChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "today") {
       response = getTodayDeviceDataApi();
     }
+
     if (data === "lastWeek") {
       response = getLastWeekDeviceDataApi();
     }
+
     if (data === "lastMonth") {
       response = getLastMonthDeviceDataApi();
     }
+
     if (data === "currentYear") {
       response = getCurrentYearDeviceDataApi();
     }
@@ -85,16 +94,20 @@ export const getUserDeviceChartsData = createAsyncThunk("dashboardAnalytics/getU
 
 export const getAudiencesSessionsChartsData = createAsyncThunk("dashboardAnalytics/getAudiencesSessionsChartsData", async (data:any) => {
   try {
-    var response;
+    let response;
+
     if (data === "today") {
       response = getTodaySessionDataApi();
     }
+
     if (data === "lastWeek") {
       response = getLastWeekSessionDataApi();
     }
+
     if (data === "lastMonth") {
       response = getLastMonthSessionDataApi();
     }
+
     if (data === "currentYear") {
       response = getCurrentYearSessionDataApi();
     }

@@ -257,6 +257,7 @@ const HorizontalForm = () => {
 <button type="submit" className="btn btn-primary">Add Leave</button>
 </div>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -294,6 +295,7 @@ const HorizontalFormLabelSizing = () => {
 </Row>
 </Col>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -331,6 +333,7 @@ const ColumnSizing = () => {
     <Input type="text" className="form-control" placeholder="Zip" aria-label="Zip"/>
 </Col>
     `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -415,6 +418,7 @@ const code = `<Form action="#">
 </Row>
 </Form>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -457,6 +461,7 @@ const code = `<Row className="row-cols-lg-auto g-3 align-items-center">
 </Col>
 </Row>
 `;
+
     return (
         <React.Fragment>
             <PrismCode
@@ -533,6 +538,7 @@ const FloatingLabels = () => {
 </Row>
 </Form>
 `;
+
     return (
         <React.Fragment>
             <PrismCode

@@ -1,4 +1,15 @@
+import { Link } from '@/velzone/inertia-router';
+import SimpleBar from "simplebar-react";
+import classnames from "classnames";
+import EmojiPicker from "emoji-picker-react";
+
+//Import Icons
+import FeatherIcon from "feather-icons-react";
 import React, { useEffect, useState, useRef } from "react";
+
+
+//redux
+import { useSelector, useDispatch } from "react-redux";
 import {
   Container,
   Button,
@@ -20,33 +31,22 @@ import {
   TabPane,
   Alert,
 } from "reactstrap";
-import { Link } from '@/velzone/inertia-router';
-import SimpleBar from "simplebar-react";
-import classnames from "classnames";
-import EmojiPicker from "emoji-picker-react";
 
-//Import Icons
-import FeatherIcon from "feather-icons-react";
-import PersonalInfo from "./PersonalInfo";
 
+//Import Scrollbar
+import "react-perfect-scrollbar/dist/css/styles.css";
+import { createSelector } from "reselect";
+import Spinners from "Components/Common/Spinner";
+import avatar2 from "../../assets/images/users/avatar-2.jpg";
+import userDummayImage from "../../assets/images/users/user-dummy-img.jpg";
 import { chatContactData } from "../../common/data";
-
-//redux
-import { useSelector, useDispatch } from "react-redux";
 import {
   getDirectContact as onGetDirectContact,
   getMessages as onGetMessages,
   addMessage as onAddMessage,
   deleteMessage as onDeleteMessage,
 } from "../../slices/thunks";
-
-import avatar2 from "../../assets/images/users/avatar-2.jpg";
-import userDummayImage from "../../assets/images/users/user-dummy-img.jpg";
-
-//Import Scrollbar
-import "react-perfect-scrollbar/dist/css/styles.css";
-import { createSelector } from "reselect";
-import Spinners from "Components/Common/Spinner";
+import PersonalInfo from "./PersonalInfo";
 interface DirectContact {
   id: number;
   roomId: number;
@@ -159,17 +159,21 @@ const Chat = () => {
     setChat_Box_Image(chats.image);
     setUser_Status(chats.status);
     dispatch(onGetMessages(chats.roomId));
+
     if (window.innerWidth < 892) {
       userChatShow?.current?.classList.add("user-chat-show");
     }
+
     // remove unread msg on read in chat
-    var unreadMessage: any = document.getElementById(
+    const unreadMessage: any = document.getElementById(
       "unread-msg-user" + chats.id
     );
-    var msgUser: any = document.getElementById("msgUser" + chats.id);
+    const msgUser: any = document.getElementById("msgUser" + chats.id);
+
     if (unreadMessage) {
       unreadMessage.style.display = "none";
     }
+
     if (msgUser) {
       msgUser.classList.remove("unread-msg-user");
     }
@@ -185,6 +189,7 @@ const Chat = () => {
     const hours = currentTime.getHours();
     const minutes = currentTime.getMinutes();
     const ampm = hours >= 12 ? "pm" : "am";
+
     if (curMessage !== "") {
       const message: any = {
         id: Math.floor(Math.random() * 100),
@@ -198,6 +203,7 @@ const Chat = () => {
       };
       dispatch(onAddMessage(message));
     }
+
     setcurMessage("");
     setreply("");
   };
@@ -212,6 +218,7 @@ const Chat = () => {
 
   const onKeyPress = (e: any) => {
     const { key, value } = e;
+
     if (key === "Enter") {
       e.preventDefault();
       setcurMessage(value);
@@ -270,11 +277,13 @@ const Chat = () => {
     const copy = ele
       .closest(".chat-list")
       ?.querySelector(".ctext-content")?.innerHTML;
+
     if (copy) {
       navigator.clipboard.writeText(copy);
     }
 
     const copyClipboardElement = document.getElementById("copyClipBoard");
+
     if (copyClipboardElement) {
       copyClipboardElement.style.display = "block";
       setTimeout(() => {

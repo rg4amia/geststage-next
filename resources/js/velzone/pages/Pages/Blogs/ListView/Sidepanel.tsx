@@ -1,10 +1,10 @@
 import React from 'react'
+import { Card, CardBody, Col } from 'reactstrap'
 import { Link } from '@/velzone/inertia-router'
 
 import small4 from "assets/images/small/img-4.jpg"
 import small6 from "assets/images/small/img-6.jpg"
 import small7 from "assets/images/small/img-7.jpg"
-import { Card, CardBody, Col } from 'reactstrap'
 
 const Sidepanel = () => {
     return (

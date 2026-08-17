@@ -10,9 +10,9 @@ import smallImage4 from '../../../../assets/images/small/img-4.jpg';
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const SimplePie = ({ dataColors } : any) => {
-    var chartPieBasicColors = getChartColorsArray(dataColors);
+    const chartPieBasicColors = getChartColorsArray(dataColors);
     const series = [44, 55, 13, 43, 22]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 300,
             type: 'pie',
@@ -28,6 +28,7 @@ const SimplePie = ({ dataColors } : any) => {
         },
         colors: chartPieBasicColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -40,9 +41,9 @@ const SimplePie = ({ dataColors } : any) => {
 }
 
 const SimpleDonut = ({ dataColors } : any) => {
-    var chartDonutBasicColors = getChartColorsArray(dataColors);
+    const chartDonutBasicColors = getChartColorsArray(dataColors);
     const series = [44, 55, 41, 17, 15]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 300,
             type: 'donut',
@@ -57,6 +58,7 @@ const SimpleDonut = ({ dataColors } : any) => {
         },
         colors: chartDonutBasicColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -70,9 +72,9 @@ const SimpleDonut = ({ dataColors } : any) => {
 }
 
 const UpdateDonut = ({ dataColors } : any) => {
-    var chartDonutupdatingColors = getChartColorsArray(dataColors);
+    const chartDonutupdatingColors = getChartColorsArray(dataColors);
     const series = [44, 55, 13, 33]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 280,
             type: 'donut',
@@ -85,6 +87,7 @@ const UpdateDonut = ({ dataColors } : any) => {
         },
         colors: chartDonutupdatingColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -99,7 +102,7 @@ const UpdateDonut = ({ dataColors } : any) => {
 
 const MonochromePie = () => {
     const series = [25, 15, 44, 55, 41, 17]
-    var options : any = {
+    const options : any = {
 
         chart: {
             height: 300,
@@ -130,7 +133,8 @@ const MonochromePie = () => {
         },
         dataLabels: {
             formatter: function (val : any, opts : any) {
-                var name = opts.w.globals.labels[opts.seriesIndex];
+                const name = opts.w.globals.labels[opts.seriesIndex];
+
                 return [name, val.toFixed(1) + '%'];
             },
             dropShadow: {
@@ -141,6 +145,7 @@ const MonochromePie = () => {
             show: false
         }
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -154,9 +159,9 @@ const MonochromePie = () => {
 }
 
 const GradientDonut = ({ dataColors } : any) => {
-    var chartPieGradientColors = getChartColorsArray(dataColors);
+    const chartPieGradientColors = getChartColorsArray(dataColors);
     const series = [44, 55, 41, 17, 15]
-    var options : any = {
+    const options : any = {
 
         chart: {
             height: 300,
@@ -188,6 +193,7 @@ const GradientDonut = ({ dataColors } : any) => {
         },
         colors: chartPieGradientColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -201,9 +207,9 @@ const GradientDonut = ({ dataColors } : any) => {
 }
 
 const PatternedDonut = ({ dataColors } : any) => {
-    var chartPiePatternColors = getChartColorsArray(dataColors);
+    const chartPiePatternColors = getChartColorsArray(dataColors);
     const series = [44, 55, 41, 17, 15]
-    var options : any = {
+    const options : any = {
         chart: {
             height: 300,
             type: 'donut',
@@ -266,6 +272,7 @@ const PatternedDonut = ({ dataColors } : any) => {
         },
         colors: chartPiePatternColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -279,7 +286,7 @@ const PatternedDonut = ({ dataColors } : any) => {
 }
 
 const ImagePieChart = ({ dataColors } : any) => {
-    var chartPieImageColors = getChartColorsArray(dataColors);
+    const chartPieImageColors = getChartColorsArray(dataColors);
     const series = [44, 33, 54, 45]
     const options : any = {
         chart: {

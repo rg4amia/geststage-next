@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
 import { Head } from '@inertiajs/react';
+import React, { useMemo, useState } from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Button, Input, Modal, ModalHeader, ModalBody, ModalFooter } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
@@ -39,6 +39,7 @@ const AjourneDmgIndex = ({ instances }: any) => {
                 accessorKey: 'dernier_ajournement',
                 cell: (cell: any) => {
                     const motif = "Erreur sur les jours de présence (Ajourné par DMG)";
+
                     return <span className="text-danger"><i className="ri-error-warning-line me-1"></i>{motif}</span>;
                 },
             },

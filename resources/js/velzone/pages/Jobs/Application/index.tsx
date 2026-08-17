@@ -1,4 +1,10 @@
+import classnames from "classnames";
+import { useFormik } from "formik";
+import moment from "moment";
 import React, { useEffect, useMemo, useState, useCallback } from "react";
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux";
+import Select from "react-select";
 import {
   Card,
   CardBody,
@@ -20,17 +26,15 @@ import {
   ModalFooter,
   FormFeedback
 } from "reactstrap";
-import Select from "react-select";
-import Flatpickr from "react-flatpickr";
-import DeleteModal from "../../../Components/Common/DeleteModal";
-import classnames from "classnames";
-import moment from "moment";
-
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
-import { useSelector, useDispatch } from "react-redux";
-import { getApplicationList, addNewJobApplicationList, updateJobApplicationList, deleteJobApplicationList } from "../../../slices/thunks";
-import TableContainer from "../../../Components/Common/TableContainer";
+import { createSelector } from "reselect";
+import * as Yup from "yup";
 import { Link } from '@/velzone/inertia-router';
+import ExportCSVModal from "Components/Common/ExportCSVModal";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
+import DeleteModal from "../../../Components/Common/DeleteModal";
+
+import TableContainer from "../../../Components/Common/TableContainer";
+import { getApplicationList, addNewJobApplicationList, updateJobApplicationList, deleteJobApplicationList } from "../../../slices/thunks";
 import {
   AppId,
   Designation,
@@ -38,12 +42,8 @@ import {
   Status,
   Type,
 } from "./ApplicationCol";
-import { createSelector } from "reselect";
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
-import ExportCSVModal from "Components/Common/ExportCSVModal";
 
 const Application = () => {
   document.title = "Application | Velzon - React Admin & Dashboard Template";
@@ -76,9 +76,11 @@ const Application = () => {
     if (activeTab !== type) {
       setActiveTab(type);
       let filteredOrders = appList;
+
       if (type !== "All") {
         filteredOrders = appList.filter((job: any) => job.status === type);
       }
+
       setApplication(filteredOrders);
     }
   };
@@ -94,6 +96,7 @@ const Application = () => {
 
   const onClickDelete = (order: any) => {
     setDeleteModal(true);
+
     if (order.id) {
       setEventData(order);
     }
@@ -379,6 +382,7 @@ const Application = () => {
         // save new customer
         dispatch(addNewJobApplicationList(newJobApplication));
       }
+
       toggle();
       validation.resetForm();
     },
@@ -515,17 +519,23 @@ const Application = () => {
                     >
                       <NavItem>
                         <NavLink
-                          className={classnames({ active: activeTab === "All" }, "All py-3")} onClick={() => { toggleTab("All"); }}>
+                          className={classnames({ active: activeTab === "All" }, "All py-3")} onClick={() => {
+ toggleTab("All"); 
+}}>
                           All Application
                         </NavLink>
                       </NavItem>
                       <NavItem>
-                        <NavLink className={classnames({ active: activeTab === "New" }, "New py-3")} onClick={() => { toggleTab("New"); }}>
+                        <NavLink className={classnames({ active: activeTab === "New" }, "New py-3")} onClick={() => {
+ toggleTab("New"); 
+}}>
                           New
                         </NavLink>
                       </NavItem>
                       <NavItem>
-                        <NavLink className={classnames({ active: activeTab === "Pending" }, "Pending py-3")} onClick={() => { toggleTab("Pending"); }}>
+                        <NavLink className={classnames({ active: activeTab === "Pending" }, "Pending py-3")} onClick={() => {
+ toggleTab("Pending"); 
+}}>
                           Pending{" "}
                           <span className="badge bg-danger align-middle ms-1">
                             2
@@ -533,12 +543,16 @@ const Application = () => {
                         </NavLink>
                       </NavItem>
                       <NavItem>
-                        <NavLink className={classnames({ active: activeTab === "Approved" }, "Approved py-3")} onClick={() => { toggleTab("Approved"); }}>
+                        <NavLink className={classnames({ active: activeTab === "Approved" }, "Approved py-3")} onClick={() => {
+ toggleTab("Approved"); 
+}}>
                           Approved
                         </NavLink>
                       </NavItem>
                       <NavItem>
-                        <NavLink className={classnames({ active: activeTab === "Rejected" }, "Rejected py-3")} onClick={() => { toggleTab("Rejected"); }}>
+                        <NavLink className={classnames({ active: activeTab === "Rejected" }, "Rejected py-3")} onClick={() => {
+ toggleTab("Rejected"); 
+}}>
                           Rejected
                         </NavLink>
                       </NavItem>
@@ -555,12 +569,13 @@ const Application = () => {
 
                   <Modal isOpen={show} toggle={toggle} centered={true} >
                     <ModalHeader className="bg-light p-3" toggle={toggle}>
-                      {!!isEdit ? "Edit Application" : "Add Application"}
+                      {isEdit ? "Edit Application" : "Add Application"}
                     </ModalHeader>
                     <Form className="tablelist-form"
                       onSubmit={(e) => {
                         e.preventDefault();
                         validation.handleSubmit();
+
                         return false;
                       }}
                     >
@@ -729,7 +744,7 @@ const Application = () => {
                             Close
                           </Button>
                           <Button type="submit" className="btn btn-success">
-                            {!!isEdit ? "Update" : "Add"}
+                            {isEdit ? "Update" : "Add"}
                           </Button>
                         </div>
                       </ModalFooter>

@@ -1,9 +1,9 @@
 //Include Both Helper File with needed methods
-import { getFirebaseBackend } from "../../../helpers/firebase_helper";
 import {
   postFakeRegister,
   postJwtRegister,
 } from "../../../helpers/fakebackend_helper";
+import { getFirebaseBackend } from "../../../helpers/firebase_helper";
 
 // action
 import {
@@ -44,6 +44,7 @@ export const registerUser = (user : any) => async (dispatch : any) => {
 export const resetRegisterFlag = () => {
   try {
     const response = resetRegisterFlagChange();
+
     return response;
   } catch (error) {
     return error;

@@ -3,7 +3,7 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../Components/Common/ChartsDynamicColor";
 
 const AudiencesMetricsCharts = ({ dataColors }: any) => {
-    var chartAudienceColumnChartsColors = getChartColorsArray(dataColors);
+    const chartAudienceColumnChartsColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Last Year',
         data: [25.3, 12.5, 20.2, 18.5, 40.4, 25.4, 15.8, 22.3, 19.2, 25.3, 12.5, 20.2]
@@ -11,7 +11,7 @@ const AudiencesMetricsCharts = ({ dataColors }: any) => {
         name: 'Current Year',
         data: [36.2, 22.4, 38.2, 30.5, 26.4, 30.4, 20.2, 29.6, 10.9, 36.2, 22.4, 38.2]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 309,
@@ -74,6 +74,7 @@ const AudiencesMetricsCharts = ({ dataColors }: any) => {
             opacity: 1
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -88,9 +89,9 @@ const AudiencesMetricsCharts = ({ dataColors }: any) => {
 };
 
 const MyPortfolioCharts = ({ dataColors }: any) => {
-    var donutchartportfolioColors = getChartColorsArray(dataColors);
+    const donutchartportfolioColors = getChartColorsArray(dataColors);
     const series = [19405, 40552, 15824, 30635];
-    var options : any = {
+    const options : any = {
         labels: ["Bitcoin", "Ethereum", "Litecoin", "Dash"],
         chart: {
             type: "donut",
@@ -156,6 +157,7 @@ const MyPortfolioCharts = ({ dataColors }: any) => {
         },
         colors: donutchartportfolioColors,
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -170,12 +172,12 @@ const MyPortfolioCharts = ({ dataColors }: any) => {
 };
 
 const SessionsByCountriesCharts = ({ dataColors }: any) => {
-    var barchartCountriesColors = getChartColorsArray(dataColors);
+    const barchartCountriesColors = getChartColorsArray(dataColors);
     const series = [{
         data: [1010, 1640, 490, 1255, 1050, 689, 800, 420, 1085, 589],
         name: 'Sessions',
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 436,
@@ -214,6 +216,7 @@ const SessionsByCountriesCharts = ({ dataColors }: any) => {
             categories: ['India', 'United States', 'China', 'Indonesia', 'Russia', 'Bangladesh', 'Canada', 'Brazil', 'Vietnam', 'UK'],
         },
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -228,14 +231,15 @@ const SessionsByCountriesCharts = ({ dataColors }: any) => {
 };
 
 const TopReferralsPagesCharts = ({ dataColors }: any) => {
-    var chartHeatMapColors = getChartColorsArray(dataColors);
+    const chartHeatMapColors = getChartColorsArray(dataColors);
 
     function generateData(count : any, yrange : any) {
-        var i = 0;
-        var series = [];
+        let i = 0;
+        const series = [];
+
         while (i < count) {
-            var x = 'w' + (i + 1).toString();
-            var y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
+            const x = 'w' + (i + 1).toString();
+            const y = Math.floor(Math.random() * (yrange.max - yrange.min + 1)) + yrange.min;
 
             series.push({
                 x: x,
@@ -243,6 +247,7 @@ const TopReferralsPagesCharts = ({ dataColors }: any) => {
             });
             i++;
         }
+
         return series;
     }
 
@@ -383,8 +388,8 @@ const TopReferralsPagesCharts = ({ dataColors }: any) => {
 };
 
 const OtherWidgetsCharts = ({ dataColors, seriesData }: any) => {
-    var areachartbitcoinColors = getChartColorsArray(dataColors);
-    var options : any = {
+    const areachartbitcoinColors = getChartColorsArray(dataColors);
+    const options : any = {
         chart: {
             width: 140,
             type: "area",
@@ -414,6 +419,7 @@ const OtherWidgetsCharts = ({ dataColors, seriesData }: any) => {
         },
         colors: areachartbitcoinColors,
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"

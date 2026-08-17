@@ -1,6 +1,6 @@
 import React from "react";
-import { Col } from "reactstrap";
 import { Carousel } from "react-responsive-carousel";
+import { Col } from "reactstrap";
 import "react-responsive-carousel/lib/styles/carousel.min.css";
 import { Link } from '@/velzone/inertia-router';
 

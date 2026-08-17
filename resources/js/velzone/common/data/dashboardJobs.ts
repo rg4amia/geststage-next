@@ -1,15 +1,15 @@
 import img1 from "../../assets/images/companies/img-1.png";
-import img3 from "../../assets/images/companies/img-3.png";
 import img2 from "../../assets/images/companies/img-2.png";
+import img3 from "../../assets/images/companies/img-3.png";
 import img4 from "../../assets/images/companies/img-4.png";
 import img5 from "../../assets/images/companies/img-5.png";
 
 import avtar1 from "../../assets/images/users/avatar-1.jpg";
+import avtar10 from "../../assets/images/users/avatar-10.jpg";
 import avtar2 from "../../assets/images/users/avatar-2.jpg";
 import avtar3 from "../../assets/images/users/avatar-3.jpg";
 import avtar4 from "../../assets/images/users/avatar-4.jpg";
 import avtar6 from "../../assets/images/users/avatar-6.jpg";
-import avtar10 from "../../assets/images/users/avatar-10.jpg";
 import avtar8 from "../../assets/images/users/avatar-8.jpg";
 import avtar9 from "../../assets/images/users/avatar-9.jpg";
 

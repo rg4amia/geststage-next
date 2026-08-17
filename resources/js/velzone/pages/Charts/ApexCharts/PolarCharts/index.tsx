@@ -6,6 +6,7 @@ import {BasicPolar,PolarMonochrome} from './PolarCharts'
 
 const Polarcharts = () => {
     document.title="Polar Charts | Velzon - React Admin & Dashboard Template";
+
     return (
         <div className="page-content">
             <Container fluid>

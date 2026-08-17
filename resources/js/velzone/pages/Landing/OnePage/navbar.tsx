@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { Collapse, Container, NavbarToggler, NavLink } from "reactstrap";
 import Scrollspy from "react-scrollspy";
+import { Collapse, Container, NavbarToggler, NavLink } from "reactstrap";
 import { Link } from '@/velzone/inertia-router';
 
 // Import Images
@@ -18,7 +18,8 @@ const Navbar = () => {
     });
 
     const scrollNavigation = () => {
-        var scrollup = document.documentElement.scrollTop;
+        const scrollup = document.documentElement.scrollTop;
+
         if (scrollup > 50) {
             setnavClass("is-sticky");
         } else {
@@ -29,23 +30,28 @@ const Navbar = () => {
     useEffect(() => {
         const activation = (event : any) => {
             const target : any = event.target;
+
             if (target) {
                 target.classList.add('active');
                 setActiveLink(target);
+
                 if (activeLink && activeLink !== target) {
                     activeLink.classList.remove('active');
                 }
             }
         };
         const defaultLink : any = document.querySelector('.navbar li.a.active');
+
         if (defaultLink) {
             defaultLink?.classList.add("active")
             setActiveLink(defaultLink)
         }
+
         const links = document.querySelectorAll('.navbar a');
         links.forEach((link) => {
             link.addEventListener('click', activation);
         });
+
         return () => {
             links.forEach((link) => {
                 link.removeEventListener('click', activation);

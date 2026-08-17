@@ -1,12 +1,10 @@
-import React, { Fragment, useEffect, useState } from "react";
-import { CardBody, Col, Row, Table } from "reactstrap";
-import { Link } from '@/velzone/inertia-router';
-
-import {
+import { rankItem } from '@tanstack/match-sorter-utils';
+import type {
   Column,
   Table as ReactTable,
   ColumnFiltersState,
-  FilterFn,
+  FilterFn} from '@tanstack/react-table';
+import {
   useReactTable,
   getCoreRowModel,
   getFilteredRowModel,
@@ -14,8 +12,11 @@ import {
   getSortedRowModel,
   flexRender
 } from '@tanstack/react-table';
+import React, { Fragment, useEffect, useState } from "react";
+import { CardBody, Col, Row, Table } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 
-import { rankItem } from '@tanstack/match-sorter-utils';
+
 
 // Column Filter
 const Filter = ({
@@ -115,6 +116,7 @@ const TableContainer = ({
     addMeta({
       itemRank
     });
+
     return itemRank.passed;
   };
 
@@ -283,8 +285,14 @@ const TableContainer = ({
               const isDisabled = link.url === null;
               
               let label = link.label;
-              if (label.includes('Previous')) label = 'Précédent';
-              if (label.includes('Next')) label = 'Suivant';
+
+              if (label.includes('Previous')) {
+label = 'Précédent';
+}
+
+              if (label.includes('Next')) {
+label = 'Suivant';
+}
 
               return (
                 <li key={key} className={`page-item ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}>
@@ -292,10 +300,14 @@ const TableContainer = ({
                     className="page-link" 
                     onClick={(e) => {
                       e.preventDefault();
+
                       if (!isDisabled && onPageChange && link.url) {
                         const urlParams = new URL(link.url, window.location.origin).searchParams;
                         const page = urlParams.get('page');
-                        if (page) onPageChange(Number(page));
+
+                        if (page) {
+onPageChange(Number(page));
+}
                       }
                     }}
                     dangerouslySetInnerHTML={{ __html: label }}

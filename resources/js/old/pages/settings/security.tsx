@@ -3,17 +3,17 @@ import { useRef } from 'react';
 import SecurityController from '@/actions/App/Http/Controllers/Settings/SecurityController';
 import Heading from '@/old/components/heading';
 import InputError from '@/old/components/input-error';
+import type { Props as ManagePasskeysProps } from '@/old/components/manage-passkeys';
+import ManagePasskeys from '@/old/components/manage-passkeys';
+import type { Props as ManageTwoFactorProps } from '@/old/components/manage-two-factor';
+import ManageTwoFactor from '@/old/components/manage-two-factor';
 import PasswordInput from '@/old/components/password-input';
 import { Button } from '@/old/components/ui/button';
 import { Label } from '@/old/components/ui/label';
 import { edit } from '@/routes/security';
 /* @chisel-passkeys */
-import type { Props as ManagePasskeysProps } from '@/old/components/manage-passkeys';
-import ManagePasskeys from '@/old/components/manage-passkeys';
 /* @end-chisel-passkeys */
 /* @chisel-2fa */
-import type { Props as ManageTwoFactorProps } from '@/old/components/manage-two-factor';
-import ManageTwoFactor from '@/old/components/manage-two-factor';
 /* @end-chisel-2fa */
 
 type Props = {

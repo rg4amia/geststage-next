@@ -9,8 +9,8 @@ import InputError from '@/old/components/input-error';
 import { Button } from '@/old/components/ui/button';
 import { Input } from '@/old/components/ui/input';
 import { Label } from '@/old/components/ui/label';
-import { edit } from '@/routes/profile';
 import type { Auth } from '@/old/types';
+import { edit } from '@/routes/profile';
 /* @chisel-email-verification */
 import { send } from '@/routes/verification';
 /* @end-chisel-email-verification */

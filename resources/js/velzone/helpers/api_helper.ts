@@ -1,4 +1,5 @@
-import axios, { AxiosResponse, AxiosRequestConfig } from 'axios';
+import type { AxiosResponse, AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import config from "../config";
 
 const { api } = config;
@@ -13,8 +14,10 @@ const authUser =
   typeof window !== "undefined" ? sessionStorage.getItem("authUser") : null;
 const parsedAuthUser = authUser ? JSON.parse(authUser) : null;
 const token = parsedAuthUser?.token ?? null;
-if (token)
-  axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+
+if (token) {
+axios.defaults.headers.common["Authorization"] = "Bearer " + token;
+}
 
 // intercepting to capture errors
 axios.interceptors.response.use(
@@ -24,6 +27,7 @@ axios.interceptors.response.use(
   function (error) {
     // Any status codes that falls outside the range of 2xx cause this function to trigger
     let message;
+
     switch (error.status) {
       case 500:
         message = "Internal Server Error";
@@ -37,6 +41,7 @@ axios.interceptors.response.use(
       default:
         message = error.message || error;
     }
+
     return Promise.reject(message);
   }
 );
@@ -55,11 +60,12 @@ class APIClient {
   get = (url: string, params?: any): Promise<AxiosResponse> => {
     let response: Promise<AxiosResponse>;
 
-    let paramKeys: string[] = [];
+    const paramKeys: string[] = [];
 
     if (params) {
       Object.keys(params).map(key => {
         paramKeys.push(key + '=' + params[key]);
+
         return paramKeys;
       });
 
@@ -104,6 +110,7 @@ const getLoggedinUser = () => {
   }
 
   const user = sessionStorage.getItem("authUser");
+
   if (!user) {
     return null;
   } else {

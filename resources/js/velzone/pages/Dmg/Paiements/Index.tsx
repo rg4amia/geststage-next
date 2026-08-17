@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
 import { Head, router } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input, Row, Col, Label, UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import classnames from 'classnames';
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Container, Nav, NavItem, NavLink, TabContent, TabPane, Badge, Button, Modal, ModalHeader, ModalBody, ModalFooter, Input, Row, Col, Label, UncontrolledDropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -26,11 +26,15 @@ const DmgPaiementsIndex = ({
     };
 
     const toggleTab = (tab: string) => {
-        if (activeTab !== tab) setActiveTab(tab);
+        if (activeTab !== tab) {
+setActiveTab(tab);
+}
     };
 
     const toggleDemarrageTab = (tab: string) => {
-        if (demarrageTab !== tab) setDemarrageTab(tab);
+        if (demarrageTab !== tab) {
+setDemarrageTab(tab);
+}
     };
 
     const handleAction = (stagiaire: any) => {
@@ -93,7 +97,11 @@ const DmgPaiementsIndex = ({
         { header: 'Type de stage', accessorKey: 'type_stage', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Type de structure', accessorKey: 'type_structure', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Numéro AEJ', accessorKey: 'beneficiaire.matricule', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Nom et prénoms', accessorKey: 'beneficiaire', cell: (cell: any) => { const b = cell.getValue(); return <span className="fw-medium">{b ? `${b.nom} ${b.prenoms}`.trim() : '-'}</span>; } },
+        { header: 'Nom et prénoms', accessorKey: 'beneficiaire', cell: (cell: any) => {
+ const b = cell.getValue();
+
+ return <span className="fw-medium">{b ? `${b.nom} ${b.prenoms}`.trim() : '-'}</span>; 
+} },
         { header: 'Date de naissance', accessorKey: 'beneficiaire.date_naissance', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Date Debut', accessorKey: 'date_debut', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Date Fin', accessorKey: 'date_fin', cell: (cell: any) => cell.getValue() || '-' },
@@ -123,7 +131,11 @@ const DmgPaiementsIndex = ({
         { header: 'Source de financement', accessorKey: 'stage.source_financement', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Type de stagiaire', accessorKey: 'stage.type_stage', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Numéro AEJ', accessorKey: 'beneficiaire.matricule', cell: (cell: any) => cell.getValue() || '-' },
-        { header: 'Nom et prénoms', accessorKey: 'beneficiaire', cell: (cell: any) => { const b = cell.getValue(); return <span className="fw-medium">{b ? `${b.nom} ${b.prenoms}` : '-'}</span>; } },
+        { header: 'Nom et prénoms', accessorKey: 'beneficiaire', cell: (cell: any) => {
+ const b = cell.getValue();
+
+ return <span className="fw-medium">{b ? `${b.nom} ${b.prenoms}` : '-'}</span>; 
+} },
         { header: 'Date de naissance', accessorKey: 'beneficiaire.date_naissance', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Date Validation', accessorKey: 'stage.date_validation', cell: (cell: any) => cell.getValue() || '-' },
         { header: 'Date Debut', accessorKey: 'stage.date_debut', cell: (cell: any) => cell.getValue() || '-' },

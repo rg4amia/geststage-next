@@ -1,17 +1,17 @@
-import React from 'react';
 import { Head } from '@inertiajs/react';
+import React from 'react';
 import { Col, Container, Row } from 'reactstrap';
 
 //import Components
 import BreadCrumb from '../../Components/Common/BreadCrumb';
-import UpgradeAccountNotise from './UpgradeAccountNotise';
-import UsersByDevice from './UsersByDevice';
-import Widget from './Widget';
 import AudiencesMetrics from './AudiencesMetrics';
 import AudiencesSessions from './AudiencesSessions';
 import LiveUsers from './LiveUsers';
-import TopReferrals from './TopReferrals';
 import TopPages from './TopPages';
+import TopReferrals from './TopReferrals';
+import UpgradeAccountNotise from './UpgradeAccountNotise';
+import UsersByDevice from './UsersByDevice';
+import Widget from './Widget';
 
 const DashboardAnalytics = () => {
     return (

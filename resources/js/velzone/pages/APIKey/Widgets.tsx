@@ -1,7 +1,7 @@
-import React from "react";
-import { Card, CardBody, Col, Progress } from "reactstrap";
 import FeatherIcon from "feather-icons-react";
+import React from "react";
 import CountUp from "react-countup";
+import { Card, CardBody, Col, Progress } from "reactstrap";
 
 const Widgets = () => {
   return (

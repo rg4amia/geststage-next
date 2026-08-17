@@ -1,17 +1,11 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import TableContainer from '../../../Components/Common/TableContainer';
 import DeleteModal from "../../../Components/Common/DeleteModal";
 
 // Import Scroll Bar - SimpleBar
-import SimpleBar from 'simplebar-react';
 
 //Import Flatepicker
-import Flatpickr from "react-flatpickr";
-import moment from "moment";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
-import { Col, Modal, ModalBody, Row, Label, Input, Button, ModalHeader, FormFeedback, Form } from 'reactstrap';
 
 import {
   getTaskList,
@@ -20,6 +14,32 @@ import {
   deleteTask,
 } from "../../../slices/thunks";
 
+
+// Formik
+import { useFormik } from "formik";
+import { isEmpty } from "lodash";
+import moment from "moment";
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux";
+
+import { toast, ToastContainer } from 'react-toastify';
+import { Col, Modal, ModalBody, Row, Label, Input, Button, ModalHeader, FormFeedback, Form } from 'reactstrap';
+import 'react-toastify/dist/ReactToastify.css';
+import { createSelector } from 'reselect';
+import SimpleBar from 'simplebar-react';
+import * as Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
+
+import avatar1 from "../../../assets/images/users/avatar-1.jpg";
+import avatar10 from "../../../assets/images/users/avatar-10.jpg";
+import avatar2 from "../../../assets/images/users/avatar-2.jpg";
+import avatar3 from "../../../assets/images/users/avatar-3.jpg";
+import avatar5 from "../../../assets/images/users/avatar-5.jpg";
+import avatar6 from "../../../assets/images/users/avatar-6.jpg";
+import avatar7 from "../../../assets/images/users/avatar-7.jpg";
+import avatar8 from "../../../assets/images/users/avatar-8.jpg";
+import Loader from "../../../Components/Common/Loader";
 import {
   OrdersId,
   Project,
@@ -28,26 +48,6 @@ import {
   Status,
   Priority
 } from "./TaskListCol";
-
-// Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
-import { isEmpty } from "lodash";
-import { Link } from '@/velzone/inertia-router';
-
-import { toast, ToastContainer } from 'react-toastify';
-import 'react-toastify/dist/ReactToastify.css';
-import Loader from "../../../Components/Common/Loader";
-import { createSelector } from 'reselect';
-
-import avatar1 from "../../../assets/images/users/avatar-1.jpg";
-import avatar2 from "../../../assets/images/users/avatar-2.jpg";
-import avatar3 from "../../../assets/images/users/avatar-3.jpg";
-import avatar5 from "../../../assets/images/users/avatar-5.jpg";
-import avatar6 from "../../../assets/images/users/avatar-6.jpg";
-import avatar7 from "../../../assets/images/users/avatar-7.jpg";
-import avatar8 from "../../../assets/images/users/avatar-8.jpg";
-import avatar10 from "../../../assets/images/users/avatar-10.jpg";
 
 const Assigned = [
   { id: 1, imgId: "anna-adame", img: avatar1, name: "Anna Adame" },
@@ -178,6 +178,7 @@ const AllTasks = () => {
         dispatch(addNewTask(newTask));
         validation.resetForm();
       }
+
       toggle();
 
     },
@@ -205,7 +206,9 @@ const AllTasks = () => {
 
   // Get Data
   useEffect(() => {
-    if (!isEmpty(taskList)) setTaskList(taskList);
+    if (!isEmpty(taskList)) {
+setTaskList(taskList);
+}
   }, [taskList]);
 
   useEffect(() => {
@@ -241,6 +244,7 @@ const AllTasks = () => {
         ele.checked = false;
       });
     }
+
     deleteCheckbox();
   }, []);
 
@@ -252,7 +256,9 @@ const AllTasks = () => {
     const checkall: any = document.getElementById("checkBoxAll");
     selectedCheckBoxDelete.forEach((element: any) => {
       dispatch(deleteTask(element.value));
-      setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+      setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
     });
     setIsMultiDeleteButton(false);
     checkall.checked = false;
@@ -309,12 +315,16 @@ const AllTasks = () => {
                     </Link>
                   </li>
                   <li className="list-inline-item">
-                    <Link to="#" onClick={() => { const taskData = cell.row.original; handleCustomerClick(taskData); }}>
+                    <Link to="#" onClick={() => {
+ const taskData = cell.row.original; handleCustomerClick(taskData); 
+}}>
                       <i className="ri-pencil-fill align-bottom me-2 text-muted"></i>
                     </Link>
                   </li>
                   <li className="list-inline-item">
-                    <Link to="#" className="remove-item-btn" onClick={() => { const taskData = cell.row.original; onClickDelete(taskData); }}>
+                    <Link to="#" className="remove-item-btn" onClick={() => {
+ const taskData = cell.row.original; onClickDelete(taskData); 
+}}>
                       <i className="ri-delete-bin-fill align-bottom me-2 text-muted"></i>
                     </Link>
                   </li>
@@ -338,6 +348,7 @@ const AllTasks = () => {
         enableColumnFilter: false,
         cell: (cell: any) => {
           const assigned = cell.getValue().map((item: any) => item.img ? item.img : item);
+
           return (<React.Fragment>
             <div className="avatar-group">
               {assigned.map((item: any, index: any) => (
@@ -402,7 +413,9 @@ const AllTasks = () => {
                 <h5 className="card-title mb-0 flex-grow-1">All Tasks</h5>
                 <div className="flex-shrink-0">
                   <div className="d-flex flex-wrap gap-2">
-                    <button className="btn btn-primary add-btn me-1" onClick={() => { setIsEdit(false); toggle(); }}><i className="ri-add-line align-bottom me-1"></i> Create Task</button>
+                    <button className="btn btn-primary add-btn me-1" onClick={() => {
+ setIsEdit(false); toggle(); 
+}}><i className="ri-add-line align-bottom me-1"></i> Create Task</button>
                     {isMultiDeleteButton && <button className="btn btn-soft-danger" onClick={() => setDeleteModalMulti(true)} ><i className="ri-delete-bin-2-line"></i></button>}
                   </div>
                 </div>
@@ -440,11 +453,12 @@ const AllTasks = () => {
         modalClassName='modal fade zoomIn'
       >
         <ModalHeader className="p-3 bg-info-subtle" toggle={toggle}>
-          {!!isEdit ? "Edit Task" : "Create Task"}
+          {isEdit ? "Edit Task" : "Create Task"}
         </ModalHeader>
         <Form className="tablelist-form" onSubmit={(e: any) => {
           e.preventDefault();
           validation.handleSubmit();
+
           return false;
         }}>
           <ModalBody className="modal-body">
@@ -648,7 +662,7 @@ const AllTasks = () => {
                 }}
                 className="btn-light"
               >Close</Button>
-              <button type="submit" className="btn btn-success" id="add-btn">{!!isEdit ? "Update Task" : "Add Task"}</button>
+              <button type="submit" className="btn btn-success" id="add-btn">{isEdit ? "Update Task" : "Add Task"}</button>
             </div>
           </div>
         </Form>

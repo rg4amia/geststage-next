@@ -1,11 +1,14 @@
+import { useFormik } from "formik";
 import React, { useEffect, useState, useCallback } from 'react';
-import { Card, CardBody, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, FormFeedback, Input, Modal, ModalBody, ModalHeader, Row, UncontrolledDropdown } from 'reactstrap';
-import SimpleBar from 'simplebar-react';
+import { useSelector, useDispatch } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
-import SimpleDonutCharts from './FileManagerCharts';
+import { Card, CardBody, Col, Container, DropdownItem, DropdownMenu, DropdownToggle, FormFeedback, Input, Modal, ModalBody, ModalHeader, Row, UncontrolledDropdown } from 'reactstrap';
+import { createSelector } from 'reselect';
+import SimpleBar from 'simplebar-react';
+import * as  Yup from "yup";
+import { Link } from '@/velzone/inertia-router';
 import DeleteModal from '../../Components/Common/DeleteModal';
 //redux
-import { useSelector, useDispatch } from 'react-redux';
 
 //import action
 import {
@@ -20,10 +23,7 @@ import {
 } from "../../slices/thunks";
 
 // Formik
-import * as  Yup from "yup";
-import { useFormik } from "formik";
-import { Link } from '@/velzone/inertia-router';
-import { createSelector } from 'reselect';
+import SimpleDonutCharts from './FileManagerCharts';
 
 
 const FileManager = () => {
@@ -179,7 +179,7 @@ const FileManager = () => {
 
     const fileCategory = (e: any, ele: any) => {
         setFilterActive(ele);
-        var folderList = document.getElementById("folder-list") as HTMLElement;
+        const folderList = document.getElementById("folder-list") as HTMLElement;
         folderList.style.display = "none";
         setFileList(
             files.filter((item: any) => item.fileType === e)
@@ -212,9 +212,9 @@ const FileManager = () => {
     };
 
     const fileSidebar = () => {
-        var folderOverview = document.getElementById("folder-overview") as HTMLElement;
+        const folderOverview = document.getElementById("folder-overview") as HTMLElement;
         folderOverview.style.display = "none";
-        var fileOverview = document.getElementById("file-overview") as HTMLElement;
+        const fileOverview = document.getElementById("file-overview") as HTMLElement;
         fileOverview.style.display = "block";
     };
 
@@ -256,14 +256,16 @@ const FileManager = () => {
                 dispatch(onAddNewFolder(newFolder));
                 folderValidation.resetForm();
             }
+
             folderToggle();
         },
     });
 
 
     const dateFormat = () => {
-        let d = new Date(),
+        const d = new Date(),
             months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
         return ((d.getDate() + ' ' + months[d.getMonth()] + ', ' + d.getFullYear()).toString());
     };
 
@@ -308,6 +310,7 @@ const FileManager = () => {
                 dispatch(onAddNewFile(newFile));
                 fileValidation.resetForm();
             }
+
             fileToggle();
         },
     });
@@ -446,7 +449,9 @@ const FileManager = () => {
                                                                 <DropdownMenu className="dropdown-menu-end">
                                                                     <DropdownItem className="view-item-btn">Open</DropdownItem>
                                                                     <DropdownItem className="edit-folder-list" onClick={() => handleFolderClick(item)}>Rename</DropdownItem>
-                                                                    <DropdownItem onClick={() => { onClickFolderDelete(item); setDeleteAlt(true); }}>Delete</DropdownItem>
+                                                                    <DropdownItem onClick={() => {
+ onClickFolderDelete(item); setDeleteAlt(true); 
+}}>Delete</DropdownItem>
                                                                 </DropdownMenu>
                                                             </UncontrolledDropdown>
 
@@ -512,7 +517,9 @@ const FileManager = () => {
                                                                         <i className="ri-more-fill align-bottom" />
                                                                     </DropdownToggle>
                                                                     <DropdownMenu className="dropdown-menu-end">
-                                                                        <DropdownItem className="viewfile-list" onClick={() => { setSidebarData(item); fileSidebar(); sidebarOpen("file-detail-show"); }}>View</DropdownItem>
+                                                                        <DropdownItem className="viewfile-list" onClick={() => {
+ setSidebarData(item); fileSidebar(); sidebarOpen("file-detail-show"); 
+}}>View</DropdownItem>
                                                                         <DropdownItem className="edit-list" onClick={() => handleFileClick(item)}>Rename</DropdownItem>
                                                                         <DropdownItem divider />
                                                                         <DropdownItem className="remove-list" onClick={() => onClickFileDelete(item)}>Delete</DropdownItem>
@@ -744,6 +751,7 @@ const FileManager = () => {
                         onSubmit={(e) => {
                             e.preventDefault();
                             folderValidation.handleSubmit();
+
                             return false;
                         }}
                     >
@@ -814,12 +822,13 @@ const FileManager = () => {
 
             {/* File Modal */}
             <Modal id="createFileModal" isOpen={modalFile} toggle={fileToggle} modalClassName="zoomIn" centered tabIndex={-1}>
-                <ModalHeader toggle={fileToggle} className="p-3 bg-success-subtle">{!!isEdit ? "File Rename" : "Create File"}</ModalHeader>
+                <ModalHeader toggle={fileToggle} className="p-3 bg-success-subtle">{isEdit ? "File Rename" : "Create File"}</ModalHeader>
                 <ModalBody>
                     <form className="needs-validation createfile-form" id="createfile-form"
                         onSubmit={(e) => {
                             e.preventDefault();
                             fileValidation.handleSubmit();
+
                             return false;
                         }}
                     >
@@ -842,7 +851,7 @@ const FileManager = () => {
                         </div>
                         <div className="hstack gap-2 justify-content-end">
                             <button type="button" className="btn btn-ghost-success material-shadow-none" onClick={() => setModalFile(false)}><i className="ri-close-line align-bottom"></i> Close</button>
-                            <button type="submit" className="btn btn-primary" id="addNewFile">{!!isEdit ? "Save" : "Create"}</button>
+                            <button type="submit" className="btn btn-primary" id="addNewFile">{isEdit ? "Save" : "Create"}</button>
                         </div>
                     </form>
                 </ModalBody>

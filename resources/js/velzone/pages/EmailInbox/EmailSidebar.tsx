@@ -1,5 +1,6 @@
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
 import React, { useState } from "react";
-import { Link } from '@/velzone/inertia-router';
 import {
   Modal,
   ModalBody,
@@ -11,17 +12,16 @@ import {
   DropdownMenu,
   DropdownItem,
 } from "reactstrap";
-import { CKEditor } from "@ckeditor/ckeditor5-react";
-import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
 // import FeatherIcon from 'feather-icons-react';
 
 //SimpleBar
 import SimpleBar from "simplebar-react";
+import { Link } from '@/velzone/inertia-router';
 
 //import images
 import image2 from "../../assets/images/users/avatar-2.jpg";
-import image4 from "../../assets/images/users/avatar-4.jpg";
 import image3 from "../../assets/images/users/avatar-3.jpg";
+import image4 from "../../assets/images/users/avatar-4.jpg";
 import image5 from "../../assets/images/users/avatar-5.jpg";
 
 const EmailSidebar = () => {
@@ -34,6 +34,7 @@ const EmailSidebar = () => {
       setModal(true);
     }
   };
+
   return (
     <React.Fragment>
       <div className="email-menu-sidebar minimal-border">

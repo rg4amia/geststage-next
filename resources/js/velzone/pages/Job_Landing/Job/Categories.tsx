@@ -1,6 +1,6 @@
 import React from "react";
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, Col, Container, Row } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 import { categories } from "../../../common/data/jobLanding";
 
 const Categories = () => {

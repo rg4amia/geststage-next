@@ -1,13 +1,14 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, Col, Container, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
+import logoLight from "../../../assets/images/logo-light.png";
 import ParticlesAuth from "../ParticlesAuth";
 
 //import images
-import logoLight from "../../../assets/images/logo-light.png";
 
 const BasicSuccessMsg = () => {
     document.title = "Success Message | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <ParticlesAuth>

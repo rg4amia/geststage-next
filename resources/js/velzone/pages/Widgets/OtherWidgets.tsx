@@ -1,15 +1,15 @@
+import FeatherIcon from "feather-icons-react";
 import React from 'react';
 import { Alert, Card, CardBody, Col, Row } from 'reactstrap';
 import { Link } from '@/velzone/inertia-router';
 
 //Import Icons
-import FeatherIcon from "feather-icons-react";
 
+import illustarator1 from "../../assets/images/user-illustarator-1.png";
+import illustarator2 from "../../assets/images/user-illustarator-2.png";
 import { otherWidgets2 } from "../../common/data/index";
 
 // Import Images
-import illustarator1 from "../../assets/images/user-illustarator-1.png";
-import illustarator2 from "../../assets/images/user-illustarator-2.png";
 
 const OtherWidgets = () => {
     return (

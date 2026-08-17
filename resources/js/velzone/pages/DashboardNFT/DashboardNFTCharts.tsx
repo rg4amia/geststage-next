@@ -3,9 +3,9 @@ import ReactApexChart from "react-apexcharts";
 import useChartColors from "Components/Common/useChartColors";
 
 const MarketplaceChart = ({ chartId, series }: any) => {
-    var MarketplaceChartColors = useChartColors(chartId);
+    const MarketplaceChartColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         chart: {
             height: 350,
             type: 'line',
@@ -31,6 +31,7 @@ const MarketplaceChart = ({ chartId, series }: any) => {
             categories: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -51,7 +52,7 @@ const MarketplaceChart = ({ chartId, series }: any) => {
 };
 
 const PopularityChart = ({ chartId }: any) => {
-    var PopularityChartColors = useChartColors(chartId);
+    const PopularityChartColors = useChartColors(chartId);
     const series = [{
         name: 'Like',
         data: [12.45, 16.2, 8.9, 11.42, 12.6, 18.1, 18.2, 14.16]
@@ -124,7 +125,7 @@ const PopularityChart = ({ chartId }: any) => {
 
 const TopArtworkChart = ({ seriesData, chartsColor }: any) => {
     const topartworkColors = [chartsColor];
-    var options: any = {
+    const options: any = {
         chart: {
             width: 80,
             height: 30,
@@ -160,6 +161,7 @@ const TopArtworkChart = ({ seriesData, chartsColor }: any) => {
         },
         colors: topartworkColors
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"

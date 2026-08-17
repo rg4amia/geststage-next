@@ -1,10 +1,10 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col, Table } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 
-import avatar4 from "../../../assets/images/users/avatar-4.jpg";
 import avatar10 from "../../../assets/images/users/avatar-10.jpg";
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
+import avatar4 from "../../../assets/images/users/avatar-4.jpg";
 
 const TicketDetails = () => {
     return (

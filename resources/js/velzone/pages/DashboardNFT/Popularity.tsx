@@ -1,13 +1,13 @@
 import React from 'react';
 import { Card, CardBody, CardHeader, Col } from 'reactstrap';
+import SimpleBar from "simplebar-react";
+import { Link } from '@/velzone/inertia-router';
 import { popularityData } from "../../common/data/dashboardNFT";
 
 // Import Chart
 import { PopularityChart } from "./DashboardNFTCharts";
 
 //SimpleBar
-import SimpleBar from "simplebar-react";
-import { Link } from '@/velzone/inertia-router';
 
 const Popularity = () => {
 

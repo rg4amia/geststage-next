@@ -1,10 +1,10 @@
-import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
-import { Card, CardBody, CardHeader, Col, Container, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import classnames from "classnames";
-
+import React, { useState } from 'react';
+import { Card, CardBody, CardHeader, Col, Container, Nav, NavItem, NavLink, Row, TabContent, TabPane } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import { pricing1, pricing2, pricing3 } from '../../../common/data';
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+
 
 const Pricing = () => {
 
@@ -35,7 +35,9 @@ const Pricing = () => {
                                             <NavLink
                                                 href="#"
                                                 className={classnames({ active: activeTab === '1' }, 'fw-semibold')}
-                                                onClick={() => { toggleTab('1'); }}
+                                                onClick={() => {
+ toggleTab('1'); 
+}}
                                             >
                                                 Monthly
                                             </NavLink>
@@ -44,7 +46,9 @@ const Pricing = () => {
                                             <NavLink
                                                 href="#"
                                                 className={classnames({ active: activeTab === '2' }, 'fw-semibold')}
-                                                onClick={() => { toggleTab('2'); }}
+                                                onClick={() => {
+ toggleTab('2'); 
+}}
                                             >Annually <span className="badge bg-success">25% Off</span>
                                             </NavLink>
                                         </NavItem>

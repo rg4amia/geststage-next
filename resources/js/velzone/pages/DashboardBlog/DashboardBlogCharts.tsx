@@ -1,6 +1,6 @@
-import useChartColors from "Components/Common/useChartColors";
 import React from 'react'
 import ReactApexChart from "react-apexcharts";
+import useChartColors from "Components/Common/useChartColors";
 
 const DashboardBlogCharts = ({ chartId }: any) => {
 
@@ -97,7 +97,7 @@ const DeviceCharts = ({ chartId }: any) => {
     const chartColors = useChartColors(chartId);
 
     const series = [44, 55, 24];
-    var options = {
+    const options = {
         chart: {
             height: 210,
             type: 'donut',

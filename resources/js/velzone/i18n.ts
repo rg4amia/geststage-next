@@ -2,14 +2,14 @@ import i18n from 'i18next';
 import detector from 'i18next-browser-languagedetector';
 import { initReactI18next } from 'react-i18next';
 
+import translationAR from './locales/ar.json';
+import translationCN from './locales/ch.json';
+import translationENG from './locales/en.json';
+import translationFR from './locales/fr.json';
 import translationGr from './locales/gr.json';
 import translationIT from './locales/it.json';
 import translationRS from './locales/ru.json';
 import translationSP from './locales/sp.json';
-import translationENG from './locales/en.json';
-import translationCN from './locales/ch.json';
-import translationFR from './locales/fr.json';
-import translationAR from './locales/ar.json';
 
 // the translations
 const resources = {
@@ -51,6 +51,7 @@ const language =
     storedLanguage && (storedLanguage !== 'fr' || userSelectedLanguage)
         ? storedLanguage
         : 'en';
+
 if (
     typeof window !== 'undefined' &&
     (!storedLanguage || (storedLanguage === 'fr' && !userSelectedLanguage))

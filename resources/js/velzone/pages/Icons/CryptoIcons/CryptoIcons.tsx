@@ -1,6 +1,5 @@
 import React from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 // Imported Images
 import pac from "../../../assets/images/svg/crypto-icons/$pac.svg";
@@ -474,10 +473,12 @@ import zest from "../../../assets/images/svg/crypto-icons/zest.svg";
 import zil from "../../../assets/images/svg/crypto-icons/zil.svg";
 import zilla from "../../../assets/images/svg/crypto-icons/zilla.svg";
 import zrx from "../../../assets/images/svg/crypto-icons/zrx.svg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 
 const CryptoIcons = () => {
     document.title = "Crypto Icons | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

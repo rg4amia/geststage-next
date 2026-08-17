@@ -1,32 +1,22 @@
-import React, { useEffect, useState, useCallback } from 'react';
 
 import { Col, DropdownItem, DropdownMenu, DropdownToggle, Nav, NavItem, NavLink, Row, UncontrolledDropdown, UncontrolledTooltip, UncontrolledCollapse, ButtonGroup, Button, UncontrolledButtonDropdown, Modal, ModalBody, ModalHeader, Input, Progress, Card, CardHeader, CardBody, Alert } from 'reactstrap';
 
-import classnames from "classnames";
 
-import { CKEditor } from "@ckeditor/ckeditor5-react";
 import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
+import classnames from "classnames";
 import FeatherIcon from 'feather-icons-react';
-import DeleteModal from '../../Components/Common/DeleteModal';
+import React, { useEffect, useState, useCallback } from 'react';
 //SimpleBar
-import SimpleBar from "simplebar-react";
 
 //Import Scrollbar
 import PerfectScrollbar from "react-perfect-scrollbar";
 import "react-perfect-scrollbar/dist/css/styles.css";
 
 // Import Images
-import avatar1 from "../../assets/images/users/avatar-1.jpg";
 
-import img2 from "../../assets/images/small/img-2.jpg";
-import img6 from "../../assets/images/small/img-6.jpg";
 
-import image2 from "../../assets/images/users/avatar-2.jpg";
-import image4 from "../../assets/images/users/avatar-4.jpg";
-import image3 from "../../assets/images/users/avatar-3.jpg";
-import image5 from "../../assets/images/users/avatar-5.jpg";
 
-import { Link } from '@/velzone/inertia-router';
 import { createSelector } from "reselect";
 
 //redux
@@ -34,6 +24,16 @@ import { useSelector, useDispatch } from "react-redux";
 import { getMailDetails, unreadMail, staredMail, labelMail, trashMail, deleteMail } from '../../slices/thunks';
 
 import { ToastContainer, toast } from 'react-toastify';
+import SimpleBar from "simplebar-react";
+import { Link } from '@/velzone/inertia-router';
+import img2 from "../../assets/images/small/img-2.jpg";
+import img6 from "../../assets/images/small/img-6.jpg";
+import avatar1 from "../../assets/images/users/avatar-1.jpg";
+import image2 from "../../assets/images/users/avatar-2.jpg";
+import image3 from "../../assets/images/users/avatar-3.jpg";
+import image4 from "../../assets/images/users/avatar-4.jpg";
+import image5 from "../../assets/images/users/avatar-5.jpg";
+import DeleteModal from '../../Components/Common/DeleteModal';
 
 const EmailToolbar = () => {
 
@@ -132,21 +132,26 @@ const EmailToolbar = () => {
     }, []);
 
     const toggleTab = (ncategory: any, ntype: any, nlabel: any) => {
-        var element = document.getElementById("mail-filter-navlist") as HTMLElement;
+        const element = document.getElementById("mail-filter-navlist") as HTMLElement;
+
         if (ncategory === "all" || ncategory === "inbox") {
             element.style.display = 'block';
         } else {
             element.style.display = 'none';
         }
+
         if (activeTabs !== ncategory) {
             setActive(ncategory);
         }
+
         if (isLabelTab !== nlabel) {
             setIsLabelTab(nlabel);
         }
+
         if (isTypeTab !== ntype) {
             setIsTypeTab(ntype);
         }
+
         setCategory(ncategory);
         settype(ntype);
         setLabel(nlabel);
@@ -178,6 +183,7 @@ const EmailToolbar = () => {
         } else {
             element.classList.add("email-detail-show")
         }
+
         setEmailinfo(item);
 
         if (item.unread) {
@@ -257,7 +263,7 @@ const EmailToolbar = () => {
         element.forEach((element: any) => {
 
             if (element.classList.contains('active')) {
-                var forId = element.querySelector('.form-check-input').value;
+                const forId = element.querySelector('.form-check-input').value;
 
                 if (displayCategory === "trash") {
                     dispatch(deleteMail(forId));
@@ -265,13 +271,16 @@ const EmailToolbar = () => {
                     dispatch(trashMail(forId));
                 }
             }
+
             element.classList.remove("active");
             element.querySelector('.form-check-input').checked = false;
 
             
         });
         
-        setTimeout(() => { toast.clearWaitingQueue(); }, 3000);
+        setTimeout(() => {
+ toast.clearWaitingQueue(); 
+}, 3000);
         checkall.checked = false;
         ele.style.display = 'none';
 
@@ -289,10 +298,13 @@ const EmailToolbar = () => {
             });
 
         } else {
-            var unreadConversations = document.getElementById("unreadConversations") as HTMLElement;
+            const unreadConversations = document.getElementById("unreadConversations") as HTMLElement;
+
             if (document.querySelectorAll(".message-list li.unread").length === 0) {
                 unreadConversations.style.display = "block";
-                setTimeout(function () { unreadConversations.style.display = "none"; }, 1000);
+                setTimeout(function () {
+ unreadConversations.style.display = "none"; 
+}, 1000);
             }
 
             document.querySelectorAll(".message-list li.unread").forEach(function (element: any) {
@@ -325,6 +337,7 @@ const EmailToolbar = () => {
             if (emailinfo.forId === item.forId) {
                 document.querySelector(".email-detail-content")?.querySelector(".favourite-btn")?.classList.toggle("active")
             }
+
             dispatch(staredMail(item.forId));
         }
 
@@ -368,10 +381,11 @@ const EmailToolbar = () => {
         element.forEach((element: any) => {
 
             if (element.classList.contains('active')) {
-                var forId = element.querySelector('.form-check-input').value;
+                const forId = element.querySelector('.form-check-input').value;
 
                 dispatch(labelMail({ forId, e }));
             }
+
             element.classList.remove("active");
             element.querySelector('.form-check-input').checked = false;
 
@@ -428,7 +442,7 @@ const EmailToolbar = () => {
 
 
     const onSendMessage = () => {
-        var modifiedMessages = [...messages];
+        const modifiedMessages = [...messages];
         const lastItem = modifiedMessages.length
             ? modifiedMessages[modifiedMessages.length - 1]
             : { id: 1 };
@@ -459,6 +473,7 @@ const EmailToolbar = () => {
     // Send Message by Enter key
     const onKeyPress = (e: any) => {
         const { key } = e;
+
         if (key === "Enter") {
             e.preventDefault();
             onSendMessage();
@@ -474,6 +489,7 @@ const EmailToolbar = () => {
     // Copy Chat Message
     const copyMessage = (ele: HTMLElement) => {
         const copy = ele.closest(".chat-list")?.querySelector('.ctext-content')?.innerHTML;
+
         if (copy) {
             navigator.clipboard.writeText(copy);
         }
@@ -483,6 +499,7 @@ const EmailToolbar = () => {
         if (displayCategory === "all" && category === "trash") {
             return false;
         }
+
         return (
             (displayCategory === "all" || displayCategory === category) &&
             (displaytype === "all" || displaytype === type) &&
@@ -548,51 +565,67 @@ const EmailToolbar = () => {
                         data-simplebar
                     >
                         <div className="mail-list mt-3">
-                            <Link to="#" onClick={() => { toggleTab("all", "all", "all"); }} className={classnames({ active: activeTabs === 'all' })}>
+                            <Link to="#" onClick={() => {
+ toggleTab("all", "all", "all"); 
+}} className={classnames({ active: activeTabs === 'all' })}>
                                 <i className="ri-mail-fill me-3 align-middle fw-medium"></i>{" "}
                                 <span className="mail-list-link">
                                     All{" "}
                                 </span>
                                 {unreadmsg.all ? <span className="badge bg-success-subtle text-success ms-auto">{unreadmsg.all}</span> : ""}
                             </Link>
-                            <Link to="#" onClick={() => { toggleTab("inbox", "all", "all"); }} className={classnames({ active: activeTabs === 'inbox' })}>
+                            <Link to="#" onClick={() => {
+ toggleTab("inbox", "all", "all"); 
+}} className={classnames({ active: activeTabs === 'inbox' })}>
                                 <i className="ri-inbox-archive-fill me-3 align-middle fw-medium"></i>{" "}
                                 <span className="mail-list-link">
                                     Inbox{" "}
                                 </span>
                                 {unreadmsg.inbox ? <span className="badge bg-success-subtle text-success ms-auto">{unreadmsg.inbox}</span> : ""}
                             </Link>
-                            <Link to="#" onClick={() => { toggleTab("sent", "all", "all"); }} className={activeTabs === "sent" ? "active" : ''}>
+                            <Link to="#" onClick={() => {
+ toggleTab("sent", "all", "all"); 
+}} className={activeTabs === "sent" ? "active" : ''}>
                                 <i className="ri-send-plane-2-fill me-3 align-middle fw-medium"></i>{" "}
                                 <span className="mail-list-link">
                                     Sent
                                 </span>
                             </Link>
-                            <Link to="#" onClick={() => { toggleTab("draft", "all", "all"); }} className={activeTabs === "draft" ? "active" : ''}>
+                            <Link to="#" onClick={() => {
+ toggleTab("draft", "all", "all"); 
+}} className={activeTabs === "draft" ? "active" : ''}>
                                 <i className="ri-edit-2-fill me-3 align-middle fw-medium"></i>
                                 <span className="mail-list-link">
                                     Draft
                                 </span>
                             </Link>
-                            <Link to="#" onClick={() => { toggleTab("spam", "all", "all"); }} className={activeTabs === "spam" ? "active" : ''}>
+                            <Link to="#" onClick={() => {
+ toggleTab("spam", "all", "all"); 
+}} className={activeTabs === "spam" ? "active" : ''}>
                                 <i className="ri-error-warning-fill me-3 align-middle fw-medium"></i>
                                 <span className="mail-list-link">
                                     Spam
                                 </span>
                             </Link>
-                            <Link to="#" onClick={() => { toggleTab("trash", "all", "all"); }} className={activeTabs === "trash" ? "active" : ''}>
+                            <Link to="#" onClick={() => {
+ toggleTab("trash", "all", "all"); 
+}} className={activeTabs === "trash" ? "active" : ''}>
                                 <i className="ri-delete-bin-5-fill me-3 align-middle fw-medium"></i>
                                 <span className="mail-list-link">
                                     Trash
                                 </span>
                             </Link>
-                            <Link to="#" onClick={() => { toggleTab("starred", "all", "all"); }} className={activeTabs === "starred" ? "active" : ''}>
+                            <Link to="#" onClick={() => {
+ toggleTab("starred", "all", "all"); 
+}} className={activeTabs === "starred" ? "active" : ''}>
                                 <i className="ri-star-fill me-3 align-middle fw-medium"></i>
                                 <span className="mail-list-link">
                                     Starred
                                 </span>
                             </Link>
-                            <Link to="#" onClick={() => { toggleTab("important", "all", "all"); }} className={activeTabs === "important" ? "active" : ''}>
+                            <Link to="#" onClick={() => {
+ toggleTab("important", "all", "all"); 
+}} className={activeTabs === "important" ? "active" : ''}>
                                 <i className="ri-price-tag-3-fill me-3 align-middle fw-medium"></i>
                                 <span className="mail-list-link">
                                     Important
@@ -604,33 +637,43 @@ const EmailToolbar = () => {
                             <h5 className="fs-12 text-uppercase text-muted mt-4">Labels</h5>
 
                             <div className="mail-list mt-1">
-                                <Link to="#" onClick={() => { toggleTab("all", "all", "support"); }} className={isLabelTab === "support" ? "active" : ''}>
+                                <Link to="#" onClick={() => {
+ toggleTab("all", "all", "support"); 
+}} className={isLabelTab === "support" ? "active" : ''}>
                                     <span className="ri-checkbox-blank-circle-line me-2 text-info"></span>{" "}
                                     <span className="mail-list-link">Support{" "} </span>
                                     {unreadmsg.support ? <span className="badge bg-success-subtle text-success ms-auto">{unreadmsg.support}</span> : ""}
                                 </Link>
-                                <Link to="#" onClick={() => { toggleTab("all", "all", "freelance"); }} className={isLabelTab === "freelance" ? "active" : ''}>
+                                <Link to="#" onClick={() => {
+ toggleTab("all", "all", "freelance"); 
+}} className={isLabelTab === "freelance" ? "active" : ''}>
                                     <span className="ri-checkbox-blank-circle-line me-2 text-warning"></span>{" "}
                                     <span className="mail-list-link">
                                         Freelance
                                     </span>
                                     {unreadmsg.freelance ? <span className="badge bg-success-subtle text-success ms-auto">{unreadmsg.freelance}</span> : ""}
                                 </Link>
-                                <Link to="#" onClick={() => { toggleTab("all", "all", "social"); }} className={isLabelTab === "social" ? "active" : ''}>
+                                <Link to="#" onClick={() => {
+ toggleTab("all", "all", "social"); 
+}} className={isLabelTab === "social" ? "active" : ''}>
                                     <span className="ri-checkbox-blank-circle-line me-2 text-primary"></span>{" "}
                                     <span className="mail-list-link">
                                         Social
                                     </span>
                                     {unreadmsg.social ? <span className="badge bg-success-subtle text-success ms-auto">{unreadmsg.social}</span> : ""}
                                 </Link>
-                                <Link to="#" onClick={() => { toggleTab("all", "all", "friend"); }} className={isLabelTab === "friend" ? "active" : ''}>
+                                <Link to="#" onClick={() => {
+ toggleTab("all", "all", "friend"); 
+}} className={isLabelTab === "friend" ? "active" : ''}>
                                     <span className="ri-checkbox-blank-circle-line me-2 text-danger"></span>{" "}
                                     <span className="mail-list-link">
                                         Friends
                                     </span>
                                     {unreadmsg.friend ? <span className="badge bg-success-subtle text-success ms-auto">{unreadmsg.friend}</span> : ""}
                                 </Link>
-                                <Link to="#" onClick={() => { toggleTab("all", "all", "family"); }} className={isLabelTab === "family" ? "active" : ''}>
+                                <Link to="#" onClick={() => {
+ toggleTab("all", "all", "family"); 
+}} className={isLabelTab === "family" ? "active" : ''}>
                                     <span className="ri-checkbox-blank-circle-line me-2 text-success"></span>{" "}
                                     <span className="mail-list-link">
                                         Family
@@ -706,7 +749,9 @@ const EmailToolbar = () => {
                                             <button type="button" className="btn btn-ghost-secondary btn-icon btn-sm fs-16 material-shadow-none" id="Tooltip2">
                                                 <i className="ri-error-warning-fill align-bottom"></i>
                                             </button>
-                                            <button type="button" className="btn btn-ghost-secondary btn-icon btn-sm fs-16 material-shadow-none" id="Tooltip3" onClick={() => { setDeleteModal(true); }} >
+                                            <button type="button" className="btn btn-ghost-secondary btn-icon btn-sm fs-16 material-shadow-none" id="Tooltip3" onClick={() => {
+ setDeleteModal(true); 
+}} >
 
                                                 <i className="ri-delete-bin-5-fill align-bottom"></i>
                                             </button>
@@ -887,7 +932,9 @@ const EmailToolbar = () => {
                                     <button className="btn btn-ghost-secondary btn-icon btn-sm fs-16 material-shadow-none">
                                         <i className="ri-printer-fill align-bottom"></i>
                                     </button>
-                                    <button className="btn btn-ghost-secondary btn-icon btn-sm fs-16 material-shadow-none" onClick={() => { setDeleteModal(true); setDeleteData(true) }}>
+                                    <button className="btn btn-ghost-secondary btn-icon btn-sm fs-16 material-shadow-none" onClick={() => {
+ setDeleteModal(true); setDeleteData(true) 
+}}>
                                         <i className="ri-delete-bin-5-fill align-bottom"></i>
                                     </button>
                                     <UncontrolledDropdown>

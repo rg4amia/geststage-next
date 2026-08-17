@@ -1,5 +1,5 @@
-import React from 'react';
 import { Head, router } from '@inertiajs/react';
+import React from 'react';
 import { Badge, Button, Card, CardBody, CardHeader, Col, Container, Input, Row, Table } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
 
@@ -142,6 +142,7 @@ const ReportingIndex = ({
 
     const formatCurrency = (value: string | number) => {
         const normalized = typeof value === 'string' ? Number(value) : value;
+
         return moneyFormatter.format(Number.isFinite(normalized) ? normalized : 0);
     };
 

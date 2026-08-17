@@ -1,13 +1,13 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardBody, Col, Row } from 'reactstrap';
-import classNames from "classnames";
-import { useSelector, useDispatch } from "react-redux";
-import { CountriesCharts } from './DashboardAnalyticsCharts';
-
 import { VectorMap } from '@south-paw/react-vector-maps'
+import classNames from "classnames";
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from "react-redux";
+import { Card, CardBody, Col, Row } from 'reactstrap';
+import { createSelector } from 'reselect';
 import world from '../../common/world.svg.json';
 import { getAllData } from "../../slices/thunks";
-import { createSelector } from 'reselect';
+import { CountriesCharts } from './DashboardAnalyticsCharts';
+
 
 const LiveUsers = () => {
     const dispatch: any = useDispatch();
@@ -34,6 +34,7 @@ const LiveUsers = () => {
     useEffect(() => {
         dispatch(getAllData("halfyearly"));
     }, [dispatch]);
+
     return (
         <React.Fragment>
             <Col xxl={7}>
@@ -112,13 +113,19 @@ const LiveUsers = () => {
                             <div className="card-header align-items-center d-flex">
                                 <h4 className="card-title mb-0 flex-grow-1">Sessions by Countries</h4>
                                 <div className="d-flex gap-1">
-                                    <button type="button" className={classNames({ active: periodType === "all" }, "btn btn-soft-secondary btn-sm material-shadow-none")} onClick={() => { onChangeChartPeriod("all"); }}>
+                                    <button type="button" className={classNames({ active: periodType === "all" }, "btn btn-soft-secondary btn-sm material-shadow-none")} onClick={() => {
+ onChangeChartPeriod("all"); 
+}}>
                                         ALL
                                     </button>
-                                    <button type="button" className={classNames({ active: periodType === "monthly" }, "btn btn-soft-primary btn-sm material-shadow-none")} onClick={() => { onChangeChartPeriod("monthly"); }}>
+                                    <button type="button" className={classNames({ active: periodType === "monthly" }, "btn btn-soft-primary btn-sm material-shadow-none")} onClick={() => {
+ onChangeChartPeriod("monthly"); 
+}}>
                                         1M
                                     </button>
-                                    <button type="button" className={classNames({ active: periodType === "halfyearly" }, "btn btn-soft-secondary btn-sm material-shadow-none")} onClick={() => { onChangeChartPeriod("halfyearly"); }}>
+                                    <button type="button" className={classNames({ active: periodType === "halfyearly" }, "btn btn-soft-secondary btn-sm material-shadow-none")} onClick={() => {
+ onChangeChartPeriod("halfyearly"); 
+}}>
                                         6M
                                     </button>
                                 </div>

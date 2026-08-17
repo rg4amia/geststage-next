@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col, Dropdown, DropdownItem, DropdownMenu, DropdownToggle } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import { topPages } from "../../common/data";
 
 const TopPages = () => {
     const [isTopPageDropdown, setTopPageDropdown] = useState<boolean>(false);
-    const toggleDropdown = () => { setTopPageDropdown(!isTopPageDropdown); };
+    const toggleDropdown = () => {
+ setTopPageDropdown(!isTopPageDropdown); 
+};
+
     return (
         <React.Fragment>
             <Col xl={4} md={6}>

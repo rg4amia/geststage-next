@@ -1,7 +1,7 @@
 import PropTypes from "prop-types";
 import React from "react";
-import { Modal, ModalBody, ModalHeader } from "reactstrap";
 import { CSVLink } from "react-csv";
+import { Modal, ModalBody, ModalHeader } from "reactstrap";
 
 interface ExportCSVModalProps {
   show: boolean;

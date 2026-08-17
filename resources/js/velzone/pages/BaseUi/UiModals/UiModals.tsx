@@ -3,18 +3,18 @@ import { Alert, Button, Card, CardBody, Col, Container, Input, Modal, ModalBody,
 import { Link } from '@/velzone/inertia-router';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
-//import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
-import { DefaultModalExample, CenteredModalExample, GridsModalExample, StaticBackdropModalExample, TogglebetweenExample, TooltipModalExample, ScrollableModalExample, VaryingModalExample, OptionalModalExample, FullscreenResponsiveExample, AnimationModalExample, PositionModalExample } from './UiModalCode';
-
-// Import Images
+import authbg from "../../../assets/images/auth-one-bg.jpg";
 import loginImg from "../../../assets/images/modals/login.png";
 import signupImg from "../../../assets/images/modals/signup.png";
 import subscribeImg from "../../../assets/images/modals/subscribe.png";
 import paymentImg from "../../../assets/images/modals/success-payment.png";
-import authbg from "../../../assets/images/auth-one-bg.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
+//import Components
+import { DefaultModalExample, CenteredModalExample, GridsModalExample, StaticBackdropModalExample, TogglebetweenExample, TooltipModalExample, ScrollableModalExample, VaryingModalExample, OptionalModalExample, FullscreenResponsiveExample, AnimationModalExample, PositionModalExample } from './UiModalCode';
+
+// Import Images
 
 
 
@@ -782,7 +782,9 @@ const UiModals = () => {
                         <h4>Uh oh, something went wrong!</h4>
                         <p className="text-muted"> The transfer was not successfully received by us. the email of the recipient wasn't correct.</p>
 
-                        <Button color="warning" onClick={() => { tog_togSecond(); tog_togFirst(); }}>
+                        <Button color="warning" onClick={() => {
+ tog_togSecond(); tog_togFirst(); 
+}}>
                             Continue
                         </Button>
                     </div>
@@ -809,7 +811,9 @@ const UiModals = () => {
                         <h4 className="mb-3">Follow-Up Email</h4>
                         <p className="text-muted mb-4">Hide this modal and show the first with the button below Automatically Send your invitees a follow -Up email.</p>
                         <div className="hstack gap-2 justify-content-center">
-                            <Button color="danger" onClick={() => { tog_togFirst(); tog_togSecond(); }}>
+                            <Button color="danger" onClick={() => {
+ tog_togFirst(); tog_togSecond(); 
+}}>
                                 Back to First
                             </Button>
                             <Button color="light" onClick={() => tog_togSecond()}>Close</Button>
@@ -1454,8 +1458,12 @@ const UiModals = () => {
             </Modal>
 
             {/* FullscreenSm */}
-            <Modal id="exampleModalFullscreenSm" isOpen={modal_fullscreen_sm} toggle={() => { tog_fullscreen_sm(); }} >
-                <ModalHeader className="modal-title" id="exampleModalFullscreenSmLabel" toggle={() => { tog_fullscreen_sm(); }}>
+            <Modal id="exampleModalFullscreenSm" isOpen={modal_fullscreen_sm} toggle={() => {
+ tog_fullscreen_sm(); 
+}} >
+                <ModalHeader className="modal-title" id="exampleModalFullscreenSmLabel" toggle={() => {
+ tog_fullscreen_sm(); 
+}}>
                     Full screen below sm
                 </ModalHeader>
                 <ModalBody>
@@ -1487,14 +1495,20 @@ const UiModals = () => {
                     </div>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => { tog_fullscreen_sm(); }}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
+                    <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => {
+ tog_fullscreen_sm(); 
+}}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
                     <Button color="primary"> Save changes </Button>
                 </div>
             </Modal>
 
             {/* FullscreenMd */}
-            <Modal id="exampleModalFullscreenMd" isOpen={modal_fullscreen_md} toggle={() => { tog_fullscreen_md(); }} >
-                <ModalHeader className="modal-title" id="exampleModalFullscreenMdLabel" toggle={() => { tog_fullscreen_md(); }}>
+            <Modal id="exampleModalFullscreenMd" isOpen={modal_fullscreen_md} toggle={() => {
+ tog_fullscreen_md(); 
+}} >
+                <ModalHeader className="modal-title" id="exampleModalFullscreenMdLabel" toggle={() => {
+ tog_fullscreen_md(); 
+}}>
                     Full screen below md
                 </ModalHeader>
                 <ModalBody>
@@ -1526,14 +1540,20 @@ const UiModals = () => {
                     </div>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => { tog_fullscreen_md(); }}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
+                    <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => {
+ tog_fullscreen_md(); 
+}}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
 
             {/* FullscreenLg */}
-            <Modal id="exampleModalFullscreenLg" isOpen={modal_fullscreen_lg} toggle={() => { tog_fullscreen_lg(); }} >
-                <ModalHeader className="modal-title" id="exampleModalFullscreenLgLabel" toggle={() => { tog_fullscreen_lg(); }}>
+            <Modal id="exampleModalFullscreenLg" isOpen={modal_fullscreen_lg} toggle={() => {
+ tog_fullscreen_lg(); 
+}} >
+                <ModalHeader className="modal-title" id="exampleModalFullscreenLgLabel" toggle={() => {
+ tog_fullscreen_lg(); 
+}}>
                     Full screen below lg
                 </ModalHeader>
                 <ModalBody>
@@ -1565,14 +1585,20 @@ const UiModals = () => {
                     </div>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => { tog_fullscreen_lg(); }}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
+                    <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => {
+ tog_fullscreen_lg(); 
+}}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
 
             {/* FullscreenXl */}
-            <Modal id="exampleModalFullscreenXl" isOpen={modal_fullscreen_xl} toggle={() => { tog_fullscreen_xl(); }} >
-                <ModalHeader className="modal-title" id="exampleModalFullscreenXlLabel" toggle={() => { tog_fullscreen_xl(); }}>
+            <Modal id="exampleModalFullscreenXl" isOpen={modal_fullscreen_xl} toggle={() => {
+ tog_fullscreen_xl(); 
+}} >
+                <ModalHeader className="modal-title" id="exampleModalFullscreenXlLabel" toggle={() => {
+ tog_fullscreen_xl(); 
+}}>
                     Full screen below xl
                 </ModalHeader>
                 <ModalBody>
@@ -1604,14 +1630,20 @@ const UiModals = () => {
                     </div>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Link to="#" className="btn btn-link link-success fw-medium" onClick={() => { tog_fullscreen_xl(); }}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
+                    <Link to="#" className="btn btn-link link-success fw-medium" onClick={() => {
+ tog_fullscreen_xl(); 
+}}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
 
             {/* FullscreenXxl */}
-            <Modal id="exampleModalFullscreenXxl" isOpen={modal_fullscreen_xxl} toggle={() => { tog_fullscreen_xxl(); }} >
-                <ModalHeader className="modal-title" id="exampleModalFullscreenXxlLabel" toggle={() => { tog_fullscreen_xxl(); }}>
+            <Modal id="exampleModalFullscreenXxl" isOpen={modal_fullscreen_xxl} toggle={() => {
+ tog_fullscreen_xxl(); 
+}} >
+                <ModalHeader className="modal-title" id="exampleModalFullscreenXxlLabel" toggle={() => {
+ tog_fullscreen_xxl(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody>
@@ -1643,7 +1675,9 @@ const UiModals = () => {
                     </div>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Link to="#" className="btn btn-link link-success fw-medium" onClick={() => { tog_fullscreen_xxl(); }}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
+                    <Link to="#" className="btn btn-link link-success fw-medium" onClick={() => {
+ tog_fullscreen_xxl(); 
+}}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
@@ -1772,8 +1806,12 @@ const UiModals = () => {
             {/* Animation Modals */}
 
             {/* RightSide Animation */}
-            <Modal id="fadeInRightModal" isOpen={modal_animationRight} toggle={() => { tog_animationRight(); }} modalClassName="fadeInRight" centered >
-                <ModalHeader className="modal-title" id="fadeInRightModalLabel" toggle={() => { tog_animationRight(); }}>
+            <Modal id="fadeInRightModal" isOpen={modal_animationRight} toggle={() => {
+ tog_animationRight(); 
+}} modalClassName="fadeInRight" centered >
+                <ModalHeader className="modal-title" id="fadeInRightModalLabel" toggle={() => {
+ tog_animationRight(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody>
@@ -1784,7 +1822,9 @@ const UiModals = () => {
                     <p className="text-muted">The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked. "What's happened to me?" he thought.</p>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Button color="light" onClick={() => { tog_animationRight(); }}>
+                    <Button color="light" onClick={() => {
+ tog_animationRight(); 
+}}>
                         Close
                     </Button>
                     <Button color="primary"> Save changes </Button>
@@ -1792,8 +1832,12 @@ const UiModals = () => {
             </Modal>
 
             {/* LeftSide Animation */}
-            <Modal id="fadeInleftModal" isOpen={modal_animationLeft} toggle={() => { tog_animationLeft(); }} modalClassName="fadeInLeft" centered >
-                <ModalHeader className="modal-title" id="fadeInleftModalLabel" toggle={() => { tog_animationLeft(); }}>
+            <Modal id="fadeInleftModal" isOpen={modal_animationLeft} toggle={() => {
+ tog_animationLeft(); 
+}} modalClassName="fadeInLeft" centered >
+                <ModalHeader className="modal-title" id="fadeInleftModalLabel" toggle={() => {
+ tog_animationLeft(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody>
@@ -1804,14 +1848,20 @@ const UiModals = () => {
                     <p className="text-muted">The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked. "What's happened to me?" he thought.</p>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Button color="light" onClick={() => { tog_animationLeft(); }}> Close </Button>
+                    <Button color="light" onClick={() => {
+ tog_animationLeft(); 
+}}> Close </Button>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
 
             {/* UpSide Animation */}
-            <Modal id="fadeInUpModal" isOpen={modal_animationUp} toggle={() => { tog_animationUp(); }} modalClassName="fadeInUp" centered >
-                <ModalHeader className="modal-title" id="fadeInUpModalLabel" toggle={() => { tog_animationUp(); }}>
+            <Modal id="fadeInUpModal" isOpen={modal_animationUp} toggle={() => {
+ tog_animationUp(); 
+}} modalClassName="fadeInUp" centered >
+                <ModalHeader className="modal-title" id="fadeInUpModalLabel" toggle={() => {
+ tog_animationUp(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody>
@@ -1822,14 +1872,20 @@ const UiModals = () => {
                     <p className="text-muted">The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked. "What's happened to me?" he thought.</p>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Button color="light" onClick={() => { tog_animationUp(); }}> Close </Button>
+                    <Button color="light" onClick={() => {
+ tog_animationUp(); 
+}}> Close </Button>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
 
             {/* Flip Animation */}
-            <Modal id="flipModal" isOpen={modal_animationFlip} toggle={() => { tog_animationFlip(); }} modalClassName="flip" centered >
-                <ModalHeader className="modal-title" id="flipModalLabel" toggle={() => { tog_animationFlip(); }}>
+            <Modal id="flipModal" isOpen={modal_animationFlip} toggle={() => {
+ tog_animationFlip(); 
+}} modalClassName="flip" centered >
+                <ModalHeader className="modal-title" id="flipModalLabel" toggle={() => {
+ tog_animationFlip(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody>
@@ -1840,14 +1896,20 @@ const UiModals = () => {
                     <p className="text-muted">The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked. "What's happened to me?" he thought.</p>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Button color="light" onClick={() => { tog_animationFlip(); }}> Close </Button>
+                    <Button color="light" onClick={() => {
+ tog_animationFlip(); 
+}}> Close </Button>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
 
             {/* ZoomIn Animation */}
-            <Modal id="flipModal" isOpen={modal_animationZoom} toggle={() => { tog_animationZoom(); }} modalClassName="zoomIn" centered >
-                <ModalHeader className="modal-title" id="flipModalLabel" toggle={() => { tog_animationZoom(); }}>
+            <Modal id="flipModal" isOpen={modal_animationZoom} toggle={() => {
+ tog_animationZoom(); 
+}} modalClassName="zoomIn" centered >
+                <ModalHeader className="modal-title" id="flipModalLabel" toggle={() => {
+ tog_animationZoom(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody>
@@ -1858,14 +1920,20 @@ const UiModals = () => {
                     <p className="text-muted">The bedding was hardly able to cover it and seemed ready to slide off any moment. His many legs, pitifully thin compared with the size of the rest of him, waved about helplessly as he looked. "What's happened to me?" he thought.</p>
                 </ModalBody>
                 <div className="modal-footer">
-                    <Button color="light" onClick={() => { tog_animationZoom(); }}> Close </Button>
+                    <Button color="light" onClick={() => {
+ tog_animationZoom(); 
+}}> Close </Button>
                     <Button color="primary" > Save changes </Button>
                 </div>
             </Modal>
 
             {/* Position Top */}
-            <Modal id="topmodal" isOpen={modal_positionTop} toggle={() => { tog_positionTop(); }} >
-                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => { tog_positionTop(); }}>
+            <Modal id="topmodal" isOpen={modal_positionTop} toggle={() => {
+ tog_positionTop(); 
+}} >
+                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => {
+ tog_positionTop(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody className="text-center p-5">
@@ -1874,7 +1942,9 @@ const UiModals = () => {
                         <h4 className="mb-3">Your event has been created.</h4>
                         <p className="text-muted mb-4"> The transfer was not successfully received by us. the email of the recipient wasn't correct.</p>
                         <div className="hstack gap-2 justify-content-center">
-                            <Link to="#" className="btn btn-link link-success fw-medium" onClick={() => { tog_positionTop(); }}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
+                            <Link to="#" className="btn btn-link link-success fw-medium" onClick={() => {
+ tog_positionTop(); 
+}}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
                             <Link to="#" className="btn btn-success">Completed</Link>
                         </div>
                     </div>
@@ -1883,8 +1953,12 @@ const UiModals = () => {
 
             {/* Position Top Right */}
 
-            <Modal id="top-rightmodal" isOpen={modal_positionTopRight} toggle={() => { tog_positionTopRight(); }} className="modal-dialog-right" >
-                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => { tog_positionTopRight(); }} >
+            <Modal id="top-rightmodal" isOpen={modal_positionTopRight} toggle={() => {
+ tog_positionTopRight(); 
+}} className="modal-dialog-right" >
+                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => {
+ tog_positionTopRight(); 
+}} >
                     Modal Heading
                 </ModalHeader>
                 <ModalBody className="text-center p-5">
@@ -1893,7 +1967,9 @@ const UiModals = () => {
                         <h4 className="mb-3">Your event has been created.</h4>
                         <p className="text-muted mb-4"> The transfer was not successfully received by us. the email of the recipient wasn't correct.</p>
                         <div className="hstack gap-2 justify-content-center">
-                            <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => { tog_positionTopRight(); }}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
+                            <Link to="#" className="btn btn-link link-success fw-medium material-shadow-none" onClick={() => {
+ tog_positionTopRight(); 
+}}><i className="ri-close-line me-1 align-middle"></i> Close</Link>
                             <Link to="#" className="btn btn-success">Completed</Link>
                         </div>
                     </div>
@@ -1902,8 +1978,12 @@ const UiModals = () => {
 
             {/* Position Bottom */}
 
-            <Modal id="bottomModal" isOpen={modal_positionBottom} toggle={() => { tog_positionBottom(); }} className="modal-dialog-bottom" >
-                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => { tog_positionBottom(); }}>
+            <Modal id="bottomModal" isOpen={modal_positionBottom} toggle={() => {
+ tog_positionBottom(); 
+}} className="modal-dialog-bottom" >
+                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => {
+ tog_positionBottom(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody className="text-center p-5">
@@ -1921,8 +2001,12 @@ const UiModals = () => {
 
             {/* Position Bottom Right */}
 
-            <Modal id="bottom-rightModal" isOpen={modal_positionBottomRight} toggle={() => { tog_positionBottomRight(); }} className="modal-dialog-bottom-right" >
-                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => { tog_positionBottomRight(); }}>
+            <Modal id="bottom-rightModal" isOpen={modal_positionBottomRight} toggle={() => {
+ tog_positionBottomRight(); 
+}} className="modal-dialog-bottom-right" >
+                <ModalHeader className="modal-title" id="myModalLabel" toggle={() => {
+ tog_positionBottomRight(); 
+}}>
                     Modal Heading
                 </ModalHeader>
                 <ModalBody className="text-center p-5">
@@ -1943,10 +2027,14 @@ const UiModals = () => {
 
             {/* Success Message */}
 
-            <Modal id="success-Payment" tabIndex={1} isOpen={modal_successMessage} toggle={() => { tog_successMessage(); }} centered>
+            <Modal id="success-Payment" tabIndex={1} isOpen={modal_successMessage} toggle={() => {
+ tog_successMessage(); 
+}} centered>
                 <ModalBody className='text-center p-5'>
                     <div className="text-end">
-                        <button type="button" onClick={() => { tog_successMessage(); }} className="btn-close text-end" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <button type="button" onClick={() => {
+ tog_successMessage(); 
+}} className="btn-close text-end" data-bs-dismiss="modal" aria-label="Close"></button>
                     </div>
                     <div className="mt-2">
                         <i className="ri-chat-smile-2-line display-2 text-success"></i>
@@ -1966,7 +2054,9 @@ const UiModals = () => {
 
             {/* Login Modals */}
 
-            <Modal id="loginModals" tabIndex={1} isOpen={modal_loginModals} toggle={() => { tog_loginModals(); }} centered>
+            <Modal id="loginModals" tabIndex={1} isOpen={modal_loginModals} toggle={() => {
+ tog_loginModals(); 
+}} centered>
                 <div className="modal-content border-0 overflow-hidden">
                     <ModalBody className='login-modal p-5'>
                         <h5 className="text-white fs-20">Login</h5>
@@ -1997,7 +2087,9 @@ const UiModals = () => {
 
             {/* Subscribe Modals */}
 
-            <Modal id="subscribeModals" tabIndex={1} isOpen={subscribeModals} toggle={() => { tog_subscribeModals(); }} centered size='lg'>
+            <Modal id="subscribeModals" tabIndex={1} isOpen={subscribeModals} toggle={() => {
+ tog_subscribeModals(); 
+}} centered size='lg'>
                 <Row className="g-0">
                     <Col lg={7}>
                         <div className="modal-body p-5">
@@ -2027,8 +2119,12 @@ const UiModals = () => {
 
             {/* Subscribe Modals */}
 
-            <Modal id="signupModals" tabIndex={1} isOpen={modal_signUpModals} toggle={() => { tog_signUpModals(); }} centered>
-                <ModalHeader className="p-3" toggle={() => { tog_signUpModals(); }}>
+            <Modal id="signupModals" tabIndex={1} isOpen={modal_signUpModals} toggle={() => {
+ tog_signUpModals(); 
+}} centered>
+                <ModalHeader className="p-3" toggle={() => {
+ tog_signUpModals(); 
+}}>
                     Sign Up
                 </ModalHeader>
                 <Alert color="success" className="rounded-0 mb-0">

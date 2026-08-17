@@ -1,9 +1,5 @@
+import { useFormik } from "formik";
 import React from "react";
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import UiContent from "../../../Components/Common/UiContent";
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
-import { BrowserDefaults, CustomStyles, SupportedElements } from "./FormValidationCode";
-
 import {
   Row,
   Col,
@@ -18,9 +14,13 @@ import {
   Form,
   InputGroup,
 } from "reactstrap";
-// Formik validation
 import * as Yup from "yup";
-import { useFormik } from "formik";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from "../../../Components/Common/UiContent";
+import { BrowserDefaults, CustomStyles, SupportedElements } from "./FormValidationCode";
+
+// Formik validation
 import ReactValidation from "./ReactValidation";
 
 const FormValidations = () => {
@@ -138,6 +138,7 @@ const FormValidations = () => {
                       onSubmit={(e) => {
                         e.preventDefault();
                         validation.handleSubmit();
+
                         return false;
                       }}
                     >

@@ -1,14 +1,15 @@
 import React from "react";
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col, Row } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
+import img7 from "../../../../assets/images/companies/img-7.png";
+import img10 from "../../../../assets/images/small/img-10.jpg";
 import { jobList } from "../../../../common/data/appsJobs";
 import BreadCrumb from "../../../../Components/Common/BreadCrumb";
-import img10 from "../../../../assets/images/small/img-10.jpg";
-import img7 from "../../../../assets/images/companies/img-7.png";
 import AppSummaryChart from "./AppSummary";
 
 const JobList = () => {
   document.title = "Job Lists | Velzon -  Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">

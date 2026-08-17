@@ -1,10 +1,10 @@
+import { useFormik } from 'formik';
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Button, Card, Col, Container, Form, FormFeedback, Input, Row } from 'reactstrap';
 
 //formik
-import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { Link } from '@/velzone/inertia-router';
 
 //import images
 import avatar1 from "../../../assets/images/users/avatar-1.jpg";
@@ -56,6 +56,7 @@ const CoverLockScreen = () => {
                                                     <Form onSubmit={(e) => {
                                                         e.preventDefault();
                                                         validation.handleSubmit();
+
                                                         return false;
                                                     }} action="#">
                                                         <div className="mb-3">

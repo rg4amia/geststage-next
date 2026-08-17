@@ -1,6 +1,6 @@
 //Include Both Helper File with needed methods
-import { getFirebaseBackend } from "../../../helpers/firebase_helper";
 import { postFakeProfile, postJwtProfile } from "../../../helpers/fakebackend_helper";
+import { getFirebaseBackend } from "../../../helpers/firebase_helper";
 
 // action
 import { profileSuccess, profileError, resetProfileFlagChange } from "./reducer";
@@ -44,6 +44,7 @@ export const editProfile = (user : any) => async (dispatch : any) => {
 export const resetProfileFlag = () => {
     try {
         const response = resetProfileFlagChange();
+
         return response;
     } catch (error) {
         return error;

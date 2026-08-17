@@ -8,6 +8,7 @@ import TimeTracking from "./TimeTracking";
 
 const TaskDetails = () => {
     document.title="Tasks Details | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

@@ -1,4 +1,5 @@
 import React from "react";
+import Flatpickr from "react-flatpickr";
 import {
   Card,
   CardBody,
@@ -11,7 +12,6 @@ import {
   Row,
 } from "reactstrap";
 import BreadCrumb from "../../../Components/Common/BreadCrumb";
-import Flatpickr from "react-flatpickr";
 
 const NewJobs = () => {
   document.title = "New Job | Velzon -  Admin & Dashboard Template";

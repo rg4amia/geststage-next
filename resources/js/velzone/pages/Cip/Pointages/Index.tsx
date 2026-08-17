@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
 import { Head } from '@inertiajs/react';
+import React, { useMemo } from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Button, Input } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
@@ -37,12 +37,15 @@ const PointagesIndex = ({ instances, moisActuel, periode }: any) => {
                     if (!pointageMois) {
                         return <span className="badge bg-warning-subtle text-warning">À Saisir</span>;
                     }
+
                     if (pointageMois.statut === 'SOUMIS') {
                         return <span className="badge bg-info-subtle text-info">Soumis au CA</span>;
                     }
+
                     if (pointageMois.statut === 'VALIDE') {
                         return <span className="badge bg-success-subtle text-success">Validé</span>;
                     }
+
                     return <span className="badge bg-secondary-subtle text-secondary">{pointageMois.statut}</span>;
                 },
             },
@@ -55,6 +58,7 @@ const PointagesIndex = ({ instances, moisActuel, periode }: any) => {
                     if (pointageMois && pointageMois.statut !== 'AJOURNE_CA') {
                         return <span>{pointageMois.jours_presence}</span>;
                     }
+
                     return (
                         <div className="d-flex align-items-center">
                             <Input 

@@ -1,10 +1,13 @@
-import React, { useEffect, useState } from "react";
-import { Link } from '@/velzone/inertia-router';
-import PropTypes from "prop-types";
-
-//Import Icons
+import BootstrapTheme from "@fullcalendar/bootstrap";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import interactionPlugin, { Draggable } from "@fullcalendar/interaction";
+import listPlugin from '@fullcalendar/list';
+import FullCalendar from "@fullcalendar/react";
 import FeatherIcon from "feather-icons-react";
-
+import { useFormik } from "formik";
+import PropTypes from "prop-types";
+import React, { useEffect, useState } from "react";
+import Flatpickr from "react-flatpickr";
 import {
   Card,
   CardBody,
@@ -19,15 +22,13 @@ import {
   Row,
   Col
 } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
+
+//Import Icons
+
 
 import * as Yup from "yup";
-import { useFormik } from "formik";
 
-import FullCalendar from "@fullcalendar/react";
-import dayGridPlugin from "@fullcalendar/daygrid";
-import interactionPlugin, { Draggable } from "@fullcalendar/interaction";
-import BootstrapTheme from "@fullcalendar/bootstrap";
-import Flatpickr from "react-flatpickr";
 
 //redux
 import { useSelector, useDispatch } from "react-redux";
@@ -37,9 +38,6 @@ import DeleteModal from "../../Components/Common/DeleteModal";
 
 //Simple bar
 import SimpleBar from "simplebar-react";
-import UpcommingEvents from './UpcommingEvents';
-import listPlugin from '@fullcalendar/list';
-
 import {
   getEvents as onGetEvents,
   getCategories as onGetCategories,
@@ -48,6 +46,8 @@ import {
   updateEvent as onUpdateEvent,
   getUpCommingEvent as onGetUpCommingEvent,
 } from "../../slices/thunks";
+import UpcommingEvents from './UpcommingEvents';
+
 import { createSelector } from "reselect";
 
 const Calender = () => {
@@ -115,7 +115,7 @@ const Calender = () => {
   };
 
   const str_dt = function formatDate(date: any) {
-    var monthNames = [
+    const monthNames = [
       "January",
       "February",
       "March",
@@ -129,12 +129,19 @@ const Calender = () => {
       "November",
       "December",
     ];
-    var d = new Date(date),
+    let d = new Date(date),
       month = "" + monthNames[d.getMonth()],
       day = "" + d.getDate(),
       year = d.getFullYear();
-    if (month.length < 2) month = "0" + month;
-    if (day.length < 2) day = "0" + day;
+
+    if (month.length < 2) {
+month = "0" + month;
+}
+
+    if (day.length < 2) {
+day = "0" + day;
+}
+
     return [day + " " + month, year].join(",");
   };
 
@@ -206,7 +213,8 @@ const Calender = () => {
       defaultDate: Yup.array().of(Yup.date()).required('Date range is required').min(2, 'Select at least two dates'),
     }),
     onSubmit: (values) => {
-      var updatedDay: any = "";
+      let updatedDay: any = "";
+
       if (selectedNewDay) {
         updatedDay = new Date(selectedNewDay[1]);
         updatedDay.setDate(updatedDay.getDate() + 1);
@@ -302,6 +310,7 @@ const Calender = () => {
 
     const draggedEl = event.draggedEl;
     const draggedElclass = draggedEl.className;
+
     if (
       draggedEl.classList.contains("external-event") &&
       draggedElclass.indexOf("fc-event-draggable") === -1
@@ -317,12 +326,15 @@ const Calender = () => {
   };
 
   document.title = "Calendar | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <DeleteModal
         show={deleteModal}
         onDeleteClick={handleDeleteEvent}
-        onCloseClick={() => { setDeleteModal(false) }} recordId={""} />
+        onCloseClick={() => {
+ setDeleteModal(false) 
+}} recordId={""} />
       <div className="page-content">
         <Container fluid>
           <BreadCrumb title="Calendar" pageTitle="Apps" />
@@ -438,20 +450,21 @@ const Calender = () => {
 
               <Modal isOpen={modal} id="event-modal" centered>
                 <ModalHeader toggle={toggle} tag="h5" className="p-3 bg-info-subtle modal-title">
-                  {!!isEdit ? eventName : "Add Event"}
+                  {isEdit ? eventName : "Add Event"}
                 </ModalHeader>
                 <ModalBody>
                   <Form
-                    className={!!isEdit ? "needs-validation view-event" : "needs-validation"}
+                    className={isEdit ? "needs-validation view-event" : "needs-validation"}
                     name="event-form"
                     id="form-event"
                     onSubmit={(e) => {
                       e.preventDefault();
                       validation.handleSubmit();
+
                       return false;
                     }}
                   >
-                    {!!isEdit ? (
+                    {isEdit ? (
                       <div className="text-end">
                         <Link
                           to="#"
@@ -460,6 +473,7 @@ const Calender = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             submitOtherEvent();
+
                             return false;
                           }}>
                           Edit
@@ -514,7 +528,7 @@ const Calender = () => {
                       <Col xs={12}>
                         <div className="mb-3">
                           <Label className="form-label">Type</Label>
-                          <Input className={!!isEdit ? "form-select d-none" : "form-select d-block"}
+                          <Input className={isEdit ? "form-select d-none" : "form-select d-block"}
                             name="category"
                             id="event-category"
                             type="select"
@@ -537,7 +551,7 @@ const Calender = () => {
                         <div className="mb-3">
                           <Label className="form-label">Event Name</Label>
                           <Input
-                            className={!!isEdit ? "d-none" : "d-block"}
+                            className={isEdit ? "d-none" : "d-block"}
                             placeholder="Enter event name"
                             type="text"
                             name="title"
@@ -553,7 +567,7 @@ const Calender = () => {
                       <Col xs={12}>
                         <div className="mb-3">
                           <Label>Event Date</Label>
-                          <div className={!!isEdit ? "input-group d-none" : "input-group"}>
+                          <div className={isEdit ? "input-group d-none" : "input-group"}>
                             <Flatpickr
                               className="form-control"
                               id="event-start-date"
@@ -564,7 +578,9 @@ const Calender = () => {
                                 mode: "range",
                                 dateFormat: "Y-m-d",
                               }}
-                              onChange={(date) => { setSelectedNewDay(date); validation.setFieldValue("defaultDate", date) }}
+                              onChange={(date) => {
+ setSelectedNewDay(date); validation.setFieldValue("defaultDate", date) 
+}}
                             />
                             <span className="input-group-text">
                               <i className="ri-calendar-event-line"></i>
@@ -622,7 +638,7 @@ const Calender = () => {
                           <div>
                             <Input
                               type="text"
-                              className={!!isEdit ? "d-none" : "d-block"}
+                              className={isEdit ? "d-none" : "d-block"}
                               name="location"
                               id="event-location"
                               placeholder="Event location"
@@ -639,7 +655,7 @@ const Calender = () => {
                         <div className="mb-3">
                           <Label className="form-label">Description</Label>
                           <textarea
-                            className={!!isEdit ? "form-control d-none" : "form-control d-block"}
+                            className={isEdit ? "form-control d-none" : "form-control d-block"}
                             id="event-description"
                             name="description"
                             placeholder="Enter a description"
@@ -655,13 +671,15 @@ const Calender = () => {
                     </Row>
                     <div className="hstack gap-2 justify-content-end">
                       {!!isEdit && (
-                        <button type="button" className="btn btn-soft-danger" id="btn-delete-event" onClick={() => { toggle(); setDeleteModal(true) }}>
+                        <button type="button" className="btn btn-soft-danger" id="btn-delete-event" onClick={() => {
+ toggle(); setDeleteModal(true) 
+}}>
                           <i className="ri-close-line align-bottom"></i> Delete
                         </button>
                       )}
                       {isEditButton &&
                         <button type="submit" className="btn btn-success" id="btn-save-event">
-                          {!!isEdit ? "Edit Event" : "Add Event"}
+                          {isEdit ? "Edit Event" : "Add Event"}
                         </button>}
                     </div>
                   </Form>

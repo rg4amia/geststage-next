@@ -1,24 +1,25 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Col, Container, Dropdown, Form, FormFeedback, Input, Modal, ModalBody, ModalHeader, Row, UncontrolledCollapse } from 'reactstrap';
-import SimpleBar from 'simplebar-react';
-import Flatpickr from "react-flatpickr";
+import { useFormik } from "formik";
 import moment from "moment";
+import React, { useState, useEffect, useCallback } from 'react';
 import Dragula from 'react-dragula';
+import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
+import { Col, Container, Dropdown, Form, FormFeedback, Input, Modal, ModalBody, ModalHeader, Row, UncontrolledCollapse } from 'reactstrap';
+import { createSelector } from 'reselect';
+import SimpleBar from 'simplebar-react';
+import * as Yup from "yup";
 import { Link } from '@/velzone/inertia-router';
 import taskImg from "../../assets/images/task.png";
-import DeleteModal from '../../Components/Common/DeleteModal';
+import avatar1 from "../../assets/images/users/avatar-1.jpg";
+import avatar10 from "../../assets/images/users/avatar-10.jpg";
+import avatar2 from "../../assets/images/users/avatar-2.jpg";
 
 //redux
-import { useSelector, useDispatch } from 'react-redux';
 
 // Formik
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
 // Import Images
-import avatar1 from "../../assets/images/users/avatar-1.jpg";
-import avatar2 from "../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../assets/images/users/avatar-3.jpg";
 import avatar4 from "../../assets/images/users/avatar-4.jpg";
 import avatar5 from "../../assets/images/users/avatar-5.jpg";
@@ -26,7 +27,7 @@ import avatar6 from "../../assets/images/users/avatar-6.jpg";
 import avatar7 from "../../assets/images/users/avatar-7.jpg";
 import avatar8 from "../../assets/images/users/avatar-8.jpg";
 import avatar9 from "../../assets/images/users/avatar-9.jpg";
-import avatar10 from "../../assets/images/users/avatar-10.jpg";
+import DeleteModal from '../../Components/Common/DeleteModal';
 
 //import action
 import {
@@ -38,7 +39,6 @@ import {
     getProjects as onGetProjects,
     addNewProject as onAddNewProject,
 } from "../../slices/thunks";
-import { createSelector } from 'reselect';
 
 const Status = ({ status }: any) => {
     switch (status) {
@@ -211,7 +211,7 @@ const ToDoList = () => {
     };
 
     const searchList = (e: any) => {
-        let inputVal = e.toLowerCase();
+        const inputVal = e.toLowerCase();
 
         function filterItems(arr: any, query: any) {
             return arr.filter(function (el: any) {
@@ -219,17 +219,18 @@ const ToDoList = () => {
             });
         }
 
-        let filterData = filterItems(todos, inputVal);
+        const filterData = filterItems(todos, inputVal);
         setTaskList(filterData);
+
         if (filterData.length === 0) {
-            var noresult = document.getElementById("noresult") as HTMLElement;
+            const noresult = document.getElementById("noresult") as HTMLElement;
             noresult.style.display = "block";
-            var todoTask = document.getElementById("todo-task") as HTMLElement;
+            const todoTask = document.getElementById("todo-task") as HTMLElement;
             todoTask.style.display = "none";
         } else {
-            var noResult = document.getElementById("noresult") as HTMLElement;
+            const noResult = document.getElementById("noresult") as HTMLElement;
             noResult.style.display = "none";
-            var TodoTask = document.getElementById("todo-task") as HTMLElement;
+            const TodoTask = document.getElementById("todo-task") as HTMLElement;
             TodoTask.style.display = "block";
         }
     };
@@ -238,12 +239,12 @@ const ToDoList = () => {
         if (e) {
             setTaskList([...todos].sort((a, b) => a.id - b.id));
             setTaskList([...todos].sort((a, b) => {
-                let x = a.task.toLowerCase();
-                let y = b.task.toLowerCase();
+                const x = a.task.toLowerCase();
+                const y = b.task.toLowerCase();
+
                 if (x < y) {
                     return -1;
-                }
-                else if (x > y) {
+                } else if (x > y) {
                     return 1;
                 } else {
                     return 0;
@@ -255,23 +256,29 @@ const ToDoList = () => {
     const changeTaskStatus = (e: any) => {
         const activeTask = e.target.value;
         let activeTaskList;
+
         if (e.target.checked) {
             activeTaskList = taskList.map((item: any) => {
                 const tasks = Object.assign({}, item);
+
                 if (tasks.id === activeTask) {
                     tasks.status = "Completed";
                 }
+
                 return tasks;
             });
         } else {
             activeTaskList = taskList.map((item: any) => {
                 const tasks = Object.assign({}, item);
+
                 if (tasks.id === activeTask) {
                     tasks.status = "Inprogress";
                 }
+
                 return tasks;
             });
         }
+
         setTaskList(activeTaskList);
     };
 
@@ -344,6 +351,7 @@ const ToDoList = () => {
                 dispatch(onAddNewTodo(newTodo));
                 validation.resetForm();
             }
+
             toggle();
         },
     });
@@ -365,7 +373,7 @@ const ToDoList = () => {
 
     const dragulaDecorator = (componentBackingInstance: any) => {
         if (componentBackingInstance) {
-            let options = {};
+            const options = {};
             Dragula([componentBackingInstance], options);
         }
     };
@@ -555,13 +563,14 @@ const ToDoList = () => {
             </div>
 
             <Modal id="createTask" isOpen={modalTodo} toggle={toggle} modalClassName="zoomIn" centered tabIndex={-1}>
-                <ModalHeader toggle={toggle} className="p-3 bg-success-subtle"> {!!isEdit ? "Edit Task" : "Create Task"} </ModalHeader>
+                <ModalHeader toggle={toggle} className="p-3 bg-success-subtle"> {isEdit ? "Edit Task" : "Create Task"} </ModalHeader>
                 <ModalBody>
                     <div id="task-error-msg" className="alert alert-danger py-2"></div>
                     <Form id="creattask-form"
                         onSubmit={(e) => {
                             e.preventDefault();
                             validation.handleSubmit();
+
                             return false;
                         }}
                     >
@@ -701,7 +710,7 @@ const ToDoList = () => {
                         </div>
                         <div className="hstack gap-2 justify-content-end">
                             <button type="button" className="btn btn-ghost-success" onClick={() => setModalTodo(false)}><i className="ri-close-fill align-bottom"></i> Close</button>
-                            <button type="submit" className="btn btn-primary" id="addNewTodo">{!!isEdit ? "Save" : "Add Task"}</button>
+                            <button type="submit" className="btn btn-primary" id="addNewTodo">{isEdit ? "Save" : "Add Task"}</button>
                         </div>
                     </Form>
                 </ModalBody>
@@ -716,6 +725,7 @@ const ToDoList = () => {
                     <form className="needs-validation createProject-form" onSubmit={(e) => {
                         e.preventDefault();
                         projectValidation.handleSubmit();
+
                         return false;
                     }}>
                         <div className="mb-4">

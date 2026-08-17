@@ -11,6 +11,7 @@ import {
 
 const BoxplotCharts = () => {
     document.title = "Boxplot Charts | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

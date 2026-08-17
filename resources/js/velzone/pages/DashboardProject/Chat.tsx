@@ -1,10 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import PerfectScrollbar from "react-perfect-scrollbar";
 import { Card, CardBody, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
 
 import { dashboardChat } from '../../common/data';
 
 //Import Scrollbar
-import PerfectScrollbar from "react-perfect-scrollbar";
 import "react-perfect-scrollbar/dist/css/styles.css";
 
 const Chat = () => {
@@ -26,7 +26,7 @@ const Chat = () => {
 
 
     const onSendMessage = () => {
-        var modifiedMessages = [...messages];
+        const modifiedMessages = [...messages];
         const lastItem = modifiedMessages.length
             ? modifiedMessages[modifiedMessages.length - 1]
             : { id: 1 };
@@ -43,6 +43,7 @@ const Chat = () => {
         setMessages(modifiedMessages);
         setText("");
     };
+
     return (
         <React.Fragment>
             <Col xxl={4} lg={6}>

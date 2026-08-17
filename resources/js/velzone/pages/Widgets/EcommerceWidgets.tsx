@@ -41,6 +41,7 @@ const EcommerceWidgets = () => {
           const checkedElem = selectedRadio.parentElement;
           const payamount = checkedElem?.querySelector(".pay-amount")?.innerHTML;
           const successPayElement = document.querySelector("#notification-overlay .success-pay");
+
           if (payamount && successPayElement) {
             successPayElement.innerHTML = payamount;
           }
@@ -54,6 +55,7 @@ const EcommerceWidgets = () => {
 
     const backToHome = (): void => {
         const notificationOverlay: HTMLElement | null = document.getElementById("notification-overlay");
+
         if (notificationOverlay) {
           notificationOverlay.style.visibility = "hidden";
           notificationOverlay.style.opacity = "0";

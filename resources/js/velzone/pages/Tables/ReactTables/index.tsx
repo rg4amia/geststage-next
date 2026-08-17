@@ -4,6 +4,7 @@ import { DefaultTable, PaginationTable, SearchTable, SortingTable, LoadingStateT
 
 const ReactTable = () => {
   document.title = "React Tables | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <div className="page-content">

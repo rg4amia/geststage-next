@@ -3,21 +3,22 @@ import { Button, Card, CardBody, CardHeader, Col, Container, Input, Row, } from 
 import { Link } from '@/velzone/inertia-router';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
-//import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
-
-// Import Images
+import img2 from "../../../assets/images/small/img-2.jpg";
 import avatar1 from "../../../assets/images/users/avatar-1.jpg";
 import avatar2 from "../../../assets/images/users/avatar-2.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
+//import Components
 
-import img2 from "../../../assets/images/small/img-2.jpg";
+// Import Images
+
 import { StacksVerticalExample, StacksHorizontalExample, TextSelectionExample, PointerEventsExample, OverflowExample, PositionExample, ShadowsExample, WidthExample, HeightExample } from './UiUtilitiesCode';
 
 
 const UiUtilities = () => {
     document.title = "Utilities | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

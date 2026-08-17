@@ -1,7 +1,7 @@
 import { Link, usePage } from '@inertiajs/react';
 import AppLogoIcon from '@/old/components/app-logo-icon';
-import { home } from '@/routes';
 import type { AuthLayoutProps } from '@/old/types';
+import { home } from '@/routes';
 
 export default function AuthSplitLayout({
     children,

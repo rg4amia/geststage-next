@@ -1,16 +1,16 @@
-import BreadCrumb from 'Components/Common/BreadCrumb';
 import React from 'react'
 import { Container } from 'reactstrap';
+import SimpleBar from 'simplebar-react';
 import { Link } from '@/velzone/inertia-router';
 
 import overview from "assets/images/blog/overview.jpg"
+import small4 from "assets/images/small/img-4.jpg"
+import small5 from "assets/images/small/img-5.jpg"
+import avatar10 from "assets/images/users/avatar-10.jpg"
 import avatar2 from "assets/images/users/avatar-2.jpg"
 import avatar6 from "assets/images/users/avatar-6.jpg"
 import avatar8 from "assets/images/users/avatar-8.jpg"
-import avatar10 from "assets/images/users/avatar-10.jpg"
-import small4 from "assets/images/small/img-4.jpg"
-import small5 from "assets/images/small/img-5.jpg"
-import SimpleBar from 'simplebar-react';
+import BreadCrumb from 'Components/Common/BreadCrumb';
 
 const PageBlogOverview = () => {
 

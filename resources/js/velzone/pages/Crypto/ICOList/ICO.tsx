@@ -1,18 +1,21 @@
 import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
+import Flatpickr from "react-flatpickr";
 import { Card, CardBody, Col, Row } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import { icoWidgetsList } from '../../../common/data';
 //Import Flatepicker
-import Flatpickr from "react-flatpickr";
 
 const ICO = () => {
     const [icoList, setIcoList] = useState<any>(icoWidgetsList);
-    const type = (e: any) => { setIcoList(icoWidgetsList.filter(item => item.title === e)); };
+    const type = (e: any) => {
+ setIcoList(icoWidgetsList.filter(item => item.title === e)); 
+};
 
     const rating = (e: any) => {
-        let output = icoWidgetsList.filter(item => {
-            let opt = item.subItem.some((
+        const output = icoWidgetsList.filter(item => {
+            const opt = item.subItem.some((
                 { rating }) => rating > e);
+
             return opt;
         });
         setIcoList(output);
@@ -22,9 +25,10 @@ const ICO = () => {
         const date = e.toString().split(" ");
         const joinDate = (date[2] + " " + date[1] + ", " + date[3]).toString();
 
-        let output = icoWidgetsList.filter(item => {
-            let opt = item.subItem.some((
+        const output = icoWidgetsList.filter(item => {
+            const opt = item.subItem.some((
                 { date }) => date === joinDate);
+
             return opt;
         });
         setIcoList(output);

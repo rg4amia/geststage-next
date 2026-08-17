@@ -13,6 +13,7 @@ import {
 export const getInvoices = createAsyncThunk("invoice/getInvoices", async () => {
   try {
     const response = getInvoicesApi();
+
     return response;
   } catch (error) {
     return error;
@@ -23,9 +24,11 @@ export const addNewInvoice = createAsyncThunk("invoice/addNewInvoice", async (in
   try {
     const response = addNewInvoiceApi(invoice);
     toast.success("Invoice Added Successfully", { autoClose: 3000 });
+
     return response;
   } catch (error) {
     toast.error("Invoice Added Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -35,9 +38,11 @@ export const updateInvoice = createAsyncThunk("invoice/updateInvoice", async (in
     const response = updateInvoiceApi(invoice);
     toast.success("Invoice Updated Successfully", { autoClose: 3000 });
     const data = await response;
+
     return data;
   } catch (error) {
     toast.error("Invoice Updated Failed", { autoClose: 3000 });
+
     return error;
   }
 });
@@ -46,10 +51,11 @@ export const deleteInvoice = createAsyncThunk("invoice/deleteInvoice", async (in
   try {
     const response = deleteInvoiceApi(invoice);
     toast.success("Invoice Delete Successfully", { autoClose: 3000 });
+
     return { invoice, ...response };
-  }
-  catch (error) {
+  } catch (error) {
     toast.error("Invoice Delete Failed", { autoClose: 3000 });
+
     return error;
   }
 });

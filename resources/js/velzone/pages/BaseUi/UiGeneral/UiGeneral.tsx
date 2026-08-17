@@ -2,17 +2,18 @@ import React from 'react';
 import { Button, Card, CardBody, Col, Container, Row, UncontrolledPopover, PopoverHeader, PopoverBody, UncontrolledTooltip, Spinner, Pagination, PaginationItem, PaginationLink, Breadcrumb, BreadcrumbItem } from 'reactstrap';
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
-//import Components
+import { Link } from '@/velzone/inertia-router';
 import BreadCrumbpage from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
+//import Components
 
 import { PopoversExample, TooltipsExample, BreadcrumbExample, PaginationExample, SpinnersExample } from './UiGeneralCode';
-import { Link } from '@/velzone/inertia-router';
 
 
 const UiGeneral = () => {
     document.title="General | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

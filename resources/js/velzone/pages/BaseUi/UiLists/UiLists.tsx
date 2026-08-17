@@ -1,25 +1,26 @@
 import React from 'react';
 import { Card, CardBody, Col, Container, Input, ListGroup, ListGroupItem, Row, } from 'reactstrap';
-import { Link } from '@/velzone/inertia-router';
 
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 import SimpleBar from 'simplebar-react';
+import { Link } from '@/velzone/inertia-router';
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
-import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
 // Import Images
 import avatar1 from "../../../assets/images/users/avatar-1.jpg";
 import avatar2 from "../../../assets/images/users/avatar-2.jpg";
 import avatar3 from "../../../assets/images/users/avatar-3.jpg";
 import avatar4 from "../../../assets/images/users/avatar-4.jpg";
+import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
 
 import { DefaultListExample, ActiveItemExample, DisabledItemExample, ListlinkExample, ListButtonExample, FlushListExample, HorizontalListExample, ContextualClassExample, ContextualLinkExample, ColoredListExample, CustomContentExample, ListBadgeExample, ListCheckboxExample, ListRadioExample, ListIconExample, ListNumberedExample, CustomListExample } from './UiListCode';
 
 
 const UiList = () => {
     document.title="List | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

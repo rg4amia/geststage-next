@@ -1,12 +1,12 @@
+import { useFormik } from 'formik';
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Alert, Card, CardBody, Col, Container, Row, Form, Label, Input, FormFeedback } from 'reactstrap';
-import ParticlesAuth from '../ParticlesAuth';
+import * as Yup from 'yup';
+import { Link } from '@/velzone/inertia-router';
 import logoLight from "../../../assets/images/logo-light.png";
+import ParticlesAuth from '../ParticlesAuth';
 
 //formik
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
 
 const BasicPasswReset = () => {
     document.title = "Reset Password | Velzon - React Admin & Dashboard Template";

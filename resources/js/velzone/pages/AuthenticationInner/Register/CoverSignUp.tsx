@@ -1,10 +1,10 @@
+import { useFormik } from 'formik';
 import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, Col, Container, Row, Form, FormFeedback, Input, Button } from 'reactstrap';
 
 //formik
-import { useFormik } from 'formik';
 import * as Yup from 'yup';
+import { Link } from '@/velzone/inertia-router';
 
 import AuthSlider from '../authCarousel';
 
@@ -63,6 +63,7 @@ const CoverSignUp = () => {
                                                         onSubmit={(e) => {
                                                             e.preventDefault();
                                                             validation.handleSubmit();
+
                                                             return false;
                                                         }}
                                                         className="needs-validation" action="#">

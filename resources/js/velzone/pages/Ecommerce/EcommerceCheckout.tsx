@@ -1,8 +1,9 @@
+import classnames from "classnames";
 import React, { useState } from "react";
 
 //Import Breadcrumb
-import BreadCrumb from "../../Components/Common/BreadCrumb";
 
+import Select from "react-select";
 import {
   Container,
   Form,
@@ -24,10 +25,9 @@ import {
   Input,
 } from "reactstrap";
 
-import Select from "react-select";
-import classnames from "classnames";
-import { orderSummary } from "../../common/data/ecommerce";
 import { Link } from '@/velzone/inertia-router';
+import { orderSummary } from "../../common/data/ecommerce";
+import BreadCrumb from "../../Components/Common/BreadCrumb";
 
 const EcommerceCheckout = () => {
   const [selectedCountry, setselectedCountry] = useState<any>(null);
@@ -55,7 +55,7 @@ const EcommerceCheckout = () => {
 
   function toggleTab(tab:any) {
     if (activeTab !== tab) {
-      var modifiedSteps = [...passedSteps, tab];
+      const modifiedSteps = [...passedSteps, tab];
 
       if (tab >= 1 && tab <= 4) {
         setactiveTab(tab);
@@ -120,7 +120,9 @@ const EcommerceCheckout = () => {
                         <NavItem role="presentation">
                           <NavLink href="#"
                             className={classnames({ active: activeTab === 1, done: (activeTab <= 4 && activeTab >= 0) }, "p-3 fs-15")}
-                            onClick={() => { toggleTab(1); }}
+                            onClick={() => {
+ toggleTab(1); 
+}}
                           >
                             <i className="ri-user-2-line fs-16 p-2 bg-primary-subtle text-primary rounded-circle align-middle me-2"></i>
                             Personal Info
@@ -129,7 +131,9 @@ const EcommerceCheckout = () => {
                         <NavItem role="presentation">
                           <NavLink href="#"
                             className={classnames({ active: activeTab === 2, done: activeTab <= 4 && activeTab > 1 }, "p-3 fs-15")}
-                            onClick={() => { toggleTab(2); }}
+                            onClick={() => {
+ toggleTab(2); 
+}}
                           >
                             <i className="ri-truck-line fs-16 p-2 bg-primary-subtle text-primary rounded-circle align-middle me-2"> </i>
                             Shipping Info
@@ -138,7 +142,9 @@ const EcommerceCheckout = () => {
                         <NavItem role="presentation">
                           <NavLink href="#"
                             className={classnames({ active: activeTab === 3, done: activeTab <= 4 && activeTab > 2 }, "p-3 fs-15")}
-                            onClick={() => { toggleTab(3); }}
+                            onClick={() => {
+ toggleTab(3); 
+}}
                           >
                             <i className="ri-bank-card-line fs-16 p-2 bg-primary-subtle text-primary rounded-circle align-middle me-2"> </i>
                              Payment Info
@@ -147,7 +153,9 @@ const EcommerceCheckout = () => {
                         <NavItem role="presentation">
                           <NavLink href="#"
                             className={classnames({ active: activeTab === 4, done: activeTab <= 4 && activeTab > 3 }, "p-3 fs-15")}
-                            onClick={() => { toggleTab(4); }}
+                            onClick={() => {
+ toggleTab(4); 
+}}
                           >
                             <i className="ri-checkbox-circle-line fs-16 p-2 bg-primary-subtle text-primary rounded-circle align-middle me-2"></i>
                             Finish

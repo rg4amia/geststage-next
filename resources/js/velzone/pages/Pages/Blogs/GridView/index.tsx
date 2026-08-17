@@ -1,9 +1,9 @@
+import React, { useMemo, useState } from 'react'
+import { Col, Container, Row } from 'reactstrap'
+import { Link } from '@/velzone/inertia-router';
 import { gridData } from 'common/data';
 import BreadCrumb from 'Components/Common/BreadCrumb'
 import Pagination from 'Components/Common/Pagination';
-import React, { useMemo, useState } from 'react'
-import { Link } from '@/velzone/inertia-router';
-import { Col, Container, Row } from 'reactstrap'
 
 const BlogGridView = () => {
 

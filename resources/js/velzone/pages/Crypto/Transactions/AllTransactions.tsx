@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
+import { useSelector, useDispatch } from "react-redux";
 import { Card, CardBody, CardHeader, Col, Row } from 'reactstrap';
+import { createSelector } from 'reselect';
+import { Link } from '@/velzone/inertia-router';
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 import TableContainer from '../../../Components/Common/TableContainer';
 import { getTransationList } from "../../../slices/thunks";
 
@@ -15,7 +16,6 @@ import {
     TypeCol,
     Status
 } from "./TransactionsCol";
-import { createSelector } from 'reselect';
 
 const AllTransactions = () => {
     const dispatch: any = useDispatch();
@@ -44,6 +44,7 @@ const AllTransactions = () => {
         } else {
             filter = transationList.filter((item: any) => item.category === e);
         }
+
         setTransation(filter);
     };
 
@@ -153,6 +154,7 @@ const AllTransactions = () => {
         ],
         []
     );
+
     return (
         <React.Fragment>
             <Row className="align-items-center mb-4 g-3">

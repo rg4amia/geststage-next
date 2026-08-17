@@ -66,9 +66,9 @@ const calendarSlice = createSlice({
     });
 
     builder.addCase(resetCalendar.fulfilled, (state: any, action: any) => {
-      var flag = action.payload.flag;
-      var value = action.payload.value;
-      var flags: any = {};
+      const flag = action.payload.flag;
+      const value = action.payload.value;
+      const flags: any = {};
       flags[flag] = value;
 
       // state.flags = action.payload;

@@ -1,12 +1,12 @@
+import { useFormik } from 'formik';
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Button, Card, Col, Container, Row, Form, FormFeedback, Label, Input } from 'reactstrap';
+import * as Yup from 'yup';
+import { Link } from '@/velzone/inertia-router';
 
 import AuthSlider from '../authCarousel';
 
 //formik
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
 
 const CoverPasswReset = () => {
     document.title = "Reset Password | Velzon - React Admin & Dashboard Template";

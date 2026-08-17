@@ -1,9 +1,9 @@
 import React from "react";
 import { Card, CardBody, Col, Container, Row } from "reactstrap";
 
-import Avatar10 from "../../../assets/images/users/avatar-10.jpg";
-import About from "../../../assets/images/about.jpg";
 import { Link } from '@/velzone/inertia-router';
+import About from "../../../assets/images/about.jpg";
+import Avatar10 from "../../../assets/images/users/avatar-10.jpg";
 
 const Features = () => {
   return (

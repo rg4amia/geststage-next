@@ -5,7 +5,7 @@ import useChartColors from 'Components/Common/useChartColors';
 const ProjectsOverviewCharts = ({ chartId, series }: any) => {
     const chartColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         chart: {
             height: 374,
             type: 'line',
@@ -85,6 +85,7 @@ const ProjectsOverviewCharts = ({ chartId, series }: any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0);
                     }
+
                     return y;
 
                 }
@@ -93,6 +94,7 @@ const ProjectsOverviewCharts = ({ chartId, series }: any) => {
                     if (typeof y !== "undefined") {
                         return "$" + y.toFixed(2) + "k";
                     }
+
                     return y;
 
                 }
@@ -101,12 +103,14 @@ const ProjectsOverviewCharts = ({ chartId, series }: any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0);
                     }
+
                     return y;
 
                 }
             }]
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -161,6 +165,7 @@ const TeamMembersCharts = ({ seriesData, chartsColor }: any) => {
         },
         colors: [chartsColor]
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -175,9 +180,9 @@ const TeamMembersCharts = ({ seriesData, chartsColor }: any) => {
 };
 
 const PrjectsStatusCharts = ({ chartId, series }: any) => {
-    var donutchartProjectsStatusColors = useChartColors(chartId);
+    const donutchartProjectsStatusColors = useChartColors(chartId);
 
-    var options: any = {
+    const options: any = {
         labels: ["Completed", "In Progress", "Yet to Start", "Cancelled"],
         chart: {
             type: "donut",
@@ -208,6 +213,7 @@ const PrjectsStatusCharts = ({ chartId, series }: any) => {
         },
         colors: donutchartProjectsStatusColors,
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"

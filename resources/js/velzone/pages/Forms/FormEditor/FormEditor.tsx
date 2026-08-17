@@ -1,18 +1,19 @@
+import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
+import { CKEditor } from "@ckeditor/ckeditor5-react";
 import React from "react";
+import { useQuill } from "react-quilljs";
 import { Card, CardBody, Col, Row, CardHeader, Form, Container } from "reactstrap";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import UiContent from "../../../Components/Common/UiContent";
 
-import { CKEditor } from "@ckeditor/ckeditor5-react";
-import ClassicEditor from "@ckeditor/ckeditor5-build-classic";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
-import { useQuill } from "react-quilljs";
 import "quill/dist/quill.snow.css";
 
 const FormEditor = () => {
   const {  quillRef } = useQuill();
 
 document.title ="Editors | Velzon - React Admin & Dashboard Template";
+
   return (
     <React.Fragment>
       <UiContent />

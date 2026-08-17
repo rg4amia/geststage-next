@@ -7,6 +7,7 @@ import {
 export const getAPIKey = createAsyncThunk("apiKey/getAPIKey", async () => {
     try {
         const response = getAPIKeyApi();
+
         return response;
     } catch (error) {
         return error;

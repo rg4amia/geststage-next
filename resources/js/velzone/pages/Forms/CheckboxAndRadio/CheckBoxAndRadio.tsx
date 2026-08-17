@@ -1,8 +1,8 @@
 import React from 'react';
-import UiContent from "../../../Components/Common/UiContent";
-import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
 import { Card, CardBody, Col, Container, Input, Label, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from "../../../Components/Common/UiContent";
 
 import {
     Checkbox, CustomCheckbox, Radio, CustomRadio, Switches, SwitchColor, CustomSwitches, InlineCheckboxRadio, WithoutLabels,
@@ -12,6 +12,7 @@ import {
 
 const CheckBoxAndRadio = () => {
     document.title="Checkbox & Radio | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <UiContent />

@@ -1,3 +1,4 @@
+import Nouislider from "nouislider-react";
 import React, { useState } from "react";
 import {
     Card,
@@ -17,7 +18,6 @@ import { Link } from '@/velzone/inertia-router';
 
 // RangeSlider
 
-import Nouislider from "nouislider-react";
 import "nouislider/distribute/nouislider.css";
 
 import { expolreNow } from "../../../common/data/index";
@@ -58,25 +58,27 @@ const ExploreNow = () => {
     };
 
     const searchNFT = () => {
-        var searchProductList:any = document.getElementById("searchProductList") ;
-        var inputVal = searchProductList.value.toLowerCase();
+        const searchProductList:any = document.getElementById("searchProductList") ;
+        const inputVal = searchProductList.value.toLowerCase();
         function filterItems(arr:any, query:any) {
             return arr.filter(function (el:any) {
                 return el.title.toLowerCase().indexOf(query.toLowerCase()) !== -1;
             });
         }
-        var filterData = filterItems(expolreNow, inputVal);
+        const filterData = filterItems(expolreNow, inputVal);
+
         if (filterData.length === 0) {
-            var noresult = document.getElementById("noresult") as HTMLElement;
+            const noresult = document.getElementById("noresult") as HTMLElement;
             noresult.style.display = "block";
-            var loadmore = document.getElementById("loadmore") as HTMLElement;
+            const loadmore = document.getElementById("loadmore") as HTMLElement;
             loadmore.style.display = "none";
         } else {
-            var noResult = document.getElementById("noresult") as HTMLElement;
+            const noResult = document.getElementById("noresult") as HTMLElement;
             noResult.style.display = "none";
-            var loadMore = document.getElementById("loadmore") as HTMLElement;
+            const loadMore = document.getElementById("loadmore") as HTMLElement;
             loadMore.style.display = "block";
         }
+
         setNFTList(filterData);
     };
 

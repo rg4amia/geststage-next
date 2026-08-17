@@ -1,12 +1,12 @@
+import { useFormik } from 'formik';
 import React, { useState } from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Button, Card, CardBody, Col, Container, Row, Form, Input, Label, FormFeedback } from 'reactstrap';
-import ParticlesAuth from '../ParticlesAuth';
+import * as Yup from 'yup';
+import { Link } from '@/velzone/inertia-router';
 import logoLight from "../../../assets/images/logo-light.png";
+import ParticlesAuth from '../ParticlesAuth';
 
 //formik
-import { useFormik } from 'formik';
-import * as Yup from 'yup';
 
 const BasicPasswCreate = () => {
 
@@ -37,6 +37,7 @@ const BasicPasswCreate = () => {
             // console.log(values);
         }
     });
+
     return (
         <ParticlesAuth>
             <div className="auth-page-content mt-lg-5">

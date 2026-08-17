@@ -1,7 +1,7 @@
 import React from 'react';
 import CountUp from "react-countup";
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, Col } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import { ecomWidgets } from "../../common/data";
 
 const Widgets = () => {

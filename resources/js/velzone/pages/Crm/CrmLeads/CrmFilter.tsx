@@ -1,4 +1,6 @@
 import React, { useState } from "react";
+import Flatpickr from "react-flatpickr";
+import Select from "react-select";
 import {
   Offcanvas,
   OffcanvasHeader,
@@ -8,8 +10,6 @@ import {
   Row,
   Col,
 } from "reactstrap";
-import Flatpickr from "react-flatpickr";
-import Select from "react-select";
 
 const CrmFilter = ({ show, onCloseClick }:any) => {
   const [selectCountry, setselectCountry] = useState<any>(null);

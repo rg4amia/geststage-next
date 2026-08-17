@@ -12,15 +12,15 @@ import { Swiper, SwiperSlide } from "swiper/react";
 
 
 // Import Images
-import imgpattern from "../../../assets/images/landing/img-pattern.png";
 
+import creativeDemo from "../../../assets/images/demos/creative.png";
 import defaultDemo from "../../../assets/images/demos/default.png";
-import saasDemo from "../../../assets/images/demos/saas.png";
+import interactiveDemo from "../../../assets/images/demos/interactive.png";
 import materialDemo from "../../../assets/images/demos/material.png";
 import minimalDemo from "../../../assets/images/demos/minimal.png";
-import creativeDemo from "../../../assets/images/demos/creative.png";
 import modernDemo from "../../../assets/images/demos/modern.png";
-import interactiveDemo from "../../../assets/images/demos/interactive.png";
+import saasDemo from "../../../assets/images/demos/saas.png";
+import imgpattern from "../../../assets/images/landing/img-pattern.png";
 
 
 const Home = () => {

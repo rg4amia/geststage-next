@@ -1,6 +1,6 @@
-import BreadCrumb from 'Components/Common/BreadCrumb';
 import React from 'react'
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
+import BreadCrumb from 'Components/Common/BreadCrumb';
 import { BasicSlop, MultiGroup } from './Slop';
 
 const SlopeCharts = () => {

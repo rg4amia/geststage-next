@@ -1,25 +1,25 @@
+import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import React from "react";
+import { useSelector, useDispatch } from "react-redux";
 import { Row, Col, Alert, Card, CardBody, Container, FormFeedback, Input, Label, Form } from "reactstrap";
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 
+import { createSelector } from "reselect";
+import * as Yup from "yup";
 import { Link } from '@/velzone/inertia-router';
+import logoLight from "../../assets/images/logo-light.png";
 import withRouter from "../../Components/Common/withRouter";
 
 // Formik Validation
-import * as Yup from "yup";
-import { useFormik } from "formik";
 
 // action
 import { userForgetPassword } from "../../slices/thunks";
 
 // import images
 // import profile from "../../assets/images/bg.png";
-import logoLight from "../../assets/images/logo-light.png";
 import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
-import { createSelector } from "reselect";
 
 const ForgetPasswordPage = (props : any) => {
   const dispatch : any = useDispatch();
@@ -54,6 +54,7 @@ const ForgetPasswordPage = (props : any) => {
   } = useSelector(selectLayoutProperties);
 
   document.title = "Reset Password | Velzon - React Admin & Dashboard Template";
+
   return (
     <ParticlesAuth>
       <div className="auth-page-content mt-lg-5">
@@ -103,6 +104,7 @@ const ForgetPasswordPage = (props : any) => {
                       onSubmit={(e) => {
                         e.preventDefault();
                         validation.handleSubmit();
+
                         return false;
                       }}
                     >

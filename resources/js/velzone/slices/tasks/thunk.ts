@@ -15,6 +15,7 @@ import {
 export const getTaskList = createAsyncThunk("tasks/getTaskList", async () => {
     try {
         const response = getTaskListApi();
+
         return response;
     } catch (error) {
         return error;
@@ -24,9 +25,11 @@ export const addNewTask = createAsyncThunk("tasks/addNewTask", async (task: any)
     try {
         const response = addNewTaskApi(task);
         toast.success("Task Added Successfully", { autoClose: 3000 });
+
         return response;
     } catch (error) {
         toast.error("Task Added Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -34,9 +37,11 @@ export const updateTask = createAsyncThunk("tasks/updateTask", async (task: any)
     try {
         const response = updateTaskApi(task);
         toast.success("Task Updated Successfully", { autoClose: 3000 });
+
         return response;
     } catch (error) {
         toast.error("Task Updated Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -44,9 +49,11 @@ export const deleteTask = createAsyncThunk("tasks/deleteTask", async (task: any)
     try {
         const response = deleteTaskApi(task);
         toast.success("Task Updated Successfully", { autoClose: 3000 });
+
         return { task, ...response };
     } catch (error) {
         toast.error("Task Updated Failed", { autoClose: 3000 });
+
         return error;
     }
 });
@@ -54,6 +61,7 @@ export const deleteTask = createAsyncThunk("tasks/deleteTask", async (task: any)
 export const getTasks = createAsyncThunk("tasks/getTasks", async () => {
     try {
         const response = getTasksApi();
+
         return response;
     } catch (error) {
         return error;
@@ -64,9 +72,11 @@ export const addCardData = createAsyncThunk("tasks/addCardData", async (card: an
         const response = addNewTasksApi(card);
         const data = await response;
         toast.success("Card Add Successfully", { autoClose: 2000 })
+
         return data;
     } catch (error) {
         toast.error("Card Add Failded", { autoClose: 2000 })
+
         return error;
     }
 })
@@ -75,9 +85,11 @@ export const updateCardData = createAsyncThunk("tasks/updateCardData", async (ca
         const response = updateTasksApi(card);
         const data = await response;
         toast.success("Card Update Successfully", { autoClose: 2000 })
+
         return data;
     } catch (error) {
         toast.error("Card Update Failded", { autoClose: 2000 })
+
         return error
     }
 })
@@ -85,9 +97,11 @@ export const deleteKanban = createAsyncThunk("tasks/deleteKanban", async (card: 
     try {
         const response = deleteTasksApi(card);
         toast.success("Card Delete Successfully", { autoClose: 2000 })
+
         return response;
     } catch (error) {
         toast.error("Card Delete Failded", { autoClose: 2000 })
+
         return error;
     }
 })

@@ -1,6 +1,6 @@
 import React from 'react';
-import { Link } from '@/velzone/inertia-router';
 import { Card, CardBody, CardHeader, Col } from 'reactstrap';
+import { Link } from '@/velzone/inertia-router';
 import { recentOrders } from '../../common/data';
 
 const RecentOrders = () => {

@@ -5,7 +5,7 @@ import user from "../../../../assets/images/small/img-4.jpg";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const Basic = ({ dataColors } : any) => {
-    var BasicColors = getChartColorsArray(dataColors);
+    const BasicColors = getChartColorsArray(dataColors);
     const series = [{
         data: [380, 430, 450, 475, 550, 584, 780, 1100, 1220, 1365]
     }];
@@ -48,11 +48,11 @@ const Basic = ({ dataColors } : any) => {
 };
 
 const CustomDataLabel = ({ dataColors } : any) => {
-    var chartDatalabelsBarColors = getChartColorsArray(dataColors);
+    const chartDatalabelsBarColors = getChartColorsArray(dataColors);
     const series = [{
         data: [400, 430, 448, 470, 540, 580, 690, 1100, 1200, 1380]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 350,
@@ -125,6 +125,7 @@ const CustomDataLabel = ({ dataColors } : any) => {
             }
         }
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -139,7 +140,7 @@ const CustomDataLabel = ({ dataColors } : any) => {
 };
 
 const Stacked = ({ dataColors } : any) => {
-    var chartStackedBarColors = getChartColorsArray(dataColors);
+    const chartStackedBarColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Marine Sprite',
         data: [44, 55, 41, 37, 22, 43, 21]
@@ -156,7 +157,7 @@ const Stacked = ({ dataColors } : any) => {
         name: 'Reborn Kid',
         data: [25, 12, 19, 32, 25, 24, 10]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 350,
@@ -225,7 +226,7 @@ const Stacked = ({ dataColors } : any) => {
 };
 
 const Stacked2 = ({ dataColors } : any) => {
-    var chartStackedBar100Colors = getChartColorsArray(dataColors);
+    const chartStackedBar100Colors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Marine Sprite",
@@ -307,7 +308,7 @@ const Stacked2 = ({ dataColors } : any) => {
 };
 
 const Negative = ({ dataColors } : any) => {
-    var chartNegativeBarColors = getChartColorsArray(dataColors);
+    const chartNegativeBarColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Males",
@@ -431,7 +432,7 @@ const Negative = ({ dataColors } : any) => {
 };
 
 const Markers = ({ dataColors } : any) => {
-    var chartBarMarkersColors = getChartColorsArray(dataColors);
+    const chartBarMarkersColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Actual",
@@ -512,7 +513,7 @@ const Markers = ({ dataColors } : any) => {
         },
     ];
 
-    var options : any = {
+    const options : any = {
         chart: {
             toolbar: {
                 show: !1,
@@ -526,12 +527,13 @@ const Markers = ({ dataColors } : any) => {
         colors: chartBarMarkersColors,
         dataLabels: {
             formatter: function (val : any, opt : any) {
-                var goals =
+                const goals =
                     opt.w.config.series[opt.seriesIndex].data[opt.dataPointIndex].goals;
 
                 if (goals && goals.length) {
                     return `${val} / ${goals[0].value}`
                 }
+
                 return val;
             },
         },
@@ -559,14 +561,14 @@ const Markers = ({ dataColors } : any) => {
 };
 
 const Reversed = ({ dataColors } : any) => {
-    var chartBarReversedColors = getChartColorsArray(dataColors);
+    const chartBarReversedColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [400, 430, 448, 470, 540, 580, 690],
         },
     ];
 
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 350,
@@ -636,7 +638,7 @@ const Reversed = ({ dataColors } : any) => {
 };
 
 const Patterned = ({ dataColors } : any) => {
-    var chartPatternedColors = getChartColorsArray(dataColors);
+    const chartPatternedColors = getChartColorsArray(dataColors);
     const series = [{
         name: 'Marine Sprite',
         data: [44, 55, 41, 37, 22, 43, 21]
@@ -650,7 +652,7 @@ const Patterned = ({ dataColors } : any) => {
         name: 'Bucket Slope',
         data: [9, 7, 5, 8, 6, 9, 4]
     }];
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 350,
@@ -732,7 +734,7 @@ const Patterned = ({ dataColors } : any) => {
 };
 
 const Groupes = ({ dataColors } : any) => {
-    var chartGroupbarColors = getChartColorsArray(dataColors);
+    const chartGroupbarColors = getChartColorsArray(dataColors);
     const series = [
         {
             data: [44, 55, 41, 64, 22, 43, 21],
@@ -742,7 +744,7 @@ const Groupes = ({ dataColors } : any) => {
         },
     ];
 
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 410,
@@ -780,6 +782,7 @@ const Groupes = ({ dataColors } : any) => {
         },
         colors: chartGroupbarColors
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -801,7 +804,7 @@ const BarwithImages = () => {
         ]
     }];
 
-    var options : any = {
+    const options : any = {
         chart: {
             type: 'bar',
             height: 410,

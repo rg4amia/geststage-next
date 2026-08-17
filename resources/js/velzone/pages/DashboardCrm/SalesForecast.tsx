@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
-import { SalesForecastCharts } from './DashboardCrmCharts';
 import { useSelector, useDispatch } from "react-redux";
-import { getSalesChartsData } from '../../slices/thunks';
+import { Card, CardHeader, Col, DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap';
 import { createSelector } from 'reselect';
+import { getSalesChartsData } from '../../slices/thunks';
+import { SalesForecastCharts } from './DashboardCrmCharts';
 
 const SalesForecast = () => {
     
@@ -45,10 +45,18 @@ const SalesForecast = () => {
                                     <span className="fw-semibold text-uppercase fs-12">Sort by: </span><span className="text-muted">{ seletedMonth.charAt(0).toUpperCase() + seletedMonth.slice(1) }<i className="mdi mdi-chevron-down ms-1"></i></span>
                                 </DropdownToggle>
                                 <DropdownMenu className="dropdown-menu-start">
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("oct"); }} className={seletedMonth === "oct" ? "active" : ""}>Oct 2021</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("nov"); }} className={seletedMonth === "nov" ? "active" : ""}>Nov 2021</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("dec"); }} className={seletedMonth === "dec" ? "active" : ""}>Dec 2021</DropdownItem>
-                                    <DropdownItem onClick={() => { onChangeChartPeriod("jan"); }} className={seletedMonth === "jan" ? "active" : ""}>Jan 2022</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("oct"); 
+}} className={seletedMonth === "oct" ? "active" : ""}>Oct 2021</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("nov"); 
+}} className={seletedMonth === "nov" ? "active" : ""}>Nov 2021</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("dec"); 
+}} className={seletedMonth === "dec" ? "active" : ""}>Dec 2021</DropdownItem>
+                                    <DropdownItem onClick={() => {
+ onChangeChartPeriod("jan"); 
+}} className={seletedMonth === "jan" ? "active" : ""}>Jan 2022</DropdownItem>
                                 </DropdownMenu>
                             </UncontrolledDropdown>
                         </div>

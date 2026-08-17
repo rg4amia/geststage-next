@@ -1,9 +1,9 @@
+import { Link, useForm, usePage } from '@inertiajs/react';
 import React, { useEffect, useState } from 'react';
 import { Card, CardBody, Col, Container, Input, Label, Row, Button, Form, FormFeedback, Alert, Spinner } from 'reactstrap';
-import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
-import { Link, useForm, usePage } from '@inertiajs/react';
-
 import logoLight from "../../assets/images/logo-light.png";
+import ParticlesAuth from "../AuthenticationInner/ParticlesAuth";
+
 
 const Login = () => {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -29,6 +29,7 @@ const Login = () => {
     };
 
     document.title = "SignIn | GestStage";
+
     return (
         <React.Fragment>
             <ParticlesAuth>

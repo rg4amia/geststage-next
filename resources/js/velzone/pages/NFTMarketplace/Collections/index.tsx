@@ -1,12 +1,13 @@
 import React from "react";
 import { Card, CardBody, Col, Container, Row } from "reactstrap";
-import BreadCrumb from "../../../Components/Common/BreadCrumb";
 import { Link } from '@/velzone/inertia-router';
 
 import { topCollection } from "../../../common/data";
+import BreadCrumb from "../../../Components/Common/BreadCrumb";
 
 const Collections = () => {
     document.title = "Collections | Velzon - React Admin & Dashboard Template";
+
     return (
         <React.Fragment>
             <div className="page-content">

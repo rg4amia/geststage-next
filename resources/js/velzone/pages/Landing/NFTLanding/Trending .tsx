@@ -1,9 +1,9 @@
 import React from 'react';
 import { Container, Row, Col, Card, CardBody } from 'reactstrap';
+import { Swiper, SwiperSlide } from "swiper/react";
 import { Link } from '@/velzone/inertia-router';
 
 //swiper
-import { Swiper, SwiperSlide } from "swiper/react";
 import "swiper/css";
 import "swiper/css/pagination";
 import { Pagination, Autoplay, Navigation } from "swiper/modules";

@@ -1,6 +1,6 @@
 import React from "react";
-import { Link } from '@/velzone/inertia-router';
 import { Col, Container, Row } from "reactstrap";
+import { Link } from '@/velzone/inertia-router';
 import LogoLight from "../../../assets/images/logo-light.png";
 
 const Footer = () => {

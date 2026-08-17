@@ -1,7 +1,7 @@
-import React, { useMemo, useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner, Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import axios from 'axios';
+import React, { useMemo, useState, useEffect } from 'react';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner, Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -20,12 +20,14 @@ const MesStagiaires = ({
         const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('mesStagiairesColumnVisibility');
+
             if (saved) {
                 try {
                     return JSON.parse(saved);
                 } catch (e) {}
             }
         }
+
         return {};
     });
 
@@ -49,6 +51,33 @@ const MesStagiaires = ({
 
     const [modalAnalyse, setModalAnalyse] = useState(false);
     const [selectedStagiaire, setSelectedStagiaire] = useState<any>(null);
+    
+    // Nouveaux états pour les modales d'action
+    const [selectedActionStagiaire, setSelectedActionStagiaire] = useState<any>(null);
+    const [modalGenererContrat, setModalGenererContrat] = useState(false);
+    const [modalTransferer, setModalTransferer] = useState(false);
+    const [modalTresorMoney, setModalTresorMoney] = useState(false);
+    const [modalDelete, setModalDelete] = useState(false);
+
+    const genererContratForm = useForm({
+        fonction_dg: '',
+        montant: '',
+    });
+
+    const transfererForm = useForm({
+        contrat_stage: null as File | null,
+    });
+
+    const tresorMoneyForm = useForm({
+        tresor_money_file: null as File | null,
+    });
+
+    const deleteForm = useForm({});
+
+    const openActionModal = (stagiaire: any, modalSetter: any) => {
+        setSelectedActionStagiaire(stagiaire);
+        modalSetter(true);
+    };
 
     const { data: formData, setData, get } = useForm({
         agence_id: filters?.agence_id || '',
@@ -65,6 +94,7 @@ const MesStagiaires = ({
 
     const fetchData = async (filtersData: any) => {
         setIsLoading(true);
+
         try {
             const response: any = await axios.get('/cip/mes-stagiaires', {
                 params: filtersData,
@@ -74,6 +104,7 @@ const MesStagiaires = ({
             const fetchedInstances = responseData.instances;
             setDataList(fetchedInstances?.data || fetchedInstances || []);
             setPaginationInfo(fetchedInstances);
+
             if (responseData.stats) {
                 setStats(responseData.stats);
             }
@@ -91,7 +122,10 @@ const MesStagiaires = ({
     }, []);
 
     const handleSearch = (e?: any) => {
-        if(e) e.preventDefault();
+        if(e) {
+e.preventDefault();
+}
+
         fetchData(formData);
     };
 
@@ -173,6 +207,7 @@ const MesStagiaires = ({
                         const isDone = currentStep > s.step;
                         const isCurrent = currentStep === s.step;
                         const color = isDone ? 'var(--vz-success)' : isCurrent ? 'var(--vz-primary)' : 'var(--vz-border-color)';
+
                         return (
                             <React.Fragment key={s.step}>
                                 <div className="d-flex flex-column align-items-center" style={{ minWidth: 90 }}>
@@ -201,7 +236,98 @@ const MesStagiaires = ({
                                         }}
                                     ></div>
                                 )}
-                            </React.Fragment>
+                    
+            {/* Modal Générer Contrat */}
+            <Modal isOpen={modalGenererContrat} toggle={() => setModalGenererContrat(!modalGenererContrat)} centered>
+                <ModalHeader toggle={() => setModalGenererContrat(!modalGenererContrat)} className="bg-warning text-white">Générer Contrat</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    window.open(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-contrat?fonction=${genererContratForm.data.fonction_dg}&montant=${genererContratForm.data.montant}`, '_blank');
+                    setModalGenererContrat(false);
+                }}>
+                    <ModalBody>
+                        <div className="mb-3">
+                            <label htmlFor="fonction_dg" className="form-label">Fonction du représentant légal de l'entreprise</label>
+                            <Input type="text" id="fonction_dg" value={genererContratForm.data.fonction_dg} onChange={e => genererContratForm.setData('fonction_dg', e.target.value)} required />
+                        </div>
+                        <div className="mb-3">
+                            <label htmlFor="montant" className="form-label">Montant prime de stage</label>
+                            <Input type="number" id="montant" value={genererContratForm.data.montant} onChange={e => genererContratForm.setData('montant', e.target.value)} required />
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setModalGenererContrat(false)}>Fermer</Button>
+                        <Button color="warning" type="submit" disabled={genererContratForm.processing}>Générer</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
+            {/* Modal Transférer Contrat */}
+            <Modal isOpen={modalTransferer} toggle={() => setModalTransferer(!modalTransferer)} centered>
+                <ModalHeader toggle={() => setModalTransferer(!modalTransferer)} className="bg-info text-white">Transférer Contrat</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    transfererForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/transferer-contrat`, {
+                        onSuccess: () => setModalTransferer(false)
+                    });
+                }}>
+                    <ModalBody>
+                        <div className="mb-3">
+                            <label htmlFor="contrat_stage" className="form-label">Contrat Signé (PDF)</label>
+                            <Input type="file" id="contrat_stage" onChange={e => transfererForm.setData('contrat_stage', e.target.files ? e.target.files[0] : null)} required />
+                            {transfererForm.errors.contrat_stage && <div className="text-danger mt-1">{transfererForm.errors.contrat_stage}</div>}
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setModalTransferer(false)}>Fermer</Button>
+                        <Button color="info" type="submit" disabled={transfererForm.processing}>Transférer</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
+            {/* Modal Joindre Trésor Money */}
+            <Modal isOpen={modalTresorMoney} toggle={() => setModalTresorMoney(!modalTresorMoney)} centered>
+                <ModalHeader toggle={() => setModalTresorMoney(!modalTresorMoney)} className="bg-success text-white">Joindre Fichier Trésor Money</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    tresorMoneyForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/upload-tresor-money`, {
+                        onSuccess: () => setModalTresorMoney(false)
+                    });
+                }}>
+                    <ModalBody>
+                        <div className="mb-3">
+                            <label htmlFor="tresor_money_file" className="form-label">Fichier Trésor Money</label>
+                            <Input type="file" id="tresor_money_file" onChange={e => tresorMoneyForm.setData('tresor_money_file', e.target.files ? e.target.files[0] : null)} required />
+                            {tresorMoneyForm.errors.tresor_money_file && <div className="text-danger mt-1">{tresorMoneyForm.errors.tresor_money_file}</div>}
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setModalTresorMoney(false)}>Fermer</Button>
+                        <Button color="success" type="submit" disabled={tresorMoneyForm.processing}>Enregistrer</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
+            {/* Modal Confirmer Suppression */}
+            <Modal isOpen={modalDelete} toggle={() => setModalDelete(!modalDelete)} centered>
+                <ModalHeader toggle={() => setModalDelete(!modalDelete)} className="bg-danger text-white">Confirmer Suppression</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    deleteForm.delete(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}`, {
+                        onSuccess: () => setModalDelete(false)
+                    });
+                }}>
+                    <ModalBody>
+                        <h5 className="text-center mt-3 mb-4">Êtes-vous sûr de vouloir supprimer cette donnée ?</h5>
+                    </ModalBody>
+                    <ModalFooter className="justify-content-center">
+                        <Button color="danger" type="submit" disabled={deleteForm.processing} className="px-4">Oui</Button>
+                        <Button color="light" onClick={() => setModalDelete(false)} className="px-4">Non</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
+        </React.Fragment>
                         );
                     })}
                 </div>
@@ -217,36 +343,46 @@ const MesStagiaires = ({
         if (!corbeille) {
             return 'secondary';
         }
+
         if (corbeille.includes('ajourne') || corbeille.includes('differe') || corbeille.includes('rejet')) {
             return 'danger';
         }
+
         if (step === 4) {
             return 'success';
         }
+
         return 'primary';
     };
 
     // Couleur de badge pour la situation de stage (cf. légende légacy : EN COURS / ABANDON / SUSPENSION / FIN DE STAGE / REACTIVATION / DESISTEMENT)
     const getSituationBadgeColor = (label: string) => {
         const upper = label.toUpperCase();
+
         if (upper.includes('EN COURS')) {
             return 'success';
         }
+
         if (upper.includes('ABANDON')) {
             return 'warning';
         }
+
         if (upper.includes('SUSPENSION')) {
             return 'info';
         }
+
         if (upper.includes('REACTIV')) {
             return 'warning';
         }
+
         if (upper.includes('DESIST')) {
             return 'secondary';
         }
+
         if (upper.includes('FIN')) {
             return 'danger';
         }
+
         return 'light';
     };
 
@@ -263,10 +399,13 @@ const MesStagiaires = ({
                 accessorKey: 'stage.situation_stage',
                 cell: (cell: any) => {
                     const code = cell.getValue();
+
                     if (!code) {
                         return <Badge color="light" className="text-dark">NEANT</Badge>;
                     }
+
                     const label = situationstages?.[code] || code;
+
                     return <Badge color={getSituationBadgeColor(String(label))}>{label}</Badge>;
                 },
             },
@@ -275,6 +414,7 @@ const MesStagiaires = ({
                 accessorKey: 'created_at',
                 cell: (cell: any) => {
                     const val = cell.getValue();
+
                     return val ? new Date(val).toLocaleDateString('fr-FR') : '-';
                 },
             },
@@ -303,13 +443,19 @@ const MesStagiaires = ({
                 accessorKey: 'stage.entreprise.type_structure.nom',
                 cell: (cell: any) => {
                     const type = cell.getValue();
-                    if (!type) return '-';
+
+                    if (!type) {
+return '-';
+}
+
                     if (type.toUpperCase().includes('NEANT')) {
                         return <Badge color="warning">{type}</Badge>;
                     }
+
                     if (type.toUpperCase().includes('PRIVE')) {
                         return <Badge color="primary">{type}</Badge>;
                     }
+
                     return <Badge color="success">{type}</Badge>;
                 },
             },
@@ -348,6 +494,7 @@ const MesStagiaires = ({
                 accessorKey: 'stage.beneficiaire.nom',
                 cell: (cell: any) => {
                     const row = cell.row.original.stage?.beneficiaire;
+
                     return row ? <span className="fw-semibold text-primary">{row.nom} {row.prenoms}</span> : '-';
                 },
             },
@@ -367,6 +514,7 @@ const MesStagiaires = ({
                 cell: (cell: any) => {
                     const contrats = cell.getValue();
                     const hasContrat = contrats && contrats.length > 0;
+
                     return hasContrat ? (
                         <Badge color="success"><i className="ri-check-line me-1"></i> Avec Contrat</Badge>
                     ) : (
@@ -379,6 +527,7 @@ const MesStagiaires = ({
                 accessorKey: 'stage.nbr_mois_capitaliser',
                 cell: (cell: any) => {
                     const mois = cell.getValue() || 0;
+
                     return mois > 0 ? <Badge color="success">Oui ({mois} mois)</Badge> : <Badge color="secondary">Non</Badge>;
                 },
             },
@@ -388,6 +537,7 @@ const MesStagiaires = ({
                 cell: (cell: any) => {
                     const corbeille = cell.getValue();
                     const info = corbeille ? CORBEILLE_INFO[corbeille] : undefined;
+
                     return <Badge color={getEtapeBadgeColor(corbeille, info?.step)}>{info?.label || corbeille || 'N/A'}</Badge>;
                 },
             },
@@ -408,7 +558,7 @@ const MesStagiaires = ({
                     
                     return (
                         <div className="d-flex gap-1">
-                            <Button color="info" size="sm" className="btn-icon rounded-circle" title="Détails" href={`/cip/mes-stagiaires/${row.id}`}>
+                            <Button color="info" size="sm" className="btn-icon rounded-circle" title="Détails" href={`/inscriptions/${row.id}`}>
                                 <i className="ri-eye-line"></i>
                             </Button>
                             
@@ -423,33 +573,33 @@ const MesStagiaires = ({
 
                             {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && (
                                 <>
-                                    <Button color="warning" size="sm" className="btn-icon rounded-circle text-white" title="Générer Contrat">
+                                    <Button color="warning" size="sm" className="btn-icon rounded-circle text-white" title="Générer Contrat" onClick={() => openActionModal(row, setModalGenererContrat)}>
                                         <i className="ri-file-text-line"></i>
                                     </Button>
-                                    <Button color="secondary" size="sm" className="btn-icon rounded-circle" title="Transférer Contrat">
+                                    <Button color="secondary" size="sm" className="btn-icon rounded-circle" title="Transférer Contrat" onClick={() => openActionModal(row, setModalTransferer)}>
                                         <i className="ri-share-forward-line"></i>
                                     </Button>
                                 </>
                             )}
                             
                             {(isAdministrateur || isChefAgence) && type_paiement_id === 1 && (
-                                <Button color="success" size="sm" className="btn-icon rounded-circle" title="Générer Trésor Money">
+                                <Button tag="a" href={`/cip/mes-stagiaires/${row.id}/generer-tresor-money`} target="_blank" color="success" size="sm" className="btn-icon rounded-circle" title="Générer Trésor Money">
                                     <i className="ri-money-dollar-circle-line"></i>
                                 </Button>
                             )}
                             
                             {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && type_paiement_id === 1 && (
-                                <Button color="success" outline size="sm" className="btn-icon rounded-circle" title="Joindre Trésor Money">
+                                <Button color="success" outline size="sm" className="btn-icon rounded-circle" title="Joindre Trésor Money" onClick={() => openActionModal(row, setModalTresorMoney)}>
                                     <i className="ri-wallet-3-line"></i>
                                 </Button>
                             )}
                             
                             {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && (
                                 <>
-                                    <Button color="dark" size="sm" className="btn-icon rounded-circle" title="Modifier" href={`/cip/mes-stagiaires/${row.id}/edit`}>
+                                    <Button color="dark" size="sm" className="btn-icon rounded-circle" title="Modifier" href={`/inscriptions/${row.id}/edit`}>
                                         <i className="ri-edit-line"></i>
                                     </Button>
-                                    <Button color="danger" size="sm" className="btn-icon rounded-circle" title="Supprimer">
+                                    <Button color="danger" size="sm" className="btn-icon rounded-circle" title="Supprimer" onClick={() => openActionModal(row, setModalDelete)}>
                                         <i className="ri-delete-bin-line"></i>
                                     </Button>
                                 </>
@@ -464,8 +614,12 @@ const MesStagiaires = ({
 
         const visibleColumns = useMemo(() => {
         return columns.filter(col => {
-            if (col.header === 'Action') return true;
+            if (col.header === 'Action') {
+return true;
+}
+
             const header = typeof col.header === 'string' ? col.header : col.accessorKey;
+
             return columnVisibility[header as string] !== false;
         });
     }, [columns, columnVisibility]);
@@ -706,6 +860,7 @@ const MesStagiaires = ({
                                                 {columns.filter(c => c.header !== 'Action').map((col, idx) => {
                                                     const header = col.header as string;
                                                     const isVisible = columnVisibility[header] !== false;
+
                                                     return (
                                                         <DropdownItem key={idx} toggle={false} onClick={() => toggleColumn(header)}>
                                                             <div className="form-check">
@@ -823,6 +978,97 @@ const MesStagiaires = ({
                     <Button color="light" onClick={() => toggleAnalyse()}>Fermer</Button>
                 </ModalFooter>
             </Modal>
+
+            {/* Modal Générer Contrat */}
+            <Modal isOpen={modalGenererContrat} toggle={() => setModalGenererContrat(!modalGenererContrat)} centered>
+                <ModalHeader toggle={() => setModalGenererContrat(!modalGenererContrat)} className="bg-warning text-white">Générer Contrat</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    window.open(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-contrat?fonction=${genererContratForm.data.fonction_dg}&montant=${genererContratForm.data.montant}`, '_blank');
+                    setModalGenererContrat(false);
+                }}>
+                    <ModalBody>
+                        <div className="mb-3">
+                            <label htmlFor="fonction_dg" className="form-label">Fonction du représentant légal de l'entreprise</label>
+                            <Input type="text" id="fonction_dg" value={genererContratForm.data.fonction_dg} onChange={e => genererContratForm.setData('fonction_dg', e.target.value)} required />
+                        </div>
+                        <div className="mb-3">
+                            <label htmlFor="montant" className="form-label">Montant prime de stage</label>
+                            <Input type="number" id="montant" value={genererContratForm.data.montant} onChange={e => genererContratForm.setData('montant', e.target.value)} required />
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setModalGenererContrat(false)}>Fermer</Button>
+                        <Button color="warning" type="submit" disabled={genererContratForm.processing}>Générer</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
+            {/* Modal Transférer Contrat */}
+            <Modal isOpen={modalTransferer} toggle={() => setModalTransferer(!modalTransferer)} centered>
+                <ModalHeader toggle={() => setModalTransferer(!modalTransferer)} className="bg-info text-white">Transférer Contrat</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    transfererForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/transferer-contrat`, {
+                        onSuccess: () => setModalTransferer(false)
+                    });
+                }}>
+                    <ModalBody>
+                        <div className="mb-3">
+                            <label htmlFor="contrat_stage" className="form-label">Contrat Signé (PDF)</label>
+                            <Input type="file" id="contrat_stage" onChange={e => transfererForm.setData('contrat_stage', e.target.files ? e.target.files[0] : null)} required />
+                            {transfererForm.errors.contrat_stage && <div className="text-danger mt-1">{transfererForm.errors.contrat_stage}</div>}
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setModalTransferer(false)}>Fermer</Button>
+                        <Button color="info" type="submit" disabled={transfererForm.processing}>Transférer</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
+            {/* Modal Joindre Trésor Money */}
+            <Modal isOpen={modalTresorMoney} toggle={() => setModalTresorMoney(!modalTresorMoney)} centered>
+                <ModalHeader toggle={() => setModalTresorMoney(!modalTresorMoney)} className="bg-success text-white">Joindre Fichier Trésor Money</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    tresorMoneyForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/upload-tresor-money`, {
+                        onSuccess: () => setModalTresorMoney(false)
+                    });
+                }}>
+                    <ModalBody>
+                        <div className="mb-3">
+                            <label htmlFor="tresor_money_file" className="form-label">Fichier Trésor Money</label>
+                            <Input type="file" id="tresor_money_file" onChange={e => tresorMoneyForm.setData('tresor_money_file', e.target.files ? e.target.files[0] : null)} required />
+                            {tresorMoneyForm.errors.tresor_money_file && <div className="text-danger mt-1">{tresorMoneyForm.errors.tresor_money_file}</div>}
+                        </div>
+                    </ModalBody>
+                    <ModalFooter>
+                        <Button color="light" onClick={() => setModalTresorMoney(false)}>Fermer</Button>
+                        <Button color="success" type="submit" disabled={tresorMoneyForm.processing}>Enregistrer</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
+            {/* Modal Confirmer Suppression */}
+            <Modal isOpen={modalDelete} toggle={() => setModalDelete(!modalDelete)} centered>
+                <ModalHeader toggle={() => setModalDelete(!modalDelete)} className="bg-danger text-white">Confirmer Suppression</ModalHeader>
+                <Form onSubmit={(e) => {
+                    e.preventDefault();
+                    deleteForm.delete(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}`, {
+                        onSuccess: () => setModalDelete(false)
+                    });
+                }}>
+                    <ModalBody>
+                        <h5 className="text-center mt-3 mb-4">Êtes-vous sûr de vouloir supprimer cette donnée ?</h5>
+                    </ModalBody>
+                    <ModalFooter className="justify-content-center">
+                        <Button color="danger" type="submit" disabled={deleteForm.processing} className="px-4">Oui</Button>
+                        <Button color="light" onClick={() => setModalDelete(false)} className="px-4">Non</Button>
+                    </ModalFooter>
+                </Form>
+            </Modal>
+
         </React.Fragment>
     );
 };

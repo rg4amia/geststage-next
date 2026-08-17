@@ -4,9 +4,9 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const BasicPolar = ({ dataColors } : any) => {
-    var chartPolarareaBasicColors = getChartColorsArray(dataColors);
+    const chartPolarareaBasicColors = getChartColorsArray(dataColors);
     const series = [14, 23, 21, 17, 15, 10, 12, 17, 21]
-    var options : any = {
+    const options : any = {
 
         chart: {
             type: 'polarArea',
@@ -25,6 +25,7 @@ const BasicPolar = ({ dataColors } : any) => {
         },
         colors: chartPolarareaBasicColors
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"
@@ -38,7 +39,7 @@ const BasicPolar = ({ dataColors } : any) => {
 
 const PolarMonochrome = () => {
     const series = [42, 47, 52, 58, 65]
-    var options : any = {
+    const options : any = {
         chart: {
             width: 400,
             type: 'polarArea'
@@ -78,6 +79,7 @@ const PolarMonochrome = () => {
             }
         }
     };
+
     return (
         <ReactApexChart dir="ltr"
             className="apex-charts"

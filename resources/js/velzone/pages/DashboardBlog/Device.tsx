@@ -1,7 +1,7 @@
 import React from 'react'
 
-import avatar1 from "assets/images/users/avatar-1.jpg"
 import { DropdownItem, DropdownMenu, DropdownToggle, UncontrolledDropdown } from 'reactstrap'
+import avatar1 from "assets/images/users/avatar-1.jpg"
 import { DeviceCharts } from './DashboardBlogCharts'
 
 const Device = () => {

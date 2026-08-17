@@ -4,7 +4,7 @@ import ReactApexChart from "react-apexcharts";
 import getChartColorsArray from "../../../../Components/Common/ChartsDynamicColor";
 
 const Line = ({ dataColors } : any) => {
-    var chartLineColumnColors = getChartColorsArray(dataColors);
+    const chartLineColumnColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Website Blog",
@@ -74,6 +74,7 @@ const Line = ({ dataColors } : any) => {
         ],
         colors: chartLineColumnColors,
     };
+
     return (
         <React.Fragment>
             <ReactApexChart dir="ltr"
@@ -88,7 +89,7 @@ const Line = ({ dataColors } : any) => {
 };
 
 const YAxis = ({ dataColors } : any) => {
-    var chartMultiColors = getChartColorsArray(dataColors);
+    const chartMultiColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "Income",
@@ -107,7 +108,7 @@ const YAxis = ({ dataColors } : any) => {
         },
     ];
 
-    var options : any = {
+    const options : any = {
         chart: {
             stacked: !1,
             toolbar: {
@@ -232,7 +233,7 @@ const YAxis = ({ dataColors } : any) => {
 };
 
 const Area = ({ dataColors } : any) => {
-    var chartLineAreaColors = getChartColorsArray(dataColors);
+    const chartLineAreaColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "TEAM A",
@@ -246,7 +247,7 @@ const Area = ({ dataColors } : any) => {
         },
     ];
 
-    var options : any = {
+    const options : any = {
         chart: {
             toolbar: {
                 show: !1,
@@ -296,6 +297,7 @@ const Area = ({ dataColors } : any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0) + " points";
                     }
+
                     return y;
                 },
             },
@@ -317,7 +319,7 @@ const Area = ({ dataColors } : any) => {
 };
 
 const LineColumnArea = ({ dataColors } : any) => {
-    var chartLineAreaMultiColors = getChartColorsArray(dataColors);
+    const chartLineAreaMultiColors = getChartColorsArray(dataColors);
     const series = [
         {
             name: "TEAM A",
@@ -396,6 +398,7 @@ const LineColumnArea = ({ dataColors } : any) => {
                     if (typeof y !== "undefined") {
                         return y.toFixed(0) + " points";
                     }
+
                     return y;
                 },
             },
