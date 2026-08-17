@@ -1,6 +1,7 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge } from 'reactstrap';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner } from 'reactstrap';
+import axios from 'axios';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
@@ -15,7 +16,10 @@ const MesStagiaires = ({
     situationstages, 
     filters 
 }: any) => {
-    const data = instances || [];
+    const [dataList, setDataList] = useState<any[]>(instances || []);
+    const [isLoading, setIsLoading] = useState(false);
+    const data = dataList;
+
     const [modalAnalyse, setModalAnalyse] = useState(false);
     const [selectedStagiaire, setSelectedStagiaire] = useState<any>(null);
 
@@ -32,13 +36,35 @@ const MesStagiaires = ({
         search: filters?.search || '',
     });
 
+    const fetchData = async (filtersData: any) => {
+        setIsLoading(true);
+        try {
+            const response = await axios.get('/cip/mes-stagiaires', {
+                params: filtersData,
+                headers: { Accept: 'application/json' }
+            });
+            const fetchedInstances = response.data.instances;
+            setDataList(fetchedInstances?.data || fetchedInstances || []);
+        } catch (error) {
+            console.error('Erreur lors du chargement des données:', error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!instances || instances.length === 0) {
+            fetchData(formData);
+        }
+    }, []);
+
     const handleSearch = (e?: any) => {
         if(e) e.preventDefault();
-        get('/cip/mes-stagiaires');
+        fetchData(formData);
     };
 
     const handleReset = () => {
-        setData({
+        const resetData = {
             agence_id: '',
             entreprise_id: '',
             typesfinancement_id: '',
@@ -49,8 +75,9 @@ const MesStagiaires = ({
             date_debut: '',
             date_fin: '',
             search: '',
-        });
-        setTimeout(() => get('/cip/mes-stagiaires'), 50);
+        };
+        Object.keys(resetData).forEach(key => setData(key as any, (resetData as any)[key]));
+        fetchData(resetData);
     };
 
     const toggleAnalyse = (stagiaire: any = null) => {
