@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { Head, Link, useForm } from '@inertiajs/react';
-import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner } from 'reactstrap';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner, Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
 import axios from 'axios';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
@@ -14,12 +14,37 @@ const MesStagiaires = ({
     typestructures, 
     etapes, 
     situationstages, 
-    filters 
+    filters,
+    auth
 }: any) => {
+        const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>(() => {
+        if (typeof window !== 'undefined') {
+            const saved = localStorage.getItem('mesStagiairesColumnVisibility');
+            if (saved) {
+                try {
+                    return JSON.parse(saved);
+                } catch (e) {}
+            }
+        }
+        return {};
+    });
+
+    useEffect(() => {
+        localStorage.setItem('mesStagiairesColumnVisibility', JSON.stringify(columnVisibility));
+    }, [columnVisibility]);
+
+    const toggleColumn = (header: string) => {
+        setColumnVisibility(prev => ({
+            ...prev,
+            [header]: prev[header] === false ? true : false
+        }));
+    };
+
     const [dataList, setDataList] = useState<any[]>(instances || []);
     const [stats, setStats] = useState<any>({ total: 0, avecContrat: 0, sansContrat: 0, enAttente: 0 });
     const [paginationInfo, setPaginationInfo] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const [columnsDropdownOpen, setColumnsDropdownOpen] = useState(false);
     const data = dataList;
 
     const [modalAnalyse, setModalAnalyse] = useState(false);
@@ -366,23 +391,69 @@ const MesStagiaires = ({
                     return <Badge color={getEtapeBadgeColor(corbeille, info?.step)}>{info?.label || corbeille || 'N/A'}</Badge>;
                 },
             },
-            {
+                                    {
                 header: 'Action',
                 cell: (cell: any) => {
+                    const row = cell.row.original;
+                    const stage = row.stage || {};
+                    const beneficiare = stage.beneficiaire || {};
+                    
+                    const userRoles = auth?.user?.roles || [];
+                    const isAdministrateur = userRoles.includes('administrateur') || auth?.user?.id === 1;
+                    const isChefAgence = userRoles.includes('chef_agence');
+                    
+                    const pointages = stage.pointages || [];
+                    const active_chef_agence = stage.active_chef_agence || 0;
+                    const type_paiement_id = beneficiare.type_paiement?.id;
+                    
                     return (
                         <div className="d-flex gap-1">
-                            <Button color="light" size="sm" className="btn-icon" title="Voir Stagiaire">
-                                <i className="ri-eye-line text-info"></i>
+                            <Button color="info" size="sm" className="btn-icon rounded-circle" title="Détails" href={`/cip/mes-stagiaires/${row.id}`}>
+                                <i className="ri-eye-line"></i>
                             </Button>
-                            <Button color="light" size="sm" className="btn-icon" title="Pointage" onClick={() => toggleAnalyse(cell.row.original)}>
-                                <i className="ri-folder-open-line text-primary"></i>
-                            </Button>
-                            <Button color="light" size="sm" className="btn-icon" title="PDF">
-                                <i className="ri-file-pdf-line text-danger"></i>
-                            </Button>
-                            <Button color="light" size="sm" className="btn-icon" title="Envoyer">
-                                <i className="ri-send-plane-line text-warning"></i>
-                            </Button>
+                            
+                            {pointages.length > 0 && (
+                                <Button color="primary" size="sm" className="btn-icon rounded-circle" title="Pointage" onClick={() => toggleAnalyse(row)}>
+                                    <i className="ri-folder-add-line"></i>
+                                    <span className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger border border-light">
+                                        {pointages.length}
+                                    </span>
+                                </Button>
+                            )}
+
+                            {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && (
+                                <>
+                                    <Button color="warning" size="sm" className="btn-icon rounded-circle text-white" title="Générer Contrat">
+                                        <i className="ri-file-text-line"></i>
+                                    </Button>
+                                    <Button color="secondary" size="sm" className="btn-icon rounded-circle" title="Transférer Contrat">
+                                        <i className="ri-share-forward-line"></i>
+                                    </Button>
+                                </>
+                            )}
+                            
+                            {(isAdministrateur || isChefAgence) && type_paiement_id === 1 && (
+                                <Button color="success" size="sm" className="btn-icon rounded-circle" title="Générer Trésor Money">
+                                    <i className="ri-money-dollar-circle-line"></i>
+                                </Button>
+                            )}
+                            
+                            {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && type_paiement_id === 1 && (
+                                <Button color="success" outline size="sm" className="btn-icon rounded-circle" title="Joindre Trésor Money">
+                                    <i className="ri-wallet-3-line"></i>
+                                </Button>
+                            )}
+                            
+                            {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && (
+                                <>
+                                    <Button color="dark" size="sm" className="btn-icon rounded-circle" title="Modifier" href={`/cip/mes-stagiaires/${row.id}/edit`}>
+                                        <i className="ri-edit-line"></i>
+                                    </Button>
+                                    <Button color="danger" size="sm" className="btn-icon rounded-circle" title="Supprimer">
+                                        <i className="ri-delete-bin-line"></i>
+                                    </Button>
+                                </>
+                            )}
                         </div>
                     );
                 },
@@ -390,6 +461,14 @@ const MesStagiaires = ({
         ].map(col => ({ ...col, enableColumnFilter: false })),
         []
     );
+
+        const visibleColumns = useMemo(() => {
+        return columns.filter(col => {
+            if (col.header === 'Action') return true;
+            const header = typeof col.header === 'string' ? col.header : col.accessorKey;
+            return columnVisibility[header as string] !== false;
+        });
+    }, [columns, columnVisibility]);
 
     const activeFiltersCount = [
         formData.agence_id, formData.entreprise_id, formData.typesfinancement_id,
@@ -611,18 +690,43 @@ const MesStagiaires = ({
                         <Col lg={12}>
                             <Card className="border-0 shadow-sm">
                                 <CardHeader>
-                                    <div className="d-flex justify-content-between align-items-center">
+                                                                        <div className="d-flex justify-content-between align-items-center">
                                         <h5 className="card-title mb-0" style={{ color: '#495057' }}>
                                             Liste des Stagiaires
                                             <span className="badge ms-2 fs-12" style={{ background: 'var(--vz-primary-bg-subtle)', color: 'var(--vz-primary)' }}>
                                                 {totalStagiaires}
                                             </span>
                                         </h5>
+                                        <Dropdown isOpen={columnsDropdownOpen} toggle={() => setColumnsDropdownOpen(!columnsDropdownOpen)}>
+                                            <DropdownToggle color="light" size="sm" className="btn-icon">
+                                                <i className="ri-layout-column-line"></i> Colonnes
+                                            </DropdownToggle>
+                                            <DropdownMenu end style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                                                <div className="px-3 py-2 text-muted fs-12 fw-semibold text-uppercase bg-light">Affichage des colonnes</div>
+                                                {columns.filter(c => c.header !== 'Action').map((col, idx) => {
+                                                    const header = col.header as string;
+                                                    const isVisible = columnVisibility[header] !== false;
+                                                    return (
+                                                        <DropdownItem key={idx} toggle={false} onClick={() => toggleColumn(header)}>
+                                                            <div className="form-check">
+                                                                <input 
+                                                                    className="form-check-input" 
+                                                                    type="checkbox" 
+                                                                    checked={isVisible} 
+                                                                    readOnly 
+                                                                />
+                                                                <label className="form-check-label ms-2">{header}</label>
+                                                            </div>
+                                                        </DropdownItem>
+                                                    );
+                                                })}
+                                            </DropdownMenu>
+                                        </Dropdown>
                                     </div>
                                 </CardHeader>
                                 <CardBody className="p-0">
                                     <TableContainerReactTable
-                                        columns={columns}
+                                        columns={visibleColumns}
                                         data={data}
                                         isGlobalFilter={false}
                                         customPageSize={data.length}
