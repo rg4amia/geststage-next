@@ -47,8 +47,8 @@ class PointageCipController extends Controller
 
         $attenteQuery = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'stage.pointages'])
             ->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE)
-            ->whereDoesntHave('stage.pointages', function($q) use ($mois) {
-                $q->whereHas('periode', function($p) use ($mois) {
+            ->whereDoesntHave('stage.pointages', function ($q) use ($mois) {
+                $q->whereHas('periode', function ($p) use ($mois) {
                     $p->where('code', 'like', "%$mois%");
                 });
             })
