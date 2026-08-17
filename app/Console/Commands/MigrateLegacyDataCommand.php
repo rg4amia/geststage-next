@@ -13,11 +13,18 @@ use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
+use App\Models\Reference\Commune;
+use App\Models\Reference\Diplome;
+use App\Models\Reference\Handicap;
+use App\Models\Reference\LienParente;
 use App\Models\Reference\NiveauEtude;
-use App\Models\Reference\TypePaiement;
-use App\Models\Reference\Region;
+use App\Models\Reference\OrigineStagiaire;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeEnseignement;
+use App\Models\Reference\TypeHandicap;
+use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
+use App\Models\Reference\TypeStructure;
 use App\Models\System\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
@@ -25,10 +32,8 @@ use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
 use App\Services\Migration\LegacyMapperService;
 use Illuminate\Console\Command;
-use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Schema;
 use Spatie\Permission\Models\Role;
 
 class MigrateLegacyDataCommand extends Command
@@ -69,12 +74,13 @@ class MigrateLegacyDataCommand extends Command
             return 1;
         }
 
-        if ($step === 'all' || $step === 'references') {
-            $this->migrateReferences();
-        }
-
-        if ($step === 'all' || $step === 'agences') {
-            $this->migrateAgences();
+        if ($step === 'all' || $step === 'references' || $step === 'agences') {
+            // legacy:migrer-referentiels est la source unique de vérité pour les référentiels
+            // (régions, communes, agences, conseillers, types_stage, sources_financement, etc.) :
+            // elle génère des codes lisibles à partir des libellés legacy, contrairement à
+            // l'ancien code de cette commande qui fabriquait des codes ad-hoc (TS-1, SF-2, ...)
+            // incompatibles et qui écrasait ces mêmes lignes (même clé ancien_id) à chaque run.
+            $this->call('legacy:migrer-referentiels');
         }
 
         if ($step === 'all' || $step === 'users') {
@@ -114,108 +120,6 @@ class MigrateLegacyDataCommand extends Command
         return 0;
     }
 
-    private function migrateReferences()
-    {
-        $this->info('Migration des données de référence...');
-
-        // Regions
-        $regions = DB::connection('legacy')->table('regions')->get();
-        foreach ($regions as $r) {
-            Region::updateOrCreate(
-                ['ancien_id' => $r->id],
-                [
-                    'code' => $r->code ?? 'REG-'.$r->id,
-                    'nom' => $r->libelle ?? 'Region '.$r->id,
-                ]
-            );
-        }
-
-        // Types de stage
-        if (Schema::connection('legacy')->hasTable('type_stage')) {
-            $types = DB::connection('legacy')->table('type_stage')->get();
-            foreach ($types as $t) {
-                TypeStage::updateOrCreate(
-                    ['ancien_id' => $t->id],
-                    [
-                        'code' => 'TS-'.$t->id,
-                        'nom' => $t->libelle_type_stage ?? 'Type '.$t->id,
-                    ]
-                );
-            }
-        }
-
-        // Sources de financement
-        if (Schema::connection('legacy')->hasTable('type_financements')) {
-            $sources = DB::connection('legacy')->table('type_financements')->get();
-            foreach ($sources as $s) {
-                SourceFinancement::updateOrCreate(
-                    ['ancien_id' => $s->id],
-                    [
-                        'code' => 'SF-'.$s->id,
-                        'nom' => $s->libelle_financement ?? 'Source '.$s->id,
-                    ]
-                );
-            }
-        }
-
-        // Types de paiement
-        if (Schema::connection('legacy')->hasTable('type_paiements')) {
-            $typesPaiement = DB::connection('legacy')->table('type_paiements')->get();
-            foreach ($typesPaiement as $tp) {
-                TypePaiement::updateOrCreate(
-                    ['ancien_id' => $tp->id],
-                    [
-                        'code' => 'TP-'.$tp->id,
-                        'nom' => $tp->libelle ?? 'Paiement '.$tp->id,
-                        'actif' => true,
-                    ]
-                );
-            }
-        }
-
-        $this->newLine();
-    }
-
-    private function migrateAgences()
-    {
-        $this->info('Migration des agences...');
-        $agences = DB::connection('legacy')->table('agences')->get();
-
-        $bar = $this->output->createProgressBar(count($agences));
-        $bar->start();
-
-        foreach ($agences as $legacyAgence) {
-            // Find region from agence_region pivot if it exists
-            $legacyRegionId = null;
-            if (Schema::connection('legacy')->hasTable('agence_region')) {
-                $pivot = DB::connection('legacy')->table('agence_region')
-                    ->where('agence_id', $legacyAgence->id)
-                    ->first();
-                if ($pivot) {
-                    $legacyRegionId = $pivot->region_id;
-                }
-            }
-
-            $region_id = null;
-            if ($legacyRegionId) {
-                $region_id = Region::where('ancien_id', $legacyRegionId)->value('id');
-            }
-
-            Agence::updateOrCreate(
-                ['ancien_id' => $legacyAgence->id],
-                [
-                    'nom' => $legacyAgence->libelle_agence ?? 'Agence Inconnue',
-                    'code' => 'AG-'.str_pad($legacyAgence->id, 3, '0', STR_PAD_LEFT),
-                    'region_id' => $region_id,
-                ]
-            );
-            $bar->advance();
-        }
-
-        $bar->finish();
-        $this->newLine();
-    }
-
     private function migrateUsers()
     {
         $this->info('Migration des utilisateurs...');
@@ -233,6 +137,9 @@ class MigrateLegacyDataCommand extends Command
                     'nom' => $legacyUser->nom ?? 'Inconnu',
                     'prenoms' => $legacyUser->pseudo ?? '',
                     'password' => $legacyUser->password, // On garde l'ancien hash
+                    // Champ reporté tel quel : le modèle User n'a pas (encore) le trait SoftDeletes,
+                    // donc ceci ne bloque pas la connexion, ça garde juste l'info pour plus tard.
+                    'deleted_at' => $this->mapper->normalizeLegacyDate($legacyUser->deleted_at ?? null),
                 ]
             );
 
@@ -254,11 +161,27 @@ class MigrateLegacyDataCommand extends Command
         $this->info('Migration des entreprises...');
         $entreprises = DB::connection('legacy')->table('entreprises')->get();
 
+        // Le legacy ne porte pas type_structure_id sur "entreprises" mais sur chaque
+        // contrats_pae (une entreprise peut donc avoir plusieurs valeurs différentes selon
+        // les stages) : on retient la valeur la plus fréquente par entreprise comme meilleure
+        // approximation d'un attribut réellement propre à l'entreprise.
+        $typeStructureParEntreprise = DB::connection('legacy')->table('contrats_pae')
+            ->select('id_entreprise', 'type_structure_id', DB::raw('COUNT(*) as occurrences'))
+            ->whereNotNull('type_structure_id')
+            ->groupBy('id_entreprise', 'type_structure_id')
+            ->orderByDesc('occurrences')
+            ->get()
+            ->groupBy('id_entreprise')
+            ->map(fn ($rows) => $rows->first()->type_structure_id);
+        $typesStructureMap = TypeStructure::pluck('id', 'ancien_id')->toArray();
+
         $bar = $this->output->createProgressBar(count($entreprises));
         $bar->start();
 
         foreach ($entreprises as $legacyEntreprise) {
             $agence_id = Agence::where('ancien_id', $legacyEntreprise->agence_id)->value('id');
+            $legacyTypeStructureId = $typeStructureParEntreprise[$legacyEntreprise->id] ?? null;
+            $type_structure_id = $legacyTypeStructureId ? ($typesStructureMap[$legacyTypeStructureId] ?? null) : null;
 
             $numContribuable = $legacyEntreprise->compte_contri ?: null;
             if ($numContribuable) {
@@ -280,7 +203,7 @@ class MigrateLegacyDataCommand extends Command
                 }
             }
 
-            Entreprise::updateOrCreate(
+            Entreprise::withTrashed()->updateOrCreate(
                 ['ancien_id' => $legacyEntreprise->id],
                 [
                     'raison_sociale' => $legacyEntreprise->libelle_entreprise ?? 'Inconnu',
@@ -291,6 +214,10 @@ class MigrateLegacyDataCommand extends Command
                     'email' => $legacyEntreprise->mail,
                     'adresse' => $legacyEntreprise->adresse,
                     'agence_id' => $agence_id,
+                    'type_structure_id' => $type_structure_id,
+                    // On reporte la suppression logique de l'entreprise legacy pour ne pas
+                    // faire réapparaître dans les listes des entreprises que legacy cachait déjà.
+                    'deleted_at' => $this->mapper->normalizeLegacyDate($legacyEntreprise->deleted_at ?? null),
                 ]
             );
             $bar->advance();
@@ -320,7 +247,7 @@ class MigrateLegacyDataCommand extends Command
                     $publiee_le = null;
                 }
 
-                OffreEmploi::updateOrCreate(
+                OffreEmploi::withTrashed()->updateOrCreate(
                     ['ancien_id' => $legacyOffre->id_offre],
                     [
                         'entreprise_id' => $entreprise_id,
@@ -331,6 +258,7 @@ class MigrateLegacyDataCommand extends Command
                         'intitule' => $legacyOffre->intitule_offre ?? 'Offre non spécifiée',
                         'nombre_places' => max(1, (int) ($legacyOffre->nombre_de_place ?? 1)),
                         'publiee_le' => $publiee_le,
+                        'deleted_at' => $this->mapper->normalizeLegacyDate($legacyOffre->deleted_at ?? null),
                     ]
                 );
             }
@@ -348,6 +276,10 @@ class MigrateLegacyDataCommand extends Command
         // dont les numero_aej ne correspondent quasiment jamais à ceux de contrats_pae (372 / 68933).
         // Les données bénéficiaire sont en réalité dénormalisées directement dans contrats_pae,
         // qui est la table opérationnelle réelle et à jour.
+        // NB2: on ne reporte pas contrats_pae.deleted_at sur le bénéficiaire : plusieurs lignes
+        // contrats_pae (donc plusieurs stages) peuvent partager le même numero_aej, et supprimer
+        // le dossier d'un stage ne signifie pas que le bénéficiaire lui-même doit disparaître.
+        // C'est stages.deleted_at / contrats.deleted_at qui portent l'état de suppression.
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
 
@@ -448,7 +380,12 @@ class MigrateLegacyDataCommand extends Command
                     $legacyContrat->date_fin ?? null
                 );
 
-                $stage = Stage::updateOrCreate(
+                // contrats_pae est soft-deletable côté legacy ; on reporte cet état sur le stage
+                // et le contrat pour que "Mes Stagiaires" affiche le même volume qu'en legacy
+                // (sinon les dossiers supprimés logiquement en legacy réapparaissent ici).
+                $deletedAt = $this->mapper->normalizeLegacyDate($legacyContrat->deleted_at ?? null);
+
+                $stage = Stage::withTrashed()->updateOrCreate(
                     ['ancien_id' => $legacyContrat->id],
                     [
                         'beneficiaire_id' => $beneficiaire_id,
@@ -470,11 +407,12 @@ class MigrateLegacyDataCommand extends Command
                         'date_fin_prevue' => $date_fin_prevue,
                         'observations' => $legacyContrat->observation ?? null,
                         'situation_stage' => isset($legacyContrat->id_situation_stage) ? 'SS-'.str_pad($legacyContrat->id_situation_stage, 3, '0', STR_PAD_LEFT) : null,
+                        'deleted_at' => $deletedAt,
                     ]
                 );
 
                 // 2. Gérer le Contrat Financier lié
-                Contrat::updateOrCreate(
+                Contrat::withTrashed()->updateOrCreate(
                     ['ancien_id' => $legacyContrat->id],
                     [
                         'stage_id' => $stage->id,
@@ -483,6 +421,7 @@ class MigrateLegacyDataCommand extends Command
                         'date_fin' => $date_fin_prevue,
                         'prime_mensuelle' => $legacyContrat->montant_du ?? 45000,
                         'statut' => 'SIGNE', // Les anciens contrats étaient signés
+                        'deleted_at' => $deletedAt,
                     ]
                 );
 
@@ -540,95 +479,135 @@ class MigrateLegacyDataCommand extends Command
             foreach ($pointages as $legacyPointage) {
                 $stage_id = $stagesMap[$legacyPointage->stagiaire_id] ?? null;
 
-                if ($stage_id) {
-                    // Mapper le statut du pointage
-                    $statut = 'SOUMIS';
-                    if ($legacyPointage->status_dmg == 2) {
-                        $statut = 'AJOURNE_DMG';
-                    }
-                    if ($legacyPointage->status_ca == 2) {
-                        $statut = 'AJOURNE_CA';
-                    }
-                    if ($legacyPointage->status_dmg == 1 && $legacyPointage->status_ca == 1) {
-                        $statut = 'VALIDE';
-                    }
+                if (! $stage_id) {
+                    $bar->advance();
 
-                    // Créer dynamiquement une période basée sur la date de création
-                    $date = $this->mapper->normalizeLegacyDate($legacyPointage->created_at ?? null) ?? now();
-                    $codePeriode = $date->format('Y-m');
-
-                    if (! isset($periodesMap[$codePeriode])) {
-                        $periodesMap[$codePeriode] = DB::table('periodes')->insertGetId([
-                            'code' => $codePeriode,
-                            'date_debut' => $date->format('Y-m-01'),
-                            'date_fin' => $date->format('Y-m-t'),
-                            'ouverte_pointage' => false,
-                            'ouverte_paiement' => false,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
-                    }
-                    $periodeId = $periodesMap[$codePeriode];
-
-                    try {
-                        $pointage = Pointage::updateOrCreate(
-                            ['ancien_id' => $legacyPointage->id],
-                            [
-                                'stage_id' => $stage_id,
-                                'periode_id' => $periodeId,
-                                'nature' => 'PRESENCE',
-                                'statut' => $statut,
-                            ]
-                        );
-
-                        VersionPointage::updateOrCreate(
-                            ['pointage_id' => $pointage->id, 'numero_version' => 1],
-                            [
-                                'presence' => 'PRESENT',
-                                'jours_presents' => 30,
-                                'jours_absents' => 0,
-                                'observation' => $legacyPointage->commentaire,
-                                'saisi_le' => $date,
-                            ]
-                        );
-
-                        // CREATE PARCOURS FOR POINTAGE
-                        $definition = \App\Models\Workflow\DefinitionParcours::firstOrCreate(
-                            ['code' => 'POINTAGE_LEGACY', 'version' => 1],
-                            ['nom' => 'Parcours Pointage Legacy', 'active' => true]
-                        );
-
-                        $corbeilleEnum = 'cip_mes_stagiaires';
-                        if ($statut === 'AJOURNE_DMG') {
-                            $corbeilleEnum = 'cip_pointage_ajourne_dmg';
-                        } elseif ($statut === 'AJOURNE_CA') {
-                            $corbeilleEnum = 'cip_ajourne_ca';
-                        } elseif ($statut === 'VALIDE') {
-                            $corbeilleEnum = 'dmg_attente_paiement_presence';
-                        } elseif ($statut === 'SOUMIS') {
-                            $corbeilleEnum = 'ca_validation_pointages';
-                        }
-
-                        $etapeCode = strtoupper($corbeilleEnum);
-                        $etapeNom = str_replace('_', ' ', $etapeCode);
-
-                        $etape = \App\Models\Workflow\EtapeParcours::firstOrCreate(
-                            ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
-                            ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
-                        );
-
-                        \App\Models\Workflow\InstanceParcours::updateOrCreate(
-                            ['pointage_id' => $pointage->id],
-                            [
-                                'definition_parcours_id' => $definition->id,
-                                'etape_courante_id' => $etape->id,
-                                'corbeille_actuelle' => $corbeilleEnum,
-                            ]
-                        );
-                    } catch (UniqueConstraintViolationException $e) {
-                        // Ignorer les doublons de pointages pour le même stage sur la même période
-                    }
+                    continue;
                 }
+
+                // Idempotence : si cette ligne legacy a déjà été migrée (re-run de la commande),
+                // on ne la retraite pas.
+                if (VersionPointage::where('ancien_id', $legacyPointage->id)->exists()) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                // Mapper le statut du pointage
+                $statut = 'SOUMIS';
+                if ($legacyPointage->status_dmg == 2) {
+                    $statut = 'AJOURNE_DMG';
+                }
+                if ($legacyPointage->status_ca == 2) {
+                    $statut = 'AJOURNE_CA';
+                }
+                if ($legacyPointage->status_dmg == 1 && $legacyPointage->status_ca == 1) {
+                    $statut = 'VALIDE';
+                }
+
+                // Créer dynamiquement une période basée sur la date de création
+                $date = $this->mapper->normalizeLegacyDate($legacyPointage->created_at ?? null) ?? now();
+                $codePeriode = $date->format('Y-m');
+
+                if (! isset($periodesMap[$codePeriode])) {
+                    $periodesMap[$codePeriode] = DB::table('periodes')->insertGetId([
+                        'code' => $codePeriode,
+                        'date_debut' => $date->format('Y-m-01'),
+                        'date_fin' => $date->format('Y-m-t'),
+                        'ouverte_pointage' => false,
+                        'ouverte_paiement' => false,
+                        'created_at' => now(),
+                        'updated_at' => now(),
+                    ]);
+                }
+                $periodeId = $periodesMap[$codePeriode];
+                $deletedAt = $this->mapper->normalizeLegacyDate($legacyPointage->deleted_at ?? null);
+
+                try {
+                    // Une stagiaire peut cumuler plusieurs stages : on ne regroupe les
+                    // resoumissions legacy que par (stage_id, periode_id, nature), jamais par
+                    // bénéficiaire, pour ne jamais mélanger deux stages d'une même personne.
+                    // Le nouveau schéma n'autorise qu'un seul pointage actif par
+                    // (stage, periode, nature) — les lignes legacy suivantes pour la même
+                    // période deviennent donc de nouvelles versions du même pointage au lieu
+                    // d'un doublon qui violerait l'index unique et serait perdu silencieusement.
+                    $pointage = Pointage::withTrashed()
+                        ->where('stage_id', $stage_id)
+                        ->where('periode_id', $periodeId)
+                        ->where('nature', 'PRESENCE')
+                        ->whereNull('deleted_at')
+                        ->first();
+
+                    if ($pointage) {
+                        $numeroVersion = (VersionPointage::where('pointage_id', $pointage->id)->max('numero_version') ?? 0) + 1;
+                        $pointage->update([
+                            'statut' => $statut,
+                            'version_courante' => $numeroVersion,
+                            'deleted_at' => $deletedAt,
+                        ]);
+                    } else {
+                        $pointage = Pointage::create([
+                            'ancien_id' => $legacyPointage->id,
+                            'stage_id' => $stage_id,
+                            'periode_id' => $periodeId,
+                            'nature' => 'PRESENCE',
+                            'statut' => $statut,
+                            'version_courante' => 1,
+                            'deleted_at' => $deletedAt,
+                        ]);
+                        $numeroVersion = 1;
+                    }
+
+                    VersionPointage::create([
+                        'ancien_id' => $legacyPointage->id,
+                        'pointage_id' => $pointage->id,
+                        'numero_version' => $numeroVersion,
+                        'presence' => 'PRESENT',
+                        'jours_presents' => 30,
+                        'jours_absents' => 0,
+                        'observation' => $legacyPointage->commentaire,
+                        'saisi_le' => $date,
+                    ]);
+
+                    // CREATE PARCOURS FOR POINTAGE
+                    $definition = \App\Models\Workflow\DefinitionParcours::firstOrCreate(
+                        ['code' => 'POINTAGE_LEGACY', 'version' => 1],
+                        ['nom' => 'Parcours Pointage Legacy', 'active' => true]
+                    );
+
+                    $corbeilleEnum = 'cip_mes_stagiaires';
+                    if ($statut === 'AJOURNE_DMG') {
+                        $corbeilleEnum = 'cip_pointage_ajourne_dmg';
+                    } elseif ($statut === 'AJOURNE_CA') {
+                        $corbeilleEnum = 'cip_ajourne_ca';
+                    } elseif ($statut === 'VALIDE') {
+                        $corbeilleEnum = 'dmg_attente_paiement_presence';
+                    } elseif ($statut === 'SOUMIS') {
+                        $corbeilleEnum = 'ca_validation_pointages';
+                    }
+
+                    $etapeCode = strtoupper($corbeilleEnum);
+                    $etapeNom = str_replace('_', ' ', $etapeCode);
+
+                    $etape = \App\Models\Workflow\EtapeParcours::firstOrCreate(
+                        ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                        ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
+                    );
+
+                    // L'instance de workflow reflète toujours le dernier état connu du pointage,
+                    // donc de sa dernière version (resoumission) traitée.
+                    \App\Models\Workflow\InstanceParcours::updateOrCreate(
+                        ['pointage_id' => $pointage->id],
+                        [
+                            'definition_parcours_id' => $definition->id,
+                            'etape_courante_id' => $etape->id,
+                            'corbeille_actuelle' => $corbeilleEnum,
+                        ]
+                    );
+                } catch (\Throwable $e) {
+                    $this->warn("Pointage legacy #{$legacyPointage->id} ignoré : {$e->getMessage()}");
+                }
+
                 $bar->advance();
             }
         });
@@ -656,7 +635,23 @@ class MigrateLegacyDataCommand extends Command
 
             foreach ($paiements as $legacyPaiement) {
                 // Créer le droit de paiement (la base du paiement dans la nouvelle architecture)
-                $stage_id = $stagesMap[$legacyPaiement->stagiaire_id] ?? 1;
+                $stage_id = $stagesMap[$legacyPaiement->stagiaire_id] ?? null;
+
+                if (! $stage_id) {
+                    // On ne rattache jamais un paiement à un stage arbitraire : mieux vaut
+                    // ignorer la ligne que corrompre les données financières d'un autre stage.
+                    $bar->advance();
+
+                    continue;
+                }
+
+                // Idempotence : si cette ligne legacy a déjà été migrée (re-run de la commande),
+                // on ne la retraite pas.
+                if (DroitPaiement::where('ancien_id', $legacyPaiement->id)->exists()) {
+                    $bar->advance();
+
+                    continue;
+                }
 
                 // Créer dynamiquement une période basée sur la date de création du paiement
                 $date = $this->mapper->normalizeLegacyDate($legacyPaiement->created_at ?? null) ?? now();
@@ -676,17 +671,34 @@ class MigrateLegacyDataCommand extends Command
                 $periodeId = $periodesMap[$codePeriode];
 
                 try {
-                    $droit = DroitPaiement::updateOrCreate(
-                        ['ancien_id' => $legacyPaiement->id],
-                        [
-                            'stage_id' => $stage_id,
-                            'periode_id' => $periodeId,
-                            'source_financement_id' => $source_financement_id,
-                            'nature' => 'PRESENCE',
-                            'montant' => $legacyPaiement->montant,
-                            'statut' => 'OUVERT',
-                        ]
-                    );
+                    // Une stagiaire peut cumuler plusieurs stages : on ne regroupe que par
+                    // (stage_id, periode_id, nature), jamais par bénéficiaire. Le nouveau schéma
+                    // n'autorise qu'un seul droit de paiement actif (annule_le IS NULL) par
+                    // (stage, periode, nature) — on traite les lignes legacy par id croissant
+                    // (= ordre chronologique), donc la ligne actuelle remplace toujours le droit
+                    // actif précédent au lieu de créer un doublon qui violerait l'index unique.
+                    $actif = DroitPaiement::where('stage_id', $stage_id)
+                        ->where('periode_id', $periodeId)
+                        ->where('nature', 'PRESENCE')
+                        ->whereNull('annule_le')
+                        ->first();
+
+                    if ($actif) {
+                        $actif->update([
+                            'annule_le' => $date,
+                            'motif_annulation' => "Remplacé par le paiement legacy #{$legacyPaiement->id}",
+                        ]);
+                    }
+
+                    $droit = DroitPaiement::create([
+                        'ancien_id' => $legacyPaiement->id,
+                        'stage_id' => $stage_id,
+                        'periode_id' => $periodeId,
+                        'source_financement_id' => $source_financement_id,
+                        'nature' => 'PRESENCE',
+                        'montant' => $legacyPaiement->montant,
+                        'statut' => 'OUVERT',
+                    ]);
 
                     // Créer le paiement réel
                     Paiement::updateOrCreate(
@@ -697,8 +709,8 @@ class MigrateLegacyDataCommand extends Command
                             'statut' => 'A_TRAITER',
                         ]
                     );
-                } catch (UniqueConstraintViolationException $e) {
-                    // Ignorer les doublons de droits de paiement
+                } catch (\Throwable $e) {
+                    $this->warn("Paiement legacy #{$legacyPaiement->id} ignoré : {$e->getMessage()}");
                 }
                 $bar->advance();
             }
@@ -726,8 +738,16 @@ class MigrateLegacyDataCommand extends Command
             $instancesStageMap = InstanceParcours::whereIn('stage_id', array_values($stagesMap))->get()->keyBy('stage_id');
 
             // MAP POINTAGES
+            // Un pointage_models legacy n'a pas forcément créé son propre Pointage : s'il
+            // s'agissait d'une resoumission pour un stage/période déjà migré, il a été rattaché
+            // comme nouvelle version d'un pointage existant (cf. migratePointages()). On
+            // résout donc d'abord via Pointage.ancien_id, puis via VersionPointage.ancien_id.
             $legacyPointageIds = $historique->pluck('pointage_id')->filter()->unique()->toArray();
             $pointagesMap = \App\Models\Attendance\Pointage::whereIn('ancien_id', $legacyPointageIds)->pluck('id', 'ancien_id')->toArray();
+            $manquants = array_values(array_diff($legacyPointageIds, array_keys($pointagesMap)));
+            if (! empty($manquants)) {
+                $pointagesMap += VersionPointage::whereIn('ancien_id', $manquants)->pluck('pointage_id', 'ancien_id')->toArray();
+            }
             $instancesPointageMap = InstanceParcours::whereIn('pointage_id', array_values($pointagesMap))->get()->keyBy('pointage_id');
 
             foreach ($historique as $legacyEvent) {

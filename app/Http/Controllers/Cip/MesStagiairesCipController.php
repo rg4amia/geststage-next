@@ -53,11 +53,14 @@ class MesStagiairesCipController extends Controller
             'stage.pointages.versionCourante'
         ]);
 
-        if ($user && $user->agence_id) {
-            $query->whereHas('stage', function ($q) use ($user) {
+        // Toujours exiger un stage non supprimé logiquement : Stage a désormais le trait
+        // SoftDeletes, donc whereHas('stage') exclut déjà les dossiers "deleted_at" côté legacy.
+        // Sans ce garde-fou, un utilisateur sans agence_id verrait des lignes avec stage=null.
+        $query->whereHas('stage', function ($q) use ($user) {
+            if ($user && $user->agence_id) {
                 $q->where('agence_id', $user->agence_id);
-            });
-        }
+            }
+        });
 
         // Apply filters
         if (!empty($filters['agence_id'])) {

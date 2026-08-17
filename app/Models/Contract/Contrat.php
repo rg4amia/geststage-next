@@ -8,10 +8,11 @@ use App\Models\Internship\Stage;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Contrat extends Model
 {
-    use Auditable, HasFactory, HasPublicUuid;
+    use Auditable, HasFactory, HasPublicUuid, SoftDeletes;
 
     /**
      * The table associated with the model.
