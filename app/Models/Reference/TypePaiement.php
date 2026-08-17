@@ -6,5 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class TypePaiement extends Model
 {
-    //
+    protected $table = 'types_paiement';
+
+    protected $guarded = [];
 }

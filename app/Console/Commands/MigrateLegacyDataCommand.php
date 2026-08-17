@@ -376,6 +376,9 @@ class MigrateLegacyDataCommand extends Command
                         'numero_piece_identite' => $legacyContrat->num_piece,
                         'niveau_etude_id' => $niveau_etude_id,
                         'autre_handicap' => ! empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non' ? ($legacyContrat->type_handicap ?? 'Handicap signalé') : null,
+                        'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
+                        'numero_wave' => $legacyContrat->numero_wave ?? null,
+                        'type_paiement_id' => $legacyContrat->type_paiement_id ?? null,
                     ]
                 );
                 $bar->advance();
@@ -447,6 +450,7 @@ class MigrateLegacyDataCommand extends Command
                         'date_debut' => $date_debut,
                         'date_fin_prevue' => $date_fin_prevue,
                         'observations' => $legacyContrat->observation ?? null,
+                        'situation_stage' => isset($legacyContrat->id_situation_stage) ? 'SS-'.str_pad($legacyContrat->id_situation_stage, 3, '0', STR_PAD_LEFT) : null,
                     ]
                 );
 
