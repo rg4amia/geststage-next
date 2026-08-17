@@ -112,7 +112,7 @@ const RightSidebar = (props: any) => {
     } = useSelector(selectLayoutProperties);
 
     // open offcanvas
-    const [open, setOpen] = useState<boolean>(true);
+    const [open, setOpen] = useState<boolean>(false);
     const toggleLeftCanvas = () => {
         setOpen(!open);
     };

@@ -57,4 +57,14 @@ class EvenementParcours extends Model
     {
         return $this->belongsTo(User::class, 'acteur_id');
     }
+
+    public function etapeSource(): BelongsTo
+    {
+        return $this->belongsTo(EtapeParcours::class, 'etape_source_id');
+    }
+
+    public function etapeCible(): BelongsTo
+    {
+        return $this->belongsTo(EtapeParcours::class, 'etape_cible_id');
+    }
 }

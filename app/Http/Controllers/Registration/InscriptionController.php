@@ -121,6 +121,8 @@ class InscriptionController extends Controller
             'stage.documents.typeDocument',
             'etapeCourante',
             'evenements.acteur',
+            'evenements.etapeSource',
+            'evenements.etapeCible',
             'taches_ouvertes',
         ])->findOrFail($id);
 
