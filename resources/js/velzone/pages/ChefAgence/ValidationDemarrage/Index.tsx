@@ -171,15 +171,17 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                     params,
                     headers: { Accept: 'application/json' },
                 });
-                const raw = response.data;
+                // Handle Velzone's global axios interceptor which may return response.data directly
+                const raw = response.data !== undefined ? response.data : response || {};
+                
                 setData({
-                    demarrage:         Array.isArray(raw.demarrage) ? raw.demarrage : [],
-                    demarrageOmis:     Array.isArray(raw.demarrageOmis) ? raw.demarrageOmis : [],
-                    retourAjournement: Array.isArray(raw.retourAjournement) ? raw.retourAjournement : [],
+                    demarrage:         Array.isArray(raw?.demarrage) ? raw.demarrage : [],
+                    demarrageOmis:     Array.isArray(raw?.demarrageOmis) ? raw.demarrageOmis : [],
+                    retourAjournement: Array.isArray(raw?.retourAjournement) ? raw.retourAjournement : [],
                     counts: {
-                        demarrage:         raw.counts?.demarrage ?? 0,
-                        demarrageOmis:     raw.counts?.demarrageOmis ?? 0,
-                        retourAjournement: raw.counts?.retourAjournement ?? 0,
+                        demarrage:         raw?.counts?.demarrage ?? 0,
+                        demarrageOmis:     raw?.counts?.demarrageOmis ?? 0,
+                        retourAjournement: raw?.counts?.retourAjournement ?? 0,
                     },
                 });
             } catch (error) {
