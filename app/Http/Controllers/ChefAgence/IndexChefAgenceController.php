@@ -41,6 +41,8 @@ class IndexChefAgenceController extends Controller
             ->join('stages', 'stages.id', '=', 'instances_parcours.stage_id')
             ->where('instances_parcours.corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
             ->whereNotNull('stages.date_debut')
+            // Même règle que le legacy : seuls les mois strictement antérieurs au mois courant
+            ->whereRaw("TO_CHAR(stages.date_debut, 'YYYY-MM') < ?", [Carbon::now()->format('Y-m')])
             ->when($user->agence_id, function (Builder $query) use ($user): void {
                 $query->where('stages.agence_id', $user->agence_id);
             })
@@ -117,6 +119,7 @@ class IndexChefAgenceController extends Controller
 
         $applyMoisFilter = function (Builder $builder) use ($filtreMois, $periodeSelectionnee): void {
             if ($filtreMois) {
+                // Mois précis sélectionné : on filtre sur year + month exact
                 $builder->whereHas('stage', function (Builder $s) use ($filtreMois): void {
                     $s->whereYear('date_debut', $filtreMois->year)
                         ->whereMonth('date_debut', $filtreMois->month);
@@ -127,6 +130,12 @@ class IndexChefAgenceController extends Controller
                         $periodeSelectionnee->date_debut,
                         $periodeSelectionnee->date_fin,
                     ]);
+                });
+            } else {
+                // Sans filtre mois : même règle que le legacy — exclure le mois courant
+                // (les dossiers dont date_debut = mois courant sont dans l'onglet Démarrage)
+                $builder->whereHas('stage', function (Builder $s): void {
+                    $s->whereRaw("TO_CHAR(date_debut::date, 'YYYY-MM') < ?", [Carbon::now()->format('Y-m')]);
                 });
             }
         };
