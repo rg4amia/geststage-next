@@ -255,6 +255,13 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             if (val) params[key] = val;
         });
         fetchValidations(params);
+
+        // Charge les mois disponibles (sans filtre mois_debut pour tout voir)
+        const commonParams: Record<string, string> = {};
+        (['agence_id', 'entreprise_id', 'typesfinancement_id', 'typestage_id', 'type_structure_id'] as const).forEach((k) => {
+            if (selectedFilters[k]) commonParams[k] = selectedFilters[k];
+        });
+        fetchMoisOmis(commonParams);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
@@ -273,7 +280,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             type_structure_id: '',
             created_begin: '',
             created_end: '',
-            periode_id: '',
+            mois_debut: '',
         };
         setSelectedFilters(defaultFilters);
         setSelectedRows([]);
@@ -369,8 +376,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Actions globales (toute la liste) ─── */
     const handleValidationListeEntiere = () => {
-        if (activeTab === '2' && !selectedFilters.periode_id) {
-            alert('Veuillez sélectionner une période pour le démarrage omis.');
+        if (activeTab === '2' && !selectedFilters.mois_debut) {
+            alert('Veuillez sélectionner un mois de démarrage pour le démarrage omis.');
             return;
         }
         const allIds = currentRows.map((row) => row.id.toString());
@@ -406,8 +413,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     };
 
     const handleGenererAddGlobal = () => {
-        if (activeTab === '2' && !selectedFilters.periode_id) {
-            alert('Veuillez sélectionner une période pour le démarrage omis.');
+        if (activeTab === '2' && !selectedFilters.mois_debut) {
+            alert('Veuillez sélectionner un mois de démarrage pour le démarrage omis.');
             return;
         }
         const allIds = currentRows.map((row) => row.id.toString());
@@ -769,7 +776,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                 <span className="ms-auto text-muted fs-12 align-self-center fst-italic d-none d-md-block">
                                     <i className="ri-information-line me-1" />
                                     Les actions s'appliquent à l'onglet actif.
-                                    {activeTab === '2' && ' Sélectionner une période pour le démarrage omis.'}
+                                    {activeTab === '2' && ' Sélectionner un mois pour le démarrage omis.'}
                                 </span>
                             </div>
 
@@ -797,33 +804,59 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
                                         {/* ─── Onglet 2 : Démarrage Omis ─── */}
                                         <TabPane tabId="2">
-                                            {/* Filtre Période — propre à cet onglet */}
+                                            {/* Filtre Mois — pills dynamiques basées sur les date_debut réelles */}
                                             <div className="bg-warning-subtle border border-warning-subtle rounded mb-3 p-3">
-                                                <Row className="align-items-end">
-                                                    <Col md={4} sm={8}>
-                                                        <Label className="form-label text-warning fw-semibold mb-1">
-                                                            <i className="ri-calendar-2-line me-1" />
-                                                            PÉRIODE <span className="text-danger">*</span>
-                                                        </Label>
-                                                        <Input
-                                                            type="select"
-                                                            bsSize="sm"
-                                                            value={selectedFilters.periode_id}
-                                                            onChange={(e) => handleFilterChange('periode_id', e.target.value)}
+                                                <div className="d-flex align-items-center gap-2 mb-2">
+                                                    <i className="ri-calendar-2-line text-warning fs-15" />
+                                                    <span className="fw-semibold text-warning fs-13">
+                                                        MOIS DE DÉMARRAGE
+                                                    </span>
+                                                    {selectedFilters.mois_debut && (
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-sm btn-link text-muted p-0 ms-1 fs-12"
+                                                            onClick={() => handleFilterChange('mois_debut', '')}
                                                         >
-                                                            <option value="">Sélectionner une période</option>
-                                                            {Object.entries(periodes || {}).map(([id, label]) => (
-                                                                <option key={id} value={id}>{String(label)}</option>
-                                                            ))}
-                                                        </Input>
-                                                    </Col>
-                                                    <Col md={8} sm={4} className="mt-2 mt-md-0">
-                                                        <p className="text-muted fs-12 mb-0">
-                                                            <i className="ri-information-line me-1" />
-                                                            Filtrez par mois de démarrage pour cibler les dossiers omis sur une période précise.
-                                                        </p>
-                                                    </Col>
-                                                </Row>
+                                                            <i className="ri-close-line me-1" />
+                                                            Tout afficher
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {isMoisLoading ? (
+                                                    <div className="d-flex align-items-center gap-2 text-muted fs-13">
+                                                        <Spinner size="sm" color="warning" />
+                                                        Chargement des mois...
+                                                    </div>
+                                                ) : moisOmis.length === 0 ? (
+                                                    <p className="text-muted fs-13 mb-0">
+                                                        <i className="ri-inbox-line me-1" />
+                                                        Aucun démarrage omis disponible.
+                                                    </p>
+                                                ) : (
+                                                    <div className="d-flex flex-wrap gap-2">
+                                                        {moisOmis.map((mois) => {
+                                                            const isActive = selectedFilters.mois_debut === mois.value;
+                                                            return (
+                                                                <button
+                                                                    key={mois.value}
+                                                                    type="button"
+                                                                    onClick={() => handleFilterChange('mois_debut', isActive ? '' : mois.value)}
+                                                                    className={`btn btn-sm d-flex align-items-center gap-2 ${isActive ? 'btn-warning' : 'btn-outline-secondary'}`}
+                                                                    style={{ fontWeight: isActive ? 600 : 400 }}
+                                                                >
+                                                                    {mois.label}
+                                                                    <span className={`badge rounded-pill ${isActive ? 'bg-white text-warning' : 'bg-secondary-subtle text-secondary'}`}>
+                                                                        {mois.count.toLocaleString('fr-FR')}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                                <p className="text-muted fs-12 mb-0 mt-2">
+                                                    <i className="ri-information-line me-1" />
+                                                    Cliquez sur un mois pour filtrer les dossiers omis par mois de démarrage.
+                                                </p>
                                             </div>
                                             <TableContainerReactTable
                                                 columns={columns}
