@@ -15,7 +15,6 @@ import {
 } from '@tanstack/react-table';
 import React, { Fragment, useEffect, useState } from "react";
 import { CardBody, Col, Row, Table } from "reactstrap";
-import { Link } from '@/velzone/inertia-router';
 import ServerPagination, { normalizePagination } from './ServerPagination';
 
 
@@ -248,31 +247,107 @@ const TableContainer = ({
         </Table>
       </div>
 
-      {!isServerPagination && (
-        <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
-          <div className="col-sm">
-            <div className="text-muted">Showing<span className="fw-semibold ms-1">{getState().pagination.pageSize}</span> of <span className="fw-semibold">{data.length}</span> Results
+      {!isServerPagination && (() => {
+        const pageIndex = getState().pagination.pageIndex;
+        const pageSize = getState().pagination.pageSize;
+        const total = data.length;
+        const lastPage = getPageOptions().length;
+        const from = total === 0 ? 0 : pageIndex * pageSize + 1;
+        const to = Math.min((pageIndex + 1) * pageSize, total);
+        const fmt = (n: number) => n.toLocaleString('fr-FR');
+
+        // Calcule les numéros de pages à afficher (avec ellipses)
+        const buildPages = (): (number | '...')[] => {
+          if (lastPage <= 1) return [];
+          const delta = 1;
+          const left = Math.max(2, pageIndex + 1 - delta);
+          const right = Math.min(lastPage - 1, pageIndex + 1 + delta);
+          const items: (number | '...')[] = [1];
+          if (left > 2) items.push('...');
+          for (let i = left; i <= right; i++) items.push(i);
+          if (right < lastPage - 1) items.push('...');
+          if (lastPage > 1) items.push(lastPage);
+          return items;
+        };
+
+        const pages = buildPages();
+
+        return (
+          <div className="d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mt-3 pt-3 border-top">
+            {/* Ligne d'information */}
+            <div className="text-muted fs-13">
+              Affichage de{' '}
+              <span className="fw-semibold text-body">{fmt(from)}</span>
+              {' '}à{' '}
+              <span className="fw-semibold text-body">{fmt(to)}</span>
+              {' '}sur{' '}
+              <span className="fw-semibold text-body">{fmt(total)}</span>
+              {' '}enregistrements
+              {lastPage > 1 && (
+                <>
+                  <span className="mx-2 text-muted opacity-50">—</span>
+                  Page{' '}
+                  <span className="fw-semibold text-body">{fmt(pageIndex + 1)}</span>
+                  {' '}sur{' '}
+                  <span className="fw-semibold text-body">{fmt(lastPage)}</span>
+                </>
+              )}
             </div>
+
+            {/* Boutons de navigation */}
+            {lastPage > 1 && (
+              <ul className="pagination pagination-separated mb-0 flex-shrink-0">
+                <li className={`page-item${!getCanPreviousPage() ? ' disabled' : ''}`}>
+                  <button
+                    type="button"
+                    className="page-link"
+                    onClick={previousPage}
+                    disabled={!getCanPreviousPage()}
+                    aria-label="Page précédente"
+                  >
+                    <i className="ri-arrow-left-s-line align-middle" />
+                  </button>
+                </li>
+
+                {pages.map((page, idx) =>
+                  page === '...' ? (
+                    <li key={`ellipsis-${idx}`} className="page-item disabled">
+                      <span className="page-link px-2">…</span>
+                    </li>
+                  ) : (
+                    <li
+                      key={page}
+                      className={`page-item${page === pageIndex + 1 ? ' active' : ''}`}
+                    >
+                      <button
+                        type="button"
+                        className="page-link"
+                        onClick={() => setPageIndex((page as number) - 1)}
+                        aria-current={page === pageIndex + 1 ? 'page' : undefined}
+                        aria-label={`Page ${page}`}
+                      >
+                        {page}
+                      </button>
+                    </li>
+                  )
+                )}
+
+                <li className={`page-item${!getCanNextPage() ? ' disabled' : ''}`}>
+                  <button
+                    type="button"
+                    className="page-link"
+                    onClick={nextPage}
+                    disabled={!getCanNextPage()}
+                    aria-label="Page suivante"
+                  >
+                    <i className="ri-arrow-right-s-line align-middle" />
+                  </button>
+                </li>
+              </ul>
+            )}
           </div>
-          <div className="col-sm-auto">
-            <ul className="pagination pagination-separated pagination-md justify-content-center justify-content-sm-start mb-0">
-              <li className={!getCanPreviousPage() ? "page-item disabled" : "page-item"}>
-                <Link to="#" className="page-link" onClick={previousPage}>Previous</Link>
-              </li>
-              {getPageOptions().map((item: any, key: number) => (
-                <React.Fragment key={key}>
-                  <li className="page-item">
-                    <Link to="#" className={getState().pagination.pageIndex === item ? "page-link active" : "page-link"} onClick={() => setPageIndex(item)}>{item + 1}</Link>
-                  </li>
-                </React.Fragment>
-              ))}
-              <li className={!getCanNextPage() ? "page-item disabled" : "page-item"}>
-                <Link to="#" className="page-link" onClick={nextPage}>Next</Link>
-              </li>
-            </ul>
-          </div>
-        </Row>
-      )}
+        );
+      })()}
 
       {isServerPagination && serverPagination && (
         <ServerPagination

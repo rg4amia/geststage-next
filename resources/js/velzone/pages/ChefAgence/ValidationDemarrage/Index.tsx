@@ -121,14 +121,14 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Filtres ─── */
     const [selectedFilters, setSelectedFilters] = useState({
-        agence_id:           filters?.agence_id || '',
-        entreprise_id:       filters?.entreprise_id || '',
+        agence_id: filters?.agence_id || '',
+        entreprise_id: filters?.entreprise_id || '',
         typesfinancement_id: filters?.typesfinancement_id || '',
-        typestage_id:        filters?.typestage_id || '',
-        type_structure_id:   filters?.type_structure_id || '',
-        created_begin:       filters?.created_begin || '',
-        created_end:         filters?.created_end || '',
-        periode_id:          filters?.periode_id || '',
+        typestage_id: filters?.typestage_id || '',
+        type_structure_id: filters?.type_structure_id || '',
+        created_begin: filters?.created_begin || '',
+        created_end: filters?.created_end || '',
+        periode_id: filters?.periode_id || '',
     });
 
     /* ─── Formulaire pour les actions groupées ─── */
@@ -138,9 +138,9 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         post,
         reset: resetAction,
     } = useForm({
-        ids:   [] as string[],
+        ids: [] as string[],
         motif: '',
-        type:  'demarrage',
+        type: 'demarrage',
     });
 
     /* ─── Données de l'onglet courant ─── */
@@ -173,14 +173,14 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 });
                 // Handle Velzone's global axios interceptor which may return response.data directly
                 const raw = response.data !== undefined ? response.data : response || {};
-                
+
                 setData({
-                    demarrage:         Array.isArray(raw?.demarrage) ? raw.demarrage : [],
-                    demarrageOmis:     Array.isArray(raw?.demarrageOmis) ? raw.demarrageOmis : [],
+                    demarrage: Array.isArray(raw?.demarrage) ? raw.demarrage : [],
+                    demarrageOmis: Array.isArray(raw?.demarrageOmis) ? raw.demarrageOmis : [],
                     retourAjournement: Array.isArray(raw?.retourAjournement) ? raw.retourAjournement : [],
                     counts: {
-                        demarrage:         raw?.counts?.demarrage ?? 0,
-                        demarrageOmis:     raw?.counts?.demarrageOmis ?? 0,
+                        demarrage: raw?.counts?.demarrage ?? 0,
+                        demarrageOmis: raw?.counts?.demarrageOmis ?? 0,
                         retourAjournement: raw?.counts?.retourAjournement ?? 0,
                     },
                 });
@@ -232,14 +232,14 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     const resetFilters = () => {
         const defaultFilters = {
-            agence_id:           '',
-            entreprise_id:       '',
+            agence_id: '',
+            entreprise_id: '',
             typesfinancement_id: '',
-            typestage_id:        '',
-            type_structure_id:   '',
-            created_begin:       '',
-            created_end:         '',
-            periode_id:          '',
+            typestage_id: '',
+            type_structure_id: '',
+            created_begin: '',
+            created_end: '',
+            periode_id: '',
         };
         setSelectedFilters(defaultFilters);
         setSelectedRows([]);
@@ -395,25 +395,25 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     /* ─── Cartes statistiques ─── */
     const statCards = [
         {
-            key:   '1',
+            key: '1',
             label: 'DÉMARRAGE',
             count: data?.counts?.demarrage ?? 0,
             color: 'primary',
-            icon:  'ri-play-circle-line',
+            icon: 'ri-play-circle-line',
         },
         {
-            key:   '2',
+            key: '2',
             label: 'DÉMARRAGE OMIS',
             count: data?.counts?.demarrageOmis ?? 0,
             color: 'warning',
-            icon:  'ri-time-line',
+            icon: 'ri-time-line',
         },
         {
-            key:   '3',
+            key: '3',
             label: "RETOUR D'AJOURNEMENT",
             count: data?.counts?.retourAjournement ?? 0,
             color: 'danger',
-            icon:  'ri-arrow-go-back-line',
+            icon: 'ri-arrow-go-back-line',
         },
     ];
 
@@ -576,24 +576,33 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                         ))}
                     </Row>
 
-                    {/* ─── Filtres ─── */}
-                    <Card className="shadow-sm border-0 mb-3">
+                    {/* ─── Carte principale : filtres + onglets + tableau ─── */}
+                    <Card className="shadow-sm border-0">
+
+                        {/* ── En-tête : titre + compteur sélection + bouton reset ── */}
                         <CardHeader className="bg-transparent border-bottom-0 pb-0">
-                            <div className="d-flex justify-content-between align-items-center">
-                                <h5 className="card-title mb-0">
-                                    <i className="ri-filter-3-line me-2 text-muted" />
-                                    Filtres
-                                </h5>
+                            <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
+                                <h4 className="card-title mb-0">
+                                    <i className="ri-checkbox-multiple-line me-2 text-success" />
+                                    Validation &amp; Démarrages
+                                    {selectedRows.length > 0 && (
+                                        <Badge color="success" className="ms-2 fs-12">
+                                            {selectedRows.length} sélectionné(s)
+                                        </Badge>
+                                    )}
+                                </h4>
                                 <Button color="soft-secondary" size="sm" onClick={resetFilters}>
                                     <i className="ri-refresh-line me-1" />
-                                    Réinitialiser
+                                    Réinitialiser les filtres
                                 </Button>
                             </div>
                         </CardHeader>
-                        <CardBody className="pb-2 pt-3">
-                            <Row className="g-3">
-                                <Col xs={6} sm={4} md={2}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold mb-1">Agence</Label>
+
+                        <CardBody>
+                            {/* ── Filtres ── */}
+                            <Row className="g-3 mb-4">
+                                <Col md={3} sm={6}>
+                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Agence</Label>
                                     <Input
                                         type="select"
                                         bsSize="sm"
@@ -606,8 +615,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         ))}
                                     </Input>
                                 </Col>
-                                <Col xs={6} sm={4} md={2}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold mb-1">Entreprise</Label>
+                                <Col md={3} sm={6}>
+                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Entreprise</Label>
                                     <Input
                                         type="select"
                                         bsSize="sm"
@@ -620,8 +629,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         ))}
                                     </Input>
                                 </Col>
-                                <Col xs={6} sm={4} md={2}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold mb-1">Financement</Label>
+                                <Col md={3} sm={6}>
+                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Financement</Label>
                                     <Input
                                         type="select"
                                         bsSize="sm"
@@ -634,8 +643,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         ))}
                                     </Input>
                                 </Col>
-                                <Col xs={6} sm={4} md={2}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold mb-1">Type de stage</Label>
+                                <Col md={3} sm={6}>
+                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Type de stage</Label>
                                     <Input
                                         type="select"
                                         bsSize="sm"
@@ -648,8 +657,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         ))}
                                     </Input>
                                 </Col>
-                                <Col xs={6} sm={4} md={2}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold mb-1">Type de structure</Label>
+                                <Col md={3} sm={6}>
+                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Type de structure</Label>
                                     <Input
                                         type="select"
                                         bsSize="sm"
@@ -662,8 +671,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         ))}
                                     </Input>
                                 </Col>
-                                <Col xs={6} sm={4} md={2}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold mb-1">Date début</Label>
+                                <Col md={3} sm={6}>
+                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Date début</Label>
                                     <Input
                                         type="date"
                                         bsSize="sm"
@@ -671,8 +680,8 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         onChange={(e) => handleFilterChange('created_begin', e.target.value)}
                                     />
                                 </Col>
-                                <Col xs={6} sm={4} md={2}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold mb-1">Date fin</Label>
+                                <Col md={3} sm={6}>
+                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Date fin</Label>
                                     <Input
                                         type="date"
                                         bsSize="sm"
@@ -681,97 +690,57 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                     />
                                 </Col>
                             </Row>
-                        </CardBody>
-                    </Card>
 
-                    {/* ─── Boutons d'actions groupées ─── */}
-                    <div className="d-flex my-3 flex-wrap gap-2">
-                        <Button color="primary" className="btn-label" onClick={openValiderModal} disabled={isProcessing}>
-                            <i className="ri-check-double-line label-icon fs-16 me-2 align-middle" />
-                            Sélectionner et valider
-                        </Button>
-                        <Button color="info" className="btn-label" onClick={handleValidationListeEntiere} disabled={isProcessing}>
-                            <i className="ri-folder-line label-icon fs-16 me-2 align-middle" />
-                            Validation de la liste
-                        </Button>
-                        <Button color="secondary" className="btn-label" onClick={handleGenererAddGlobal} disabled={isProcessing}>
-                            <i className="ri-file-text-line label-icon fs-16 me-2 align-middle" />
-                            Générer ADD
-                        </Button>
-                        <Button color="success" className="btn-label" onClick={handleGenererAddSelection} disabled={isProcessing}>
-                            <i className="ri-file-list-3-line label-icon fs-16 me-2 align-middle" />
-                            Sélectionner Générer ADD
-                        </Button>
-                        <Button color="danger" className="btn-label" onClick={openAjournerModal} disabled={isProcessing}>
-                            <i className="ri-close-circle-line label-icon fs-16 me-2 align-middle" />
-                            Sélectionner et ajourner
-                        </Button>
-                    </div>
-
-                    {/* ─── Bandeau info ─── */}
-                    <Alert color="info" className="rounded-3 d-flex mb-4 border-0">
-                        <i className="ri-information-line fs-18 me-3 mt-1" />
-                        <div className="w-100">
-                            Chaque action [Validation Groupé &amp; Générer Attestation Présence] s'applique à l'onglet actif.
-                            Pour l'onglet Présence, sélectionner la période d'attestation de démarrage.
-                        </div>
-                    </Alert>
-
-                    {/* ─── Tableau principal ─── */}
-                    <Card className="border-0 shadow-sm">
-                        <CardHeader className="bg-success">
-                            <div className="d-flex justify-content-between align-items-center">
-                                <h5 className="card-title mb-0 text-white">
-                                    {currentTabLabel}
-                                    <span
-                                        className="badge fs-12 ms-2"
-                                        style={{ background: '#e8f0fe', color: '#405189' }}
-                                    >
-                                        {currentRows.length}
-                                    </span>
-                                </h5>
-                                {selectedRows.length > 0 && (
-                                    <Badge color="light" className="text-dark fs-12">
-                                        {selectedRows.length} sélectionné(s)
-                                    </Badge>
-                                )}
-                            </div>
-                        </CardHeader>
-                        <CardBody className="p-0">
-                            <Nav tabs className="nav-tabs-custom nav-success border-bottom-0 ms-3 mt-3 mb-0">
-                                <NavItem>
-                                    <NavLink
-                                        className={classnames({ active: activeTab === '1' })}
-                                        onClick={() => toggleTab('1')}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        DEMARRAGE
-                                        <Badge color="primary" pill className="ms-2">{data?.counts?.demarrage ?? 0}</Badge>
-                                    </NavLink>
-                                </NavItem>
-                                <NavItem>
-                                    <NavLink
-                                        className={classnames({ active: activeTab === '2' })}
-                                        onClick={() => toggleTab('2')}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        DEMARRAGE OMIS
-                                        <Badge color="warning" pill className="ms-2">{data?.counts?.demarrageOmis ?? 0}</Badge>
-                                    </NavLink>
-                                </NavItem>
-                                <NavItem>
-                                    <NavLink
-                                        className={classnames({ active: activeTab === '3' })}
-                                        onClick={() => toggleTab('3')}
-                                        style={{ cursor: 'pointer' }}
-                                    >
-                                        RETOUR D'AJOURNEMENT
-                                        <Badge color="danger" pill className="ms-2">{data?.counts?.retourAjournement ?? 0}</Badge>
-                                    </NavLink>
-                                </NavItem>
+                            {/* ── Onglets principaux ── */}
+                            <Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
+                                {statCards.map((card) => (
+                                    <NavItem key={card.key}>
+                                        <NavLink
+                                            className={classnames({ active: activeTab === card.key }, 'fw-semibold py-3')}
+                                            style={{ cursor: 'pointer' }}
+                                            onClick={() => toggleTab(card.key)}
+                                        >
+                                            <i className={`${card.icon} me-1`} />
+                                            {card.label}
+                                            <Badge color={card.color} pill className="ms-2">{card.count}</Badge>
+                                        </NavLink>
+                                    </NavItem>
+                                ))}
                             </Nav>
 
-                            <TabContent activeTab={activeTab}>
+                            {/* ── Barre d'actions groupées (sous les onglets) ── */}
+                            <div className="d-flex flex-wrap gap-2 pt-3 pb-2 border-bottom">
+                                <Button color="primary" size="sm" onClick={openValiderModal} disabled={isProcessing}>
+                                    <i className="ri-check-double-line me-1 align-middle" />
+                                    Valider la sélection
+                                </Button>
+                                <Button color="info" size="sm" onClick={handleValidationListeEntiere} disabled={isProcessing}>
+                                    <i className="ri-folder-check-line me-1 align-middle" />
+                                    Valider toute la liste
+                                </Button>
+                                <span className="vr my-1" />
+                                <Button color="secondary" size="sm" onClick={handleGenererAddGlobal} disabled={isProcessing}>
+                                    <i className="ri-file-text-line me-1 align-middle" />
+                                    Générer ADD (liste)
+                                </Button>
+                                <Button color="success" size="sm" onClick={handleGenererAddSelection} disabled={isProcessing}>
+                                    <i className="ri-file-list-3-line me-1 align-middle" />
+                                    Générer ADD (sélection)
+                                </Button>
+                                <span className="vr my-1" />
+                                <Button color="danger" size="sm" onClick={openAjournerModal} disabled={isProcessing}>
+                                    <i className="ri-close-circle-line me-1 align-middle" />
+                                    Ajourner la sélection
+                                </Button>
+                                <span className="ms-auto text-muted fs-12 align-self-center fst-italic d-none d-md-block">
+                                    <i className="ri-information-line me-1" />
+                                    Les actions s'appliquent à l'onglet actif.
+                                    {activeTab === '2' && ' Sélectionner une période pour le démarrage omis.'}
+                                </span>
+                            </div>
+
+                            {/* ── Contenu des onglets ── */}
+                            <TabContent activeTab={activeTab} className="pt-3">
                                 {isLoading ? (
                                     <div className="d-flex justify-content-center align-items-center py-5">
                                         <Spinner color="success" />
@@ -785,21 +754,22 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                                 data={data.demarrage || []}
                                                 isGlobalFilter={true}
                                                 customPageSize={10}
-                                                divClass="table-responsive table-card mb-3"
-                                                tableClass="table align-middle table-nowrap mb-0"
-                                                theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
+                                                divClass="table-responsive table-card mt-1 mb-1"
+                                                tableClass="align-middle table-nowrap table-hover"
+                                                theadClass="table-light text-uppercase fw-semibold fs-11"
                                                 SearchPlaceholder="Rechercher..."
                                             />
                                         </TabPane>
 
                                         {/* ─── Onglet 2 : Démarrage Omis ─── */}
                                         <TabPane tabId="2">
-                                            {/* Filtre Période uniquement visible dans cet onglet */}
-                                            <div className="bg-light border-bottom p-3">
-                                                <Row>
-                                                    <Col md={4}>
-                                                        <Label className="form-label text-danger mb-2 fw-medium">
-                                                            PÉRIODE *
+                                            {/* Filtre Période — propre à cet onglet */}
+                                            <div className="bg-warning-subtle border border-warning-subtle rounded mb-3 p-3">
+                                                <Row className="align-items-end">
+                                                    <Col md={4} sm={8}>
+                                                        <Label className="form-label text-warning fw-semibold mb-1">
+                                                            <i className="ri-calendar-2-line me-1" />
+                                                            PÉRIODE <span className="text-danger">*</span>
                                                         </Label>
                                                         <Input
                                                             type="select"
@@ -813,6 +783,12 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                                             ))}
                                                         </Input>
                                                     </Col>
+                                                    <Col md={8} sm={4} className="mt-2 mt-md-0">
+                                                        <p className="text-muted fs-12 mb-0">
+                                                            <i className="ri-information-line me-1" />
+                                                            Filtrez par mois de démarrage pour cibler les dossiers omis sur une période précise.
+                                                        </p>
+                                                    </Col>
                                                 </Row>
                                             </div>
                                             <TableContainerReactTable
@@ -820,9 +796,9 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                                 data={data.demarrageOmis || []}
                                                 isGlobalFilter={true}
                                                 customPageSize={10}
-                                                divClass="table-responsive table-card mb-3"
-                                                tableClass="table align-middle table-nowrap mb-0"
-                                                theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
+                                                divClass="table-responsive table-card mt-1 mb-1"
+                                                tableClass="align-middle table-nowrap table-hover"
+                                                theadClass="table-light text-uppercase fw-semibold fs-11"
                                                 SearchPlaceholder="Rechercher..."
                                             />
                                         </TabPane>
@@ -834,9 +810,9 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                                 data={data.retourAjournement || []}
                                                 isGlobalFilter={true}
                                                 customPageSize={10}
-                                                divClass="table-responsive table-card mb-3"
-                                                tableClass="table align-middle table-nowrap mb-0"
-                                                theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
+                                                divClass="table-responsive table-card mt-1 mb-1"
+                                                tableClass="align-middle table-nowrap table-hover"
+                                                theadClass="table-light text-uppercase fw-semibold fs-11"
                                                 SearchPlaceholder="Rechercher..."
                                             />
                                         </TabPane>
