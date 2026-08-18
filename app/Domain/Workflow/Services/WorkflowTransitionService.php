@@ -10,6 +10,7 @@ use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Workflow\InstanceParcours;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 
 class WorkflowTransitionService
 {
@@ -120,11 +121,18 @@ class WorkflowTransitionService
     }
 
     /**
-     * 11. La DESSE traite un doublon et le retire de la corbeille de traitement.
+     * 11. La DESSE traite un groupe de doublons.
+     * "Avéré" -> les dossiers retournent à l'agence pour correction.
+     * "Non avéré" -> les dossiers sont validés et transmis à la DAICG.
      */
-    public function desseTraiteDoublon(InstanceParcours $instance): void
+    public function desseTraiteDoublons(Collection $instances, string $decision): void
     {
-        $instance->update(['corbeille_actuelle' => CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value]);
+        $corbeille = $decision === 'avere'
+            ? CorbeilleEnum::DESSE_RETOUR_AGENCE
+            : CorbeilleEnum::DAICG_VALIDES_DESSE;
+
+        InstanceParcours::whereIn('id', $instances->pluck('id'))
+            ->update(['corbeille_actuelle' => $corbeille->value]);
     }
 
     /**
