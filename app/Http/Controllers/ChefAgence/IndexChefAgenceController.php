@@ -115,17 +115,22 @@ class IndexChefAgenceController extends Controller
             'retourAjournement' => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_RETOUR_AJOURNEMENT->value)->count(),
         ];
 
+        if ($request->wantsJson()) {
+            return response()->json([
+                'demarrage'          => $demarrage,
+                'demarrageOmis'      => $demarrageOmis,
+                'retourAjournement'  => $retourAjournement,
+                'counts'             => $counts,
+            ]);
+        }
+
         return Inertia::render('ChefAgence/ValidationDemarrage/Index', [
-            'demarrage'          => $demarrage,
-            'demarrageOmis'      => $demarrageOmis,
-            'retourAjournement'  => $retourAjournement,
-            'counts'             => $counts,
-            'agences'            => Agence::query()->orderBy('nom')->pluck('nom', 'id'),
-            'entreprises'        => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id'),
-            'typesfinancements'  => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id'),
-            'typestages'         => TypeStage::query()->orderBy('nom')->pluck('nom', 'id'),
-            'typestructures'     => TypeStructure::query()->orderBy('nom')->pluck('nom', 'id'),
-            'periodes'           => Periode::query()->orderByDesc('code')->pluck('code', 'id'),
+            'agences'            => \Illuminate\Support\Facades\Cache::remember('ref.agences', 86400, fn () => Agence::query()->orderBy('nom')->pluck('nom', 'id')),
+            'entreprises'        => \Illuminate\Support\Facades\Cache::remember('ref.entreprises', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id')),
+            'typesfinancements'  => \Illuminate\Support\Facades\Cache::remember('ref.typesfinancements', 86400, fn () => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id')),
+            'typestages'         => \Illuminate\Support\Facades\Cache::remember('ref.typestages', 86400, fn () => TypeStage::query()->orderBy('nom')->pluck('nom', 'id')),
+            'typestructures'     => \Illuminate\Support\Facades\Cache::remember('ref.typestructures', 86400, fn () => TypeStructure::query()->orderBy('nom')->pluck('nom', 'id')),
+            'periodes'           => \Illuminate\Support\Facades\Cache::remember('ref.periodes', 86400, fn () => Periode::query()->orderByDesc('code')->pluck('code', 'id')),
             'filters'            => $filters,
         ]);
     }
@@ -203,30 +208,42 @@ class IndexChefAgenceController extends Controller
             foreach ($instances as $instance) {
                 $this->workflowService->caAjourneSoumission($instance);
 
-                // Enregistrer le motif d'ajournement dans les événements du parcours
-                // (table ajournements complète nécessite motif_ajournement_id, role_correcteur_id, etc.
-                //  qui ne sont pas disponibles ici sans configuration de référentiel.
-                //  Le motif est donc persisté dans les evenements_parcours via donnees JSON.)
+                // Alimentation de la table ajournements complète
                 try {
-                    $instance->evenements()->create([
-                        'uuid_public'    => \Illuminate\Support\Str::uuid(),
-                        'instance_parcours_id' => $instance->id,
-                        'transition_parcours_id' => null,
-                        'etape_source_id'  => $instance->etape_courante_id,
-                        'etape_cible_id'   => $instance->etape_courante_id, // Sera mis à jour par le workflow
-                        'auteur_id'        => $request->user()->id,
-                        'type'             => 'AJOURNEMENT_CA',
-                        'cle_idempotence'  => 'ajournement_ca_'.$instance->id.'_'.now()->timestamp,
-                        'donnees'          => json_encode([
-                            'motif'    => $data['motif'],
-                            'corbeille_origine' => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
-                            'corbeille_retour'  => CorbeilleEnum::CIP_MES_STAGIAIRES->value,
-                        ]),
+                    $etapeOrigineId = $instance->etape_courante_id;
+                    $etapeRetour = \App\Models\Workflow\EtapeParcours::where('definition_parcours_id', $instance->definition_parcours_id)
+                        ->where('code', CorbeilleEnum::CIP_MES_STAGIAIRES->value)
+                        ->first();
+                    $etapeRetourId = $etapeRetour ? $etapeRetour->id : $etapeOrigineId;
+
+                    $motifAjournementId = \Illuminate\Support\Facades\DB::table('motifs_ajournement')->first()->id ?? \Illuminate\Support\Facades\DB::table('motifs_ajournement')->insertGetId([
+                        'code' => 'AUTRE',
+                        'nom' => 'Autre',
+                        'domaine' => 'Validation',
+                        'actif' => true
+                    ]);
+                    
+                    $roleCorrecteurId = \Illuminate\Support\Facades\DB::table('roles')->where('name', 'like', '%CIP%')->first()->id ?? \Illuminate\Support\Facades\DB::table('roles')->first()->id;
+                    $numeroCycle = \App\Models\Adjournment\Ajournement::where('instance_parcours_id', $instance->id)->max('numero_cycle') + 1;
+
+                    \App\Models\Adjournment\Ajournement::create([
+                        'uuid_public'            => \Illuminate\Support\Str::uuid(),
+                        'instance_parcours_id'   => $instance->id,
+                        'etape_origine_id'       => $etapeOrigineId,
+                        'etape_correction_id'    => $etapeRetourId,
+                        'etape_retour_id'        => $etapeOrigineId,
+                        'motif_ajournement_id'   => $motifAjournementId,
+                        'role_correcteur_id'     => $roleCorrecteurId,
+                        'auteur_id'              => $request->user()->id,
+                        'code_corbeille_origine' => $instance->corbeille_actuelle ?? CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
+                        'code_corbeille_retour'  => CorbeilleEnum::CIP_MES_STAGIAIRES->value,
+                        'motif_detaille'         => $data['motif'],
+                        'correction_attendue'    => "Veuillez corriger le dossier selon le motif d'ajournement fourni.",
+                        'numero_cycle'           => $numeroCycle,
+                        'statut'                 => 'OUVERT',
                     ]);
                 } catch (\Exception $e) {
-                    // evenements_parcours est immuable (trigger PostgreSQL) uniquement sur UPDATE/DELETE
-                    // On ignore les erreurs non bloquantes sur l'enregistrement de l'événement
-                    Log::warning("Impossible d'enregistrer l'événement d'ajournement pour l'instance {$instance->id}: ".$e->getMessage());
+                    \Illuminate\Support\Facades\Log::warning("Impossible d'enregistrer l'ajournement complet pour l'instance {$instance->id}: ".$e->getMessage());
                 }
             }
         });

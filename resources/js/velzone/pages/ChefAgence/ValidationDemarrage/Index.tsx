@@ -1,6 +1,7 @@
 import { Head, router, usePage, useForm } from '@inertiajs/react';
 import classnames from 'classnames';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState, useEffect } from 'react';
+import axios from 'axios';
 import {
     Alert,
     Badge,
@@ -54,10 +55,6 @@ interface Counts {
 }
 
 interface PageProps {
-    demarrage: RowData[];
-    demarrageOmis: RowData[];
-    retourAjournement: RowData[];
-    counts: Counts;
     agences: Record<string, string>;
     entreprises: Record<string, string>;
     typesfinancements: Record<string, string>;
@@ -82,10 +79,6 @@ const formatDateFr = (dateStr: string | null | undefined) => {
    ═══════════════════════════════════════════════════════════ */
 const ValidationDemarrageIndex = (props: PageProps) => {
     const {
-        demarrage,
-        demarrageOmis,
-        retourAjournement,
-        counts = { demarrage: 0, demarrageOmis: 0, retourAjournement: 0 },
         agences = {},
         entreprises = {},
         typesfinancements = {},
@@ -97,13 +90,27 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
 
+    /* ─── États pour le chargement asynchrone (JSON) ─── */
+    const [data, setData] = useState<{
+        demarrage: RowData[];
+        demarrageOmis: RowData[];
+        retourAjournement: RowData[];
+        counts: Counts;
+    }>({
+        demarrage: [],
+        demarrageOmis: [],
+        retourAjournement: [],
+        counts: { demarrage: 0, demarrageOmis: 0, retourAjournement: 0 },
+    });
+    const [isLoading, setIsLoading] = useState(true);
+
     /* ─── Onglet actif ─── */
     const [activeTab, setActiveTab] = useState(filters?.tab || '1');
 
     /* ─── Sélection de lignes ─── */
     const [selectedRows, setSelectedRows] = useState<string[]>([]);
 
-    /* ─── État de traitement ─── */
+    /* ─── État de traitement (modales) ─── */
     const [isProcessing, setIsProcessing] = useState(false);
 
     /* ─── Modales ─── */
@@ -112,7 +119,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const [previewRow, setPreviewRow] = useState<RowData | null>(null);
     const [motifAjournement, setMotifAjournement] = useState('');
 
-    /* ─── Filtres (en temps réel comme Desse/Stagiaires) ─── */
+    /* ─── Filtres ─── */
     const [selectedFilters, setSelectedFilters] = useState({
         agence_id:           filters?.agence_id || '',
         entreprise_id:       filters?.entreprise_id || '',
@@ -138,10 +145,10 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Données de l'onglet courant ─── */
     const currentRows: RowData[] = useMemo(() => {
-        if (activeTab === '2') return demarrageOmis || [];
-        if (activeTab === '3') return retourAjournement || [];
-        return demarrage || [];
-    }, [activeTab, demarrage, demarrageOmis, retourAjournement]);
+        if (activeTab === '2') return data.demarrageOmis || [];
+        if (activeTab === '3') return data.retourAjournement || [];
+        return data.demarrage || [];
+    }, [activeTab, data]);
 
     const currentTabLabel = useMemo(() => {
         if (activeTab === '2') return 'Liste des démarrages omis';
@@ -155,20 +162,55 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         return 'demarrage';
     }, [activeTab]);
 
-    /* ─── Navigation Filtres (temps réel) ─── */
+    /* ─── Fetch Data (Axios JSON) ─── */
+    const fetchValidations = useCallback(
+        async (params: Record<string, string>) => {
+            setIsLoading(true);
+            try {
+                const response = await axios.get(route('chefagence.validations'), {
+                    params,
+                    headers: { Accept: 'application/json' },
+                });
+                setData(response.data);
+            } catch (error) {
+                console.error("Erreur lors du chargement des données", error);
+            } finally {
+                setIsLoading(false);
+            }
+        },
+        []
+    );
+
+    /* ─── Navigation Filtres (temps réel fluide) ─── */
     const applyFilters = useCallback(
         (newFilters: typeof selectedFilters, tab?: string) => {
             const params: Record<string, string> = { tab: tab ?? activeTab };
             Object.entries(newFilters).forEach(([key, val]) => {
                 if (val) params[key] = val;
             });
-            router.get(route('chefagence.validations'), params, {
-                preserveState: true,
-                preserveScroll: true,
+            // Update URL without page reload
+            const url = new URL(window.location.href);
+            url.search = '';
+            Object.entries(params).forEach(([key, val]) => {
+                if (val) url.searchParams.set(key, val);
             });
+            window.history.replaceState({}, '', url);
+
+            // Fetch json data
+            fetchValidations(params);
         },
-        [activeTab],
+        [activeTab, fetchValidations],
     );
+
+    // Initial load
+    useEffect(() => {
+        const params: Record<string, string> = { tab: activeTab };
+        Object.entries(selectedFilters).forEach(([key, val]) => {
+            if (val) params[key] = val;
+        });
+        fetchValidations(params);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
     const handleFilterChange = (field: string, value: string) => {
         const newFilters = { ...selectedFilters, [field]: value };
@@ -233,15 +275,25 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         setModalAjournerOpen(true);
     };
 
+    /* ─── Helper pour recharger les données après une action ─── */
+    const reloadData = () => {
+        const params: Record<string, string> = { tab: activeTab };
+        Object.entries(selectedFilters).forEach(([key, val]) => {
+            if (val) params[key] = val;
+        });
+        fetchValidations(params);
+    };
+
     /* ─── Confirmation ─── */
     const confirmValider = () => {
         setIsProcessing(true);
-        post(route('chefagence.validations.validerGroup'), {
+        router.post(route('chefagence.validations.validerGroup'), actionData, {
             preserveScroll: true,
             onSuccess: () => {
                 setModalValiderOpen(false);
                 setSelectedRows([]);
                 resetAction();
+                reloadData();
             },
             onFinish: () => setIsProcessing(false),
         });
@@ -253,17 +305,17 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        post(route('chefagence.validations.ajournerGroup'), {
-            data: {
-                ids:   actionData.ids,
-                motif: motifAjournement,
-            },
+        router.post(route('chefagence.validations.ajournerGroup'), {
+            ids: actionData.ids,
+            motif: motifAjournement,
+        }, {
             preserveScroll: true,
             onSuccess: () => {
                 setModalAjournerOpen(false);
                 setSelectedRows([]);
                 setMotifAjournement('');
                 resetAction();
+                reloadData();
             },
             onFinish: () => setIsProcessing(false),
         });
@@ -281,10 +333,12 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        post(route('chefagence.validations.validerGroup'), {
-            data: { ids: allIds, type: currentTabType },
+        router.post(route('chefagence.validations.validerGroup'), { ids: allIds, type: currentTabType }, {
             preserveScroll: true,
-            onSuccess: () => setSelectedRows([]),
+            onSuccess: () => {
+                setSelectedRows([]);
+                reloadData();
+            },
             onFinish: () => setIsProcessing(false),
         });
     };
@@ -295,10 +349,12 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        post(route('chefagence.validations.genererAddGroup'), {
-            data: { ids: selectedRows, type: currentTabType },
+        router.post(route('chefagence.validations.genererAddGroup'), { ids: selectedRows, type: currentTabType }, {
             preserveScroll: true,
-            onSuccess: () => setSelectedRows([]),
+            onSuccess: () => {
+                setSelectedRows([]);
+                reloadData();
+            },
             onFinish: () => setIsProcessing(false),
         });
     };
@@ -314,10 +370,12 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        post(route('chefagence.validations.genererAddGroup'), {
-            data: { ids: allIds, type: currentTabType },
+        router.post(route('chefagence.validations.genererAddGroup'), { ids: allIds, type: currentTabType }, {
             preserveScroll: true,
-            onSuccess: () => setSelectedRows([]),
+            onSuccess: () => {
+                setSelectedRows([]);
+                reloadData();
+            },
             onFinish: () => setIsProcessing(false),
         });
     };
@@ -327,21 +385,21 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         {
             key:   '1',
             label: 'DÉMARRAGE',
-            count: counts.demarrage,
+            count: data.counts.demarrage,
             color: 'primary',
             icon:  'ri-play-circle-line',
         },
         {
             key:   '2',
             label: 'DÉMARRAGE OMIS',
-            count: counts.demarrageOmis,
+            count: data.counts.demarrageOmis,
             color: 'warning',
             icon:  'ri-time-line',
         },
         {
             key:   '3',
             label: "RETOUR D'AJOURNEMENT",
-            count: counts.retourAjournement,
+            count: data.counts.retourAjournement,
             color: 'danger',
             icon:  'ri-arrow-go-back-line',
         },
@@ -676,7 +734,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         style={{ cursor: 'pointer' }}
                                     >
                                         DEMARRAGE
-                                        <Badge color="primary" pill className="ms-2">{counts.demarrage}</Badge>
+                                        <Badge color="primary" pill className="ms-2">{data.counts.demarrage}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
@@ -686,7 +744,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         style={{ cursor: 'pointer' }}
                                     >
                                         DEMARRAGE OMIS
-                                        <Badge color="warning" pill className="ms-2">{counts.demarrageOmis}</Badge>
+                                        <Badge color="warning" pill className="ms-2">{data.counts.demarrageOmis}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
@@ -696,74 +754,82 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         style={{ cursor: 'pointer' }}
                                     >
                                         RETOUR D'AJOURNEMENT
-                                        <Badge color="danger" pill className="ms-2">{counts.retourAjournement}</Badge>
+                                        <Badge color="danger" pill className="ms-2">{data.counts.retourAjournement}</Badge>
                                     </NavLink>
                                 </NavItem>
                             </Nav>
 
                             <TabContent activeTab={activeTab}>
-                                {/* ─── Onglet 1 : Démarrage ─── */}
-                                <TabPane tabId="1">
-                                    <TableContainerReactTable
-                                        columns={columns}
-                                        data={demarrage || []}
-                                        isGlobalFilter={true}
-                                        customPageSize={10}
-                                        divClass="table-responsive table-card mb-3"
-                                        tableClass="table align-middle table-nowrap mb-0"
-                                        theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
-                                        SearchPlaceholder="Rechercher..."
-                                    />
-                                </TabPane>
-
-                                {/* ─── Onglet 2 : Démarrage Omis ─── */}
-                                <TabPane tabId="2">
-                                    {/* Filtre Période uniquement visible dans cet onglet */}
-                                    <div className="bg-light border-bottom p-3">
-                                        <Row>
-                                            <Col md={4}>
-                                                <Label className="form-label text-danger mb-2 fw-medium">
-                                                    PÉRIODE *
-                                                </Label>
-                                                <Input
-                                                    type="select"
-                                                    bsSize="sm"
-                                                    value={selectedFilters.periode_id}
-                                                    onChange={(e) => handleFilterChange('periode_id', e.target.value)}
-                                                >
-                                                    <option value="">Sélectionner une période</option>
-                                                    {Object.entries(periodes || {}).map(([id, label]) => (
-                                                        <option key={id} value={id}>{String(label)}</option>
-                                                    ))}
-                                                </Input>
-                                            </Col>
-                                        </Row>
+                                {isLoading ? (
+                                    <div className="d-flex justify-content-center align-items-center py-5">
+                                        <Spinner color="success" />
                                     </div>
-                                    <TableContainerReactTable
-                                        columns={columns}
-                                        data={demarrageOmis || []}
-                                        isGlobalFilter={true}
-                                        customPageSize={10}
-                                        divClass="table-responsive table-card mb-3"
-                                        tableClass="table align-middle table-nowrap mb-0"
-                                        theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
-                                        SearchPlaceholder="Rechercher..."
-                                    />
-                                </TabPane>
+                                ) : (
+                                    <>
+                                        {/* ─── Onglet 1 : Démarrage ─── */}
+                                        <TabPane tabId="1">
+                                            <TableContainerReactTable
+                                                columns={columns}
+                                                data={data.demarrage || []}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="table align-middle table-nowrap mb-0"
+                                                theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
+                                                SearchPlaceholder="Rechercher..."
+                                            />
+                                        </TabPane>
 
-                                {/* ─── Onglet 3 : Retour d'Ajournement ─── */}
-                                <TabPane tabId="3">
-                                    <TableContainerReactTable
-                                        columns={columns}
-                                        data={retourAjournement || []}
-                                        isGlobalFilter={true}
-                                        customPageSize={10}
-                                        divClass="table-responsive table-card mb-3"
-                                        tableClass="table align-middle table-nowrap mb-0"
-                                        theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
-                                        SearchPlaceholder="Rechercher..."
-                                    />
-                                </TabPane>
+                                        {/* ─── Onglet 2 : Démarrage Omis ─── */}
+                                        <TabPane tabId="2">
+                                            {/* Filtre Période uniquement visible dans cet onglet */}
+                                            <div className="bg-light border-bottom p-3">
+                                                <Row>
+                                                    <Col md={4}>
+                                                        <Label className="form-label text-danger mb-2 fw-medium">
+                                                            PÉRIODE *
+                                                        </Label>
+                                                        <Input
+                                                            type="select"
+                                                            bsSize="sm"
+                                                            value={selectedFilters.periode_id}
+                                                            onChange={(e) => handleFilterChange('periode_id', e.target.value)}
+                                                        >
+                                                            <option value="">Sélectionner une période</option>
+                                                            {Object.entries(periodes || {}).map(([id, label]) => (
+                                                                <option key={id} value={id}>{String(label)}</option>
+                                                            ))}
+                                                        </Input>
+                                                    </Col>
+                                                </Row>
+                                            </div>
+                                            <TableContainerReactTable
+                                                columns={columns}
+                                                data={data.demarrageOmis || []}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="table align-middle table-nowrap mb-0"
+                                                theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
+                                                SearchPlaceholder="Rechercher..."
+                                            />
+                                        </TabPane>
+
+                                        {/* ─── Onglet 3 : Retour d'Ajournement ─── */}
+                                        <TabPane tabId="3">
+                                            <TableContainerReactTable
+                                                columns={columns}
+                                                data={data.retourAjournement || []}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="table align-middle table-nowrap mb-0"
+                                                theadClass="bg-success text-white text-uppercase fw-semibold fs-11"
+                                                SearchPlaceholder="Rechercher..."
+                                            />
+                                        </TabPane>
+                                    </>
+                                )}
                             </TabContent>
                         </CardBody>
                     </Card>
