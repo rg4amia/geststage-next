@@ -36,6 +36,7 @@ class MesStagiairesCipController extends Controller
             'date_fin',
             'etape_id',
             'situationstage_id',
+            'search',
             'page',
         ]);
 
