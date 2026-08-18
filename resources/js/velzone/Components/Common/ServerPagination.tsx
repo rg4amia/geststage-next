@@ -61,7 +61,7 @@ function buildPageRange(current: number, last: number, siblings: number): PageIt
     // + siblingCount pages autour de la page courante
     const delta = siblings;
 
-    const left  = Math.max(2, current - delta);
+    const left = Math.max(2, current - delta);
     const right = Math.min(last - 1, current + delta);
 
     const pages: PageItem[] = [];
@@ -156,36 +156,36 @@ const ServerPagination: React.FC<ServerPaginationProps> = ({
     if (total === 0) return null;
 
     return (
-        <div className={`d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mt-3 ${className}`}>
+        <div className={`d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mt-3 pt-3 border-top ${className}`}>
             {/* ── Ligne d'information ── */}
             <div className="text-muted fs-13">
-                <span>
-                    Affichage de{' '}
-                    <span className="fw-semibold text-body">{fmt(from ?? 0)}</span>
-                    {' '}à{' '}
-                    <span className="fw-semibold text-body">{fmt(to ?? 0)}</span>
-                    {' '}sur{' '}
-                    <span className="fw-semibold text-body">{fmt(total)}</span>
-                    {' '}{itemLabel}
-                </span>
-                <span className="ms-2 text-muted">
-                    — Page <span className="fw-semibold text-body">{fmt(current_page)}</span> sur{' '}
-                    <span className="fw-semibold text-body">{fmt(last_page)}</span>
-                </span>
+                Affichage de{' '}
+                <span className="fw-semibold text-body">{fmt(from ?? 0)}</span>
+                {' '}à{' '}
+                <span className="fw-semibold text-body">{fmt(to ?? 0)}</span>
+                {' '}sur{' '}
+                <span className="fw-semibold text-body">{fmt(total)}</span>
+                {' '}{itemLabel}
+                <span className="mx-2 text-muted opacity-50">—</span>
+                Page{' '}
+                <span className="fw-semibold text-body">{fmt(current_page)}</span>
+                {' '}sur{' '}
+                <span className="fw-semibold text-body">{fmt(last_page)}</span>
             </div>
 
             {/* ── Boutons de navigation ── */}
             {last_page > 1 && (
-                <ul className="pagination pagination-separated mb-0">
+                <ul className="pagination pagination-separated mb-0 flex-shrink-0">
                     {/* Précédent */}
-                    <li className={`page-item ${current_page <= 1 ? 'disabled' : ''}`}>
+                    <li className={`page-item${current_page <= 1 ? ' disabled' : ''}`}>
                         <button
+                            type="button"
                             className="page-link"
                             onClick={() => navigate(current_page - 1)}
                             disabled={current_page <= 1}
                             aria-label="Page précédente"
                         >
-                            <i className="ri-arrow-left-s-line" />
+                            <i className="ri-arrow-left-s-line align-middle" />
                         </button>
                     </li>
 
@@ -193,14 +193,15 @@ const ServerPagination: React.FC<ServerPaginationProps> = ({
                     {pages.map((page, idx) =>
                         page === '...' ? (
                             <li key={`ellipsis-${idx}`} className="page-item disabled">
-                                <span className="page-link">…</span>
+                                <span className="page-link px-2">…</span>
                             </li>
                         ) : (
                             <li
                                 key={page}
-                                className={`page-item ${page === current_page ? 'active' : ''}`}
+                                className={`page-item${page === current_page ? ' active' : ''}`}
                             >
                                 <button
+                                    type="button"
                                     className="page-link"
                                     onClick={() => navigate(page as number)}
                                     aria-current={page === current_page ? 'page' : undefined}
@@ -213,14 +214,15 @@ const ServerPagination: React.FC<ServerPaginationProps> = ({
                     )}
 
                     {/* Suivant */}
-                    <li className={`page-item ${current_page >= last_page ? 'disabled' : ''}`}>
+                    <li className={`page-item${current_page >= last_page ? ' disabled' : ''}`}>
                         <button
+                            type="button"
                             className="page-link"
                             onClick={() => navigate(current_page + 1)}
                             disabled={current_page >= last_page}
                             aria-label="Page suivante"
                         >
-                            <i className="ri-arrow-right-s-line" />
+                            <i className="ri-arrow-right-s-line align-middle" />
                         </button>
                     </li>
                 </ul>
@@ -245,11 +247,11 @@ export function normalizePagination(paginatedData: any): PaginationMeta {
     const src = paginatedData?.meta ?? paginatedData;
 
     return {
-        current_page : src.current_page  ?? 1,
-        last_page    : src.last_page     ?? 1,
-        from         : src.from          ?? null,
-        to           : src.to            ?? null,
-        total        : src.total         ?? 0,
-        links        : src.links         ?? [],
+        current_page: src.current_page ?? 1,
+        last_page: src.last_page ?? 1,
+        from: src.from ?? null,
+        to: src.to ?? null,
+        total: src.total ?? 0,
+        links: src.links ?? [],
     };
 }

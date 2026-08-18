@@ -26,7 +26,6 @@ import {
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
-import ServerPagination, { normalizePagination } from '../../../Components/Common/ServerPagination';
 
 /* ─── Types ─── */
 interface RefOption {
@@ -516,20 +515,30 @@ const DesseStagiairesIndex = (props: PageProps) => {
                             <TabContent activeTab={currentTab} className="pt-3">
                                 <TabPane tabId="doublons">
                                     {/* ─── Sous-onglets : types de doublon ─── */}
-                                    <Nav pills className="mb-3">
-                                        {doublonTypes.map((d) => (
-                                            <NavItem key={d.value}>
-                                                <NavLink
-                                                    className={classnames({ active: currentTypeDoublon === d.value }, 'me-1 mb-1')}
-                                                    style={{ cursor: 'pointer' }}
+                                    <div className="d-flex flex-wrap gap-2 mb-3">
+                                        {doublonTypes.map((d) => {
+                                            const isActive = currentTypeDoublon === d.value;
+                                            const count = doublonCounts[d.value] ?? 0;
+                                            return (
+                                                <button
+                                                    key={d.value}
+                                                    type="button"
                                                     onClick={() => toggleTypeDoublon(d.value)}
+                                                    className={`btn btn-sm d-flex align-items-center gap-2 ${isActive
+                                                        ? 'btn-primary'
+                                                        : 'btn-outline-secondary'
+                                                        }`}
+                                                    style={{ fontWeight: isActive ? 600 : 400 }}
                                                 >
                                                     {d.label}
-                                                    <Badge color="light" className="text-dark ms-2">{doublonCounts[d.value] ?? 0}</Badge>
-                                                </NavLink>
-                                            </NavItem>
-                                        ))}
-                                    </Nav>
+                                                    <span className={`badge rounded-pill ${isActive ? 'bg-white text-primary' : 'bg-secondary-subtle text-secondary'
+                                                        }`}>
+                                                        {count.toLocaleString('fr-FR')}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                     {currentTypeDoublon === 'aej' && (
                                         <Alert color="info" className="border-0">
                                             <i className="ri-information-line me-2 align-middle"></i>
@@ -544,20 +553,23 @@ const DesseStagiairesIndex = (props: PageProps) => {
                                 columns={currentColumns}
                                 data={data?.data || []}
                                 isGlobalFilter={false}
-                                customPageSize={20}
+                                customPageSize={data?.data?.length || 20}
                                 divClass="table-responsive table-card mt-1 mb-1"
                                 tableClass="align-middle table-nowrap table-hover"
                                 theadClass="table-light"
                                 SearchPlaceholder="Recherche..."
+                                isServerPagination={true}
+                                serverPagination={data}
+                                onPageChange={(page) => {
+                                    const params: Record<string, string> = { tab: currentTab, page: String(page) };
+                                    if (currentTab === 'doublons') params.type_doublon = currentTypeDoublon;
+                                    Object.entries(selectedFilters).forEach(([k, v]) => { if (v) params[k] = v; });
+                                    router.get('/desse/stagiaires', params, { preserveState: true, preserveScroll: true });
+                                }}
                             />
 
                             {/* ─── Pagination serveur ─── */}
-                            {data?.total > 0 && (
-                                <ServerPagination
-                                    pagination={normalizePagination(data)}
-                                    itemLabel="enregistrements"
-                                />
-                            )}
+                            {/* (gérée directement dans TableContainerReactTable via isServerPagination) */}
                         </CardBody>
                     </Card>
                 </Container>

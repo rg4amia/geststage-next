@@ -899,41 +899,20 @@ const PointagesIndex = (props: PageProps) => {
                                 columns={currentColumns}
                                 data={tableData}
                                 isGlobalFilter={false}
-                                customPageSize={20}
+                                customPageSize={data?.data?.length || 20}
                                 divClass="table-responsive table-card mt-1 mb-1"
                                 tableClass="align-middle table-nowrap table-hover"
                                 theadClass={currentTab === 'attente' ? 'table-success' : 'table-light'}
                                 trClass={(row: any) => row?.original?._rowClassName || ''}
                                 SearchPlaceholder="Recherche..."
+                                isServerPagination={true}
+                                serverPagination={data}
+                                onPageChange={(page) => {
+                                    const params: Record<string, string> = { tab: currentTab, page: String(page) };
+                                    Object.entries(selectedFilters).forEach(([k, v]) => { if (v) params[k] = v; });
+                                    router.get('/cip/pointages', params, { preserveState: true, preserveScroll: true });
+                                }}
                             />
-
-                            {/* ─── Pagination serveur ─── */}
-                            {data?.links && data.links.length > 3 && (
-                                <div className="d-flex justify-content-between align-items-center mt-3">
-                                    <p className="text-muted mb-0 fs-13">
-                                        Affiche {data.from || 0} à {data.to || 0} sur {data.total || 0} enregistrements
-                                    </p>
-                                    <ul className="pagination pagination-sm mb-0">
-                                        {data.links.map((link: any, idx: number) => (
-                                            <li
-                                                key={idx}
-                                                className={classnames('page-item', { active: link.active, disabled: !link.url })}
-                                            >
-                                                <button
-                                                    className="page-link"
-                                                    disabled={!link.url}
-                                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                                    onClick={() => {
-                                                        if (link.url) {
-                                                            router.get(link.url, {}, { preserveState: true, preserveScroll: true });
-                                                        }
-                                                    }}
-                                                />
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            )}
                         </CardBody>
                     </Card>
                 </Container>

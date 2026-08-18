@@ -32,7 +32,7 @@ const MesStagiaires = () => {
             if (saved) {
                 try {
                     setColumnVisibility(JSON.parse(saved));
-                } catch (e) {}
+                } catch (e) { }
             }
         }
     }, []);
@@ -54,7 +54,7 @@ const MesStagiaires = () => {
 
     const [modalAnalyse, setModalAnalyse] = useState(false);
     const [selectedStagiaire, setSelectedStagiaire] = useState<any>(null);
-    
+
     // Nouveaux états pour les modales d'action
     const [selectedActionStagiaire, setSelectedActionStagiaire] = useState<any>(null);
     const [modalGenererContrat, setModalGenererContrat] = useState(false);
@@ -96,8 +96,8 @@ const MesStagiaires = () => {
     });
 
     const handleSearch = (e?: any) => {
-        if(e) e.preventDefault();
-        
+        if (e) e.preventDefault();
+
         get('/cip/mes-stagiaires', {
             preserveState: true,
             preserveScroll: true,
@@ -214,98 +214,98 @@ const MesStagiaires = () => {
                                         }}
                                     ></div>
                                 )}
-                    
-            {/* Modal Générer Contrat */}
-            <Modal isOpen={modalGenererContrat} toggle={() => setModalGenererContrat(!modalGenererContrat)} centered>
-                <ModalHeader toggle={() => setModalGenererContrat(!modalGenererContrat)} className="bg-warning text-white">Générer Contrat</ModalHeader>
-                <Form onSubmit={(e) => {
-                    e.preventDefault();
-                    window.open(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-contrat?fonction=${genererContratForm.data.fonction_dg}&montant=${genererContratForm.data.montant}`, '_blank');
-                    setModalGenererContrat(false);
-                }}>
-                    <ModalBody>
-                        <div className="mb-3">
-                            <label htmlFor="fonction_dg" className="form-label">Fonction du représentant légal de l'entreprise</label>
-                            <Input type="text" id="fonction_dg" value={genererContratForm.data.fonction_dg} onChange={e => genererContratForm.setData('fonction_dg', e.target.value)} required />
-                        </div>
-                        <div className="mb-3">
-                            <label htmlFor="montant" className="form-label">Montant prime de stage</label>
-                            <Input type="number" id="montant" value={genererContratForm.data.montant} onChange={e => genererContratForm.setData('montant', e.target.value)} required />
-                        </div>
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button color="light" onClick={() => setModalGenererContrat(false)}>Fermer</Button>
-                        <Button color="warning" type="submit" disabled={genererContratForm.processing}>Générer</Button>
-                    </ModalFooter>
-                </Form>
-            </Modal>
 
-            {/* Modal Transférer Contrat */}
-            <Modal isOpen={modalTransferer} toggle={() => setModalTransferer(!modalTransferer)} centered>
-                <ModalHeader toggle={() => setModalTransferer(!modalTransferer)} className="bg-info text-white">Transférer Contrat</ModalHeader>
-                <Form onSubmit={(e) => {
-                    e.preventDefault();
-                    transfererForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/transferer-contrat`, {
-                        onSuccess: () => setModalTransferer(false)
-                    });
-                }}>
-                    <ModalBody>
-                        <div className="mb-3">
-                            <label htmlFor="contrat_stage" className="form-label">Contrat Signé (PDF)</label>
-                            <Input type="file" id="contrat_stage" onChange={e => transfererForm.setData('contrat_stage', e.target.files ? e.target.files[0] : null)} required />
-                            {transfererForm.errors.contrat_stage && <div className="text-danger mt-1">{transfererForm.errors.contrat_stage}</div>}
-                        </div>
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button color="light" onClick={() => setModalTransferer(false)}>Fermer</Button>
-                        <Button color="info" type="submit" disabled={transfererForm.processing}>Transférer</Button>
-                    </ModalFooter>
-                </Form>
-            </Modal>
+                                {/* Modal Générer Contrat */}
+                                <Modal isOpen={modalGenererContrat} toggle={() => setModalGenererContrat(!modalGenererContrat)} centered>
+                                    <ModalHeader toggle={() => setModalGenererContrat(!modalGenererContrat)} className="bg-warning text-white">Générer Contrat</ModalHeader>
+                                    <Form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        window.open(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-contrat?fonction=${genererContratForm.data.fonction_dg}&montant=${genererContratForm.data.montant}`, '_blank');
+                                        setModalGenererContrat(false);
+                                    }}>
+                                        <ModalBody>
+                                            <div className="mb-3">
+                                                <label htmlFor="fonction_dg" className="form-label">Fonction du représentant légal de l'entreprise</label>
+                                                <Input type="text" id="fonction_dg" value={genererContratForm.data.fonction_dg} onChange={e => genererContratForm.setData('fonction_dg', e.target.value)} required />
+                                            </div>
+                                            <div className="mb-3">
+                                                <label htmlFor="montant" className="form-label">Montant prime de stage</label>
+                                                <Input type="number" id="montant" value={genererContratForm.data.montant} onChange={e => genererContratForm.setData('montant', e.target.value)} required />
+                                            </div>
+                                        </ModalBody>
+                                        <ModalFooter>
+                                            <Button color="light" onClick={() => setModalGenererContrat(false)}>Fermer</Button>
+                                            <Button color="warning" type="submit" disabled={genererContratForm.processing}>Générer</Button>
+                                        </ModalFooter>
+                                    </Form>
+                                </Modal>
 
-            {/* Modal Joindre Trésor Money */}
-            <Modal isOpen={modalTresorMoney} toggle={() => setModalTresorMoney(!modalTresorMoney)} centered>
-                <ModalHeader toggle={() => setModalTresorMoney(!modalTresorMoney)} className="bg-success text-white">Joindre Fichier Trésor Money</ModalHeader>
-                <Form onSubmit={(e) => {
-                    e.preventDefault();
-                    tresorMoneyForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/upload-tresor-money`, {
-                        onSuccess: () => setModalTresorMoney(false)
-                    });
-                }}>
-                    <ModalBody>
-                        <div className="mb-3">
-                            <label htmlFor="tresor_money_file" className="form-label">Fichier Trésor Money</label>
-                            <Input type="file" id="tresor_money_file" onChange={e => tresorMoneyForm.setData('tresor_money_file', e.target.files ? e.target.files[0] : null)} required />
-                            {tresorMoneyForm.errors.tresor_money_file && <div className="text-danger mt-1">{tresorMoneyForm.errors.tresor_money_file}</div>}
-                        </div>
-                    </ModalBody>
-                    <ModalFooter>
-                        <Button color="light" onClick={() => setModalTresorMoney(false)}>Fermer</Button>
-                        <Button color="success" type="submit" disabled={tresorMoneyForm.processing}>Enregistrer</Button>
-                    </ModalFooter>
-                </Form>
-            </Modal>
+                                {/* Modal Transférer Contrat */}
+                                <Modal isOpen={modalTransferer} toggle={() => setModalTransferer(!modalTransferer)} centered>
+                                    <ModalHeader toggle={() => setModalTransferer(!modalTransferer)} className="bg-info text-white">Transférer Contrat</ModalHeader>
+                                    <Form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        transfererForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/transferer-contrat`, {
+                                            onSuccess: () => setModalTransferer(false)
+                                        });
+                                    }}>
+                                        <ModalBody>
+                                            <div className="mb-3">
+                                                <label htmlFor="contrat_stage" className="form-label">Contrat Signé (PDF)</label>
+                                                <Input type="file" id="contrat_stage" onChange={e => transfererForm.setData('contrat_stage', e.target.files ? e.target.files[0] : null)} required />
+                                                {transfererForm.errors.contrat_stage && <div className="text-danger mt-1">{transfererForm.errors.contrat_stage}</div>}
+                                            </div>
+                                        </ModalBody>
+                                        <ModalFooter>
+                                            <Button color="light" onClick={() => setModalTransferer(false)}>Fermer</Button>
+                                            <Button color="info" type="submit" disabled={transfererForm.processing}>Transférer</Button>
+                                        </ModalFooter>
+                                    </Form>
+                                </Modal>
 
-            {/* Modal Confirmer Suppression */}
-            <Modal isOpen={modalDelete} toggle={() => setModalDelete(!modalDelete)} centered>
-                <ModalHeader toggle={() => setModalDelete(!modalDelete)} className="bg-danger text-white">Confirmer Suppression</ModalHeader>
-                <Form onSubmit={(e) => {
-                    e.preventDefault();
-                    deleteForm.delete(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}`, {
-                        onSuccess: () => setModalDelete(false)
-                    });
-                }}>
-                    <ModalBody>
-                        <h5 className="text-center mt-3 mb-4">Êtes-vous sûr de vouloir supprimer cette donnée ?</h5>
-                    </ModalBody>
-                    <ModalFooter className="justify-content-center">
-                        <Button color="danger" type="submit" disabled={deleteForm.processing} className="px-4">Oui</Button>
-                        <Button color="light" onClick={() => setModalDelete(false)} className="px-4">Non</Button>
-                    </ModalFooter>
-                </Form>
-            </Modal>
+                                {/* Modal Joindre Trésor Money */}
+                                <Modal isOpen={modalTresorMoney} toggle={() => setModalTresorMoney(!modalTresorMoney)} centered>
+                                    <ModalHeader toggle={() => setModalTresorMoney(!modalTresorMoney)} className="bg-success text-white">Joindre Fichier Trésor Money</ModalHeader>
+                                    <Form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        tresorMoneyForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/upload-tresor-money`, {
+                                            onSuccess: () => setModalTresorMoney(false)
+                                        });
+                                    }}>
+                                        <ModalBody>
+                                            <div className="mb-3">
+                                                <label htmlFor="tresor_money_file" className="form-label">Fichier Trésor Money</label>
+                                                <Input type="file" id="tresor_money_file" onChange={e => tresorMoneyForm.setData('tresor_money_file', e.target.files ? e.target.files[0] : null)} required />
+                                                {tresorMoneyForm.errors.tresor_money_file && <div className="text-danger mt-1">{tresorMoneyForm.errors.tresor_money_file}</div>}
+                                            </div>
+                                        </ModalBody>
+                                        <ModalFooter>
+                                            <Button color="light" onClick={() => setModalTresorMoney(false)}>Fermer</Button>
+                                            <Button color="success" type="submit" disabled={tresorMoneyForm.processing}>Enregistrer</Button>
+                                        </ModalFooter>
+                                    </Form>
+                                </Modal>
 
-        </React.Fragment>
+                                {/* Modal Confirmer Suppression */}
+                                <Modal isOpen={modalDelete} toggle={() => setModalDelete(!modalDelete)} centered>
+                                    <ModalHeader toggle={() => setModalDelete(!modalDelete)} className="bg-danger text-white">Confirmer Suppression</ModalHeader>
+                                    <Form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        deleteForm.delete(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}`, {
+                                            onSuccess: () => setModalDelete(false)
+                                        });
+                                    }}>
+                                        <ModalBody>
+                                            <h5 className="text-center mt-3 mb-4">Êtes-vous sûr de vouloir supprimer cette donnée ?</h5>
+                                        </ModalBody>
+                                        <ModalFooter className="justify-content-center">
+                                            <Button color="danger" type="submit" disabled={deleteForm.processing} className="px-4">Oui</Button>
+                                            <Button color="light" onClick={() => setModalDelete(false)} className="px-4">Non</Button>
+                                        </ModalFooter>
+                                    </Form>
+                                </Modal>
+
+                            </React.Fragment>
                         );
                     })}
                 </div>
@@ -427,8 +427,8 @@ const MesStagiaires = () => {
                     const type = cell.getValue();
 
                     if (!type) {
-return '-';
-}
+                        return '-';
+                    }
 
                     if (type.toUpperCase().includes('NEANT')) {
                         return <Badge color="warning">{type}</Badge>;
@@ -523,27 +523,27 @@ return '-';
                     return <Badge color={getEtapeBadgeColor(corbeille, info?.step)}>{info?.label || corbeille || 'N/A'}</Badge>;
                 },
             },
-                                    {
+            {
                 header: 'Action',
                 cell: (cell: any) => {
                     const row = cell.row.original;
                     const stage = row.stage || {};
                     const beneficiare = stage.beneficiaire || {};
-                    
+
                     const userRoles = auth?.user?.roles || [];
                     const isAdministrateur = userRoles.includes('administrateur') || auth?.user?.id === 1;
                     const isChefAgence = userRoles.includes('chef_agence');
-                    
+
                     const pointages = stage.pointages || [];
                     const active_chef_agence = stage.active_chef_agence || 0;
                     const type_paiement_id = beneficiare.type_paiement?.id;
-                    
+
                     return (
                         <div className="d-flex gap-1">
                             <Button color="info" size="sm" className="btn-icon rounded-circle" title="Détails" href={`/inscriptions/${row.id}`}>
                                 <i className="ri-eye-line"></i>
                             </Button>
-                            
+
                             {pointages.length > 0 && (
                                 <Button color="primary" size="sm" className="btn-icon rounded-circle" title="Pointage" onClick={() => toggleAnalyse(row)}>
                                     <i className="ri-folder-add-line"></i>
@@ -563,19 +563,19 @@ return '-';
                                     </Button>
                                 </>
                             )}
-                            
+
                             {(isAdministrateur || isChefAgence) && type_paiement_id === 1 && (
                                 <Button tag="a" href={`/cip/mes-stagiaires/${row.id}/generer-tresor-money`} target="_blank" color="success" size="sm" className="btn-icon rounded-circle" title="Générer Trésor Money">
                                     <i className="ri-money-dollar-circle-line"></i>
                                 </Button>
                             )}
-                            
+
                             {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && type_paiement_id === 1 && (
                                 <Button color="success" outline size="sm" className="btn-icon rounded-circle" title="Joindre Trésor Money" onClick={() => openActionModal(row, setModalTresorMoney)}>
                                     <i className="ri-wallet-3-line"></i>
                                 </Button>
                             )}
-                            
+
                             {(isAdministrateur || isChefAgence) && active_chef_agence === 0 && (
                                 <>
                                     <Button color="dark" size="sm" className="btn-icon rounded-circle" title="Modifier" href={`/inscriptions/${row.id}/edit`}>
@@ -594,11 +594,11 @@ return '-';
         []
     );
 
-        const visibleColumns = useMemo(() => {
+    const visibleColumns = useMemo(() => {
         return columns.filter(col => {
             if (col.header === 'Action') {
-return true;
-}
+                return true;
+            }
 
             const header = typeof col.header === 'string' ? col.header : col.accessorKey;
 
@@ -674,12 +674,12 @@ return true;
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-search-line me-1"></i>Recherche
                                         </label>
-                                        <Input 
-                                            type="text" 
-                                            className="form-control-sm" 
+                                        <Input
+                                            type="text"
+                                            className="form-control-sm"
                                             placeholder="Nom, Prénom, Numéro AEJ..."
-                                            value={formData.search} 
-                                            onChange={(e) => setData('search', e.target.value)} 
+                                            value={formData.search}
+                                            onChange={(e) => setData('search', e.target.value)}
                                         />
                                     </Col>
                                     <Col xs={6} sm={4} md={2}>
@@ -826,7 +826,7 @@ return true;
                         <Col lg={12}>
                             <Card className="border-0 shadow-sm">
                                 <CardHeader>
-                                                                        <div className="d-flex justify-content-between align-items-center">
+                                    <div className="d-flex justify-content-between align-items-center">
                                         <h5 className="card-title mb-0" style={{ color: '#495057' }}>
                                             Liste des Stagiaires
                                             <span className="badge ms-2 fs-12" style={{ background: 'var(--vz-primary-bg-subtle)', color: 'var(--vz-primary)' }}>
@@ -846,11 +846,11 @@ return true;
                                                     return (
                                                         <DropdownItem key={idx} toggle={false} onClick={() => toggleColumn(header)}>
                                                             <div className="form-check">
-                                                                <input 
-                                                                    className="form-check-input" 
-                                                                    type="checkbox" 
-                                                                    checked={isVisible} 
-                                                                    readOnly 
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    checked={isVisible}
+                                                                    readOnly
                                                                 />
                                                                 <label className="form-check-label ms-2">{header}</label>
                                                             </div>
@@ -869,7 +869,12 @@ return true;
                                         customPageSize={data.length}
                                         isServerPagination={true}
                                         serverPagination={paginationInfo}
-                                        onPageChange={(page) => fetchData({ ...formData, page })}
+                                        onPageChange={(page) => {
+                                            router.get('/cip/mes-stagiaires', { ...formData, page: String(page) }, {
+                                                preserveState: true,
+                                                preserveScroll: true,
+                                            });
+                                        }}
                                         divClass="table-responsive"
                                         tableClass="table table-striped table-hover align-middle mb-0"
                                         theadClass="table-light"
@@ -927,14 +932,14 @@ return true;
                                                     <td>-</td>
                                                     <td>-</td>
                                                     <td>
-                                                        {pointage.version_courante?.jours_presents !== undefined 
-                                                            ? `${pointage.version_courante.jours_presents} J` 
+                                                        {pointage.version_courante?.jours_presents !== undefined
+                                                            ? `${pointage.version_courante.jours_presents} J`
                                                             : '-'}
                                                     </td>
                                                     <td>{pointage.version_courante?.presence || '-'}</td>
                                                     <td>
-                                                        {pointage.version_courante?.saisi_le 
-                                                            ? new Date(pointage.version_courante.saisi_le).toLocaleDateString('fr-FR') 
+                                                        {pointage.version_courante?.saisi_le
+                                                            ? new Date(pointage.version_courante.saisi_le).toLocaleDateString('fr-FR')
                                                             : '-'}
                                                     </td>
                                                 </tr>

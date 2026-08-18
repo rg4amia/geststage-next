@@ -50,33 +50,39 @@ class IndexChefAgenceController extends Controller
             ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
             ->values();
 
-        $demarrageOmis = collect();
-        if ($request->filled('periode_id')) {
-            $periode = Periode::query()->find($request->integer('periode_id'));
+        // Filtre période : on extrait l'année et le mois depuis le code de la période (format 'Y-m')
+        // pour faire correspondre exactement le mois de début du stage, indépendamment
+        // des bornes date_debut/date_fin de la période.
+        $periodeSelectionnee = $request->filled('periode_id')
+            ? Periode::query()->find($request->integer('periode_id'))
+            : null;
 
-            $demarrageOmis = (clone $query)
-                ->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
-                ->when($periode, function (Builder $builder) use ($periode): void {
-                    $builder->whereHas('stage', function (Builder $stageQuery) use ($periode): void {
+        $demarrageOmis = (clone $query)
+            ->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
+            ->when($periodeSelectionnee, function (Builder $builder) use ($periodeSelectionnee): void {
+                // Le code de la période est au format 'Y-m' (ex : '2024-06').
+                // On parse ce code pour extraire l'année et le mois exacts.
+                try {
+                    $dt = Carbon::createFromFormat('Y-m', $periodeSelectionnee->code);
+                    $builder->whereHas('stage', function (Builder $stageQuery) use ($dt): void {
+                        $stageQuery
+                            ->whereYear('date_debut', $dt->year)
+                            ->whereMonth('date_debut', $dt->month);
+                    });
+                } catch (\Exception $e) {
+                    // Si le code n'est pas au format Y-m, on tombe en fallback sur date_debut/date_fin
+                    $builder->whereHas('stage', function (Builder $stageQuery) use ($periodeSelectionnee): void {
                         $stageQuery->whereBetween('date_debut', [
-                            $periode->date_debut,
-                            $periode->date_fin,
+                            $periodeSelectionnee->date_debut,
+                            $periodeSelectionnee->date_fin,
                         ]);
                     });
-                })
-                ->orderByDesc('created_at')
-                ->get()
-                ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
-                ->values();
-        } else {
-            // Sans filtre période, montrer tous les omis de l'agence du CA
-            $demarrageOmis = (clone $query)
-                ->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
-                ->orderByDesc('created_at')
-                ->get()
-                ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
-                ->values();
-        }
+                }
+            })
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
+            ->values();
 
         $retourAjournement = (clone $query)
             ->where('corbeille_actuelle', CorbeilleEnum::CA_RETOUR_AJOURNEMENT->value)
@@ -89,7 +95,23 @@ class IndexChefAgenceController extends Controller
         $baseQueryCount = $this->baseQuery($request);
         $counts = [
             'demarrage'         => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value)->count(),
-            'demarrageOmis'     => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)->count(),
+            // Le compteur Démarrage Omis applique aussi le filtre mois si une période est sélectionnée
+            'demarrageOmis'     => (clone $baseQueryCount)
+                ->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
+                ->when($periodeSelectionnee, function (Builder $q) use ($periodeSelectionnee): void {
+                    try {
+                        $dt = Carbon::createFromFormat('Y-m', $periodeSelectionnee->code);
+                        $q->whereHas('stage', fn (Builder $s) => $s
+                            ->whereYear('date_debut', $dt->year)
+                            ->whereMonth('date_debut', $dt->month));
+                    } catch (\Exception $e) {
+                        $q->whereHas('stage', fn (Builder $s) => $s->whereBetween('date_debut', [
+                            $periodeSelectionnee->date_debut,
+                            $periodeSelectionnee->date_fin,
+                        ]));
+                    }
+                })
+                ->count(),
             'retourAjournement' => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_RETOUR_AJOURNEMENT->value)->count(),
         ];
 
