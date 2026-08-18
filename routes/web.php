@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::delete('/cip/mes-stagiaires/{id}', [MesStagiairesCipController::class, 'destroy'])->name('cip.mes-stagiaires.destroy');
 
     // Phase 5 : Chef d'Agence (Démarrage & Omis)
+    Route::get('/chefagence/validations/mois-omis', [IndexChefAgenceController::class, 'moisOmis'])->name('chefagence.validations.moisOmis');
     Route::get('/chefagence/validations', [IndexChefAgenceController::class, 'listeStagiaireAttenteValidation'])->name('chefagence.validations');
     Route::post('/chefagence/demarrage/{id}/valider', [IndexChefAgenceController::class, 'validerDemarrage'])->name('chefagence.demarrage.valider');
     Route::post('/chefagence/demarrage-omis/{id}/valider', [IndexChefAgenceController::class, 'validerDemarrageOmis'])->name('chefagence.demarrage_omis.valider');
@@ -110,4 +111,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/pejedec/af/droits-paiement/{id}/generer', [AafController::class, 'genererPaiement'])->name('pejedec.af.droits.generer_paiement');
 });
 
-require __DIR__.'/settings.php';
+require __DIR__ . '/settings.php';

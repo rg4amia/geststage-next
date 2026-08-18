@@ -48,6 +48,12 @@ type RowData = {
     corbeille_actuelle: string;
 };
 
+interface MoisOption {
+    value: string; // 'YYYY-MM'
+    label: string; // 'Août 2026'
+    count: number;
+}
+
 interface Counts {
     demarrage: number;
     demarrageOmis: number;
@@ -60,7 +66,6 @@ interface PageProps {
     typesfinancements: Record<string, string>;
     typestages: Record<string, string>;
     typestructures: Record<string, string>;
-    periodes: Record<string, string>;
     filters: Record<string, string>;
 }
 
@@ -84,7 +89,6 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         typesfinancements = {},
         typestages = {},
         typestructures = {},
-        periodes = {},
         filters = {},
     } = props;
 
@@ -103,6 +107,10 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         counts: { demarrage: 0, demarrageOmis: 0, retourAjournement: 0 },
     });
     const [isLoading, setIsLoading] = useState(true);
+
+    /* ─── Mois dynamiques (démarrages omis) ─── */
+    const [moisOmis, setMoisOmis] = useState<MoisOption[]>([]);
+    const [isMoisLoading, setIsMoisLoading] = useState(false);
 
     /* ─── Onglet actif ─── */
     const [activeTab, setActiveTab] = useState(filters?.tab || '1');
@@ -128,7 +136,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         type_structure_id: filters?.type_structure_id || '',
         created_begin: filters?.created_begin || '',
         created_end: filters?.created_end || '',
-        periode_id: filters?.periode_id || '',
+        mois_debut: filters?.mois_debut || '',
     });
 
     /* ─── Formulaire pour les actions groupées ─── */
@@ -193,6 +201,24 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         []
     );
 
+    /* ─── Fetch mois distincts des démarrages omis ─── */
+    const fetchMoisOmis = useCallback(async (commonFilters: Record<string, string>) => {
+        setIsMoisLoading(true);
+        try {
+            const response = await axios.get('/chefagence/validations/mois-omis', {
+                params: commonFilters,
+                headers: { Accept: 'application/json' },
+            });
+            const raw = response.data !== undefined ? response.data : response;
+            setMoisOmis(Array.isArray(raw) ? raw : []);
+        } catch (error) {
+            console.error('Erreur lors du chargement des mois omis', error);
+            setMoisOmis([]);
+        } finally {
+            setIsMoisLoading(false);
+        }
+    }, []);
+
     /* ─── Navigation Filtres (temps réel fluide) ─── */
     const applyFilters = useCallback(
         (newFilters: typeof selectedFilters, tab?: string) => {
@@ -210,8 +236,16 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
             // Fetch json data
             fetchValidations(params);
+
+            // Raffraîchit aussi les mois disponibles (sans le filtre mois_debut lui-même
+            // pour toujours afficher tous les mois, même quand un est sélectionné)
+            const commonParams: Record<string, string> = {};
+            (['agence_id', 'entreprise_id', 'typesfinancement_id', 'typestage_id', 'type_structure_id'] as const).forEach((k) => {
+                if (newFilters[k]) commonParams[k] = newFilters[k];
+            });
+            fetchMoisOmis(commonParams);
         },
-        [activeTab, fetchValidations],
+        [activeTab, fetchValidations, fetchMoisOmis],
     );
 
     // Initial load
