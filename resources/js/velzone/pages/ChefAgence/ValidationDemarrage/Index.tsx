@@ -167,11 +167,21 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         async (params: Record<string, string>) => {
             setIsLoading(true);
             try {
-                const response = await axios.get(route('chefagence.validations'), {
+                const response = await axios.get('/chefagence/validations', {
                     params,
                     headers: { Accept: 'application/json' },
                 });
-                setData(response.data);
+                const raw = response.data;
+                setData({
+                    demarrage:         Array.isArray(raw.demarrage) ? raw.demarrage : [],
+                    demarrageOmis:     Array.isArray(raw.demarrageOmis) ? raw.demarrageOmis : [],
+                    retourAjournement: Array.isArray(raw.retourAjournement) ? raw.retourAjournement : [],
+                    counts: {
+                        demarrage:         raw.counts?.demarrage ?? 0,
+                        demarrageOmis:     raw.counts?.demarrageOmis ?? 0,
+                        retourAjournement: raw.counts?.retourAjournement ?? 0,
+                    },
+                });
             } catch (error) {
                 console.error("Erreur lors du chargement des données", error);
             } finally {
@@ -231,7 +241,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         };
         setSelectedFilters(defaultFilters);
         setSelectedRows([]);
-        router.visit(route('chefagence.validations'));
+        router.visit('/chefagence/validations');
     };
 
     const toggleTab = (tab: string) => {
@@ -287,7 +297,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     /* ─── Confirmation ─── */
     const confirmValider = () => {
         setIsProcessing(true);
-        router.post(route('chefagence.validations.validerGroup'), actionData, {
+        router.post('/chefagence/validations/valider-group', actionData, {
             preserveScroll: true,
             onSuccess: () => {
                 setModalValiderOpen(false);
@@ -305,7 +315,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        router.post(route('chefagence.validations.ajournerGroup'), {
+        router.post('/chefagence/validations/ajourner-group', {
             ids: actionData.ids,
             motif: motifAjournement,
         }, {
@@ -333,7 +343,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        router.post(route('chefagence.validations.validerGroup'), { ids: allIds, type: currentTabType }, {
+        router.post('/chefagence/validations/valider-group', { ids: allIds, type: currentTabType }, {
             preserveScroll: true,
             onSuccess: () => {
                 setSelectedRows([]);
@@ -349,7 +359,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        router.post(route('chefagence.validations.genererAddGroup'), { ids: selectedRows, type: currentTabType }, {
+        router.post('/chefagence/validations/generer-add-group', { ids: selectedRows, type: currentTabType }, {
             preserveScroll: true,
             onSuccess: () => {
                 setSelectedRows([]);
@@ -370,7 +380,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             return;
         }
         setIsProcessing(true);
-        router.post(route('chefagence.validations.genererAddGroup'), { ids: allIds, type: currentTabType }, {
+        router.post('/chefagence/validations/generer-add-group', { ids: allIds, type: currentTabType }, {
             preserveScroll: true,
             onSuccess: () => {
                 setSelectedRows([]);
@@ -385,21 +395,21 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         {
             key:   '1',
             label: 'DÉMARRAGE',
-            count: data.counts.demarrage,
+            count: data?.counts?.demarrage ?? 0,
             color: 'primary',
             icon:  'ri-play-circle-line',
         },
         {
             key:   '2',
             label: 'DÉMARRAGE OMIS',
-            count: data.counts.demarrageOmis,
+            count: data?.counts?.demarrageOmis ?? 0,
             color: 'warning',
             icon:  'ri-time-line',
         },
         {
             key:   '3',
             label: "RETOUR D'AJOURNEMENT",
-            count: data.counts.retourAjournement,
+            count: data?.counts?.retourAjournement ?? 0,
             color: 'danger',
             icon:  'ri-arrow-go-back-line',
         },
@@ -734,7 +744,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         style={{ cursor: 'pointer' }}
                                     >
                                         DEMARRAGE
-                                        <Badge color="primary" pill className="ms-2">{data.counts.demarrage}</Badge>
+                                        <Badge color="primary" pill className="ms-2">{data?.counts?.demarrage ?? 0}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
@@ -744,7 +754,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         style={{ cursor: 'pointer' }}
                                     >
                                         DEMARRAGE OMIS
-                                        <Badge color="warning" pill className="ms-2">{data.counts.demarrageOmis}</Badge>
+                                        <Badge color="warning" pill className="ms-2">{data?.counts?.demarrageOmis ?? 0}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
@@ -754,7 +764,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                         style={{ cursor: 'pointer' }}
                                     >
                                         RETOUR D'AJOURNEMENT
-                                        <Badge color="danger" pill className="ms-2">{data.counts.retourAjournement}</Badge>
+                                        <Badge color="danger" pill className="ms-2">{data?.counts?.retourAjournement ?? 0}</Badge>
                                     </NavLink>
                                 </NavItem>
                             </Nav>
