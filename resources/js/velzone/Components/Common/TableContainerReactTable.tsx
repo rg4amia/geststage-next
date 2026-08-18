@@ -3,7 +3,8 @@ import type {
   Column,
   Table as ReactTable,
   ColumnFiltersState,
-  FilterFn} from '@tanstack/react-table';
+  FilterFn
+} from '@tanstack/react-table';
 import {
   useReactTable,
   getCoreRowModel,
@@ -15,6 +16,7 @@ import {
 import React, { Fragment, useEffect, useState } from "react";
 import { CardBody, Col, Row, Table } from "reactstrap";
 import { Link } from '@/velzone/inertia-router';
+import ServerPagination, { normalizePagination } from './ServerPagination';
 
 
 
@@ -213,111 +215,71 @@ const TableContainer = ({
 
           <tbody>
             {getRowModel().rows.length > 0 ? (
-                getRowModel().rows.map((row: any) => {
+              getRowModel().rows.map((row: any) => {
                 return (
-                    <tr key={row.id}>
+                  <tr key={row.id}>
                     {row.getVisibleCells().map((cell: any) => {
-                        return (
+                      return (
                         <td key={cell.id}>
-                            {flexRender(
+                          {flexRender(
                             cell.column.columnDef.cell,
                             cell.getContext()
-                            )}
+                          )}
                         </td>
-                        );
+                      );
                     })}
-                    </tr>
+                  </tr>
                 );
-                })
+              })
             ) : (
-                <tr>
-                    <td colSpan={columns.length} className="text-center py-5 text-muted border-0">
-                        <div className="avatar-sm mx-auto mb-4">
-                            <div className="avatar-title bg-light text-primary rounded-circle fs-24">
-                                <i className="ri-inbox-line"></i>
-                            </div>
-                        </div>
-                        <h5 className="fs-14 fw-medium text-dark mb-1">Aucune donnée trouvée</h5>
-                        <p className="text-muted mb-0 fs-13">La liste est actuellement vide ou aucun élément ne correspond à vos filtres.</p>
-                    </td>
-                </tr>
+              <tr>
+                <td colSpan={columns.length} className="text-center py-5 text-muted border-0">
+                  <div className="avatar-sm mx-auto mb-4">
+                    <div className="avatar-title bg-light text-primary rounded-circle fs-24">
+                      <i className="ri-inbox-line"></i>
+                    </div>
+                  </div>
+                  <h5 className="fs-14 fw-medium text-dark mb-1">Aucune donnée trouvée</h5>
+                  <p className="text-muted mb-0 fs-13">La liste est actuellement vide ou aucun élément ne correspond à vos filtres.</p>
+                </td>
+              </tr>
             )}
           </tbody>
         </Table>
       </div>
 
       {!isServerPagination && (
-      <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
-        <div className="col-sm">
-          <div className="text-muted">Showing<span className="fw-semibold ms-1">{getState().pagination.pageSize}</span> of <span className="fw-semibold">{data.length}</span> Results
+        <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
+          <div className="col-sm">
+            <div className="text-muted">Showing<span className="fw-semibold ms-1">{getState().pagination.pageSize}</span> of <span className="fw-semibold">{data.length}</span> Results
+            </div>
           </div>
-        </div>
-        <div className="col-sm-auto">
-          <ul className="pagination pagination-separated pagination-md justify-content-center justify-content-sm-start mb-0">
-            <li className={!getCanPreviousPage() ? "page-item disabled" : "page-item"}>
-              <Link to="#" className="page-link" onClick={previousPage}>Previous</Link>
-            </li>
-            {getPageOptions().map((item: any, key: number) => (
-              <React.Fragment key={key}>
-                <li className="page-item">
-                  <Link to="#" className={getState().pagination.pageIndex === item ? "page-link active" : "page-link"} onClick={() => setPageIndex(item)}>{item + 1}</Link>
-                </li>
-              </React.Fragment>
-            ))}
-            <li className={!getCanNextPage() ? "page-item disabled" : "page-item"}>
-              <Link to="#" className="page-link" onClick={nextPage}>Next</Link>
-            </li>
-          </ul>
-        </div>
-      </Row>
+          <div className="col-sm-auto">
+            <ul className="pagination pagination-separated pagination-md justify-content-center justify-content-sm-start mb-0">
+              <li className={!getCanPreviousPage() ? "page-item disabled" : "page-item"}>
+                <Link to="#" className="page-link" onClick={previousPage}>Previous</Link>
+              </li>
+              {getPageOptions().map((item: any, key: number) => (
+                <React.Fragment key={key}>
+                  <li className="page-item">
+                    <Link to="#" className={getState().pagination.pageIndex === item ? "page-link active" : "page-link"} onClick={() => setPageIndex(item)}>{item + 1}</Link>
+                  </li>
+                </React.Fragment>
+              ))}
+              <li className={!getCanNextPage() ? "page-item disabled" : "page-item"}>
+                <Link to="#" className="page-link" onClick={nextPage}>Next</Link>
+              </li>
+            </ul>
+          </div>
+        </Row>
       )}
 
       {isServerPagination && serverPagination && (
-      <Row className="align-items-center mt-2 g-3 text-center text-sm-start">
-        <div className="col-sm">
-          <div className="text-muted">Affichage de <span className="fw-semibold ms-1">{data.length}</span> sur <span className="fw-semibold">{serverPagination.total}</span> résultats
-          </div>
-        </div>
-        <div className="col-sm-auto">
-          <ul className="pagination pagination-separated pagination-md justify-content-center justify-content-sm-start mb-0">
-            {serverPagination.links?.map((link: any, key: number) => {
-              const isActive = link.active;
-              const isDisabled = link.url === null;
-              
-              let label = link.label;
-
-              if (label.includes('Previous')) {
-label = 'Précédent';
-}
-
-              if (label.includes('Next')) {
-label = 'Suivant';
-}
-
-              return (
-                <li key={key} className={`page-item ${isActive ? 'active' : ''} ${isDisabled ? 'disabled' : ''}`}>
-                  <button 
-                    className="page-link" 
-                    onClick={(e) => {
-                      e.preventDefault();
-
-                      if (!isDisabled && onPageChange && link.url) {
-                        const urlParams = new URL(link.url, window.location.origin).searchParams;
-                        const page = urlParams.get('page');
-
-                        if (page) {
-onPageChange(Number(page));
-}
-                      }
-                    }}
-                    dangerouslySetInnerHTML={{ __html: label }}
-                  />
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      </Row>
+        <ServerPagination
+          pagination={normalizePagination(serverPagination)}
+          onPageChange={onPageChange}
+          className="mt-2"
+        />
       )}
     </Fragment>
   );

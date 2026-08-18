@@ -7,7 +7,7 @@ use App\Models\Adjournment\Ajournement;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
-use App\Models\Reference\SourceFinancement;
+
 use App\Models\User;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
@@ -39,29 +39,39 @@ class ValidationChefAgenceService
 
             // 1. Générer le droit de paiement (DÉMARRAGE)
             $contratActif = $stage->contrats()->latest()->first();
-            $montantDemarrage = $contratActif ? $contratActif->prime_mensuelle : 0; // Ou une autre règle métier.
+            $montantDemarrage = $contratActif ? $contratActif->prime_mensuelle : 0;
 
-            // The `periodes` table currently models a valid date-range period, not an `actif` flag.
-            // Use the most recent period as the current effective period.
-            $periodeCourante = Periode::orderByDesc('date_debut')->first();
-            $sourceFinancement = SourceFinancement::first();
+            // Source de financement liée au stage (et non la première de la table)
+            $sourceFinancementId = $stage->source_financement_id;
+
+            // Période dont la plage date_debut–date_fin couvre la date de début du stage.
+            // Fallback sur la période la plus récente si aucune ne correspond exactement.
+            $dateDebutStage = $stage->date_debut;
+            $periodeCourante = $dateDebutStage
+                ? Periode::query()
+                    ->where('date_debut', '<=', $dateDebutStage)
+                    ->where('date_fin', '>=', $dateDebutStage)
+                    ->orderByDesc('date_debut')
+                    ->first()
+                    ?? Periode::query()->orderByDesc('date_debut')->first()
+                : Periode::query()->orderByDesc('date_debut')->first();
 
             $droitPaiement = DroitPaiement::create([
-                'stage_id' => $stage->id,
-                'pointage_id' => null, // C'est un démarrage, pas un pointage de présence
-                'periode_id' => $periodeCourante ? $periodeCourante->id : 1,
-                'source_financement_id' => $sourceFinancement ? $sourceFinancement->id : 1,
-                'nature' => 'DEMARRAGE',
-                'montant' => $montantDemarrage,
-                'statut' => 'OUVERT',
+                'stage_id'              => $stage->id,
+                'pointage_id'           => null, // C'est un démarrage, pas un pointage de présence
+                'periode_id'            => $periodeCourante?->id ?? 1,
+                'source_financement_id' => $sourceFinancementId ?? 1,
+                'nature'                => 'DEMARRAGE',
+                'montant'               => $montantDemarrage,
+                'statut'                => 'OUVERT',
             ]);
 
             // 2. Générer le paiement correspondant et le mettre en attente DMG
             $paiement = Paiement::create([
-                'uuid_public' => (string) Str::uuid(),
-                'droit_paiement_id' => $droitPaiement->id,
-                'montant' => $droitPaiement->montant,
-                'statut' => 'A_TRAITER',
+                'uuid_public'          => (string) Str::uuid(),
+                'droit_paiement_id'    => $droitPaiement->id,
+                'montant'              => $droitPaiement->montant,
+                'statut'               => 'A_TRAITER',
                 'version_verrouillage' => 0,
             ]);
             $this->workflowService->dmgReceptionnePaiement($paiement);

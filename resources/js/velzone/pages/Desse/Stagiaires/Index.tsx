@@ -26,6 +26,7 @@ import {
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
+import ServerPagination, { normalizePagination } from '../../../Components/Common/ServerPagination';
 
 /* ─── Types ─── */
 interface RefOption {
@@ -551,28 +552,11 @@ const DesseStagiairesIndex = (props: PageProps) => {
                             />
 
                             {/* ─── Pagination serveur ─── */}
-                            {data?.links && data.links.length > 3 && (
-                                <div className="d-flex justify-content-between align-items-center mt-3">
-                                    <p className="text-muted mb-0 fs-13">
-                                        Affiche {data.from || 0} à {data.to || 0} sur {data.total || 0} enregistrements
-                                    </p>
-                                    <ul className="pagination pagination-sm mb-0">
-                                        {data.links.map((link: any, idx: number) => (
-                                            <li key={idx} className={classnames('page-item', { active: link.active, disabled: !link.url })}>
-                                                <button
-                                                    className="page-link"
-                                                    disabled={!link.url}
-                                                    dangerouslySetInnerHTML={{ __html: link.label }}
-                                                    onClick={() => {
-                                                        if (link.url) {
-                                                            router.get(link.url, {}, { preserveState: true, preserveScroll: true });
-                                                        }
-                                                    }}
-                                                />
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </div>
+                            {data?.total > 0 && (
+                                <ServerPagination
+                                    pagination={normalizePagination(data)}
+                                    itemLabel="enregistrements"
+                                />
                             )}
                         </CardBody>
                     </Card>

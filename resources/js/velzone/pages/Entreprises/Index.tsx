@@ -2,6 +2,7 @@ import { Head, Link, router } from '@inertiajs/react';
 import React, { useState } from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Button, Input, Table } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
+import ServerPagination, { normalizePagination } from '../../Components/Common/ServerPagination';
 
 interface Props {
     entreprises: any;
@@ -28,7 +29,7 @@ const Index = ({ entreprises, filters }: Props) => {
             <div className="page-content">
                 <Container fluid>
                     <BreadCrumb title="Entreprises" pageTitle="Référentiels" />
-                    
+
                     <Row>
                         <Col lg={12}>
                             <Card>
@@ -44,9 +45,9 @@ const Index = ({ entreprises, filters }: Props) => {
                                     <Row className="g-4 mb-3">
                                         <Col sm="auto">
                                             <form onSubmit={handleSearch} className="d-flex gap-2">
-                                                <Input 
-                                                    type="text" 
-                                                    placeholder="Rechercher..." 
+                                                <Input
+                                                    type="text"
+                                                    placeholder="Rechercher..."
                                                     value={search}
                                                     onChange={e => setSearch(e.target.value)}
                                                 />
@@ -54,7 +55,7 @@ const Index = ({ entreprises, filters }: Props) => {
                                             </form>
                                         </Col>
                                     </Row>
-                                    
+
                                     <div className="table-responsive">
                                         <Table className="align-middle table-nowrap mb-0">
                                             <thead className="table-light">
@@ -99,18 +100,11 @@ const Index = ({ entreprises, filters }: Props) => {
                                             </tbody>
                                         </Table>
                                     </div>
-                                    
-                                    {/* Pagination simple si nécessaire, ici pour l'exemple on a un simple retour au backend */}
-                                    <div className="mt-3">
-                                        {entreprises.links.map((link: any, index: number) => (
-                                            <Link 
-                                                key={index}
-                                                href={link.url || '#'}
-                                                className={`btn btn-sm ${link.active ? 'btn-primary' : 'btn-light'} me-1`}
-                                                dangerouslySetInnerHTML={{ __html: link.label }}
-                                            />
-                                        ))}
-                                    </div>
+
+                                    <ServerPagination
+                                        pagination={normalizePagination(entreprises)}
+                                        itemLabel="entreprises"
+                                    />
                                 </CardBody>
                             </Card>
                         </Col>
