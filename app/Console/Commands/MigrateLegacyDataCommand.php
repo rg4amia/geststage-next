@@ -2,7 +2,9 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
+use App\Enums\DoublonTypeEnum;
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
 use App\Models\Beneficiary\Beneficiaire;
@@ -25,8 +27,9 @@ use App\Models\Reference\TypeHandicap;
 use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
-use App\Models\System\User;
+use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
+use App\Models\Workflow\DesseDoublonDecision;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
@@ -44,7 +47,7 @@ class MigrateLegacyDataCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'migrate:legacy-data {--step=all : L\'étape de migration à exécuter (agences, users, stages, all)}';
+    protected $signature = 'migrate:legacy-data {--step=all : L\'étape de migration à exécuter (agences, users, stages, desse_doublons, all)}';
 
     /**
      * The console command description.
@@ -53,7 +56,7 @@ class MigrateLegacyDataCommand extends Command
      */
     protected $description = 'Migre les données de l\'ancienne base (legacy) vers la nouvelle base PostgreSQL.';
 
-    public function __construct(private LegacyMapperService $mapper)
+    public function __construct(private LegacyMapperService $mapper, private DesseDoublonService $doublonService)
     {
         parent::__construct();
     }
@@ -114,6 +117,10 @@ class MigrateLegacyDataCommand extends Command
 
         if ($step === 'all' || $step === 'evenements') {
             $this->migrateEvenements();
+        }
+
+        if ($step === 'all' || $step === 'desse_doublons') {
+            $this->migrateDesseDoublonDecisions();
         }
 
         $this->info('Migration terminée !');
@@ -892,6 +899,94 @@ class MigrateLegacyDataCommand extends Command
                 $bar->advance();
             }
         });
+
+        $bar->finish();
+        $this->newLine();
+    }
+
+    /**
+     * Reconstitue l'historique de l'onglet "Doublons Traités" à partir des dossiers
+     * déjà décidés côté legacy (statuts 5/6 -> corbeille DESSE_DOUBLONS_TRAITES, cf.
+     * LegacyMapperService::mapStatutStageToCorbeille). Sans cette étape, ces dossiers
+     * migrent bien vers cette corbeille mais n'ont aucune ligne dans
+     * desse_doublon_decisions (table qui n'existe que depuis ce projet) : l'onglet
+     * reste vide alors que legacy affiche un historique réel. Le champ type_doublon
+     * n'existe pas côté legacy : on le déduit en comparant les clés de regroupement
+     * (mêmes expressions que DesseDoublonService) du dossier aux clés actuellement en
+     * doublon en base ; si aucun des 6 critères ne matche plus, on garde quand même
+     * une trace sous "compte_paiement" (le champ dédié le plus proche côté legacy)
+     * plutôt que de perdre la décision historique.
+     */
+    private function migrateDesseDoublonDecisions(): void
+    {
+        $this->info('Reconstitution de l\'historique des décisions de doublons DESSE...');
+
+        $types = array_filter(DoublonTypeEnum::cases(), fn (DoublonTypeEnum $t) => $t !== DoublonTypeEnum::AEJ);
+        $duplicateKeysByType = [];
+        foreach ($types as $type) {
+            $duplicateKeysByType[$type->value] = $this->doublonService->computeDuplicateKeys($type);
+        }
+
+        $instances = InstanceParcours::query()
+            ->where('corbeille_actuelle', CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value)
+            ->with('stage.beneficiaire')
+            ->get();
+
+        $ancienIds = $instances->pluck('stage.ancien_id')->filter()->all();
+        $legacyRows = DB::connection('legacy')->table('contrats_pae')->whereIn('id', $ancienIds)->get()->keyBy('id');
+        $legacyUsers = DB::connection('legacy')->table('users')->get()->keyBy('id');
+        $userIdCache = [];
+
+        $bar = $this->output->createProgressBar($instances->count());
+        $bar->start();
+
+        foreach ($instances as $instance) {
+            $stage = $instance->stage;
+            $legacyRow = $stage ? $legacyRows->get($stage->ancien_id) : null;
+
+            if (! $stage || ! $legacyRow) {
+                $bar->advance();
+
+                continue;
+            }
+
+            $decision = ((int) $legacyRow->etat_desse) === 1 ? 'avere' : 'non_avere';
+            $motif = trim((string) $legacyRow->motif_desse) !== ''
+                ? $legacyRow->motif_desse
+                : "Décision historique migrée depuis l'ancienne application (motif non renseigné).";
+            $decideLe = $this->mapper->normalizeLegacyDate($legacyRow->date_desse) ?? $instance->updated_at ?? now();
+
+            $decideParId = null;
+            if (! empty($legacyRow->id_user_desse)) {
+                if (! array_key_exists($legacyRow->id_user_desse, $userIdCache)) {
+                    $legacyUser = $legacyUsers->get($legacyRow->id_user_desse);
+                    $userIdCache[$legacyRow->id_user_desse] = $legacyUser
+                        ? User::where('email', $this->mapper->sanitizeEmail($legacyUser->email, $legacyUser->nom ?? 'User', $legacyUser->pseudo ?? '', $legacyUser->id))->value('id')
+                        : null;
+                }
+                $decideParId = $userIdCache[$legacyRow->id_user_desse];
+            }
+
+            $matches = $this->doublonService->matchingTypesForStage($stage, $duplicateKeysByType);
+            if ($matches === []) {
+                $matches = [DoublonTypeEnum::COMPTE_PAIEMENT->value => '-'];
+            }
+
+            foreach ($matches as $typeValue => $cle) {
+                DesseDoublonDecision::updateOrCreate(
+                    ['instance_parcours_id' => $instance->id, 'type_doublon' => $typeValue],
+                    [
+                        'cle_doublon' => $cle,
+                        'decision' => $decision,
+                        'motif' => $motif,
+                        'decide_par_id' => $decideParId,
+                        'decide_le' => $decideLe,
+                    ]
+                );
+            }
+
+            $bar->advance();
+        }
 
         $bar->finish();
         $this->newLine();

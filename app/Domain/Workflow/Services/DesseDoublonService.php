@@ -227,6 +227,52 @@ class DesseDoublonService
         return ($keyValue === null || $keyValue === '') ? null : $keyValue;
     }
 
+    /**
+     * Pour un stage donné, détermine à quel(s) type(s) de doublon il appartient
+     * actuellement, à partir d'ensembles de clés en doublon pré-calculés (via
+     * computeDuplicateKeys(), un appel par type). Utilisé par la migration legacy
+     * pour reconstituer le type_doublon des décisions déjà prises (statuts legacy
+     * 5/6), qui n'est pas conservé tel quel côté legacy.
+     *
+     * @param  array<string, Collection<int, string>>  $duplicateKeysByType  type_doublon->value() => clés en doublon
+     * @return array<string, string> type_doublon->value() => clé de regroupement correspondante
+     */
+    public function matchingTypesForStage(\App\Models\Internship\Stage $stage, array $duplicateKeysByType): array
+    {
+        $selects = [];
+        foreach (self::TYPES as $value => $config) {
+            $selects[] = "{$config['expr']} as \"{$value}\"";
+        }
+
+        $row = DB::table('stages')
+            ->join('beneficiaires', 'beneficiaires.id', '=', 'stages.beneficiaire_id')
+            ->where('stages.id', $stage->id)
+            ->selectRaw(implode(', ', $selects))
+            ->first();
+
+        $matches = [];
+
+        foreach (self::TYPES as $value => $config) {
+            $cle = $row?->{$value};
+            if ($cle !== null && $cle !== '' && ($duplicateKeysByType[$value] ?? collect())->contains($cle)) {
+                $matches[$value] = $cle;
+            }
+        }
+
+        $beneficiaire = $stage->beneficiaire;
+        $comptePaiementKeys = $duplicateKeysByType[DoublonTypeEnum::COMPTE_PAIEMENT->value] ?? collect();
+        foreach ([
+            filled($beneficiaire?->numero_tresor_money) ? 'TM:'.mb_strtoupper(trim($beneficiaire->numero_tresor_money)) : null,
+            filled($beneficiaire?->numero_wave) ? 'WV:'.mb_strtoupper(trim($beneficiaire->numero_wave)) : null,
+        ] as $cle) {
+            if ($cle !== null && ! isset($matches[DoublonTypeEnum::COMPTE_PAIEMENT->value]) && $comptePaiementKeys->contains($cle)) {
+                $matches[DoublonTypeEnum::COMPTE_PAIEMENT->value] = $cle;
+            }
+        }
+
+        return $matches;
+    }
+
     private function computeDuplicateKeysForComptePaiement(): Collection
     {
         $tresor = $this->poolQuery()
