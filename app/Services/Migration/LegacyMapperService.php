@@ -48,6 +48,23 @@ class LegacyMapperService
         return [$start, $end];
     }
 
+    /**
+     * Étapes legacy terminales (table `etapes` legacy, id 30 "AC : Stagiaire Payé" et
+     * 31 "AC : Stagiaire Non-Payé") : le dossier a déjà parcouru toute la chaîne de
+     * validation (CIP -> CA -> DMG -> DESSE -> DMG paiement -> CB -> AC) et est
+     * définitivement clos, qu'il ait été payé ou finalement rejeté. Le legacy n'a pas
+     * de notion de dossier "terminé" (il se contente de garder le dernier statut
+     * atteint) : dans la nouvelle structure, ceci se traduit par `InstanceParcours.
+     * terminee_le`, pour que ces dossiers déjà validés n'apparaissent plus indéfiniment
+     * comme "en attente" dans une corbeille active.
+     */
+    private const ETAPES_TERMINALES = [30, 31];
+
+    public function estStatutStageTermine(int $legacyStatutId): bool
+    {
+        return in_array($legacyStatutId, self::ETAPES_TERMINALES, true);
+    }
+
     public function mapStatutStageToCorbeille(int $legacyStatutId): CorbeilleEnum
     {
         return match ($legacyStatutId) {

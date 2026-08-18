@@ -505,11 +505,19 @@ class MigrateLegacyDataCommand extends Command
                 );
 
                 // 3. Gérer le Workflow via contrat_etape / etape_traitement
+                $statutLegacy = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
+
                 $corbeilleEnum = $this->mapper->mapChefAgenceCorbeille($legacyContrat);
                 if ($corbeilleEnum === CorbeilleEnum::CIP_MES_STAGIAIRES) {
-                    $statutLegacy = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
                     $corbeilleEnum = $this->mapper->mapStatutStageToCorbeille($statutLegacy);
                 }
+
+                // Stagiaire déjà validé de bout en bout (payé ou définitivement rejeté après
+                // paiement) : on clôt l'instance de workflow au lieu de la laisser trainer
+                // dans une corbeille active (cf. LegacyMapperService::estStatutStageTermine).
+                $termineeLe = $this->mapper->estStatutStageTermine($statutLegacy)
+                    ? ($this->mapper->normalizeLegacyDate($legacyContrat->updated_at ?? null) ?? now())
+                    : null;
 
                 $definition = DefinitionParcours::firstOrCreate(
                     ['code' => 'STAGE_LEGACY', 'version' => 1],
@@ -530,6 +538,7 @@ class MigrateLegacyDataCommand extends Command
                         'definition_parcours_id' => $definition->id,
                         'etape_courante_id' => $etape->id,
                         'corbeille_actuelle' => $corbeilleEnum->value,
+                        'terminee_le' => $termineeLe,
                     ]
                 );
 

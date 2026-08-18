@@ -61,11 +61,19 @@ class DesseDoublonService
 
         $config = self::TYPES[$type->value];
 
+        // COUNT(DISTINCT beneficiaires.id), et non COUNT(*) : un même bénéficiaire peut
+        // légitimement cumuler plusieurs stages (donc plusieurs lignes "stages") partageant
+        // ses propres piece_identite/téléphone/AEJ — ce n'est pas un doublon, juste son
+        // historique. Un vrai doublon, c'est la même clé portée par au moins deux
+        // bénéficiaires distincts (possible erreur de saisie / pièce partagée). Ceci rend
+        // par ailleurs le type "aej" naturellement toujours vide : beneficiaires.numero_aej
+        // est UNIQUE en base, donc un même numéro ne peut jamais être porté par deux
+        // bénéficiaires distincts (cf. legacy, où l'onglet "Numéro AEJ" est vide).
         return $this->poolQuery()
             ->selectRaw("{$config['expr']} as cle")
             ->whereRaw($config['guard'])
             ->groupBy(DB::raw($config['expr']))
-            ->havingRaw('COUNT(*) > 1')
+            ->havingRaw('COUNT(DISTINCT beneficiaires.id) > 1')
             ->pluck('cle');
     }
 
@@ -225,14 +233,14 @@ class DesseDoublonService
             ->selectRaw("CONCAT('TM:', UPPER(TRIM(beneficiaires.numero_tresor_money))) as cle")
             ->whereRaw("beneficiaires.numero_tresor_money IS NOT NULL AND TRIM(beneficiaires.numero_tresor_money) != ''")
             ->groupBy(DB::raw('UPPER(TRIM(beneficiaires.numero_tresor_money))'))
-            ->havingRaw('COUNT(*) > 1')
+            ->havingRaw('COUNT(DISTINCT beneficiaires.id) > 1')
             ->pluck('cle');
 
         $wave = $this->poolQuery()
             ->selectRaw("CONCAT('WV:', UPPER(TRIM(beneficiaires.numero_wave))) as cle")
             ->whereRaw("beneficiaires.numero_wave IS NOT NULL AND TRIM(beneficiaires.numero_wave) != ''")
             ->groupBy(DB::raw('UPPER(TRIM(beneficiaires.numero_wave))'))
-            ->havingRaw('COUNT(*) > 1')
+            ->havingRaw('COUNT(DISTINCT beneficiaires.id) > 1')
             ->pluck('cle');
 
         return $tresor->merge($wave)->values();
