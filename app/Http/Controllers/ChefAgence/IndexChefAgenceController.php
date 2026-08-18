@@ -49,8 +49,8 @@ class IndexChefAgenceController extends Controller
             ->when($request->filled('entreprise_id'), fn(Builder $q) => $q->where('stages.entreprise_id', $request->integer('entreprise_id')))
             ->when($request->filled('typesfinancement_id'), fn(Builder $q) => $q->where('stages.source_financement_id', $request->integer('typesfinancement_id')))
             ->when($request->filled('typestage_id'), fn(Builder $q) => $q->where('stages.type_stage_id', $request->integer('typestage_id')))
-            ->selectRaw("DATE_FORMAT(stages.date_debut, '%Y-%m') as mois, COUNT(*) as total")
-            ->groupBy('mois')
+            ->selectRaw("TO_CHAR(stages.date_debut, 'YYYY-MM') as mois, COUNT(*) as total")
+            ->groupByRaw("TO_CHAR(stages.date_debut, 'YYYY-MM')")
             ->orderByDesc('mois')
             ->get();
 
