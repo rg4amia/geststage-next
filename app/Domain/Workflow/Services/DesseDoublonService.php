@@ -265,19 +265,27 @@ class DesseDoublonService
             ->get();
     }
 
+    /**
+     * Périmètre de détection des doublons : l'ensemble de la base (comme le legacy),
+     * et non la seule corbeille "Doublons à traiter" — un même numéro de pièce peut
+     * être dupliqué entre des dossiers à des étapes de traitement très différentes
+     * (ex: carte d'identité "BLANC" réutilisée pour plusieurs bénéficiaires distincts).
+     */
     private function basePoolQuery(): Builder
     {
-        return InstanceParcours::query()
-            ->where('corbeille_actuelle', CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER->value)
-            ->whereNull('terminee_le');
+        return InstanceParcours::query()->whereNull('terminee_le');
     }
 
     private function poolQuery(): QueryBuilder
     {
+        // stages.deleted_at IS NULL réplique le global scope SoftDeletes d'Eloquent,
+        // implicitement appliqué par whereHas('stage') dans applyDuplicateFilter() :
+        // sans ce filtre, un stage supprimé pourrait faire paraître un groupe en
+        // doublon alors qu'aucune ligne correspondante ne sera jamais affichée.
         return DB::table('stages')
             ->join('beneficiaires', 'beneficiaires.id', '=', 'stages.beneficiaire_id')
             ->join('instances_parcours', 'instances_parcours.stage_id', '=', 'stages.id')
-            ->where('instances_parcours.corbeille_actuelle', CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER->value)
-            ->whereNull('instances_parcours.terminee_le');
+            ->whereNull('instances_parcours.terminee_le')
+            ->whereNull('stages.deleted_at');
     }
 }

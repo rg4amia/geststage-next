@@ -70,4 +70,57 @@ enum CorbeilleEnum: string
     case DAICG_VALIDES_DESSE = 'daicg_valides_desse';
     case DAICG_SANS_CONTRAT = 'daicg_sans_contrat';
     case DAICG_ATTENTE_DMG = 'daicg_attente_dmg';
+
+    public function label(): string
+    {
+        return match ($this) {
+            self::CIP_MES_STAGIAIRES => 'CIP : Mes Stagiaires',
+            self::CIP_POINTAGE => 'CIP : Pointage',
+            self::CIP_POINTAGE_AJOURNE_DMG => 'CIP : Pointage ajourné DMG',
+            self::CIP_AJOURNE_CA => "CIP : Ajourné par le Chef d'Agence",
+            self::CIP_AJOURNE_DESSE => 'CIP : Ajourné par la DESSE',
+            self::CIP_AJOURNE_DMG => 'CIP : Ajourné par la DMG',
+            self::CIP_AJOURNE_AAF => 'CIP : Ajourné AAF',
+            self::CIP_DIFFERE_AC => "CIP : Différé par l'Agent Comptable",
+            self::CIP_POINTAGE_PEJEDEC => 'CIP : Pointage PEJEDEC',
+            self::CIP_FIN_CONTRAT => 'CIP : Fin de contrat',
+            self::CA_ATTENTE_VALIDATION_DEMARRAGE => "Chef d'Agence : Validation du démarrage",
+            self::CA_ATTENTE_VALIDATION_OMIS => "Chef d'Agence : Validation du démarrage omis",
+            self::CA_RETOUR_AJOURNEMENT => "Chef d'Agence : Retour d'ajournement",
+            self::EN_STAGE => 'En stage',
+            self::CA_VALIDATION_POINTAGES => "Chef d'Agence : Validation du pointage",
+            self::CA_VALIDATION_POINTAGE_AJOURNE_ADP => "Chef d'Agence : Validation pointage ajourné",
+            self::CA_STAGIAIRE_DIFFERE_AC => "Chef d'Agence : Stagiaire différé par l'AC",
+            self::DMG_ATTENTE_PAIEMENT_DEMARRAGE => 'DMG : Attente paiement démarrage',
+            self::DMG_ATTENTE_PAIEMENT_PRESENCE => 'DMG : Attente paiement présence',
+            self::DMG_ELABORATION_OP => "DMG : Élaboration de l'ordre de paiement",
+            self::DMG_OP_ATTENTE_BORDEREAU => 'DMG : Ordre de paiement en attente de bordereau',
+            self::DMG_OP_DIFFERE_AC => "DMG : Ordre de paiement différé par l'AC",
+            self::DMG_OP_REJETE_AC => "DMG : Ordre de paiement rejeté par l'AC",
+            self::CB_DOSSIER_MULTIPLE => 'CB : Dossier multiple',
+            self::CB_ETAT_PAIEMENT_AJOURNE => 'CB : État de paiement ajourné',
+            self::AC_BORDEREAU_OP_ATTENTE => 'AC : Bordereau en attente',
+            self::DESSE_DOUBLONS_A_TRAITER => 'DESSE : Doublons à traiter',
+            self::DESSE_ATTENTE_VERIFICATION_DMG => 'DESSE : Attente vérification',
+            self::DESSE_RETOUR_AGENCE => 'DESSE : Retour agence',
+            self::DESSE_DOUBLONS_TRAITES => 'DESSE : Doublons traités',
+            self::DESSE_SUIVI_PROCESSUS => 'DESSE : Suivi du processus',
+            self::DESSE_BENEFICIAIRES_2023 => 'DESSE : Bénéficiaires 2023',
+            self::DESSE_ATTENTE_CA => "DESSE : Attente Chef d'Agence",
+            self::DESSE_SUIVI_ENREGISTRES => 'DESSE : Suivi des enregistrés',
+            self::DESSE_SUIVI_VALIDES_AR => 'DESSE : Suivi des validés AR',
+            self::DAICG_VALIDES_CA => "DAICG : Validés par le Chef d'Agence",
+            self::DAICG_VALIDES_DESSE => 'DAICG : Validés par la DESSE',
+            self::DAICG_SANS_CONTRAT => 'DAICG : Sans contrat',
+            self::DAICG_ATTENTE_DMG => 'DAICG : Attente DMG',
+        };
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function labels(): array
+    {
+        return collect(self::cases())->mapWithKeys(fn (self $c) => [$c->value => $c->label()])->all();
+    }
 }

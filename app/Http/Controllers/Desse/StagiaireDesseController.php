@@ -42,6 +42,17 @@ class StagiaireDesseController extends Controller
         'stage.typeStage',
     ];
 
+    /**
+     * Corbeilles alimentant l'onglet "Retour Chef d'Agence" : la cible du nouveau
+     * workflow (DESSE_RETOUR_AGENCE) et son équivalent historique migré depuis le
+     * legacy (statut 7 -> CIP_AJOURNE_DESSE), qui concentre les dossiers déjà
+     * ajournés par la DESSE avant la mise en place de ce module.
+     */
+    private const RETOUR_CHEFAGENCE_CORBEILLES = [
+        CorbeilleEnum::DESSE_RETOUR_AGENCE,
+        CorbeilleEnum::CIP_AJOURNE_DESSE,
+    ];
+
     public function __construct(
         private WorkflowTransitionService $workflow,
         private DesseDoublonService $doublons,
@@ -58,7 +69,7 @@ class StagiaireDesseController extends Controller
                 $this->applyFilters($this->doublons->eligibleInstancesQuery($typeDoublon), $filters),
             ),
             'retour_chefagence' => $this->paginateInstances(
-                $this->applyFilters($this->corbeilleQuery(CorbeilleEnum::DESSE_RETOUR_AGENCE), $filters),
+                $this->applyFilters($this->corbeillesQuery(self::RETOUR_CHEFAGENCE_CORBEILLES), $filters),
             ),
             'doublons_traites' => $this->paginateDecisions($filters),
             default => $this->paginateInstances(
@@ -76,7 +87,7 @@ class StagiaireDesseController extends Controller
             'counts' => [
                 'attente' => $this->corbeilleQuery(CorbeilleEnum::DESSE_ATTENTE_VERIFICATION_DMG)->count(),
                 'doublons' => array_sum($doublonCounts),
-                'retour_chefagence' => $this->corbeilleQuery(CorbeilleEnum::DESSE_RETOUR_AGENCE)->count(),
+                'retour_chefagence' => $this->corbeillesQuery(self::RETOUR_CHEFAGENCE_CORBEILLES)->count(),
                 'doublons_traites' => DesseDoublonDecision::count(),
             ],
             'doublonCounts' => $doublonCounts,
@@ -84,6 +95,8 @@ class StagiaireDesseController extends Controller
                 'value' => $type->value,
                 'label' => $type->label(),
             ]),
+            'corbeilleLabels' => CorbeilleEnum::labels(),
+            'corbeilleActionnable' => CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER->value,
             'agences' => Cache::remember('filter_agences_desse', 1800, fn () => Agence::orderBy('nom')->get(['id', 'nom'])->toArray()),
             'entreprises' => Cache::remember('filter_entreprises_desse', 1800, fn () => Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
             'sourcesFinancement' => Cache::remember('filter_sources_financement_desse', 1800, fn () => SourceFinancement::orderBy('nom')->get(['id', 'nom'])->toArray()),
@@ -121,6 +134,16 @@ class StagiaireDesseController extends Controller
         ]);
 
         $instance = InstanceParcours::findOrFail($id);
+
+        if ($instance->corbeille_actuelle !== CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER->value) {
+            // La visibilité du doublon est volontairement large (toute la base, cf.
+            // DesseDoublonService::basePoolQuery), mais seule une ligne encore dans
+            // la corbeille "Doublons à traiter" peut faire l'objet d'une décision :
+            // les dossiers déjà engagés ailleurs (paiement, pointage...) ne doivent
+            // pas être déplacés par une décision de groupe.
+            return back()->with('error', "Ce dossier n'est plus en attente de traitement DESSE (il est déjà à une autre étape du circuit) et ne peut donc pas faire l'objet d'une décision de doublon.");
+        }
+
         $type = DoublonTypeEnum::from($validated['type_doublon']);
 
         $nombreTraites = $this->doublons->treatDuplicateGroup(
@@ -136,10 +159,18 @@ class StagiaireDesseController extends Controller
 
     private function corbeilleQuery(CorbeilleEnum $corbeille): Builder
     {
+        return $this->corbeillesQuery([$corbeille]);
+    }
+
+    /**
+     * @param  array<CorbeilleEnum>  $corbeilles
+     */
+    private function corbeillesQuery(array $corbeilles): Builder
+    {
         // whereHas('stage') exclut les instances orphelines (stage supprimé/absent),
         // sans quoi l'utilisateur verrait des lignes vides côté bénéficiaire/agence/entreprise.
         return InstanceParcours::query()
-            ->where('corbeille_actuelle', $corbeille->value)
+            ->whereIn('corbeille_actuelle', array_map(fn (CorbeilleEnum $c) => $c->value, $corbeilles))
             ->whereNull('terminee_le')
             ->whereHas('stage');
     }
