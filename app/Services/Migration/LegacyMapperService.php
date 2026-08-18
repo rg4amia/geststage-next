@@ -116,6 +116,21 @@ class LegacyMapperService
             return $this->mapStatutStageToCorbeille((int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1));
         }
 
+        // Un dossier n'atteint réellement la corbeille CA (démarrage / démarrage omis) que
+        // s'il remplit les mêmes conditions que le legacy avant d'y être affiché
+        // (cf. WaitCheckedChefAgenceService::stagiaireWaitValidation). Sans cette porte,
+        // tout dossier avec etat_chef_agence=0 (y compris ceux encore bloqués chez le CIP,
+        // la DESSE, etc., ou dont le contrat n'a jamais été avisé/uploadé) était classé à
+        // tort en CA_ATTENTE_VALIDATION_OMIS/DEMARRAGE, gonflant fortement ces corbeilles.
+        $estEligibleCA = (int) ($legacyContrat->agent_id ?? 0) === 3
+            && (int) ($legacyContrat->avis_contrat ?? 0) === 1
+            && ! empty($legacyContrat->file_contrat)
+            && in_array((int) ($legacyContrat->etapetraitement_id ?? 0), [1, 4], true);
+
+        if (! $estEligibleCA) {
+            return $this->mapStatutStageToCorbeille((int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1));
+        }
+
         $dateDebut = $this->normalizeLegacyDate($legacyContrat->date_debut ?? null);
 
         if (! $dateDebut) {
