@@ -79,7 +79,7 @@ const PointagesIndex = (props: PageProps) => {
         typesStage = [],
         periodes = [],
         periode,
-        counts = { attente: 0, effectue: 0, ajourne_ca: 0, ajourne_dmg: 0 },
+        counts = { attente: 0, attente_pejedec: 0, effectue: 0, ajourne_ca: 0, ajourne_dmg: 0 },
         situationsStage = [],
     } = props;
 
@@ -280,7 +280,7 @@ const PointagesIndex = (props: PageProps) => {
 
     /* ─── Colonnes du tableau ─── */
     const getStageData = useCallback(
-        (row: any) => (currentTab === 'attente' ? row : row.stage || row),
+        (row: any) => ((currentTab === 'attente' || currentTab === 'attente_pejedec') ? row : row.stage || row),
         [currentTab],
     );
 
@@ -317,7 +317,7 @@ const PointagesIndex = (props: PageProps) => {
             },
             {
                 header: 'Date fin',
-                cell: (cell: any) => formatDateFr(getStageData(cell.row.original)?.date_fin),
+                cell: (cell: any) => formatDateFr(getStageData(cell.row.original)?.date_fin_prevue),
             },
             {
                 header: 'N° AEJ',
@@ -538,9 +538,14 @@ const PointagesIndex = (props: PageProps) => {
             {
                 header: 'Actions',
                 cell: (cell: any) => (
-                    <Button color="primary" size="sm" onClick={() => openCorrigerDmgModal(cell.row.original)}>
-                        <i className="ri-edit-line me-1"></i>Corriger
-                    </Button>
+                    <div className="d-flex gap-2">
+                        <Button color="dark" size="sm" href={`/cip/pointages/edit-stagiaire/${getStageData(cell.row.original).id}`}>
+                            <i className="ri-user-settings-line me-1"></i>Éditer Stagiaire
+                        </Button>
+                        <Button color="primary" size="sm" onClick={() => openCorrigerDmgModal(cell.row.original)}>
+                            <i className="ri-edit-line me-1"></i>Corriger
+                        </Button>
+                    </div>
                 ),
             },
         ],
@@ -572,6 +577,7 @@ const PointagesIndex = (props: PageProps) => {
     /* ─── Onglets config ─── */
     const tabs = [
         { key: 'attente', label: 'ATTENTE POINTAGE', count: counts.attente, color: 'warning', icon: 'ri-time-line' },
+        { key: 'attente_pejedec', label: 'ATTENTE PEJEDEC', count: counts.attente_pejedec, color: 'info', icon: 'ri-file-text-line' },
         { key: 'effectue', label: 'POINTAGE EFFECTUÉ', count: counts.effectue, color: 'success', icon: 'ri-check-double-line' },
         { key: 'ajourne_ca', label: 'AJOURNÉ / CHEF AGENCE', count: counts.ajourne_ca, color: 'danger', icon: 'ri-arrow-go-back-line' },
         { key: 'ajourne_dmg', label: 'AJOURNÉ / DMG', count: counts.ajourne_dmg, color: 'secondary', icon: 'ri-arrow-go-back-fill' },
@@ -723,8 +729,57 @@ const PointagesIndex = (props: PageProps) => {
                             </Nav>
 
                             <TabContent activeTab={currentTab} className="pt-4">
-                                {/* ─── Contenu Attente ─── */}
+                                {/* ─── Contenu Attente (Autre) ─── */}
                                 <TabPane tabId="attente">
+                                    <Row className="mb-3 align-items-end">
+                                        <Col md={3}>
+                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>
+                                            <Input
+                                                type="select"
+                                                value={selectedFilters.mois}
+                                                onChange={(e) => handleFilterChange('mois', e.target.value)}
+                                            >
+                                                <option value="">Sélectionner une période</option>
+                                                {periodes.map((p) => (
+                                                    <option key={p.id} value={p.code}>{p.code}</option>
+                                                ))}
+                                            </Input>
+                                        </Col>
+                                        <Col md={3}>
+                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Recherche</Label>
+                                            <Input
+                                                type="text"
+                                                placeholder="Nom, prénom, N° AEJ..."
+                                                value={selectedFilters.search}
+                                                onChange={(e) => handleFilterChange('search', e.target.value)}
+                                            />
+                                        </Col>
+                                        <Col md={6} className="text-md-end">
+                                            <Button
+                                                color="primary"
+                                                className="btn-label waves-effect waves-light"
+                                                onClick={handleBatchSubmit}
+                                                disabled={!data?.data || data.data.length === 0 || !periode}
+                                            >
+                                                <i className="ri-check-double-line label-icon align-middle fs-16 me-2"></i>
+                                                Effectuer pointage {periode ? `(${periode.code})` : ''}
+                                            </Button>
+                                        </Col>
+                                    </Row>
+
+                                    <Alert color="warning" className="border-0 mb-3">
+                                        <div className="d-flex align-items-center">
+                                            <div className="d-inline-block me-2" style={{ width: 16, height: 16, backgroundColor: '#f84343', border: '1px solid #999' }}></div>
+                                            <div>
+                                                <strong>Stagiaires en attente :</strong> Les lignes en rouge indiquent des stagiaires dont le pointage de démarrage n'a pas encore été validé.
+                                                Ils ne seront pas pris en compte lors du pointage groupé.
+                                            </div>
+                                        </div>
+                                    </Alert>
+                                </TabPane>
+
+                                {/* ─── Contenu Attente PEJEDEC ─── */}
+                                <TabPane tabId="attente_pejedec">
                                     <Row className="mb-3 align-items-end">
                                         <Col md={3}>
                                             <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Attendance\Services\PointageService;
-use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance\Pointage;
 use App\Models\Internship\Stage;
@@ -30,7 +29,7 @@ class PointageCipController extends Controller
             abort(400, 'Format du mois invalide. Format attendu : YYYY-MM');
         }
         $tab = $request->query('tab', 'attente');
-        
+
         $filters = $request->only(['mois', 'agence_id', 'entreprise_id', 'source_financement_id', 'type_stage_id', 'search']);
         $filters['mois'] = $mois;
 
@@ -55,17 +54,46 @@ class PointageCipController extends Controller
                     ->withExists(['pointages as has_pointage_demarrage' => function($q) {
                         $q->where('nature', 'DEMARRAGE')->where('statut', 'VALIDE');
                     }])
-                    ->whereHas('instanceParcours', function ($q) {
-                        $q->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE);
+                    ->where('situation_stage', 'EN_COURS')
+                    ->where('date_debut', '<=', $periode->date_fin)
+                    ->where(function ($q) use ($periode) {
+                        $q->whereNull('date_fin_prevue')
+                          ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
                     })
                     ->whereDoesntHave('pointages', function ($q) use ($periode) {
                         $q->where('periode_id', $periode->id)
-                          ->whereIn('statut', ['SOUMIS', 'VALIDE']);
-                    });
+                          ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
+                    })
+                    ->where('source_financement_id', '!=', 4); // Exclure PEJEDEC
 
                 $this->applyStageFilters($query, $filters);
                 $data = $query->paginate(20)->withQueryString();
-                
+
+                $data->getCollection()->transform(function ($stage) use ($periode) {
+                    $stage->is_demarrage = Carbon::parse($stage->date_debut)->format('Y-m') === $periode->code;
+                    return $stage;
+                });
+
+            } elseif ($tab === 'attente_pejedec') {
+                $query = Stage::with(['beneficiaire', 'entreprise', 'agence', 'sourceFinancement'])
+                    ->withExists(['pointages as has_pointage_demarrage' => function($q) {
+                        $q->where('nature', 'DEMARRAGE')->where('statut', 'VALIDE');
+                    }])
+                    ->where('situation_stage', 'EN_COURS')
+                    ->where('date_debut', '<=', $periode->date_fin)
+                    ->where(function ($q) use ($periode) {
+                        $q->whereNull('date_fin_prevue')
+                          ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
+                    })
+                    ->whereDoesntHave('pointages', function ($q) use ($periode) {
+                        $q->where('periode_id', $periode->id)
+                          ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
+                    })
+                    ->where('source_financement_id', 4); // Seulement PEJEDEC
+
+                $this->applyStageFilters($query, $filters);
+                $data = $query->paginate(20)->withQueryString();
+
                 $data->getCollection()->transform(function ($stage) use ($periode) {
                     $stage->is_demarrage = Carbon::parse($stage->date_debut)->format('Y-m') === $periode->code;
                     return $stage;
@@ -96,6 +124,8 @@ class PointageCipController extends Controller
                 $data = $query->paginate(20)->withQueryString();
             }
         }
+
+        //dd($data);
 
         return Inertia::render('Cip/Pointages/Index', [
             'tab' => $tab,
@@ -154,7 +184,7 @@ class PointageCipController extends Controller
 
         $periode = Periode::findOrFail($request->periode_id);
         $user = Auth::user();
-        
+
         $created = 0;
         $skipped = 0;
 
@@ -197,10 +227,10 @@ class PointageCipController extends Controller
             'observation' => 'nullable|string|max:1000',
             'justificatif_file' => 'nullable|file|max:5120',
         ]);
-        
+
         $stage = Stage::findOrFail($request->stage_id);
         $periode = Periode::findOrFail($request->periode_id);
-        
+
         $justificatifPath = null;
         if ($request->hasFile('justificatif_file')) {
             $justificatifPath = $request->file('justificatif_file')->store('fichierpointage', 'public');
@@ -259,4 +289,32 @@ class PointageCipController extends Controller
         return redirect()->back()->with('success', 'Pointage corrigé et renvoyé au CA.');
     }
 
+
+    public function editStagiaire($id)
+    {
+        $stage = \App\Models\Internship\Stage::with('beneficiaire')->findOrFail($id);
+        $typesPaiement = \App\Models\Reference\TypePaiement::all();
+        
+        return \Inertia\Inertia::render('Cip/Pointages/EditStagiaire', [
+            'stage' => $stage,
+            'typesPaiement' => $typesPaiement,
+        ]);
+    }
+
+    public function updateStagiaire(\Illuminate\Http\Request $request, $id)
+    {
+        $stage = \App\Models\Internship\Stage::with('beneficiaire')->findOrFail($id);
+        
+        $validated = $request->validate([
+            'telephone_principal' => 'required|string|max:20',
+            'telephone_secondaire' => 'nullable|string|max:20',
+            'type_paiement_id' => 'required|exists:type_paiements,id',
+            'numero_tresor_money' => 'nullable|string|max:50',
+            'numero_wave' => 'nullable|string|max:50',
+        ]);
+        
+        $stage->beneficiaire->update($validated);
+        
+        return redirect()->route('cip.pointages.index', ['tab' => 'ajourne_dmg'])->with('success', 'Informations du stagiaire mises à jour avec succès.');
+    }
 }

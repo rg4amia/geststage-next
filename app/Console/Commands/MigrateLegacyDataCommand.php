@@ -34,6 +34,7 @@ use App\Services\Migration\LegacyMapperService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 
 class MigrateLegacyDataCommand extends Command
@@ -175,6 +176,39 @@ class MigrateLegacyDataCommand extends Command
             ->map(fn ($rows) => $rows->first()->type_structure_id);
         $typesStructureMap = TypeStructure::pluck('id', 'ancien_id')->toArray();
 
+        // Quelques entreprises legacy partagent le même compte_contri/rccm : soit de vraies
+        // saisies en double, soit (le plus souvent) des valeurs "bouche-trou" ("NEANT", "XXX",
+        // "RAS", "0", ...) recopiées par dizaines d'agents faute de donnée réelle — ce ne sont
+        // pas de vrais identifiants et ne doivent pas être traitées comme tels.
+        // L'ancienne logique vérifiait aussi l'unicité en re-questionnant la table à chaque
+        // ligne : selon l'ordre (non garanti) de traitement des lignes dans une même exécution,
+        // deux lignes pouvaient temporairement croire détenir la valeur "canonique" et entrer en
+        // conflit. On fixe maintenant une règle déterministe indépendante de l'ordre : seule la
+        // ligne legacy au plus petit id garde la valeur telle quelle, les autres sont suffixées.
+        $estPlaceholder = function (?string $valeur): bool {
+            if ($valeur === null) {
+                return true;
+            }
+            $v = mb_strtoupper(trim(Str::ascii($valeur)));
+
+            return $v === ''
+                || preg_match('/^X+$/', $v) === 1
+                || preg_match('/^0+$/', $v) === 1
+                || in_array($v, ['NEANT', 'RAS', 'ND', 'NA', 'N/A', 'NP', 'AUCUN', 'NON', 'NONE', '-'], true);
+        };
+
+        $valeursValides = function (string $colonne) use ($estPlaceholder) {
+            return DB::connection('legacy')->table('entreprises')
+                ->select($colonne, 'id')
+                ->whereNotNull($colonne)->where($colonne, '!=', '')
+                ->get()
+                ->reject(fn ($r) => $estPlaceholder($r->{$colonne}));
+        };
+        $premierIdParContribuable = $valeursValides('compte_contri')
+            ->groupBy(fn ($r) => trim($r->compte_contri))->map(fn ($rows) => $rows->min('id'));
+        $premierIdParRccm = $valeursValides('rccm')
+            ->groupBy(fn ($r) => trim($r->rccm))->map(fn ($rows) => $rows->min('id'));
+
         $bar = $this->output->createProgressBar(count($entreprises));
         $bar->start();
 
@@ -183,24 +217,18 @@ class MigrateLegacyDataCommand extends Command
             $legacyTypeStructureId = $typeStructureParEntreprise[$legacyEntreprise->id] ?? null;
             $type_structure_id = $legacyTypeStructureId ? ($typesStructureMap[$legacyTypeStructureId] ?? null) : null;
 
-            $numContribuable = $legacyEntreprise->compte_contri ?: null;
-            if ($numContribuable) {
-                $exists = Entreprise::where('numero_contribuable', $numContribuable)
-                    ->where('ancien_id', '!=', $legacyEntreprise->id)
-                    ->exists();
-                if ($exists) {
-                    $numContribuable = $numContribuable.'_'.$legacyEntreprise->id;
-                }
+            $numContribuable = $legacyEntreprise->compte_contri ? trim($legacyEntreprise->compte_contri) : null;
+            if ($estPlaceholder($numContribuable)) {
+                $numContribuable = null;
+            } elseif (($premierIdParContribuable[$numContribuable] ?? $legacyEntreprise->id) !== $legacyEntreprise->id) {
+                $numContribuable = $numContribuable.'_'.$legacyEntreprise->id;
             }
 
-            $registreCommerce = $legacyEntreprise->rccm ?: null;
-            if ($registreCommerce) {
-                $exists = Entreprise::where('registre_commerce', $registreCommerce)
-                    ->where('ancien_id', '!=', $legacyEntreprise->id)
-                    ->exists();
-                if ($exists) {
-                    $registreCommerce = $registreCommerce.'_'.$legacyEntreprise->id;
-                }
+            $registreCommerce = $legacyEntreprise->rccm ? trim($legacyEntreprise->rccm) : null;
+            if ($estPlaceholder($registreCommerce)) {
+                $registreCommerce = null;
+            } elseif (($premierIdParRccm[$registreCommerce] ?? $legacyEntreprise->id) !== $legacyEntreprise->id) {
+                $registreCommerce = $registreCommerce.'_'.$legacyEntreprise->id;
             }
 
             Entreprise::withTrashed()->updateOrCreate(
@@ -283,13 +311,27 @@ class MigrateLegacyDataCommand extends Command
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
 
-        // Load type_paiement mapping once (legacy id → new id) to avoid FK violations
+        // Mappings chargés une fois (legacy ancien_id → nouvel id), maintenant que les
+        // référentiels réels sont peuplés par legacy:migrer-referentiels.
         $typesPaiementMap = TypePaiement::pluck('id', 'ancien_id')->toArray();
+        $handicapsMap = Handicap::pluck('id', 'ancien_id')->toArray();
+        $typesHandicapMap = TypeHandicap::pluck('id', 'ancien_id')->toArray();
+        $liensParenteMap = LienParente::pluck('id', 'ancien_id')->toArray();
+        $typesEnseignementMap = TypeEnseignement::pluck('id', 'ancien_id')->toArray();
+        $communesMap = Commune::pluck('id', 'ancien_id')->toArray();
+        // Le legacy ne relie pas contrats_pae.diplome (texte libre) à la table diplome par FK :
+        // on rapproche par libellé normalisé (trim + majuscules), en meilleur effort.
+        $diplomesParLibelle = Diplome::pluck('id', 'nom')
+            ->mapWithKeys(fn ($id, $nom) => [mb_strtoupper(trim((string) $nom)) => $id])
+            ->toArray();
 
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$bar, $typesPaiementMap) {
+        $query->orderBy('id')->chunk(1000, function ($contrats) use (
+            &$bar, $typesPaiementMap, $handicapsMap, $typesHandicapMap,
+            $liensParenteMap, $typesEnseignementMap, $communesMap, $diplomesParLibelle
+        ) {
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->numero_aej)) {
                     $bar->advance();
@@ -305,6 +347,11 @@ class MigrateLegacyDataCommand extends Command
                         ['nom' => $legacyContrat->niveau_etude]
                     );
                     $niveau_etude_id = $niveau->id;
+                }
+
+                $diplome_id = null;
+                if (! empty($legacyContrat->diplome)) {
+                    $diplome_id = $diplomesParLibelle[mb_strtoupper(trim($legacyContrat->diplome))] ?? null;
                 }
 
                 $date_naissance = $legacyContrat->date_de_naissance;
@@ -325,7 +372,21 @@ class MigrateLegacyDataCommand extends Command
                         'telephone_secondaire' => $legacyContrat->contact2,
                         'nature_piece_identite' => $legacyContrat->nature_piece,
                         'numero_piece_identite' => $legacyContrat->num_piece,
+                        'numero_cmu' => $legacyContrat->numero_cmu ?? null,
+                        'commune_residence_id' => isset($legacyContrat->id_commune_de_residence) ? ($communesMap[$legacyContrat->id_commune_de_residence] ?? null) : null,
+                        'personne_urgence' => $legacyContrat->personne_urgence ?? null,
+                        'lien_parente_id' => isset($legacyContrat->lienparente_id) ? ($liensParenteMap[$legacyContrat->lienparente_id] ?? null) : null,
+                        'contact_urgence_1' => $legacyContrat->prsurgent_tel1 ?? null,
+                        'contact_urgence_2' => $legacyContrat->prsurgent_tel2 ?? null,
                         'niveau_etude_id' => $niveau_etude_id,
+                        'diplome_id' => $diplome_id,
+                        'autre_diplome' => $legacyContrat->autre_diplome ?? null,
+                        'specialite' => $legacyContrat->specialite ?? null,
+                        'annee_diplome' => $legacyContrat->annee_diplome ?: null,
+                        'etablissement_frequente' => $legacyContrat->etablissement_frequente ?? null,
+                        'type_enseignement_id' => isset($legacyContrat->typeenseignement_id) ? ($typesEnseignementMap[$legacyContrat->typeenseignement_id] ?? null) : null,
+                        'handicap_id' => isset($legacyContrat->handicap_id) ? ($handicapsMap[$legacyContrat->handicap_id] ?? null) : null,
+                        'type_handicap_id' => isset($legacyContrat->typehandicap_id) ? ($typesHandicapMap[$legacyContrat->typehandicap_id] ?? null) : null,
                         'autre_handicap' => ! empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non' ? ($legacyContrat->type_handicap ?? 'Handicap signalé') : null,
                         'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
                         'numero_wave' => $legacyContrat->numero_wave ?? null,
@@ -353,10 +414,23 @@ class MigrateLegacyDataCommand extends Command
         $agencesMap = Agence::pluck('id', 'ancien_id')->toArray();
         $typesStageMap = TypeStage::pluck('id', 'ancien_id')->toArray();
         $entreprisesMap = Entreprise::pluck('id', 'ancien_id')->toArray();
-        $sourcesFinancementMap = SourceFinancement::pluck('id', 'code')->toArray();
-        $defaultSourceId = $sourcesFinancementMap['DEF'] ?? 1;
+        // BUG corrigé : contrats_pae.source_financement contient l'ancien id numérique de
+        // type_financements (ex: 1, 3, 4, 5), pas le code généré ("PA_PS_GOUV", ...). L'ancien
+        // pluck('id', 'code') ne matchait donc quasiment jamais et retombait sur le défaut.
+        $sourcesFinancementMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
+        $defaultSourceId = SourceFinancement::orderBy('id')->value('id') ?? 1;
+        $origineStagiaireMap = OrigineStagiaire::pluck('id', 'ancien_id')->toArray();
+        // situation_stage / statut_stage restent des colonnes texte dénormalisées sur stages
+        // (comme en legacy), mais on y stocke désormais le vrai code du référentiel migré par
+        // legacy:migrer-referentiels au lieu d'un code fabriqué ("SS-001") qui ne correspondait
+        // à rien dans la table situations_stage utilisée par le filtre de "Mes Stagiaires".
+        $situationsStageMap = DB::table('situations_stage')->pluck('code', 'ancien_id')->toArray();
+        $statutsStageMap = DB::table('statuts_stage')->pluck('code', 'ancien_id')->toArray();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$bar, $agencesMap, $typesStageMap, $entreprisesMap, $defaultSourceId) {
+        $query->orderBy('id')->chunk(1000, function ($contrats) use (
+            &$bar, $agencesMap, $typesStageMap, $entreprisesMap, $sourcesFinancementMap,
+            $defaultSourceId, $origineStagiaireMap, $situationsStageMap, $statutsStageMap
+        ) {
             $aejNums = $contrats->pluck('numero_aej')->filter()->unique()->toArray();
             $beneficiairesMap = Beneficiaire::whereIn('numero_aej', $aejNums)->pluck('id', 'numero_aej')->toArray();
 
@@ -366,6 +440,9 @@ class MigrateLegacyDataCommand extends Command
                 $agence_id = $agencesMap[$legacyContrat->id_agence] ?? null;
                 $type_stage_id = $typesStageMap[$legacyContrat->id_type_stage] ?? 1;
                 $source_financement_id = $sourcesFinancementMap[$legacyContrat->source_financement] ?? $defaultSourceId;
+                $origine_stagiaire_id = isset($legacyContrat->originestagiaire_id) ? ($origineStagiaireMap[$legacyContrat->originestagiaire_id] ?? null) : null;
+                $situation_stage = isset($legacyContrat->id_situation_stage) ? ($situationsStageMap[$legacyContrat->id_situation_stage] ?? null) : null;
+                $statut_stage = isset($legacyContrat->id_statut_stage) ? ($statutsStageMap[$legacyContrat->id_statut_stage] ?? null) : null;
 
                 if (! $beneficiaire_id || ! $entreprise_id || ! $agence_id) {
                     $bar->advance();
@@ -394,6 +471,7 @@ class MigrateLegacyDataCommand extends Command
                         'type_stage_id' => $type_stage_id,
                         'source_financement_id' => $source_financement_id,
                         'conseiller_id' => null, // conseiller mapping needs conseillers table populated
+                        'origine_stagiaire_id' => $origine_stagiaire_id,
                         'date_entree_portefeuille' => $date_entree,
 
                         'service_affectation' => $legacyContrat->service_affectation ?? null,
@@ -406,7 +484,8 @@ class MigrateLegacyDataCommand extends Command
                         'date_debut' => $date_debut,
                         'date_fin_prevue' => $date_fin_prevue,
                         'observations' => $legacyContrat->observation ?? null,
-                        'situation_stage' => isset($legacyContrat->id_situation_stage) ? 'SS-'.str_pad($legacyContrat->id_situation_stage, 3, '0', STR_PAD_LEFT) : null,
+                        'situation_stage' => $situation_stage,
+                        'statut_stage' => $statut_stage,
                         'deleted_at' => $deletedAt,
                     ]
                 );
@@ -626,12 +705,17 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
-        $source_financement = DB::table('sources_financement')->first();
-        $source_financement_id = $source_financement ? $source_financement->id : DB::table('sources_financement')->insertGetId(['code' => 'DEF', 'libelle' => 'Défaut', 'actif' => true, 'created_at' => now(), 'updated_at' => now()]);
+        // paiement_models ne porte pas lui-même de source de financement : c'est un attribut du
+        // stage (contrats_pae.source_financement) auquel il se rattache. Auparavant, tous les
+        // paiements migrés recevaient la MÊME source de financement (la première ligne de la
+        // table), quel que soit le stage réel — on la reprend maintenant depuis le stage.
+        $defaultSourceId = SourceFinancement::orderBy('id')->value('id')
+            ?? DB::table('sources_financement')->insertGetId(['code' => 'DEF', 'nom' => 'Défaut', 'actif' => true, 'created_at' => now(), 'updated_at' => now()]);
 
-        $query->orderBy('id')->chunk(5000, function ($paiements) use (&$bar, &$periodesMap, $source_financement_id) {
+        $query->orderBy('id')->chunk(5000, function ($paiements) use (&$bar, &$periodesMap, $defaultSourceId) {
             $stagiaireIds = $paiements->pluck('stagiaire_id')->filter()->unique()->toArray();
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
+            $sourceFinancementParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('source_financement_id', 'ancien_id')->toArray();
 
             foreach ($paiements as $legacyPaiement) {
                 // Créer le droit de paiement (la base du paiement dans la nouvelle architecture)
@@ -644,6 +728,8 @@ class MigrateLegacyDataCommand extends Command
 
                     continue;
                 }
+
+                $source_financement_id = $sourceFinancementParStage[$legacyPaiement->stagiaire_id] ?? $defaultSourceId;
 
                 // Idempotence : si cette ligne legacy a déjà été migrée (re-run de la commande),
                 // on ne la retraite pas.

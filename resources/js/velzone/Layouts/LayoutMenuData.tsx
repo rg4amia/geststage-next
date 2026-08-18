@@ -47,12 +47,6 @@ const Navdata = () => {
             link: '/cip/pointages',
         },
         {
-            id: 'cip-pointages-pejedec',
-            label: 'Pointages PEJEDEC',
-            icon: 'ri-calendar-event-line',
-            link: '/cip/pointages/pejedec',
-        },
-        {
             id: 'cip-ajourne-dmg',
             label: 'Pointage Ajourné (DMG)',
             icon: 'ri-error-warning-line',

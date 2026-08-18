@@ -12,7 +12,6 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use App\Models\User;
-use App\Enums\CorbeilleEnum;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -25,6 +24,7 @@ class PointageService
     {
         $counts = [
             'attente' => 0,
+            'attente_pejedec' => 0,
             'effectue' => 0,
             'ajourne_ca' => 0,
             'ajourne_dmg' => 0,
@@ -34,12 +34,21 @@ class PointageService
             return $counts;
         }
 
-        $queryAttente = Stage::whereHas('instanceParcours', function ($q) {
-            $q->where('corbeille_actuelle', CorbeilleEnum::EN_STAGE);
-        })->whereDoesntHave('pointages', function ($q) use ($periodeId) {
-            $q->where('periode_id', $periodeId)
-              ->whereIn('statut', ['SOUMIS', 'VALIDE']);
-        });
+        $periode = Periode::find($periodeId);
+        if (!$periode) {
+            return $counts;
+        }
+
+        $queryAttente = Stage::where('situation_stage', 'EN_COURS')
+            ->where('date_debut', '<=', $periode->date_fin)
+            ->where(function ($q) use ($periode) {
+                $q->whereNull('date_fin_prevue')
+                  ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
+            })
+            ->whereDoesntHave('pointages', function ($q) use ($periodeId) {
+                $q->where('periode_id', $periodeId)
+                  ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
+            });
         
         // Appliquer les filtres de stage si présents
         if (!empty($stageFilters['agence_id'])) {
@@ -55,7 +64,14 @@ class PointageService
             $queryAttente->where('type_stage_id', $stageFilters['type_stage_id']);
         }
 
-        $counts['attente'] = $queryAttente->count();
+        $queryAttenteNormal = clone $queryAttente;
+        $queryAttenteNormal->where('source_financement_id', '!=', 4);
+
+        $queryAttentePejedec = clone $queryAttente;
+        $queryAttentePejedec->where('source_financement_id', 4);
+
+        $counts['attente'] = $queryAttenteNormal->count();
+        $counts['attente_pejedec'] = $queryAttentePejedec->count();
 
         $counts['effectue'] = Pointage::where('periode_id', $periodeId)
             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])

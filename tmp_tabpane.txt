@@ -1,0 +1,48 @@
+                                <TabPane tabId="attente_pejedec">
+                                    <Row className="mb-3 align-items-end">
+                                        <Col md={3}>
+                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>
+                                            <Input
+                                                type="select"
+                                                value={selectedFilters.mois}
+                                                onChange={(e) => handleFilterChange('mois', e.target.value)}
+                                            >
+                                                <option value="">Sélectionner une période</option>
+                                                {periodes.map((p) => (
+                                                    <option key={p.id} value={p.code}>{p.code}</option>
+                                                ))}
+                                            </Input>
+                                        </Col>
+                                        <Col md={3}>
+                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Recherche</Label>
+                                            <Input
+                                                type="text"
+                                                placeholder="Nom, prénom, N° AEJ..."
+                                                value={selectedFilters.search}
+                                                onChange={(e) => handleFilterChange('search', e.target.value)}
+                                            />
+                                        </Col>
+                                        <Col md={6} className="text-md-end">
+                                            <Button
+                                                color="primary"
+                                                className="btn-label waves-effect waves-light"
+                                                onClick={handleBatchSubmit}
+                                                disabled={!data?.data || data.data.length === 0 || !periode}
+                                            >
+                                                <i className="ri-check-double-line label-icon align-middle fs-16 me-2"></i>
+                                                Effectuer pointage {periode ? `(${periode.code})` : ''}
+                                            </Button>
+                                        </Col>
+                                    </Row>
+
+                                    <Alert color="warning" className="border-0 mb-3">
+                                        <div className="d-flex align-items-center">
+                                            <div className="d-inline-block me-2" style={{ width: 16, height: 16, backgroundColor: '#f84343', border: '1px solid #999' }}></div>
+                                            <div>
+                                                <strong>Stagiaires en attente :</strong> Les lignes en rouge indiquent des stagiaires dont le pointage de démarrage n'a pas encore été validé.
+                                                Ils ne seront pas pris en compte lors du pointage groupé.
+                                            </div>
+                                        </div>
+                                    </Alert>
+                                </TabPane>
+
