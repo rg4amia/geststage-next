@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { router } from '@inertiajs/react';
+import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import { format } from 'date-fns';
-import { fr } from 'date-fns/locale';
-import BreadCrumb from '@/velzone/components/common/BreadCrumb';
-import AuthenticatedLayout from '@/velzone/layouts/AuthenticatedLayout';
+import BreadCrumb from '@/velzone/Components/Common/BreadCrumb';
 import { Card, CardBody, CardHeader, Col, Container, Row, Table, Badge, Spinner } from 'reactstrap';
 
 interface HistoriqueItem {
@@ -100,11 +97,18 @@ const HistoriqueGenerationIndex: React.FC = () => {
     };
 
     const formatDate = (dateString: string) => {
-        return format(new Date(dateString), 'dd/MM/yyyy HH:mm', { locale: fr });
+        return new Date(dateString).toLocaleDateString('fr-FR', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
     };
 
     return (
-        <AuthenticatedLayout>
+        <React.Fragment>
+            <Head title="Historique des Générations" />
             <div className="page-content">
                 <Container fluid>
                     <BreadCrumb title="Historique des Générations" pageTitle="Chef d'Agence" />
@@ -359,7 +363,7 @@ const HistoriqueGenerationIndex: React.FC = () => {
                     </Row>
                 </Container>
             </div>
-        </AuthenticatedLayout>
+        </React.Fragment>
     );
 };
 
