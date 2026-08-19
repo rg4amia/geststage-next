@@ -1,121 +1,235 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fiche de Référence Trésor Money</title>
+    <title>Fiche de Paiement - Ministère de l'Économie et des Finances</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            font-size: 10px;
+        * {
             margin: 0;
-            padding: 10px;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Georgia', serif;
+            background-color: #f8f9fa;
+            line-height: 1.4;
+            padding: 0px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            page-break-after: always;
+        }
+
+        .container:last-child {
+            page-break-after: auto;
         }
 
         .header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 15px 30px;
+            background: white;
             text-align: center;
-            margin-bottom: 20px;
-            border-bottom: 2px solid #000;
-            padding-bottom: 10px;
+            border-bottom: 2px solid #f0f0f0;
         }
 
-        .header h1 {
-            font-size: 16px;
-            margin: 0 0 5px 0;
-            font-weight: bold;
-        }
-
-        .header p {
-            margin: 0;
-            font-size: 11px;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-
-        table thead tr {
-            background-color: #f0f0f0;
-        }
-
-        table th, table td {
-            border: 1px solid #000;
-            padding: 5px;
-            text-align: left;
-            font-size: 9px;
-        }
-
-        table th {
-            font-weight: bold;
-            background-color: #e0e0e0;
+        .header img {
+            width: 90%;
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
         }
 
         .footer {
+            background: white;
+            padding: 15px 0;
+            text-align: center;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-top: 2px solid #f0f0f0;
             margin-top: 20px;
-            text-align: right;
-            font-size: 9px;
         }
 
-        .info-row {
+        .footer img {
+            width: 100%;
+            max-width: 100%;
+            height: auto;
+            object-fit: contain;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 20px;
+            margin-bottom: 20px;
+            text-transform: uppercase;
+        }
+
+        .form-section {
+            max-width: 190mm;
+            margin: 0 auto;
+            padding: 10px 30px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: flex-start;
+            padding-bottom: 5px;
+        }
+
+        .form-group:last-child {
+            border-bottom: none;
+        }
+
+        label {
+            width: 220px;
+            font-weight: bold;
+            font-size: 13pt;
+            color: #333;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+
+        label:nth-child(2) {
+            width: auto;
+            font-weight: normal;
+            color: #000;
+            font-size: 13pt;
+            min-width: 300px;
+        }
+
+        p {
+            font-size: 13pt;
             margin-bottom: 5px;
+            padding-left: 30px;
+            font-weight: 500;
+            color: #444;
+        }
+
+        .nature-paiement {
+            text-align: right;
+            margin-top: 0px;
+            margin-bottom: 5px;
+            padding-right: 30px;
+            font-weight: bold;
+            font-size: 13pt;
+            color: #333;
+        }
+
+        @media print {
+            body {
+                margin: 0;
+                padding: 10mm;
+                page-break-inside: avoid;
+            }
+
+            .container {
+                page-break-inside: avoid;
+                page-break-after: always;
+            }
+
+            .container:last-child {
+                page-break-after: auto;
+            }
+
+            h1 {
+                font-size: 16pt;
+                margin-bottom: 15mm;
+            }
+
+            .form-section {
+                max-width: 190mm;
+                page-break-inside: avoid;
+                padding: 15mm 20mm;
+            }
+
+            .form-group {
+                margin-bottom: 8mm;
+                border-bottom: 1px dotted #ccc;
+                padding-bottom: 5mm;
+            }
+
+            label {
+                font-size: 13pt;
+            }
+
+            label:nth-child(2) {
+                font-size: 13pt;
+            }
+
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+
+            * {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
         }
     </style>
 </head>
+
 <body>
-    <div class="header">
-        <h1>FICHE DE RÉFÉRENCE TRÉSOR MONEY</h1>
-        <p>Programme d'Appui à l'Emploi des Jeunes</p>
-        <p>Date de génération : {{ $date_generation }}</p>
-    </div>
+    @foreach ($stagiaires as $stagiaire)
+        <div class="container">
+            <!-- En-tête officiel -->
+            <div class="header">
+                <img src="{{ public_path() }}/assets_tm/tm_header.png" alt="TrésorMoney Header">
+            </div>
 
-    <table>
-        <thead>
-            <tr>
-                <th style="width: 3%;">N°</th>
-                <th style="width: 12%;">Matricule</th>
-                <th style="width: 15%;">Nom & Prénoms</th>
-                <th style="width: 10%;">N° Pièce</th>
-                <th style="width: 8%;">N° Trésor</th>
-                <th style="width: 12%;">Fonction</th>
-                <th style="width: 12%;">Entreprise</th>
-                <th style="width: 10%;">Agence</th>
-                <th style="width: 8%;">Montant</th>
-                <th style="width: 10%;">Période</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($stagiaires as $index => $stagiaire)
-                <tr>
-                    <td>{{ $index + 1 }}</td>
-                    <td>{{ $stagiaire['matricule'] }}</td>
-                    <td>{{ $stagiaire['nom'] }} {{ $stagiaire['prenoms'] }}</td>
-                    <td>{{ $stagiaire['num_piece'] }}</td>
-                    <td>{{ $stagiaire['numero_tresormoney'] }}</td>
-                    <td>{{ $stagiaire['fonction'] }}</td>
-                    <td>{{ $stagiaire['entreprise'] }}</td>
-                    <td>{{ $stagiaire['agence'] }}</td>
-                    <td style="text-align: right;">{{ number_format($stagiaire['montant_indemnite'], 0, ',', ' ') }} F</td>
-                    <td>{{ $stagiaire['date_debut'] }} - {{ $stagiaire['date_fin_prevue'] }}</td>
-                </tr>
-            @endforeach
-        </tbody>
-        <tfoot>
-            <tr>
-                <th colspan="8" style="text-align: right;">TOTAL :</th>
-                <th style="text-align: right;">
-                    {{ number_format(collect($stagiaires)->sum('montant_indemnite'), 0, ',', ' ') }} F
-                </th>
-                <th></th>
-            </tr>
-        </tfoot>
-    </table>
+            <!-- Contenu du formulaire -->
+            <div class="form-section">
+                <p>Je soussigné(e)</p>
+                <div class="form-group">
+                    <label for="nom">Nom :</label>
+                    <label for="nom">{{ strtoupper($stagiaire['nom']) }}</label>
+                </div>
+                <div class="form-group">
+                    <label for="prenoms">Prénoms :</label>
+                    <label for="prenoms">{{ strtoupper($stagiaire['prenoms']) }}</label>
+                </div>
+                <div class="form-group">
+                    <label for="fonction">Fonction :</label>
+                    <label for="fonction">{{ strtoupper($stagiaire['fonction'] ?? 'STAGIAIRE') }}</label>
+                </div>
+                <div class="form-group">
+                    <label for="lieu_residence">Lieu de résidence :</label>
+                    <label for="lieu_residence">{{ strtoupper($stagiaire['lieu_residence'] ?? 'N/A') }}</label>
+                </div>
+                <div class="form-group">
+                    <label for="numero_tresormoney">Numéro TrésorMoney :</label>
+                    <label for="numero_tresormoney">{{ strtoupper($stagiaire['numero_tresormoney'] ?? 'N/A') }}</label>
+                </div>
+                <div class="form-group">
+                    <label for="identifiant_matricule">Identifiant / Matricule :</label>
+                    <label for="identifiant_matricule">{{ strtoupper($stagiaire['matricule'] ?? 'N/A') }}</label>
+                </div>
+                <div class="form-group">
+                    <label for="numero_piece_identite">Numéro de la pièce d'identité
+                        <span style="font-size: 10px">(CNI/PASSEPORT/ATTESTATION)</span> :</label>
+                    <label for="numero_piece_identite">{{ strtoupper($stagiaire['num_piece'] ?? 'N/A') }}</label>
+                </div>
+            </div>
+            <p class="nature-paiement">Nature du paiement :</p>
 
-    <div class="footer">
-        <div class="info-row">
-            <strong>Nombre total de stagiaires :</strong> {{ count($stagiaires) }}
+            <!-- Footer TrésorPay -->
+            <div class="footer">
+                <img src="{{ public_path() }}/assets_tm/tm_footer.png" alt="TrésorMoney Footer">
+            </div>
         </div>
-    </div>
+    @endforeach
 </body>
+
 </html>
