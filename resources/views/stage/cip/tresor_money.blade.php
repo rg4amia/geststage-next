@@ -127,6 +127,64 @@
             color: #333;
         }
 
+        .types-depenses {
+            text-align: center;
+            margin: 30px 0;
+            padding: 0 30px;
+        }
+
+        .types-depenses h2 {
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .checkbox-group {
+            display: table;
+            width: 100%;
+            margin: 20px auto;
+        }
+
+        .checkbox-item {
+            display: table-row;
+        }
+
+        .checkbox-box {
+            display: table-cell;
+            width: 60px;
+            padding: 10px 0;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        .checkbox-box::before {
+            content: '';
+            display: inline-block;
+            width: 40px;
+            height: 25px;
+            border: 2px solid #000;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .checkbox-label {
+            display: table-cell;
+            font-size: 14pt;
+            font-weight: 500;
+            text-align: center;
+            padding: 10px 0;
+            vertical-align: middle;
+        }
+
+        .date-signature {
+            margin: 30px 30px 10px 30px;
+            font-size: 13pt;
+            font-weight: 500;
+            border-bottom: 2px solid #000;
+            padding-bottom: 5px;
+        }
+
         @media print {
             body {
                 margin: 0;
@@ -223,6 +281,30 @@
                 </div>
             </div>
             <p class="nature-paiement">Nature du paiement :</p>
+
+            <!-- Types de dépenses -->
+            <div class="types-depenses">
+                <h2>Types de dépenses</h2>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <div class="checkbox-box"></div>
+                        <div class="checkbox-label">Bourses</div>
+                    </div>
+                    <div class="checkbox-item">
+                        <div class="checkbox-box"></div>
+                        <div class="checkbox-label">Primes</div>
+                    </div>
+                    <div class="checkbox-item">
+                        <div class="checkbox-box"></div>
+                        <div class="checkbox-label">Autres</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date et Signature -->
+            <div class="date-signature">
+                Date et Signature :
+            </div>
 
             <!-- Footer TrésorPay -->
             <div class="footer">
