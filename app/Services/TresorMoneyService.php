@@ -29,7 +29,6 @@ class TresorMoneyService
                 if ($stage instanceof Stage) {
                     return $stage->load([
                         'beneficiaire.communeResidence',
-                        'beneficiaire.sousPrefectureResidence',
                         'beneficiaire.typePaiement',
                         'entreprise',
                         'agence',
@@ -86,7 +85,7 @@ class TresorMoneyService
                 'nom' => $beneficiaire->nom,
                 'prenoms' => $beneficiaire->prenoms,
                 'fonction' => $stage->intitule_poste,
-                'lieu_residence' => $beneficiaire->sousPrefectureResidence?->nom
+                'lieu_residence' => $beneficiaire->sous_prefecture_residence
                     ?? $beneficiaire->communeResidence?->nom
                     ?? 'N/A',
                 'numero_tresormoney' => $beneficiaire->numero_tresor_money ?? 'N/A',
@@ -111,7 +110,7 @@ class TresorMoneyService
     {
         $mois = $mois ?? now()->format('Y-m');
 
-        return 'TRESOR_MONEY_'.str_replace('-', '_', $mois).'.pdf';
+        return 'TRESOR_MONEY_' . str_replace('-', '_', $mois) . '.pdf';
     }
 
     /**

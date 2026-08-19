@@ -21,7 +21,6 @@ class ContratPaeService
         try {
             $stage->load([
                 'beneficiaire.communeResidence',
-                'beneficiaire.sousPrefectureResidence',
                 'beneficiaire.typePaiement',
                 'entreprise.typeStructure',
                 'agence',
@@ -145,7 +144,7 @@ class ContratPaeService
                 'date_naissance' => $beneficiaire->date_naissance?->format('d/m/Y'),
                 'lieu_naissance' => $beneficiaire->lieuNaissance,
                 'commune_residence' => $beneficiaire->communeResidence?->nom,
-                'sous_prefecture_residence' => $beneficiaire->sousPrefectureResidence?->nom,
+                'sous_prefecture_residence' => $beneficiaire->sous_prefecture_residence,
                 'contact' => $beneficiaire->contact_telephonique,
                 'email' => $beneficiaire->email,
                 'intitule_poste_stage' => $fonction ?? $stage->intitule_poste,
@@ -188,8 +187,8 @@ class ContratPaeService
         return str_replace(
             ' ',
             '_',
-            'CONTRAT_'.$beneficiaire->nom.'_'.$beneficiaire->prenoms.'_'.$beneficiaire->numero_aej
-        ).'.pdf';
+            'CONTRAT_' . $beneficiaire->nom . '_' . $beneficiaire->prenoms . '_' . $beneficiaire->numero_aej
+        ) . '.pdf';
     }
 
     /**
