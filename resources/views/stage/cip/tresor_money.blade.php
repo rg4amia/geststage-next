@@ -15,7 +15,7 @@
         body {
             font-family: 'Georgia', serif;
             background-color: #f8f9fa;
-            line-height: 1.4;
+            line-height: 1.2;
             padding: 0px;
         }
 
@@ -25,6 +25,7 @@
             background: white;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
             page-break-after: always;
+            min-height: 277mm;
         }
 
         .container:last-child {
@@ -35,14 +36,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 15px 30px;
+            padding: 8px 20px;
             background: white;
             text-align: center;
             border-bottom: 2px solid #f0f0f0;
         }
 
         .header img {
-            width: 90%;
+            width: 85%;
             max-width: 100%;
             height: auto;
             object-fit: contain;
@@ -50,14 +51,14 @@
 
         .footer {
             background: white;
-            padding: 15px 0;
+            padding: 8px 0;
             text-align: center;
             color: white;
             display: flex;
             justify-content: center;
             align-items: center;
             border-top: 2px solid #f0f0f0;
-            margin-top: 20px;
+            margin-top: 10px;
         }
 
         .footer img {
@@ -77,15 +78,15 @@
         .form-section {
             max-width: 190mm;
             margin: 0 auto;
-            padding: 10px 30px;
+            padding: 5px 25px;
         }
 
         .form-group {
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            padding-bottom: 5px;
+            padding-bottom: 3px;
         }
 
         .form-group:last-child {
@@ -95,7 +96,7 @@
         label {
             width: 220px;
             font-weight: bold;
-            font-size: 13pt;
+            font-size: 12pt;
             color: #333;
             margin-right: 15px;
             flex-shrink: 0;
@@ -105,14 +106,14 @@
             width: auto;
             font-weight: normal;
             color: #000;
-            font-size: 13pt;
+            font-size: 12pt;
             min-width: 300px;
         }
 
         p {
-            font-size: 13pt;
-            margin-bottom: 5px;
-            padding-left: 30px;
+            font-size: 12pt;
+            margin-bottom: 3px;
+            padding-left: 25px;
             font-weight: 500;
             color: #444;
         }
@@ -120,30 +121,30 @@
         .nature-paiement {
             text-align: right;
             margin-top: 0px;
-            margin-bottom: 5px;
-            padding-right: 30px;
+            margin-bottom: 3px;
+            padding-right: 25px;
             font-weight: bold;
-            font-size: 13pt;
+            font-size: 12pt;
             color: #333;
         }
 
         .types-depenses {
             text-align: center;
-            margin: 30px 0;
-            padding: 0 30px;
+            margin: 10px 0;
+            padding: 0 25px;
         }
 
         .types-depenses h2 {
-            font-size: 16pt;
+            font-size: 14pt;
             font-weight: bold;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             color: #333;
         }
 
         .checkbox-group {
             display: table;
             width: 100%;
-            margin: 20px auto;
+            margin: 10px auto;
         }
 
         .checkbox-item {
@@ -153,7 +154,7 @@
         .checkbox-box {
             display: table-cell;
             width: 60px;
-            padding: 10px 0;
+            padding: 6px 0;
             text-align: center;
             vertical-align: middle;
         }
@@ -161,74 +162,69 @@
         .checkbox-box::before {
             content: '';
             display: inline-block;
-            width: 40px;
-            height: 25px;
+            width: 35px;
+            height: 22px;
             border: 2px solid #000;
-            border-radius: 8px;
+            border-radius: 6px;
             background: white;
         }
 
         .checkbox-label {
             display: table-cell;
-            font-size: 14pt;
+            font-size: 12pt;
             font-weight: 500;
             text-align: center;
-            padding: 10px 0;
+            padding: 6px 0;
             vertical-align: middle;
         }
 
         .date-signature {
-            margin: 30px 30px 10px 30px;
-            font-size: 13pt;
+            margin: 10px 25px 5px 25px;
+            font-size: 12pt;
             font-weight: 500;
             border-bottom: 2px solid #000;
-            padding-bottom: 5px;
+            padding-bottom: 3px;
         }
 
         @media print {
             body {
                 margin: 0;
-                padding: 10mm;
-                page-break-inside: avoid;
+                padding: 0;
             }
 
             .container {
                 page-break-inside: avoid;
                 page-break-after: always;
+                box-shadow: none;
             }
 
             .container:last-child {
                 page-break-after: auto;
             }
 
-            h1 {
-                font-size: 16pt;
-                margin-bottom: 15mm;
-            }
-
             .form-section {
                 max-width: 190mm;
                 page-break-inside: avoid;
-                padding: 15mm 20mm;
+                padding: 5mm 15mm;
             }
 
             .form-group {
-                margin-bottom: 8mm;
+                margin-bottom: 4mm;
                 border-bottom: 1px dotted #ccc;
-                padding-bottom: 5mm;
+                padding-bottom: 3mm;
             }
 
             label {
-                font-size: 13pt;
+                font-size: 11pt;
             }
 
             label:nth-child(2) {
-                font-size: 13pt;
+                font-size: 11pt;
             }
 
             @page {
                 size: A4;
-                margin: 10mm;
+                margin: 8mm;
             }
 
             * {
