@@ -1,0 +1,22 @@
+.awlist1, .awlist2, .awlist3, .awlist4, .awlist5, .awlist6, .awlist7 {
+    list-style: none;
+}
+
+.awlist1 { counter-reset: awlistcounter6_0; }
+.awlist2 { counter-reset: awlistcounter6_0 1; }
+.awlist3 { counter-reset: awlistcounter6_0 2; }
+.awlist4 { counter-reset: awlistcounter6_0 3; }
+.awlist5 { counter-reset: awlistcounter6_0 4; }
+.awlist6 { counter-reset: awlistcounter6_0 5; }
+.awlist7 { counter-reset: awlistcounter6_0 6; }
+
+.awlist1 > li:before,
+.awlist2 > li:before,
+.awlist3 > li:before,
+.awlist4 > li:before,
+.awlist5 > li:before,
+.awlist6 > li:before,
+.awlist7 > li:before {
+    content: counter(awlistcounter6_0) '-';
+    counter-increment: awlistcounter6_0;
+} 

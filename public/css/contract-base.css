@@ -1,0 +1,86 @@
+body {
+    line-height: 1.5;
+    font-family: 'Cambria', Arial, sans-serif;
+    color: #333;
+    font-size: 11pt;
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0;
+}
+
+p {
+    margin-bottom: 10px;
+    margin-top: 0;
+}
+
+h2 {
+    line-height: 1.3;
+    margin-bottom: 15px;
+    margin-top: 10px;
+    font-weight: 600;
+}
+
+h3 {
+    line-height: 1.4;
+    margin: 15px 0 10px;
+    border-top: none;
+    padding-top: 0;
+    font-weight: 600;
+}
+
+.contract-section {
+    margin-bottom: 20px;
+}
+
+li, table {
+    margin-top: 0pt;
+    margin-bottom: 8pt;
+}
+
+.BodyText {
+    margin-bottom: 6pt;
+    line-height: 115%;
+    font-family: 'Cambria', 'Cambria', serif;
+    font-size: 11pt;
+    font-weight: 500;
+    -aw-style-name: body-text;
+}
+
+.Footer, .Header {
+    margin-bottom: 0pt;
+    line-height: normal;
+    font-family: 'Cambria', 'Cambria', serif;
+    font-size: 11pt;
+}
+
+.Header {
+    -aw-style-name: header;
+}
+
+.Footer {
+    -aw-style-name: footer;
+}
+
+.ListParagraph {
+    margin-left: 36pt;
+    margin-bottom: 8pt;
+    line-height: 115%;
+    font-family: 'Cambria', 'Cambria', serif;
+    font-size: 11pt;
+    -aw-style-name: list-paragraph;
+}
+
+span.CorpsdetexteCar,
+span.En-tteCar,
+span.PieddepageCar {
+    font-family: 'Cambria';
+}
+
+span.ParagraphedelisteCar {
+    font-family: 'Cambria', 'Cambria', serif;
+}
+
+.declaration-text {
+    font-family: 'Cambria', serif;
+    font-size: 11pt;
+}
