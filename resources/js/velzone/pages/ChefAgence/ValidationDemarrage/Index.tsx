@@ -127,8 +127,12 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     /* ─── Modales ─── */
     const [modalAjournerOpen, setModalAjournerOpen] = useState(false);
     const [modalValiderOpen, setModalValiderOpen] = useState(false);
+    const [modalContratOpen, setModalContratOpen] = useState(false);
     const [previewRow, setPreviewRow] = useState<RowData | null>(null);
     const [motifAjournement, setMotifAjournement] = useState('');
+    const [contratRowId, setContratRowId] = useState<number | null>(null);
+    const [contratFonction, setContratFonction] = useState('');
+    const [contratMontant, setContratMontant] = useState('');
 
     /* ─── Filtres ─── */
     const [selectedFilters, setSelectedFilters] = useState({
@@ -363,6 +367,35 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         setActionData('ids', selectedRows);
         setMotifAjournement('');
         setModalAjournerOpen(true);
+    };
+
+    const openContratModal = (rowId: number) => {
+        setContratRowId(rowId);
+        setContratFonction('');
+        setContratMontant('');
+        setModalContratOpen(true);
+    };
+
+    const handleGenererContrat = () => {
+        if (!contratRowId) {
+            return;
+        }
+
+        const params = new URLSearchParams();
+        if (contratFonction.trim()) {
+            params.append('fonction', contratFonction.trim());
+        }
+        if (contratMontant.trim()) {
+            params.append('montant', contratMontant.trim());
+        }
+
+        const url = `/chefagence/validations/${contratRowId}/generer-contrat${params.toString() ? '?' + params.toString() : ''}`;
+        window.open(url, '_blank');
+
+        setModalContratOpen(false);
+        setContratRowId(null);
+        setContratFonction('');
+        setContratMontant('');
     };
 
     /* ─── Helper pour recharger les données après une action ─── */
@@ -658,9 +691,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                 color="success"
                                 size="sm"
                                 className="btn-icon"
-                                onClick={() => {
-                                    window.open(`/chefagence/validations/${row.id}/generer-contrat`, '_blank');
-                                }}
+                                onClick={() => openContratModal(row.id)}
                                 title="Générer le contrat"
                             >
                                 <i className="ri-file-text-line" />
@@ -1189,6 +1220,63 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 <ModalFooter>
                     <Button color="light" onClick={() => setPreviewRow(null)}>
                         Fermer
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ═══════════════════════════════════════════
+                MODALE — Génération de Contrat
+               ═══════════════════════════════════════════ */}
+            <Modal isOpen={modalContratOpen} toggle={() => setModalContratOpen(false)} centered>
+                <ModalHeader toggle={() => setModalContratOpen(false)} className="bg-success text-white">
+                    <i className="ri-file-text-line me-2" />
+                    Génération de Contrat
+                </ModalHeader>
+                <ModalBody>
+                    <p className="text-muted mb-3">
+                        <i className="ri-information-line me-1" />
+                        Personnalisez les informations avant de générer le contrat (optionnel)
+                    </p>
+                    <div className="mb-3">
+                        <Label htmlFor="contrat-fonction" className="form-label">
+                            Fonction du poste
+                        </Label>
+                        <Input
+                            type="text"
+                            id="contrat-fonction"
+                            placeholder="Ex: Assistant administratif, Développeur web..."
+                            value={contratFonction}
+                            onChange={(e) => setContratFonction(e.target.value)}
+                        />
+                        <small className="text-muted">
+                            Laissez vide pour utiliser la fonction enregistrée dans le dossier
+                        </small>
+                    </div>
+                    <div className="mb-3">
+                        <Label htmlFor="contrat-montant" className="form-label">
+                            Montant de l'indemnité (FCFA)
+                        </Label>
+                        <Input
+                            type="number"
+                            id="contrat-montant"
+                            placeholder="Ex: 100000"
+                            value={contratMontant}
+                            onChange={(e) => setContratMontant(e.target.value)}
+                            min="0"
+                            step="1000"
+                        />
+                        <small className="text-muted">
+                            Laissez vide pour utiliser le montant enregistré dans le dossier
+                        </small>
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalContratOpen(false)}>
+                        Annuler
+                    </Button>
+                    <Button color="success" onClick={handleGenererContrat}>
+                        <i className="ri-file-download-line me-1" />
+                        Générer le contrat
                     </Button>
                 </ModalFooter>
             </Modal>
