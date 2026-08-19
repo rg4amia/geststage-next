@@ -58,6 +58,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chefagence/validations/generer-tresor-money-group', [IndexChefAgenceController::class, 'genererTresorMoneyGroup'])->name('chefagence.validations.genererTresorMoneyGroup');
 
     // Historique des générations de documents
+    Route::get('/chefagence/historique', [HistoriqueGenerationController::class, 'page'])->name('chefagence.historique.page');
     Route::get('/chefagence/historique-generations', [HistoriqueGenerationController::class, 'index'])->name('chefagence.historique.index');
     Route::get('/chefagence/historique-generations/{uuid}', [HistoriqueGenerationController::class, 'show'])->name('chefagence.historique.show');
     Route::get('/chefagence/historique-generations/statistiques/global', [HistoriqueGenerationController::class, 'statistiques'])->name('chefagence.historique.statistiques');

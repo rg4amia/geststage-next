@@ -8,9 +8,19 @@ use App\Http\Controllers\Controller;
 use App\Models\HistoriqueGeneration;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
 
 class HistoriqueGenerationController extends Controller
 {
+    /**
+     * Affiche la page de l'historique
+     */
+    public function page(): Response
+    {
+        return Inertia::render('ChefAgence/HistoriqueGeneration/Index');
+    }
+
     /**
      * Liste l'historique des générations de documents
      */
@@ -92,13 +102,13 @@ class HistoriqueGenerationController extends Controller
 
         // Recherche par nom de fichier
         if ($request->has('nom_fichier')) {
-            $query->where('nom_fichier', 'like', '%' . $request->nom_fichier . '%');
+            $query->where('nom_fichier', 'like', '%'.$request->nom_fichier.'%');
         }
 
         // Recherche par matricule stagiaire
         if ($request->has('matricule')) {
             $query->whereHas('stage.beneficiaire', function ($q) use ($request) {
-                $q->where('numero_aej', 'like', '%' . $request->matricule . '%');
+                $q->where('numero_aej', 'like', '%'.$request->matricule.'%');
             });
         }
 
