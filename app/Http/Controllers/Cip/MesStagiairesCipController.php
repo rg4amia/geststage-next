@@ -3,17 +3,23 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
+use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Company\Entreprise;
+use App\Models\Document\Document;
+use App\Models\Document\VersionDocument;
+use App\Models\Internship\Stage;
 use App\Models\Reference\Agence;
 use App\Models\Reference\SituationStage;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeDocument;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
@@ -21,6 +27,22 @@ use Inertia\Inertia;
 
 class MesStagiairesCipController extends Controller
 {
+    /**
+     * Corbeilles CIP dans lesquelles un dossier n'a pas encore été (ou plus) transmis
+     * au Chef d'Agence : soumission initiale ou retour d'ajournement à corriger.
+     */
+    private const CORBEILLES_NON_TRANSMISES = [
+        CorbeilleEnum::CIP_MES_STAGIAIRES->value,
+        CorbeilleEnum::CIP_AJOURNE_CA->value,
+        CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        CorbeilleEnum::CIP_AJOURNE_DMG->value,
+        CorbeilleEnum::CIP_AJOURNE_AAF->value,
+    ];
+
+    private const CODE_DOCUMENT_CONTRAT = 'CONTRAT';
+
+    private const CODE_DOCUMENT_TRESOR_MONEY = 'TRESOR_MONEY';
+
     /**
      * Corbeille : Mes Stagiaires
      */
@@ -50,6 +72,8 @@ class MesStagiairesCipController extends Controller
             'stage.sourceFinancement',
             'stage.typeStage',
             'stage.contrats',
+            'stage.documents.typeDocument',
+            'stage.documents.versions',
             'stage.pointages.periode',
             'stage.pointages.versionCourante'
         ]);
@@ -197,7 +221,7 @@ class MesStagiairesCipController extends Controller
         $instance = InstanceParcours::findOrFail($id);
         $fonction = $request->query('fonction');
         $montant = $request->query('montant');
-        
+
         // TODO: Logique de génération PDF
         // Retourne un message temporaire pour le frontend
         return back()->with('success', "Le contrat pour {$instance->stage->beneficiaire->nom} a été généré avec succès.");
@@ -212,13 +236,15 @@ class MesStagiairesCipController extends Controller
             'contrat_stage' => 'required|file|mimes:pdf|max:5120', // 5MB max
         ]);
 
-        $instance = InstanceParcours::findOrFail($id);
+        $instance = InstanceParcours::with('stage.contrats')->findOrFail($id);
 
-        if ($request->hasFile('contrat_stage')) {
-            $path = $request->file('contrat_stage')->store('contrats_stagiaires', 'public');
-            // TODO: Enregistrer le chemin dans le modèle
-            // $instance->stage->update(['file_contrat' => $path]);
-        }
+        $this->deposerDocument(
+            $instance,
+            $request->file('contrat_stage'),
+            self::CODE_DOCUMENT_CONTRAT,
+            'Contrat',
+            'contrats_stagiaires'
+        );
 
         return back()->with('success', 'Contrat transféré avec succès.');
     }
@@ -229,7 +255,7 @@ class MesStagiairesCipController extends Controller
     public function genererTresorMoney(Request $request, $id)
     {
         $instance = InstanceParcours::findOrFail($id);
-        
+
         // TODO: Logique de génération de la fiche PDF
         return back()->with('success', "Fiche Trésor Money générée avec succès.");
     }
@@ -243,15 +269,101 @@ class MesStagiairesCipController extends Controller
             'tresor_money_file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
-        $instance = InstanceParcours::findOrFail($id);
+        $instance = InstanceParcours::with('stage.contrats')->findOrFail($id);
 
-        if ($request->hasFile('tresor_money_file')) {
-            $path = $request->file('tresor_money_file')->store('tresor_money_files', 'public');
-            // TODO: Enregistrer le chemin dans le modèle
-            // $instance->stage->update(['file_tresor_money' => $path]);
-        }
+        $this->deposerDocument(
+            $instance,
+            $request->file('tresor_money_file'),
+            self::CODE_DOCUMENT_TRESOR_MONEY,
+            'Fiche Trésor Money',
+            'tresor_money_files'
+        );
 
         return back()->with('success', 'Fiche Trésor Money enregistrée avec succès.');
+    }
+
+    /**
+     * Enregistre (ou remplace) un document rattaché au dossier, via le sous-système GED
+     * (documents / versions_documents), déjà utilisé par InscriptionStagiaireService::inscrire().
+     * Un même Document est réutilisé pour un (stage, type) donné : chaque nouvel upload crée
+     * une nouvelle VersionDocument plutôt qu'un nouveau Document, pour conserver l'historique.
+     */
+    private function deposerDocument(InstanceParcours $instance, UploadedFile $file, string $code, string $nomType, string $dossierStockage): Document
+    {
+        $stage = $instance->stage;
+        $contrat = $stage->contrats->first();
+        $user = Auth::user();
+
+        $typeDocument = TypeDocument::firstOrCreate(
+            ['code' => $code],
+            ['nom' => $nomType, 'actif' => true]
+        );
+
+        $document = Document::firstOrNew([
+            'stage_id' => $stage->id,
+            'type_document_id' => $typeDocument->id,
+        ]);
+        $document->beneficiaire_id = $stage->beneficiaire_id;
+        $document->contrat_id = $contrat?->id;
+        $document->cree_par_id = $document->cree_par_id ?? $user?->id;
+        $document->nom = $file->getClientOriginalName();
+        $document->statut = 'VALIDE';
+        $document->prive = true;
+        $document->save();
+
+        $path = $file->store($dossierStockage.'/'.$stage->id, 'public');
+        $numeroVersion = $document->versions()->max('numero_version') + 1;
+
+        VersionDocument::create([
+            'document_id' => $document->id,
+            'depose_par_id' => $user?->id,
+            'numero_version' => $numeroVersion,
+            'disque' => 'public',
+            'chemin' => $path,
+            'nom_original' => $file->getClientOriginalName(),
+            'type_mime' => $file->getMimeType(),
+            'taille_octets' => $file->getSize(),
+            'empreinte_sha256' => hash_file('sha256', $file->getRealPath()),
+        ]);
+
+        return $document;
+    }
+
+    /**
+     * Le CIP transmet le dossier au Chef d'Agence (démarrage ou démarrage omis selon la date
+     * de début). N'est autorisé que si le contrat signé et, pour un paiement Trésor Money, la
+     * fiche Trésor Money ont déjà été déposés — cf. WorkflowTransitionService::submitToChefAgence.
+     */
+    public function transmettreChefAgence(Request $request, $id, WorkflowTransitionService $workflow)
+    {
+        $instance = InstanceParcours::with(['stage.beneficiaire.typePaiement', 'stage.documents.typeDocument'])->findOrFail($id);
+
+        if (! in_array($instance->corbeille_actuelle, self::CORBEILLES_NON_TRANSMISES, true)) {
+            return back()->with('error', 'Ce dossier a déjà été transmis au Chef d\'Agence.');
+        }
+
+        $documents = $instance->stage->documents;
+        $aContrat = $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_CONTRAT);
+
+        $requiertTresorMoney = $instance->stage->beneficiaire?->typePaiement?->code === 'TRESOR_MONEY';
+        $aTresorMoney = ! $requiertTresorMoney
+            || $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_TRESOR_MONEY);
+
+        $manquants = [];
+        if (! $aContrat) {
+            $manquants[] = 'le contrat signé';
+        }
+        if (! $aTresorMoney) {
+            $manquants[] = 'la fiche Trésor Money';
+        }
+
+        if (! empty($manquants)) {
+            return back()->with('error', 'Transmission impossible : '.implode(' et ', $manquants).' manquant(s).');
+        }
+
+        $workflow->submitToChefAgence($instance);
+
+        return back()->with('success', 'Dossier transmis au Chef d\'Agence avec succès.');
     }
 
     /**
@@ -260,7 +372,7 @@ class MesStagiairesCipController extends Controller
     public function destroy($id)
     {
         $instance = InstanceParcours::findOrFail($id);
-        
+
         // Note: Selon la logique métier, on supprime l'instance, ou le stage associé
         $instance->delete();
 

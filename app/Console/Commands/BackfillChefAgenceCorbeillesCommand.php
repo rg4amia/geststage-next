@@ -48,11 +48,18 @@ class BackfillChefAgenceCorbeillesCommand extends Command
             return self::FAILURE;
         }
 
-        // Seuls les dossiers avec etat_chef_agence=0 && date_chef_agence NULL passent par la
-        // branche corrigée de mapChefAgenceCorbeille().
+        // Seuls les dossiers avec etat_chef_agence=0 && date_chef_agence "vide" passent par la
+        // branche corrigée de mapChefAgenceCorbeille(). MySQL stocke parfois une date "zéro"
+        // ('0000-00-00 00:00:00') plutôt qu'un vrai NULL pour ce champ : LegacyMapperService::
+        // normalizeLegacyDate() traite déjà les deux comme équivalents (null), donc le candidat
+        // doit aussi couvrir ce cas, sous peine de laisser des dossiers mal classés par
+        // l'ancienne migration (sans le correctif) hors du périmètre du backfill.
         $query = DB::connection('legacy')->table('contrats_pae')
             ->where('etat_chef_agence', 0)
-            ->whereNull('date_chef_agence');
+            ->where(function ($q) {
+                $q->whereNull('date_chef_agence')
+                    ->orWhere('date_chef_agence', '0000-00-00 00:00:00');
+            });
 
         $total = $query->count();
         $this->info("Contrats legacy candidats (etat_chef_agence=0, date_chef_agence null) : {$total}");
