@@ -141,7 +141,9 @@ class ContratPaeService
                 'numero_aej' => $beneficiaire->numero_aej,
                 'num_piece' => $beneficiaire->numero_piece_identite,
                 'nature_piece' => $beneficiaire->typePieceIdentite?->nom,
-                'date_naissance' => $beneficiaire->date_naissance?->format('d/m/Y'),
+                'date_naissance' => $beneficiaire->date_naissance instanceof \Carbon\Carbon
+                    ? $beneficiaire->date_naissance->format('d/m/Y')
+                    : $beneficiaire->date_naissance,
                 'lieu_naissance' => $beneficiaire->lieuNaissance,
                 'commune_residence' => $beneficiaire->communeResidence?->nom,
                 'sous_prefecture_residence' => $beneficiaire->sous_prefecture_residence,
@@ -149,8 +151,12 @@ class ContratPaeService
                 'email' => $beneficiaire->email,
                 'intitule_poste_stage' => $fonction ?? $stage->intitule_poste,
                 'montant_indemnite' => $montant ?? $stage->montant_indemnite,
-                'date_debut' => $stage->date_debut?->format('d/m/Y'),
-                'date_fin_prevue' => $stage->date_fin_prevue?->format('d/m/Y'),
+                'date_debut' => $stage->date_debut instanceof \Carbon\Carbon
+                    ? $stage->date_debut->format('d/m/Y')
+                    : $stage->date_debut,
+                'date_fin_prevue' => $stage->date_fin_prevue instanceof \Carbon\Carbon
+                    ? $stage->date_fin_prevue->format('d/m/Y')
+                    : $stage->date_fin_prevue,
                 'duree_mois' => $stage->duree_mois,
                 'entreprise' => (object) [
                     'libelle_entreprise' => $entreprise->raison_sociale,

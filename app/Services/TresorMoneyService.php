@@ -97,8 +97,12 @@ class TresorMoneyService
                 'agence' => $stage->agence?->nom,
                 'type_financement' => $stage->sourceFinancement?->nom,
                 'montant_indemnite' => $stage->montant_indemnite,
-                'date_debut' => $stage->date_debut?->format('d/m/Y'),
-                'date_fin_prevue' => $stage->date_fin_prevue?->format('d/m/Y'),
+                'date_debut' => $stage->date_debut instanceof \Carbon\Carbon
+                    ? $stage->date_debut->format('d/m/Y')
+                    : $stage->date_debut,
+                'date_fin_prevue' => $stage->date_fin_prevue instanceof \Carbon\Carbon
+                    ? $stage->date_fin_prevue->format('d/m/Y')
+                    : $stage->date_fin_prevue,
             ];
         });
     }

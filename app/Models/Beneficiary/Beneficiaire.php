@@ -35,6 +35,17 @@ class Beneficiaire extends Model
     protected $guarded = [];
 
     /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'date_naissance' => 'date',
+        'annee_diplome' => 'integer',
+        'actif' => 'boolean',
+    ];
+
+    /**
      * Les stages du bénéficiaire.
      */
     public function stages(): HasMany

@@ -39,6 +39,20 @@ class Stage extends Model
     protected $guarded = [];
 
     /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'date_debut' => 'date',
+        'date_fin_prevue' => 'date',
+        'date_fin_effective' => 'date',
+        'date_demarrage_capitalisation' => 'date',
+        'date_demarrage_capitalisation_sans_financiere' => 'date',
+        'date_entree_portefeuille' => 'date',
+    ];
+
+    /**
      * L'entreprise d'accueil.
      */
     public function entreprise(): BelongsTo
