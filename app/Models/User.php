@@ -72,4 +72,17 @@ class User extends Authenticatable implements PasskeyUser
             'two_factor_confirmed_at' => 'datetime',
         ];
     }
+
+    /**
+     * Les périmètres d'agences de l'utilisateur.
+     */
+    public function perimetresAgences()
+    {
+        return $this->belongsToMany(
+            \App\Models\Reference\Agence::class,
+            'perimetres_agences_utilisateurs',
+            'user_id',
+            'agence_id'
+        )->withTimestamps()->withPivot('valide_du', 'valide_au');
+    }
 }

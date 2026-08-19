@@ -167,6 +167,7 @@ class ContratPaeService
                 'agence' => (object) [
                     'libelle_agence' => $stage->agence?->nom,
                     'nom' => $stage->agence?->nom,
+                    'chef_agence' => $stage->agence?->chef_agence ?? 'N/A',
                 ],
                 'typestage' => (object) [
                     'libelle_type_stage' => $stage->typeStage?->nom,
@@ -175,11 +176,13 @@ class ContratPaeService
                     'libelle_financement' => $stage->sourceFinancement?->nom,
                 ],
                 'conseiller' => (object) [
-                    'nom_prenoms' => $stage->chefProjet?->nom_complet ?? 'N/A',
+                    'nom_prenoms' => $stage->conseiller?->nom_complet ?? 'N/A',
                 ],
             ],
             'fonction' => $fonction,
             'montant' => $montant,
+            'agence' => $stage->agence,
+            'conseiller' => $stage->conseiller?->nom_complet ?? 'N/A',
         ];
     }
 

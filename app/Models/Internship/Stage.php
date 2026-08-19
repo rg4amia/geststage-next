@@ -92,9 +92,20 @@ class Stage extends Model
         return $this->belongsTo(TypeStage::class);
     }
 
+    /**
+     * Le programme associé au stage.
+     */
     public function programme(): BelongsTo
     {
         return $this->belongsTo(Programme::class, 'programme_id');
+    }
+
+    /**
+     * Le conseiller en charge du stage.
+     */
+    public function conseiller(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Reference\Conseiller::class, 'conseiller_id');
     }
 
     /**
