@@ -108,4 +108,3 @@ class TresorMoneyService
         return 'TRESOR_MONEY_'.str_replace('-', '_', $mois).'.pdf';
     }
 }
-

@@ -18,6 +18,8 @@ use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
+use App\Services\ContratPaeService;
+use App\Services\TresorMoneyService;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
@@ -154,19 +156,19 @@ class MesStagiairesCipController extends Controller
         $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
         // Shell Inertia — données de filtres
-        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn() => Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
         $entreprises = Cache::remember(
-            'filter_entreprises_mes_stagiaires_' . ($user->id ?? '0'),
+            'filter_entreprises_mes_stagiaires_'.($user->id ?? '0'),
             1800,
-            fn() => Entreprise::when($user && $user->agence_id, function ($q) use ($user) {
+            fn () => Entreprise::when($user && $user->agence_id, function ($q) use ($user) {
                 $q->where('agence_id', $user->agence_id);
             })->orderBy('raison_sociale')->pluck('raison_sociale', 'id')->toArray()
         );
-        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn() => SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn() => TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn() => TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $etapes = Cache::remember('filter_etapes_mes_stagiaires', 1800, fn() => EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $situationstages = Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn() => SituationStage::orderBy('nom')->pluck('nom', 'code')->toArray());
+        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $etapes = Cache::remember('filter_etapes_mes_stagiaires', 1800, fn () => EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $situationstages = Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn () => SituationStage::orderBy('nom')->pluck('nom', 'code')->toArray());
 
         return Inertia::render('Cip/MesStagiaires/Index', [
             'instances' => $instances,
@@ -223,7 +225,7 @@ class MesStagiairesCipController extends Controller
         $fonction = $request->query('fonction');
         $montant = $request->query('montant') ? (float) $request->query('montant') : null;
 
-        $service = app(\App\Services\ContratPaeService::class);
+        $service = app(ContratPaeService::class);
 
         try {
             $pdf = $service->genererContratPdf($instance->stage, $fonction, $montant);
@@ -231,7 +233,7 @@ class MesStagiairesCipController extends Controller
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la génération du contrat : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la génération du contrat : '.$e->getMessage());
         }
     }
 
@@ -264,7 +266,7 @@ class MesStagiairesCipController extends Controller
     {
         $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
 
-        $service = app(\App\Services\TresorMoneyService::class);
+        $service = app(TresorMoneyService::class);
 
         try {
             $pdf = $service->genererFichierTresorMoney(collect([$instance->stage]));
@@ -272,7 +274,7 @@ class MesStagiairesCipController extends Controller
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : '.$e->getMessage());
         }
     }
 
@@ -327,7 +329,7 @@ class MesStagiairesCipController extends Controller
         $document->prive = true;
         $document->save();
 
-        $path = $file->store($dossierStockage . '/' . $stage->id, 'public');
+        $path = $file->store($dossierStockage.'/'.$stage->id, 'public');
         $numeroVersion = $document->versions()->max('numero_version') + 1;
 
         VersionDocument::create([
@@ -359,11 +361,11 @@ class MesStagiairesCipController extends Controller
         }
 
         $documents = $instance->stage->documents;
-        $aContrat = $documents->contains(fn($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_CONTRAT);
+        $aContrat = $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_CONTRAT);
 
         $requiertTresorMoney = $instance->stage->beneficiaire?->typePaiement?->code === 'TRESOR_MONEY';
         $aTresorMoney = ! $requiertTresorMoney
-            || $documents->contains(fn($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_TRESOR_MONEY);
+            || $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_TRESOR_MONEY);
 
         $manquants = [];
         if (! $aContrat) {
@@ -374,7 +376,7 @@ class MesStagiairesCipController extends Controller
         }
 
         if (! empty($manquants)) {
-            return back()->with('error', 'Transmission impossible : ' . implode(' et ', $manquants) . ' manquant(s).');
+            return back()->with('error', 'Transmission impossible : '.implode(' et ', $manquants).' manquant(s).');
         }
 
         $workflow->submitToChefAgence($instance);

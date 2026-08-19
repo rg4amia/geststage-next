@@ -15,6 +15,8 @@ use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
+use App\Services\ContratPaeService;
+use App\Services\TresorMoneyService;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -52,10 +54,10 @@ class IndexChefAgenceController extends Controller
                 $query->where('stages.agence_id', $user->agence_id);
             })
             // Filtres additionnels communs (agence, entreprise, financement, type stage, structure)
-            ->when($request->filled('agence_id'), fn(Builder $q) => $q->where('stages.agence_id', $request->integer('agence_id')))
-            ->when($request->filled('entreprise_id'), fn(Builder $q) => $q->where('stages.entreprise_id', $request->integer('entreprise_id')))
-            ->when($request->filled('typesfinancement_id'), fn(Builder $q) => $q->where('stages.source_financement_id', $request->integer('typesfinancement_id')))
-            ->when($request->filled('typestage_id'), fn(Builder $q) => $q->where('stages.type_stage_id', $request->integer('typestage_id')))
+            ->when($request->filled('agence_id'), fn (Builder $q) => $q->where('stages.agence_id', $request->integer('agence_id')))
+            ->when($request->filled('entreprise_id'), fn (Builder $q) => $q->where('stages.entreprise_id', $request->integer('entreprise_id')))
+            ->when($request->filled('typesfinancement_id'), fn (Builder $q) => $q->where('stages.source_financement_id', $request->integer('typesfinancement_id')))
+            ->when($request->filled('typestage_id'), fn (Builder $q) => $q->where('stages.type_stage_id', $request->integer('typestage_id')))
             ->selectRaw("TO_CHAR(stages.date_debut, 'YYYY-MM') as mois, COUNT(*) as total")
             ->groupByRaw("TO_CHAR(stages.date_debut, 'YYYY-MM')")
             ->orderByDesc('mois')
@@ -94,7 +96,7 @@ class IndexChefAgenceController extends Controller
             ->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value)
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn(InstanceParcours $instance) => $this->formatRow($instance))
+            ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
             ->values();
 
         // Filtre mois : accepte soit mois_debut (format 'Y-m', ex: '2026-08') directement,
@@ -151,14 +153,14 @@ class IndexChefAgenceController extends Controller
             ->tap($applyMoisFilter)
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn(InstanceParcours $instance) => $this->formatRow($instance))
+            ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
             ->values();
 
         $retourAjournement = (clone $query)
             ->where('corbeille_actuelle', CorbeilleEnum::CA_RETOUR_AJOURNEMENT->value)
             ->orderByDesc('created_at')
             ->get()
-            ->map(fn(InstanceParcours $instance) => $this->formatRow($instance))
+            ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
             ->values();
 
         // Compteurs par onglet (pour les cartes statistiques du frontend)
@@ -182,12 +184,12 @@ class IndexChefAgenceController extends Controller
         }
 
         return Inertia::render('ChefAgence/ValidationDemarrage/Index', [
-            'agences' => Cache::remember('ref.agences', 86400, fn() => Agence::query()->orderBy('nom')->pluck('nom', 'id')),
-            'entreprises' => Cache::remember('ref.entreprises', 86400, fn() => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id')),
-            'typesfinancements' => Cache::remember('ref.typesfinancements', 86400, fn() => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id')),
-            'typestages' => Cache::remember('ref.typestages', 86400, fn() => TypeStage::query()->orderBy('nom')->pluck('nom', 'id')),
-            'typestructures' => Cache::remember('ref.typestructures', 86400, fn() => TypeStructure::query()->orderBy('nom')->pluck('nom', 'id')),
-            'periodes' => Cache::remember('ref.periodes', 86400, fn() => Periode::query()->orderByDesc('code')->pluck('code', 'id')),
+            'agences' => Cache::remember('ref.agences', 86400, fn () => Agence::query()->orderBy('nom')->pluck('nom', 'id')),
+            'entreprises' => Cache::remember('ref.entreprises', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id')),
+            'typesfinancements' => Cache::remember('ref.typesfinancements', 86400, fn () => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id')),
+            'typestages' => Cache::remember('ref.typestages', 86400, fn () => TypeStage::query()->orderBy('nom')->pluck('nom', 'id')),
+            'typestructures' => Cache::remember('ref.typestructures', 86400, fn () => TypeStructure::query()->orderBy('nom')->pluck('nom', 'id')),
+            'periodes' => Cache::remember('ref.periodes', 86400, fn () => Periode::query()->orderByDesc('code')->pluck('code', 'id')),
             'filters' => $filters,
         ]);
     }
@@ -244,7 +246,7 @@ class IndexChefAgenceController extends Controller
             $count++;
         }
 
-        return back()->with('success', $count . ' dossier(s) validé(s) avec succès.');
+        return back()->with('success', $count.' dossier(s) validé(s) avec succès.');
     }
 
     public function ajournerGroup(Request $request)
@@ -300,12 +302,12 @@ class IndexChefAgenceController extends Controller
                         'statut' => 'OUVERT',
                     ]);
                 } catch (\Exception $e) {
-                    Log::warning("Impossible d'enregistrer l'ajournement complet pour l'instance {$instance->id}: " . $e->getMessage());
+                    Log::warning("Impossible d'enregistrer l'ajournement complet pour l'instance {$instance->id}: ".$e->getMessage());
                 }
             }
         });
 
-        return back()->with('success', $instances->count() . ' dossier(s) ajourné(s) avec succès.');
+        return back()->with('success', $instances->count().' dossier(s) ajourné(s) avec succès.');
     }
 
     public function genererAddGroup(Request $request)
@@ -316,7 +318,7 @@ class IndexChefAgenceController extends Controller
             'type' => ['nullable', 'string'],
         ]);
 
-        return back()->with('success', 'La génération d\'ADD a été déclenchée pour ' . count($data['ids']) . ' dossier(s).');
+        return back()->with('success', 'La génération d\'ADD a été déclenchée pour '.count($data['ids']).' dossier(s).');
     }
 
     /**
@@ -332,7 +334,7 @@ class IndexChefAgenceController extends Controller
         $fonction = $request->query('fonction');
         $montant = $request->query('montant') ? (float) $request->query('montant') : null;
 
-        $service = app(\App\Services\ContratPaeService::class);
+        $service = app(ContratPaeService::class);
 
         try {
             $pdf = $service->genererContratPdf($instance->stage, $fonction, $montant);
@@ -345,7 +347,7 @@ class IndexChefAgenceController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Erreur lors de la génération du contrat : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la génération du contrat : '.$e->getMessage());
         }
     }
 
@@ -370,7 +372,7 @@ class IndexChefAgenceController extends Controller
             return back()->with('error', 'Aucun stage trouvé pour les IDs sélectionnés.');
         }
 
-        $service = app(\App\Services\TresorMoneyService::class);
+        $service = app(TresorMoneyService::class);
 
         try {
             $pdf = $service->genererFichierTresorMoney($stages);
@@ -383,7 +385,7 @@ class IndexChefAgenceController extends Controller
                 'error' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : '.$e->getMessage());
         }
     }
 
@@ -404,24 +406,24 @@ class IndexChefAgenceController extends Controller
             // Le CA ne voit que les dossiers de son agence (comme le legacy).
             // Si l'utilisateur n'a pas d'agence assignée (superadmin), on ne filtre pas.
             ->when($user->agence_id, function (Builder $query) use ($user): void {
-                $query->whereHas('stage', fn(Builder $stageQuery) => $stageQuery->where('agence_id', $user->agence_id));
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('agence_id', $user->agence_id));
             })
             // ─── FILTRES ADDITIONNELS (surchargent le scope agence si passés) ──
             ->when($request->filled('agence_id'), function (Builder $query) use ($request): void {
-                $query->whereHas('stage', fn(Builder $stageQuery) => $stageQuery->where('agence_id', $request->integer('agence_id')));
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('agence_id', $request->integer('agence_id')));
             })
             ->when($request->filled('entreprise_id'), function (Builder $query) use ($request): void {
-                $query->whereHas('stage', fn(Builder $stageQuery) => $stageQuery->where('entreprise_id', $request->integer('entreprise_id')));
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('entreprise_id', $request->integer('entreprise_id')));
             })
             ->when($request->filled('typesfinancement_id'), function (Builder $query) use ($request): void {
-                $query->whereHas('stage', fn(Builder $stageQuery) => $stageQuery->where('source_financement_id', $request->integer('typesfinancement_id')));
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('source_financement_id', $request->integer('typesfinancement_id')));
             })
             ->when($request->filled('typestage_id'), function (Builder $query) use ($request): void {
-                $query->whereHas('stage', fn(Builder $stageQuery) => $stageQuery->where('type_stage_id', $request->integer('typestage_id')));
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('type_stage_id', $request->integer('typestage_id')));
             })
             ->when($request->filled('type_structure_id'), function (Builder $query) use ($request): void {
                 $query->whereHas('stage', function (Builder $stageQuery) use ($request): void {
-                    $stageQuery->whereHas('entreprise', fn(Builder $enterpriseQuery) => $enterpriseQuery->where('type_structure_id', $request->integer('type_structure_id')));
+                    $stageQuery->whereHas('entreprise', fn (Builder $enterpriseQuery) => $enterpriseQuery->where('type_structure_id', $request->integer('type_structure_id')));
                 });
             })
             ->when($request->filled('created_begin'), function (Builder $query) use ($request): void {
@@ -450,7 +452,7 @@ class IndexChefAgenceController extends Controller
             'type_stage' => $stage?->typeStage?->nom ?? '-',
             'type_structure' => $stage?->entreprise?->typeStructure?->nom ?? '-',
             'numero_aej' => $beneficiaire?->numero_aej ?? '-',
-            'nom_prenoms' => trim(($beneficiaire?->nom ?? '') . ' ' . ($beneficiaire?->prenoms ?? '')) ?: '-',
+            'nom_prenoms' => trim(($beneficiaire?->nom ?? '').' '.($beneficiaire?->prenoms ?? '')) ?: '-',
             'date_naissance' => $beneficiaire?->date_naissance ? Carbon::parse($beneficiaire->date_naissance)->format('d/m/Y') : '-',
             'sexe' => $beneficiaire?->sexe ?? '-',
             'contrat_label' => $contrat ? 'Avec Contrat' : 'Sans Contrat',
@@ -471,10 +473,10 @@ class IndexChefAgenceController extends Controller
         return InstanceParcours::query()
             ->with('stage')
             ->where('id', $id)
-            ->whereIn('corbeille_actuelle', array_map(fn(CorbeilleEnum $corbeille) => $corbeille->value, $corbeilles))
+            ->whereIn('corbeille_actuelle', array_map(fn (CorbeilleEnum $corbeille) => $corbeille->value, $corbeilles))
             // Vérification de sécurité : l'instance appartient bien à l'agence du CA
             ->when($user->agence_id, function (Builder $query) use ($user): void {
-                $query->whereHas('stage', fn(Builder $stageQuery) => $stageQuery->where('agence_id', $user->agence_id));
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('agence_id', $user->agence_id));
             })
             ->firstOrFail();
     }
