@@ -4,14 +4,17 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\HistoriqueGeneration;
 use App\Models\Internship\Stage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class ContratPaeService
 {
     /**
-     * Génère un PDF de contrat PAE pour un stage donné
+     * Génère un PDF de contrat PAE pour un stage donné et log l'historique
      */
     public function genererContratPdf(Stage $stage, ?string $fonction = null, ?float $montant = null): mixed
     {
@@ -73,6 +76,9 @@ class ContratPaeService
             );
 
             $pdf->setPaper('A4', 'portrait');
+
+            // Logger l'historique de génération
+            $this->logGeneration($stage, $fonction, $montant);
 
             return $pdf;
         } catch (\Exception $e) {
@@ -184,5 +190,34 @@ class ContratPaeService
             '_',
             'CONTRAT_'.$beneficiaire->nom.'_'.$beneficiaire->prenoms.'_'.$beneficiaire->numero_aej
         ).'.pdf';
+    }
+
+    /**
+     * Log la génération d'un contrat dans l'historique
+     */
+    private function logGeneration(Stage $stage, ?string $fonction, ?float $montant): void
+    {
+        try {
+            HistoriqueGeneration::create([
+                'uuid_public' => Str::uuid(),
+                'type_document' => 'CONTRAT',
+                'stage_id' => $stage->id,
+                'instance_parcours_id' => $stage->instancesParcours()->first()?->id,
+                'user_id' => Auth::id(),
+                'nom_fichier' => $this->genererNomFichier($stage),
+                'parametres' => [
+                    'fonction' => $fonction,
+                    'montant' => $montant,
+                ],
+                'source_financement' => $stage->sourceFinancement?->nom,
+                'type_stage' => $stage->typeStage?->nom,
+                'nombre_stagiaires' => 1,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Impossible de logger la génération du contrat', [
+                'stage_id' => $stage->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

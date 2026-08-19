@@ -4,15 +4,18 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Models\HistoriqueGeneration;
 use App\Models\Internship\Stage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 
 class TresorMoneyService
 {
     /**
-     * Génère un PDF de référence Trésor Money pour un ou plusieurs stages
+     * Génère un PDF de référence Trésor Money pour un ou plusieurs stages et log l'historique
      */
     public function genererFichierTresorMoney(Collection|array $stages): mixed
     {
@@ -54,6 +57,9 @@ class TresorMoneyService
             ]);
 
             $pdf->setPaper('A4', 'landscape');
+
+            // Logger l'historique de génération
+            $this->logGeneration($stages);
 
             return $pdf;
         } catch (\Exception $e) {
@@ -106,5 +112,34 @@ class TresorMoneyService
         $mois = $mois ?? now()->format('Y-m');
 
         return 'TRESOR_MONEY_'.str_replace('-', '_', $mois).'.pdf';
+    }
+
+    /**
+     * Log la génération d'un fichier Trésor Money dans l'historique
+     */
+    private function logGeneration(Collection $stages): void
+    {
+        try {
+            // Pour Trésor Money groupé, on peut créer une seule entrée avec le nombre de stagiaires
+            // ou une entrée par stagiaire. Ici on choisit une seule entrée groupée
+            $firstStage = $stages->first();
+
+            HistoriqueGeneration::create([
+                'uuid_public' => Str::uuid(),
+                'type_document' => 'TRESOR_MONEY',
+                'stage_id' => $firstStage?->id, // Premier stage comme référence
+                'user_id' => Auth::id(),
+                'nom_fichier' => $this->genererNomFichier(),
+                'parametres' => [
+                    'stage_ids' => $stages->pluck('id')->toArray(),
+                ],
+                'nombre_stagiaires' => $stages->count(),
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Impossible de logger la génération du fichier Trésor Money', [
+                'stage_count' => $stages->count(),
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AgentCompt\PaiementAcController;
 use App\Http\Controllers\Cb\PaiementCbController;
+use App\Http\Controllers\ChefAgence\HistoriqueGenerationController;
 use App\Http\Controllers\ChefAgence\IndexChefAgenceController;
 use App\Http\Controllers\ChefAgence\PointageChefAgenceController;
 use App\Http\Controllers\Cip\MesStagiairesCipController;
@@ -55,6 +56,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chefagence/validations/generer-add-group', [IndexChefAgenceController::class, 'genererAddGroup'])->name('chefagence.validations.genererAddGroup');
     Route::get('/chefagence/validations/{id}/generer-contrat', [IndexChefAgenceController::class, 'genererContrat'])->name('chefagence.validations.genererContrat');
     Route::post('/chefagence/validations/generer-tresor-money-group', [IndexChefAgenceController::class, 'genererTresorMoneyGroup'])->name('chefagence.validations.genererTresorMoneyGroup');
+
+    // Historique des générations de documents
+    Route::get('/chefagence/historique-generations', [HistoriqueGenerationController::class, 'index'])->name('chefagence.historique.index');
+    Route::get('/chefagence/historique-generations/{uuid}', [HistoriqueGenerationController::class, 'show'])->name('chefagence.historique.show');
+    Route::get('/chefagence/historique-generations/statistiques/global', [HistoriqueGenerationController::class, 'statistiques'])->name('chefagence.historique.statistiques');
+    Route::get('/chefagence/historique-generations/recherche/documents', [HistoriqueGenerationController::class, 'search'])->name('chefagence.historique.search');
 
     // Phase 5 : Pointages CIP
     Route::get('/cip/pointages', [PointageCipController::class, 'stagiaireAttentePointage'])->name('cip.pointages.index');
