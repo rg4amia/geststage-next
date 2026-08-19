@@ -244,18 +244,8 @@
         <div class="container">
             <!-- En-tête officiel -->
             <div class="header">
-                @if (file_exists(public_path('assets_tm/tm_header.png')))
-                    <img src="{{ public_path('assets_tm/tm_header.png') }}" alt="TrésorMoney Header">
-                @else
-                    <div style="text-align: center; padding: 20px;">
-                        <h2 style="margin: 0; font-size: 11pt;">MINISTÈRE DE L'ÉCONOMIE ET DES FINANCES</h2>
-                        <h3 style="margin: 5px 0; font-size: 10pt;">DIRECTION GÉNÉRALE DU TRÉSOR ET DE LA COMPTABILITÉ
-                            PUBLIQUE</h3>
-                        <h2 style="margin: 10px 0; font-size: 14pt; color: #ff8c00;">TrésorMoney</h2>
-                        <p style="margin: 0; font-size: 9pt;">RÉPUBLIQUE DE CÔTE D'IVOIRE</p>
-                        <p style="margin: 0; font-size: 8pt; font-style: italic;">Union - Discipline - Travail</p>
-                    </div>
-                @endif
+                <img src="{{ public_path('assets_tm/tm_header.png') }}" alt="TrésorMoney Header"
+                    style="width: 90%; max-width: 100%; height: auto;">
             </div>
 
             <!-- Contenu du formulaire -->
@@ -319,15 +309,8 @@
 
             <!-- Footer TrésorPay -->
             <div class="footer">
-                @if (file_exists(public_path('assets_tm/tm_footer.png')))
-                    <img src="{{ public_path('assets_tm/tm_footer.png') }}" alt="TrésorMoney Footer">
-                @else
-                    <div style="text-align: center; padding: 10px;">
-                        <h2 style="margin: 0; font-size: 14pt; color: #ff8c00;">TrésorPay®</h2>
-                        <p style="margin: 5px 0; font-size: 10pt; color: #4caf50;">L'INNOVATION QUI FACILITE VOS
-                            PAIEMENTS</p>
-                    </div>
-                @endif
+                <img src="{{ public_path('assets_tm/tm_footer.png') }}" alt="TrésorMoney Footer"
+                    style="width: 100%; max-width: 100%; height: auto;">
             </div>
         </div>
     @endforeach

@@ -53,6 +53,7 @@ class TresorMoneyService
                 'defaultFont' => 'Georgia',
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
+                'chroot' => public_path(),
             ]);
 
             $pdf->setPaper('A4', 'portrait');
