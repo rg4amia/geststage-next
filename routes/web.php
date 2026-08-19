@@ -40,8 +40,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Nouveaux endpoints pour les boutons d'action (Mes Stagiaires)
     Route::get('/cip/mes-stagiaires/{id}/generer-contrat', [MesStagiairesCipController::class, 'genererContrat'])->name('cip.mes-stagiaires.generer-contrat');
+    Route::get('/cip/mes-stagiaires/{id}/generer-contrat/json', [MesStagiairesCipController::class, 'genererContratJson'])->name('cip.mes-stagiaires.generer-contrat-json');
     Route::post('/cip/mes-stagiaires/{id}/transferer-contrat', [MesStagiairesCipController::class, 'transfererContrat'])->name('cip.mes-stagiaires.transferer-contrat');
     Route::get('/cip/mes-stagiaires/{id}/generer-tresor-money', [MesStagiairesCipController::class, 'genererTresorMoney'])->name('cip.mes-stagiaires.generer-tresor-money');
+    Route::get('/cip/mes-stagiaires/{id}/generer-tresor-money/json', [MesStagiairesCipController::class, 'genererTresorMoneyJson'])->name('cip.mes-stagiaires.generer-tresor-money-json');
     Route::post('/cip/mes-stagiaires/{id}/upload-tresor-money', [MesStagiairesCipController::class, 'uploadTresorMoney'])->name('cip.mes-stagiaires.upload-tresor-money');
     Route::post('/cip/mes-stagiaires/{id}/transmettre-chef-agence', [MesStagiairesCipController::class, 'transmettreChefAgence'])->name('cip.mes-stagiaires.transmettre-chef-agence');
     Route::delete('/cip/mes-stagiaires/{id}', [MesStagiairesCipController::class, 'destroy'])->name('cip.mes-stagiaires.destroy');

@@ -217,7 +217,7 @@ class MesStagiairesCipController extends Controller
     }
 
     /**
-     * Générer le contrat de stage
+     * Générer le contrat de stage (stream direct)
      */
     public function genererContrat(Request $request, $id)
     {
@@ -234,6 +234,38 @@ class MesStagiairesCipController extends Controller
             return $pdf->stream($filename);
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la génération du contrat : '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Générer le contrat et retourner l'URL en JSON (pour aperçu iframe)
+     */
+    public function genererContratJson(Request $request, $id)
+    {
+        $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
+        $fonction = $request->query('fonction');
+        $montant = $request->query('montant') ? (float) $request->query('montant') : null;
+
+        $service = app(ContratPaeService::class);
+
+        try {
+            $pdf = $service->genererContratPdf($instance->stage, $fonction, $montant);
+            $filename = $service->genererNomFichier($instance->stage);
+
+            // Stocker temporairement dans storage/app/public/pdf-preview (30 min)
+            $tmpKey = \Illuminate\Support\Str::uuid();
+            $path = "pdf-preview/{$tmpKey}_{$filename}";
+            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $pdf->output());
+
+            // Nettoyer les anciens fichiers temporaires (> 30 min)
+            $this->nettoyerPdfTemporaires();
+
+            return response()->json([
+                'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                'filename' => $filename,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Erreur lors de la génération du contrat : '.$e->getMessage()], 500);
         }
     }
 
@@ -260,7 +292,7 @@ class MesStagiairesCipController extends Controller
     }
 
     /**
-     * Générer la fiche Trésor Money
+     * Générer la fiche Trésor Money (stream direct)
      */
     public function genererTresorMoney(Request $request, $id)
     {
@@ -275,6 +307,56 @@ class MesStagiairesCipController extends Controller
             return $pdf->stream($filename);
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Générer la fiche Trésor Money et retourner l'URL en JSON (pour aperçu iframe)
+     */
+    public function genererTresorMoneyJson(Request $request, $id)
+    {
+        $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
+
+        $service = app(TresorMoneyService::class);
+
+        try {
+            $pdf = $service->genererFichierTresorMoney(collect([$instance->stage]));
+            $filename = $service->genererNomFichier();
+
+            // Stocker temporairement dans storage/app/public/pdf-preview (30 min)
+            $tmpKey = \Illuminate\Support\Str::uuid();
+            $path = "pdf-preview/{$tmpKey}_{$filename}";
+            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $pdf->output());
+
+            // Nettoyer les anciens fichiers temporaires (> 30 min)
+            $this->nettoyerPdfTemporaires();
+
+            return response()->json([
+                'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                'filename' => $filename,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['error' => 'Erreur lors de la génération du fichier Trésor Money : '.$e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Supprime les fichiers PDF temporaires de prévisualisation de plus de 30 minutes
+     */
+    private function nettoyerPdfTemporaires(): void
+    {
+        try {
+            $disk = \Illuminate\Support\Facades\Storage::disk('public');
+            $files = $disk->files('pdf-preview');
+            $limite = now()->subMinutes(30)->timestamp;
+
+            foreach ($files as $file) {
+                if ($disk->lastModified($file) < $limite) {
+                    $disk->delete($file);
+                }
+            }
+        } catch (\Exception $e) {
+            // Silencieux : le nettoyage est best-effort
         }
     }
 

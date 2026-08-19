@@ -64,6 +64,62 @@ const MesStagiaires = () => {
     const [modalDossierChefAgence, setModalDossierChefAgence] = useState(false);
     const [modalDelete, setModalDelete] = useState(false);
 
+    // État pour la modale d'aperçu PDF (Contrat / Trésor Money)
+    const [modalPdfPreview, setModalPdfPreview] = useState(false);
+    const [pdfPreviewUrl, setPdfPreviewUrl] = useState('');       // blob: URL
+    const [pdfPreviewOriginalUrl, setPdfPreviewOriginalUrl] = useState(''); // URL réelle pour téléchargement
+    const [pdfPreviewTitle, setPdfPreviewTitle] = useState('');
+    const [pdfPreviewLoading, setPdfPreviewLoading] = useState(false);
+    const [pdfPreviewError, setPdfPreviewError] = useState('');
+
+    const openPdfPreview = async (url: string, title: string) => {
+        setPdfPreviewTitle(title);
+        setPdfPreviewOriginalUrl(url);
+        setPdfPreviewUrl('');
+        setPdfPreviewError('');
+        setPdfPreviewLoading(true);
+        setModalPdfPreview(true);
+
+        // Appeler l'endpoint /json qui génère le PDF côté serveur et retourne une URL statique
+        // Cette URL pointe vers storage/public et est accessible directement par l'iframe (pas d'Inertia)
+        const jsonUrl = url.includes('?')
+            ? url.replace(/(\?|$)/, '/json$1')
+            : `${url}/json`;
+
+        try {
+            const response = await fetch(jsonUrl, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || data.error) {
+                throw new Error(data.error || `Erreur ${response.status}`);
+            }
+
+            // data.url est une URL statique vers storage/public → l'iframe peut la charger sans problème
+            setPdfPreviewUrl(data.url);
+        } catch (err: any) {
+            setPdfPreviewError(err.message || 'Une erreur est survenue lors du chargement du PDF.');
+        } finally {
+            setPdfPreviewLoading(false);
+        }
+    };
+
+    const closePdfPreview = () => {
+        setModalPdfPreview(false);
+        setPdfPreviewUrl('');
+        setPdfPreviewOriginalUrl('');
+        setPdfPreviewTitle('');
+        setPdfPreviewError('');
+        setPdfPreviewLoading(false);
+    };
+
     const genererContratForm = useForm({
         fonction_dg: '',
         montant: '',
@@ -948,7 +1004,8 @@ e.preventDefault();
                                 className="d-flex gap-2 align-items-end mt-3 pt-2 border-top"
                                 onSubmit={(e) => {
                                     e.preventDefault();
-                                    window.open(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-contrat?fonction=${genererContratForm.data.fonction_dg}&montant=${genererContratForm.data.montant}`, '_blank');
+                                    const url = `/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-contrat?fonction=${encodeURIComponent(genererContratForm.data.fonction_dg)}&montant=${encodeURIComponent(genererContratForm.data.montant)}`;
+                                    openPdfPreview(url, `Contrat — ${selectedActionStagiaire?.stage?.beneficiaire?.nom ?? ''} ${selectedActionStagiaire?.stage?.beneficiaire?.prenoms ?? ''}`);
                                 }}
                             >
                                 <div>
@@ -999,11 +1056,12 @@ e.preventDefault();
                                 <Button
                                     color="light"
                                     size="sm"
-                                    tag="a"
-                                    href={`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-tresor-money`}
-                                    target="_blank"
+                                    onClick={() => openPdfPreview(
+                                        `/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-tresor-money`,
+                                        `Fiche Trésor Money — ${selectedActionStagiaire?.stage?.beneficiaire?.nom ?? ''} ${selectedActionStagiaire?.stage?.beneficiaire?.prenoms ?? ''}`
+                                    )}
                                 >
-                                    Générer la fiche
+                                    <i className="ri-eye-line me-1"></i>Aperçu de la fiche
                                 </Button>
                             </CardBody>
                         </Card>
@@ -1043,6 +1101,49 @@ e.preventDefault();
                         <Button color="light" onClick={() => setModalDelete(false)} className="px-4">Non</Button>
                     </ModalFooter>
                 </Form>
+            </Modal>
+
+            {/* Modale aperçu PDF (Contrat / Trésor Money) */}
+            <Modal isOpen={modalPdfPreview} toggle={closePdfPreview} size="xl" fullscreen="lg">
+                <ModalHeader toggle={closePdfPreview} className="bg-dark text-white">
+                    <i className="ri-file-pdf-line me-2"></i>{pdfPreviewTitle}
+                </ModalHeader>
+                <ModalBody className="p-0" style={{ height: '80vh', overflow: 'hidden' }}>
+                    {pdfPreviewLoading && (
+                        <div className="d-flex flex-column align-items-center justify-content-center h-100 gap-3">
+                            <Spinner color="primary" style={{ width: '3rem', height: '3rem' }} />
+                            <span className="text-muted fs-14">Génération du document en cours…</span>
+                        </div>
+                    )}
+                    {pdfPreviewError && !pdfPreviewLoading && (
+                        <div className="d-flex flex-column align-items-center justify-content-center h-100 gap-3 text-center p-4">
+                            <i className="ri-error-warning-line display-4 text-danger"></i>
+                            <p className="text-danger fs-14 mb-0">{pdfPreviewError}</p>
+                            <Button color="outline-primary" size="sm" onClick={() => openPdfPreview(pdfPreviewOriginalUrl, pdfPreviewTitle)}>
+                                <i className="ri-refresh-line me-1"></i>Réessayer
+                            </Button>
+                        </div>
+                    )}
+                    {!pdfPreviewLoading && !pdfPreviewError && pdfPreviewUrl && (
+                        <iframe
+                            src={pdfPreviewUrl}
+                            style={{ width: '100%', height: '100%', border: 'none' }}
+                            title={pdfPreviewTitle}
+                        />
+                    )}
+                </ModalBody>
+                <ModalFooter>
+                    <Button
+                        color="primary"
+                        tag="a"
+                        href={pdfPreviewOriginalUrl}
+                        download
+                        disabled={!pdfPreviewOriginalUrl}
+                    >
+                        <i className="ri-download-line me-1"></i>Télécharger
+                    </Button>
+                    <Button color="light" onClick={closePdfPreview}>Fermer</Button>
+                </ModalFooter>
             </Modal>
 
         </React.Fragment>
