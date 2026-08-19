@@ -50,12 +50,12 @@ class TresorMoneyService
             $pdf = Pdf::loadView('stage.cip.tresor_money', $data);
 
             $pdf->setOptions([
-                'defaultFont' => 'Arial',
+                'defaultFont' => 'Georgia',
                 'isHtml5ParserEnabled' => true,
                 'isRemoteEnabled' => true,
             ]);
 
-            $pdf->setPaper('A4', 'landscape');
+            $pdf->setPaper('A4', 'portrait');
 
             // Logger l'historique de génération
             $this->logGeneration($stages);
