@@ -1,12 +1,18 @@
 <?php
+
+use App\Models\User;
+use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$kernel = $app->make(Illuminate\Contracts\Http\Kernel::class);
+$kernel = $app->make(Kernel::class);
 
-$user = \App\Models\User::where('email', 'admin@emploijeunes.ci')->first();
-\Illuminate\Support\Facades\Auth::login($user);
+$user = User::where('email', 'admin@emploijeunes.ci')->first();
+Auth::login($user);
 
-$request = \Illuminate\Http\Request::create('/cip/mes-stagiaires', 'GET');
+$request = Request::create('/cip/mes-stagiaires', 'GET');
 $request->headers->set('Accept', 'application/json');
 
 $response = $kernel->handle($request);

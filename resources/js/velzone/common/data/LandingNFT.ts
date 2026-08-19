@@ -7,12 +7,12 @@ import img03 from "../../assets/images/nft/img-03.jpg";
 import img05 from "../../assets/images/nft/img-05.jpg";
 import img06 from "../../assets/images/nft/img-06.jpg";
 import money from "../../assets/images/nft/money.png";
+import sell from "../../assets/images/nft/sell.png";
 import binance from "../../assets/images/nft/wallet/binance.png";
 import coinbase from "../../assets/images/nft/wallet/coinbase.png";
 import metamask from "../../assets/images/nft/wallet/metamask.png";
 
 import wallet from "../../assets/images/nft/wallet.png";
-import sell from "../../assets/images/nft/sell.png";
 
 import avatar10 from "../../assets/images/users/avatar-10.jpg";
 import avatar02 from "../../assets/images/users/avatar-2.jpg";

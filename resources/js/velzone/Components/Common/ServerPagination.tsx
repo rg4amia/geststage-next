@@ -108,26 +108,39 @@ const ServerPagination: React.FC<ServerPaginationProps> = ({
     // Récupère l'URL d'une page donnée en cherchant dans les links Laravel
     const getUrlForPage = (page: number): string | null => {
         const match = links.find((l) => {
-            if (!l.url) return false;
+            if (!l.url) {
+return false;
+}
+
             const params = new URL(l.url, window.location.origin).searchParams;
+
             return Number(params.get('page')) === page;
         });
 
         // Si on ne trouve pas (page 1 sans ?page=), on prend l'URL sans page
         if (!match) {
             const prevLink = links.find((l) => l.url && l.label.includes('Previous'));
+
             if (prevLink?.url) {
                 const base = new URL(prevLink.url, window.location.origin);
                 base.searchParams.delete('page');
-                if (page > 1) base.searchParams.set('page', String(page));
+
+                if (page > 1) {
+base.searchParams.set('page', String(page));
+}
+
                 return base.toString();
             }
+
             const nextLink = links.find((l) => l.url && l.label.includes('Next'));
+
             if (nextLink?.url) {
                 const base = new URL(nextLink.url, window.location.origin);
                 base.searchParams.set('page', String(page));
+
                 return base.toString();
             }
+
             return null;
         }
 
@@ -135,14 +148,18 @@ const ServerPagination: React.FC<ServerPaginationProps> = ({
     };
 
     const navigate = (page: number) => {
-        if (page < 1 || page > last_page) return;
+        if (page < 1 || page > last_page) {
+return;
+}
 
         if (onPageChange) {
             onPageChange(page);
+
             return;
         }
 
         const url = getUrlForPage(page);
+
         if (url) {
             router.get(url, {}, { preserveState: true, preserveScroll: true });
         }
@@ -153,7 +170,9 @@ const ServerPagination: React.FC<ServerPaginationProps> = ({
     // Formatage du total avec séparateur de milliers
     const fmt = (n: number) => n.toLocaleString('fr-FR');
 
-    if (total === 0) return null;
+    if (total === 0) {
+return null;
+}
 
     return (
         <div className={`d-flex flex-column flex-sm-row align-items-start align-items-sm-center justify-content-between gap-2 mt-3 pt-3 border-top ${className}`}>

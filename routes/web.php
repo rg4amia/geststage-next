@@ -53,6 +53,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chefagence/validations/valider-group', [IndexChefAgenceController::class, 'validerGroup'])->name('chefagence.validations.validerGroup');
     Route::post('/chefagence/validations/ajourner-group', [IndexChefAgenceController::class, 'ajournerGroup'])->name('chefagence.validations.ajournerGroup');
     Route::post('/chefagence/validations/generer-add-group', [IndexChefAgenceController::class, 'genererAddGroup'])->name('chefagence.validations.genererAddGroup');
+    Route::get('/chefagence/validations/{id}/generer-contrat', [IndexChefAgenceController::class, 'genererContrat'])->name('chefagence.validations.genererContrat');
+    Route::post('/chefagence/validations/generer-tresor-money-group', [IndexChefAgenceController::class, 'genererTresorMoneyGroup'])->name('chefagence.validations.genererTresorMoneyGroup');
 
     // Phase 5 : Pointages CIP
     Route::get('/cip/pointages', [PointageCipController::class, 'stagiaireAttentePointage'])->name('cip.pointages.index');

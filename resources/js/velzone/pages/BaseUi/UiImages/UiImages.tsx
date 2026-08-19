@@ -9,7 +9,6 @@ import avatar10 from "../../../assets/images/users/avatar-10.jpg";
 import avatar2 from "../../../assets/images/users/avatar-2.jpg";
 
 // Import Content
-import UiContent from '../../../Components/Common/UiContent';
 //import Components
 
 // Import Images
@@ -19,6 +18,7 @@ import avatar5 from "../../../assets/images/users/avatar-5.jpg";
 import avatar8 from "../../../assets/images/users/avatar-8.jpg";
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import PreviewCardHeader from '../../../Components/Common/PreviewCardHeader';
+import UiContent from '../../../Components/Common/UiContent';
 
 
 

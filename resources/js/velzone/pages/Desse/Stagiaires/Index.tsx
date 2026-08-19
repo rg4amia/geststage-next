@@ -56,7 +56,10 @@ interface PageProps {
 
 /* ─── Helpers ─── */
 const formatDateFr = (dateStr: string | null | undefined) => {
-    if (!dateStr) return '-';
+    if (!dateStr) {
+return '-';
+}
+
     try {
         return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
@@ -68,6 +71,7 @@ const decisionBadge = (decision: string) => {
     if (decision === 'avere') {
         return <span className="badge bg-danger-subtle text-danger">Avéré</span>;
     }
+
     return <span className="badge bg-success-subtle text-success">Non avéré</span>;
 };
 
@@ -121,11 +125,15 @@ const DesseStagiairesIndex = (props: PageProps) => {
     const applyNav = useCallback(
         (activeTab: string, activeTypeDoublon: string, currentFilters: typeof selectedFilters) => {
             const params: Record<string, string> = { tab: activeTab };
+
             if (activeTab === 'doublons') {
                 params.type_doublon = activeTypeDoublon;
             }
+
             Object.entries(currentFilters).forEach(([key, val]) => {
-                if (val) params[key] = val;
+                if (val) {
+params[key] = val;
+}
             });
             router.get('/desse/stagiaires', params, {
                 preserveState: true,
@@ -184,7 +192,10 @@ const DesseStagiairesIndex = (props: PageProps) => {
     };
 
     const confirmRejet = () => {
-        if (!selectedInstance || isProcessing) return;
+        if (!selectedInstance || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/desse/stagiaires/ajourner/${selectedInstance.id}`, { motif: motifRejet }, {
             preserveScroll: true,
@@ -213,7 +224,10 @@ const DesseStagiairesIndex = (props: PageProps) => {
     };
 
     const confirmTraiterDoublon = () => {
-        if (!selectedInstance || isProcessing) return;
+        if (!selectedInstance || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/desse/stagiaires/doublons/${selectedInstance.id}/traiter`, {
             type_doublon: currentTypeDoublon,
@@ -238,6 +252,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
                 header: 'Bénéficiaire',
                 cell: (cell: any) => {
                     const b = cell.row.original.stage?.beneficiaire;
+
                     return (
                         <div>
                             <h5 className="fs-14 mb-1">{b?.nom} {b?.prenoms}</h5>
@@ -275,6 +290,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
                 header: 'Bénéficiaire',
                 cell: (cell: any) => {
                     const b = cell.row.original.stage?.beneficiaire;
+
                     return (
                         <div>
                             <h5 className="fs-14 mb-1 text-danger">{b?.nom} {b?.prenoms}</h5>
@@ -290,6 +306,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
                 header: 'Trésor Money / Wave',
                 cell: (cell: any) => {
                     const b = cell.row.original.stage?.beneficiaire;
+
                     return b?.numero_tresor_money || b?.numero_wave || '-';
                 },
             },
@@ -319,6 +336,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
                 header: 'Bénéficiaire',
                 cell: (cell: any) => {
                     const b = cell.row.original.stage?.beneficiaire;
+
                     return <span className="fw-medium">{b?.nom} {b?.prenoms}</span>;
                 },
             },
@@ -345,6 +363,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
                 header: 'Bénéficiaire',
                 cell: (cell: any) => {
                     const b = cell.row.original.instance?.stage?.beneficiaire;
+
                     return <span>{b?.nom} {b?.prenoms}</span>;
                 },
             },
@@ -352,6 +371,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
                 header: 'Type de doublon',
                 cell: (cell: any) => {
                     const found = doublonTypes.find((d) => d.value === cell.row.original.type_doublon);
+
                     return found?.label || cell.row.original.type_doublon;
                 },
             },
@@ -519,6 +539,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
                                         {doublonTypes.map((d) => {
                                             const isActive = currentTypeDoublon === d.value;
                                             const count = doublonCounts[d.value] ?? 0;
+
                                             return (
                                                 <button
                                                     key={d.value}
@@ -562,8 +583,16 @@ const DesseStagiairesIndex = (props: PageProps) => {
                                 serverPagination={data}
                                 onPageChange={(page) => {
                                     const params: Record<string, string> = { tab: currentTab, page: String(page) };
-                                    if (currentTab === 'doublons') params.type_doublon = currentTypeDoublon;
-                                    Object.entries(selectedFilters).forEach(([k, v]) => { if (v) params[k] = v; });
+
+                                    if (currentTab === 'doublons') {
+params.type_doublon = currentTypeDoublon;
+}
+
+                                    Object.entries(selectedFilters).forEach(([k, v]) => {
+ if (v) {
+params[k] = v;
+} 
+});
                                     router.get('/desse/stagiaires', params, { preserveState: true, preserveScroll: true });
                                 }}
                             />

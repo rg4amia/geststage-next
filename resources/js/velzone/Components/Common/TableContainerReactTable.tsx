@@ -258,15 +258,31 @@ const TableContainer = ({
 
         // Calcule les numéros de pages à afficher (avec ellipses)
         const buildPages = (): (number | '...')[] => {
-          if (lastPage <= 1) return [];
+          if (lastPage <= 1) {
+return [];
+}
+
           const delta = 1;
           const left = Math.max(2, pageIndex + 1 - delta);
           const right = Math.min(lastPage - 1, pageIndex + 1 + delta);
           const items: (number | '...')[] = [1];
-          if (left > 2) items.push('...');
-          for (let i = left; i <= right; i++) items.push(i);
-          if (right < lastPage - 1) items.push('...');
-          if (lastPage > 1) items.push(lastPage);
+
+          if (left > 2) {
+items.push('...');
+}
+
+          for (let i = left; i <= right; i++) {
+items.push(i);
+}
+
+          if (right < lastPage - 1) {
+items.push('...');
+}
+
+          if (lastPage > 1) {
+items.push(lastPage);
+}
+
           return items;
         };
 

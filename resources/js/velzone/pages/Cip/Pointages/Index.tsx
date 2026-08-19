@@ -44,7 +44,10 @@ interface PageProps {
 
 /* ─── Helpers ─── */
 const formatDateFr = (dateStr: string | null | undefined) => {
-    if (!dateStr) return '-';
+    if (!dateStr) {
+return '-';
+}
+
     try {
         return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
@@ -62,6 +65,7 @@ const statusBadge = (statut: string) => {
         BROUILLON: { color: 'secondary', label: 'Brouillon' },
     };
     const s = map[statut] || { color: 'secondary', label: statut || '-' };
+
     return <span className={`badge bg-${s.color}-subtle text-${s.color}`}>{s.label}</span>;
 };
 
@@ -127,7 +131,9 @@ const PointagesIndex = (props: PageProps) => {
         (activeTab: string, currentFilters: typeof selectedFilters) => {
             const params: Record<string, string> = { tab: activeTab };
             Object.entries(currentFilters).forEach(([key, val]) => {
-                if (val) params[key] = val;
+                if (val) {
+params[key] = val;
+}
             });
             router.get('/cip/pointages', params, {
                 preserveState: true,
@@ -165,12 +171,18 @@ const PointagesIndex = (props: PageProps) => {
 
     /* ─── Pointage Batch ─── */
     const handleBatchSubmit = () => {
-        if (!data?.data || data.data.length === 0) return;
+        if (!data?.data || data.data.length === 0) {
+return;
+}
+
         setBatchModalOpen(true);
     };
 
     const confirmBatchSubmit = () => {
-        if (isProcessing) return;
+        if (isProcessing) {
+return;
+}
+
         setIsProcessing(true);
 
         const stageIds = (data?.data || []).map((item: any) => item.id);
@@ -204,18 +216,24 @@ const PointagesIndex = (props: PageProps) => {
     };
 
     const confirmAbandon = () => {
-        if (isProcessing) return;
+        if (isProcessing) {
+return;
+}
+
         setIsProcessing(true);
 
         const formData = new FormData();
         formData.append('stage_id', String(abandonData.stage_id));
         formData.append('periode_id', String(periode?.id || ''));
+
         if (abandonData.situation_stage_code) {
             formData.append('situation_stage_code', abandonData.situation_stage_code);
         }
+
         if (abandonData.observation) {
             formData.append('observation', abandonData.observation);
         }
+
         if (justificatifRef.current?.files?.[0]) {
             formData.append('justificatif_file', justificatifRef.current.files[0]);
         }
@@ -226,7 +244,10 @@ const PointagesIndex = (props: PageProps) => {
             onSuccess: () => {
                 setAbandonModalOpen(false);
                 setAbandonData({ stage_id: 0, stage_name: '', situation_stage_code: '', observation: '' });
-                if (justificatifRef.current) justificatifRef.current.value = '';
+
+                if (justificatifRef.current) {
+justificatifRef.current.value = '';
+}
             },
             onFinish: () => setIsProcessing(false),
         });
@@ -243,7 +264,10 @@ const PointagesIndex = (props: PageProps) => {
     };
 
     const confirmAnnuler = () => {
-        if (!annulerTarget || isProcessing) return;
+        if (!annulerTarget || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.delete(`/cip/pointages/${annulerTarget.id}/annuler`, {
             preserveScroll: true,
@@ -264,7 +288,10 @@ const PointagesIndex = (props: PageProps) => {
     };
 
     const confirmCorrigerDmg = () => {
-        if (!corrigerTarget || isProcessing) return;
+        if (!corrigerTarget || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/cip/pointages/corriger-ajournement-dmg/${corrigerTarget.id}`, {
             motif: corrigerMotif || undefined,
@@ -329,6 +356,7 @@ const PointagesIndex = (props: PageProps) => {
                     const stage = getStageData(cell.row.original);
                     const nom = stage?.beneficiaire?.nom || '';
                     const prenoms = stage?.beneficiaire?.prenoms || '';
+
                     return <span className="fw-medium">{nom} {prenoms}</span>;
                 },
             },
@@ -344,6 +372,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Actions',
                 cell: (cell: any) => {
                     const row = cell.row.original;
+
                     return (
                         <div className="d-flex gap-1">
                             <Button color="success" size="sm" outline onClick={() => openAbandonModal(row)} title="Pointage individuel / Status">
@@ -368,6 +397,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Agent Saisie',
                 cell: (cell: any) => {
                     const ver = cell.row.original.versionCourante || cell.row.original.version_courante;
+
                     return ver?.saisi_par?.name || ver?.saisiPar?.name || 'CIP';
                 },
             },
@@ -397,6 +427,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Nom et prénoms',
                 cell: (cell: any) => {
                     const stage = getStageData(cell.row.original);
+
                     return `${stage?.beneficiaire?.nom || ''} ${stage?.beneficiaire?.prenoms || ''}`;
                 },
             },
@@ -409,6 +440,7 @@ const PointagesIndex = (props: PageProps) => {
                 cell: (cell: any) => {
                     const row = cell.row.original;
                     const canCancel = row.statut === 'SOUMIS';
+
                     return (
                         <div className="d-flex gap-1">
                             {canCancel && (
@@ -435,6 +467,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Agent Saisie',
                 cell: (cell: any) => {
                     const ver = cell.row.original.versionCourante || cell.row.original.version_courante;
+
                     return ver?.saisi_par?.name || ver?.saisiPar?.name || 'CIP';
                 },
             },
@@ -460,6 +493,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Nom et prénoms',
                 cell: (cell: any) => {
                     const stage = getStageData(cell.row.original);
+
                     return `${stage?.beneficiaire?.nom || ''} ${stage?.beneficiaire?.prenoms || ''}`;
                 },
             },
@@ -468,6 +502,7 @@ const PointagesIndex = (props: PageProps) => {
                 cell: (cell: any) => {
                     const decisions = cell.row.original.decisions || [];
                     const lastDecision = decisions[decisions.length - 1];
+
                     return (
                         <span className="text-warning">
                             <i className="ri-error-warning-line me-1"></i>
@@ -496,6 +531,7 @@ const PointagesIndex = (props: PageProps) => {
                 cell: (cell: any) => {
                     const decisions = cell.row.original.decisions || [];
                     const lastDecision = decisions[decisions.length - 1];
+
                     return formatDateFr(lastDecision?.decide_le || lastDecision?.created_at);
                 },
             },
@@ -504,6 +540,7 @@ const PointagesIndex = (props: PageProps) => {
                 cell: (cell: any) => {
                     const decisions = cell.row.original.decisions || [];
                     const lastDecision = decisions[decisions.length - 1];
+
                     return (
                         <span className="text-danger">
                             <i className="ri-error-warning-line me-1"></i>
@@ -528,6 +565,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Nom et prénoms',
                 cell: (cell: any) => {
                     const stage = getStageData(cell.row.original);
+
                     return `${stage?.beneficiaire?.nom || ''} ${stage?.beneficiaire?.prenoms || ''}`;
                 },
             },
@@ -564,7 +602,11 @@ const PointagesIndex = (props: PageProps) => {
     /* ─── Données du tableau avec détection de la ligne rouge (démarrage manquant) ─── */
     const tableData = useMemo(() => {
         const items = data?.data || [];
-        if (currentTab !== 'attente') return items;
+
+        if (currentTab !== 'attente') {
+return items;
+}
+
         // Marquer visuellement les lignes sans pointage de démarrage
         return items.map((item: any) => ({
             ...item,
@@ -909,7 +951,11 @@ const PointagesIndex = (props: PageProps) => {
                                 serverPagination={data}
                                 onPageChange={(page) => {
                                     const params: Record<string, string> = { tab: currentTab, page: String(page) };
-                                    Object.entries(selectedFilters).forEach(([k, v]) => { if (v) params[k] = v; });
+                                    Object.entries(selectedFilters).forEach(([k, v]) => {
+ if (v) {
+params[k] = v;
+} 
+});
                                     router.get('/cip/pointages', params, { preserveState: true, preserveScroll: true });
                                 }}
                             />

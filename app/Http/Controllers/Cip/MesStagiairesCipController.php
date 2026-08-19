@@ -22,7 +22,6 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 
 class MesStagiairesCipController extends Controller
@@ -62,7 +61,6 @@ class MesStagiairesCipController extends Controller
             'page',
         ]);
 
-
         $user = Auth::user();
 
         $query = InstanceParcours::with([
@@ -75,7 +73,7 @@ class MesStagiairesCipController extends Controller
             'stage.documents.typeDocument',
             'stage.documents.versions',
             'stage.pointages.periode',
-            'stage.pointages.versionCourante'
+            'stage.pointages.versionCourante',
         ]);
 
         // Toujours exiger un stage non supprimé logiquement : Stage a désormais le trait
@@ -88,55 +86,55 @@ class MesStagiairesCipController extends Controller
         });
 
         // Apply filters
-        if (!empty($filters['agence_id'])) {
+        if (! empty($filters['agence_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('agence_id', $filters['agence_id']);
             });
         }
-        if (!empty($filters['entreprise_id'])) {
+        if (! empty($filters['entreprise_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('entreprise_id', $filters['entreprise_id']);
             });
         }
-        if (!empty($filters['typesfinancement_id'])) {
+        if (! empty($filters['typesfinancement_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('source_financement_id', $filters['typesfinancement_id']);
             });
         }
-        if (!empty($filters['typestage_id'])) {
+        if (! empty($filters['typestage_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('type_stage_id', $filters['typestage_id']);
             });
         }
-        if (!empty($filters['type_structure_id'])) {
+        if (! empty($filters['type_structure_id'])) {
             $query->whereHas('stage.entreprise', function ($q) use ($filters) {
                 $q->where('type_structure_id', $filters['type_structure_id']);
             });
         }
-        if (!empty($filters['etape_id'])) {
+        if (! empty($filters['etape_id'])) {
             $query->where('etape_courante_id', $filters['etape_id']);
         }
-        if (!empty($filters['situationstage_id'])) {
+        if (! empty($filters['situationstage_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('situation_stage', $filters['situationstage_id']);
             });
         }
-        if (!empty($filters['date_debut'])) {
+        if (! empty($filters['date_debut'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('date_debut', '>=', $filters['date_debut']);
             });
         }
-        if (!empty($filters['date_fin'])) {
+        if (! empty($filters['date_fin'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('date_fin_prevue', '<=', $filters['date_fin']);
             });
         }
-        if (!empty($filters['search'])) {
+        if (! empty($filters['search'])) {
             $search = $filters['search'];
-            $query->whereHas('stage.beneficiaire', function($q) use ($search) {
+            $query->whereHas('stage.beneficiaire', function ($q) use ($search) {
                 $q->where('nom', 'ilike', "%{$search}%")
-                  ->orWhere('prenoms', 'ilike', "%{$search}%")
-                  ->orWhere('numero_aej', 'ilike', "%{$search}%");
+                    ->orWhere('prenoms', 'ilike', "%{$search}%")
+                    ->orWhere('numero_aej', 'ilike', "%{$search}%");
             });
         }
 
@@ -144,29 +142,31 @@ class MesStagiairesCipController extends Controller
         $avecContrat = (clone $query)->has('stage.contrats')->count();
         $sansContrat = $total - $avecContrat;
         $enAttente = (clone $query)->whereIn('corbeille_actuelle', [
-            'ca_attente_validation_demarrage', 
-            'ca_attente_validation_omis', 
-            'dmg_attente_paiement_demarrage', 
-            'ca_validation_pointages', 
-            'desse_attente_verification_dmg', 
-            'desse_attente_ca', 
-            'daicg_attente_dmg'
+            'ca_attente_validation_demarrage',
+            'ca_attente_validation_omis',
+            'dmg_attente_paiement_demarrage',
+            'ca_validation_pointages',
+            'desse_attente_verification_dmg',
+            'desse_attente_ca',
+            'daicg_attente_dmg',
         ])->count();
 
         $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
         // Shell Inertia — données de filtres
-        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => \App\Models\Reference\Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $entreprises = Cache::remember('filter_entreprises_mes_stagiaires_' . ($user->id ?? '0'), 1800, fn () =>
-            \App\Models\Company\Entreprise::when($user && $user->agence_id, function ($q) use ($user) {
+        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn() => Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $entreprises = Cache::remember(
+            'filter_entreprises_mes_stagiaires_' . ($user->id ?? '0'),
+            1800,
+            fn() => Entreprise::when($user && $user->agence_id, function ($q) use ($user) {
                 $q->where('agence_id', $user->agence_id);
             })->orderBy('raison_sociale')->pluck('raison_sociale', 'id')->toArray()
         );
-        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => \App\Models\Reference\SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => \App\Models\Reference\TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $etapes = Cache::remember('filter_etapes_mes_stagiaires', 1800, fn () => \App\Models\Workflow\EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $situationstages = Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn () => \App\Models\Reference\SituationStage::orderBy('nom')->pluck('nom', 'code')->toArray());
+        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn() => SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn() => TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn() => TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $etapes = Cache::remember('filter_etapes_mes_stagiaires', 1800, fn() => EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $situationstages = Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn() => SituationStage::orderBy('nom')->pluck('nom', 'code')->toArray());
 
         return Inertia::render('Cip/MesStagiaires/Index', [
             'instances' => $instances,
@@ -213,18 +213,26 @@ class MesStagiairesCipController extends Controller
             'suspensionsAbandons' => $corbeilles->instanceRows(CorbeilleEnum::CIP_AJOURNE_AAF, 'Suspension ou abandon'),
         ]);
     }
+
     /**
      * Générer le contrat de stage
      */
     public function genererContrat(Request $request, $id)
     {
-        $instance = InstanceParcours::findOrFail($id);
+        $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
         $fonction = $request->query('fonction');
-        $montant = $request->query('montant');
+        $montant = $request->query('montant') ? (float) $request->query('montant') : null;
 
-        // TODO: Logique de génération PDF
-        // Retourne un message temporaire pour le frontend
-        return back()->with('success', "Le contrat pour {$instance->stage->beneficiaire->nom} a été généré avec succès.");
+        $service = app(\App\Services\ContratPaeService::class);
+
+        try {
+            $pdf = $service->genererContratPdf($instance->stage, $fonction, $montant);
+            $filename = $service->genererNomFichier($instance->stage);
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la génération du contrat : ' . $e->getMessage());
+        }
     }
 
     /**
@@ -254,10 +262,18 @@ class MesStagiairesCipController extends Controller
      */
     public function genererTresorMoney(Request $request, $id)
     {
-        $instance = InstanceParcours::findOrFail($id);
+        $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
 
-        // TODO: Logique de génération de la fiche PDF
-        return back()->with('success', "Fiche Trésor Money générée avec succès.");
+        $service = app(\App\Services\TresorMoneyService::class);
+
+        try {
+            $pdf = $service->genererFichierTresorMoney(collect([$instance->stage]));
+            $filename = $service->genererNomFichier();
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : ' . $e->getMessage());
+        }
     }
 
     /**
@@ -311,7 +327,7 @@ class MesStagiairesCipController extends Controller
         $document->prive = true;
         $document->save();
 
-        $path = $file->store($dossierStockage.'/'.$stage->id, 'public');
+        $path = $file->store($dossierStockage . '/' . $stage->id, 'public');
         $numeroVersion = $document->versions()->max('numero_version') + 1;
 
         VersionDocument::create([
@@ -343,11 +359,11 @@ class MesStagiairesCipController extends Controller
         }
 
         $documents = $instance->stage->documents;
-        $aContrat = $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_CONTRAT);
+        $aContrat = $documents->contains(fn($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_CONTRAT);
 
         $requiertTresorMoney = $instance->stage->beneficiaire?->typePaiement?->code === 'TRESOR_MONEY';
         $aTresorMoney = ! $requiertTresorMoney
-            || $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_TRESOR_MONEY);
+            || $documents->contains(fn($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_TRESOR_MONEY);
 
         $manquants = [];
         if (! $aContrat) {
@@ -358,7 +374,7 @@ class MesStagiairesCipController extends Controller
         }
 
         if (! empty($manquants)) {
-            return back()->with('error', 'Transmission impossible : '.implode(' et ', $manquants).' manquant(s).');
+            return back()->with('error', 'Transmission impossible : ' . implode(' et ', $manquants) . ' manquant(s).');
         }
 
         $workflow->submitToChefAgence($instance);

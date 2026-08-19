@@ -2,28 +2,30 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\Entreprise;
 use App\Models\Internship\Stage;
 use App\Models\Reference\SituationStage;
+use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStructure;
+use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 class UpdateLegacyMissingDataCommand extends Command
 {
     protected $signature = 'migrate:update-missing-data';
+
     protected $description = 'Met à jour les données manquantes issues de l\'ancienne base (Situation Stage, Type Structure, Type Paiement, N° Trésor Money, N° Wave)';
 
     public function handle()
     {
-        $this->info("Début de la mise à jour des données manquantes...");
+        $this->info('Début de la mise à jour des données manquantes...');
 
         try {
             DB::connection('legacy')->getPdo();
         } catch (\Exception $e) {
             $this->error("Impossible de se connecter à la base 'legacy'.");
+
             return 1;
         }
 
@@ -33,14 +35,15 @@ class UpdateLegacyMissingDataCommand extends Command
         $this->updateStages();
         $this->updateSourcesFinancement();
 
-        $this->info("Mise à jour terminée avec succès !");
+        $this->info('Mise à jour terminée avec succès !');
+
         return 0;
     }
 
     private function migrateReferences()
     {
-        $this->info("Migration des référentiels manquants...");
-        
+        $this->info('Migration des référentiels manquants...');
+
         // Type Paiement
         if (DB::connection('legacy')->getSchemaBuilder()->hasTable('type_paiements')) {
             $typesPaiement = DB::connection('legacy')->table('type_paiements')->get();
@@ -86,7 +89,7 @@ class UpdateLegacyMissingDataCommand extends Command
 
     private function updateBeneficiaires()
     {
-        $this->info("Mise à jour des bénéficiaires (Type paiement, Numéros mobile)...");
+        $this->info('Mise à jour des bénéficiaires (Type paiement, Numéros mobile)...');
 
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
@@ -99,6 +102,7 @@ class UpdateLegacyMissingDataCommand extends Command
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->numero_aej)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -121,7 +125,7 @@ class UpdateLegacyMissingDataCommand extends Command
 
     private function updateEntreprises()
     {
-        $this->info("Mise à jour des entreprises (Type de structure)...");
+        $this->info('Mise à jour des entreprises (Type de structure)...');
 
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
@@ -130,12 +134,13 @@ class UpdateLegacyMissingDataCommand extends Command
 
         $typesStructureMap = TypeStructure::pluck('id', 'ancien_id')->toArray();
 
-        // L'ancien système liait le type de structure au contrat, 
+        // L'ancien système liait le type de structure au contrat,
         // on l'applique sur l'entreprise directement
         $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $typesStructureMap) {
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id_entreprise) || empty($legacyContrat->type_structure_id)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -146,7 +151,7 @@ class UpdateLegacyMissingDataCommand extends Command
                         ->where('ancien_id', $legacyContrat->id_entreprise)
                         ->update(['type_structure_id' => $type_structure_id]);
                 }
-                
+
                 $bar->advance();
             }
         });
@@ -157,7 +162,7 @@ class UpdateLegacyMissingDataCommand extends Command
 
     private function updateStages()
     {
-        $this->info("Mise à jour des stages (Situation de stage)...");
+        $this->info('Mise à jour des stages (Situation de stage)...');
 
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
@@ -170,6 +175,7 @@ class UpdateLegacyMissingDataCommand extends Command
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id) || empty($legacyContrat->id_situation_stage)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -180,7 +186,7 @@ class UpdateLegacyMissingDataCommand extends Command
                         ->where('ancien_id', $legacyContrat->id)
                         ->update(['situation_stage' => $code_situation]);
                 }
-                
+
                 $bar->advance();
             }
         });
@@ -191,19 +197,20 @@ class UpdateLegacyMissingDataCommand extends Command
 
     private function updateSourcesFinancement()
     {
-        $this->info("Mise à jour des sources de financement...");
+        $this->info('Mise à jour des sources de financement...');
 
         $query = DB::connection('legacy')->table('contrats_pae');
         $total = $query->count();
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $sourcesMap = \App\Models\Reference\SourceFinancement::pluck('id', 'ancien_id')->toArray();
+        $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
 
         $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $sourcesMap) {
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id) || empty($legacyContrat->source_financement)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -214,7 +221,7 @@ class UpdateLegacyMissingDataCommand extends Command
                         ->where('ancien_id', $legacyContrat->id)
                         ->update(['source_financement_id' => $source_financement_id]);
                 }
-                
+
                 $bar->advance();
             }
         });

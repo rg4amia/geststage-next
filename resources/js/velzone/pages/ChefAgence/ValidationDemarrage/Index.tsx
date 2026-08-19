@@ -1,7 +1,7 @@
 import { Head, router, usePage, useForm } from '@inertiajs/react';
+import axios from 'axios';
 import classnames from 'classnames';
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import axios from 'axios';
 import {
     Alert,
     Badge,
@@ -71,7 +71,10 @@ interface PageProps {
 
 /* ─── Helpers ─── */
 const formatDateFr = (dateStr: string | null | undefined) => {
-    if (!dateStr || dateStr === '-') return '-';
+    if (!dateStr || dateStr === '-') {
+        return '-';
+    }
+
     try {
         return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
@@ -153,20 +156,38 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Données de l'onglet courant ─── */
     const currentRows: RowData[] = useMemo(() => {
-        if (activeTab === '2') return data.demarrageOmis || [];
-        if (activeTab === '3') return data.retourAjournement || [];
+        if (activeTab === '2') {
+            return data.demarrageOmis || [];
+        }
+
+        if (activeTab === '3') {
+            return data.retourAjournement || [];
+        }
+
         return data.demarrage || [];
     }, [activeTab, data]);
 
     const currentTabLabel = useMemo(() => {
-        if (activeTab === '2') return 'Liste des démarrages omis';
-        if (activeTab === '3') return "Liste des retours d'ajournement";
+        if (activeTab === '2') {
+            return 'Liste des démarrages omis';
+        }
+
+        if (activeTab === '3') {
+            return "Liste des retours d'ajournement";
+        }
+
         return 'Liste des démarrages';
     }, [activeTab]);
 
     const currentTabType = useMemo(() => {
-        if (activeTab === '2') return 'demarrageOmis';
-        if (activeTab === '3') return 'retourAjournement';
+        if (activeTab === '2') {
+            return 'demarrageOmis';
+        }
+
+        if (activeTab === '3') {
+            return 'retourAjournement';
+        }
+
         return 'demarrage';
     }, [activeTab]);
 
@@ -174,6 +195,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const fetchValidations = useCallback(
         async (params: Record<string, string>) => {
             setIsLoading(true);
+
             try {
                 const response = await axios.get('/chefagence/validations', {
                     params,
@@ -204,6 +226,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     /* ─── Fetch mois distincts des démarrages omis ─── */
     const fetchMoisOmis = useCallback(async (commonFilters: Record<string, string>) => {
         setIsMoisLoading(true);
+
         try {
             const response = await axios.get('/chefagence/validations/mois-omis', {
                 params: commonFilters,
@@ -224,13 +247,17 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         (newFilters: typeof selectedFilters, tab?: string) => {
             const params: Record<string, string> = { tab: tab ?? activeTab };
             Object.entries(newFilters).forEach(([key, val]) => {
-                if (val) params[key] = val;
+                if (val) {
+                    params[key] = val;
+                }
             });
             // Update URL without page reload
             const url = new URL(window.location.href);
             url.search = '';
             Object.entries(params).forEach(([key, val]) => {
-                if (val) url.searchParams.set(key, val);
+                if (val) {
+                    url.searchParams.set(key, val);
+                }
             });
             window.history.replaceState({}, '', url);
 
@@ -241,7 +268,9 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             // pour toujours afficher tous les mois, même quand un est sélectionné)
             const commonParams: Record<string, string> = {};
             (['agence_id', 'entreprise_id', 'typesfinancement_id', 'typestage_id', 'type_structure_id'] as const).forEach((k) => {
-                if (newFilters[k]) commonParams[k] = newFilters[k];
+                if (newFilters[k]) {
+                    commonParams[k] = newFilters[k];
+                }
             });
             fetchMoisOmis(commonParams);
         },
@@ -252,14 +281,18 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     useEffect(() => {
         const params: Record<string, string> = { tab: activeTab };
         Object.entries(selectedFilters).forEach(([key, val]) => {
-            if (val) params[key] = val;
+            if (val) {
+                params[key] = val;
+            }
         });
         fetchValidations(params);
 
         // Charge les mois disponibles (sans filtre mois_debut pour tout voir)
         const commonParams: Record<string, string> = {};
         (['agence_id', 'entreprise_id', 'typesfinancement_id', 'typestage_id', 'type_structure_id'] as const).forEach((k) => {
-            if (selectedFilters[k]) commonParams[k] = selectedFilters[k];
+            if (selectedFilters[k]) {
+                commonParams[k] = selectedFilters[k];
+            }
         });
         fetchMoisOmis(commonParams);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -311,8 +344,10 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const openValiderModal = () => {
         if (selectedRows.length === 0) {
             alert('Veuillez sélectionner au moins un dossier.');
+
             return;
         }
+
         setActionData('ids', selectedRows);
         setActionData('type', currentTabType);
         setModalValiderOpen(true);
@@ -321,8 +356,10 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const openAjournerModal = () => {
         if (selectedRows.length === 0) {
             alert('Veuillez sélectionner au moins un dossier.');
+
             return;
         }
+
         setActionData('ids', selectedRows);
         setMotifAjournement('');
         setModalAjournerOpen(true);
@@ -332,7 +369,9 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const reloadData = () => {
         const params: Record<string, string> = { tab: activeTab };
         Object.entries(selectedFilters).forEach(([key, val]) => {
-            if (val) params[key] = val;
+            if (val) {
+                params[key] = val;
+            }
         });
         fetchValidations(params);
     };
@@ -355,8 +394,10 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const confirmAjourner = () => {
         if (!motifAjournement.trim() || motifAjournement.trim().length < 5) {
             alert('Le motif doit contenir au moins 5 caractères.');
+
             return;
         }
+
         setIsProcessing(true);
         router.post('/chefagence/validations/ajourner-group', {
             ids: actionData.ids,
@@ -378,13 +419,18 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const handleValidationListeEntiere = () => {
         if (activeTab === '2' && !selectedFilters.mois_debut) {
             alert('Veuillez sélectionner un mois de démarrage pour le démarrage omis.');
+
             return;
         }
+
         const allIds = currentRows.map((row) => row.id.toString());
+
         if (allIds.length === 0) {
             alert('Aucun dossier à traiter dans cet onglet.');
+
             return;
         }
+
         setIsProcessing(true);
         router.post('/chefagence/validations/valider-group', { ids: allIds, type: currentTabType }, {
             preserveScroll: true,
@@ -399,8 +445,10 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const handleGenererAddSelection = () => {
         if (selectedRows.length === 0) {
             alert('Veuillez sélectionner au moins un dossier.');
+
             return;
         }
+
         setIsProcessing(true);
         router.post('/chefagence/validations/generer-add-group', { ids: selectedRows, type: currentTabType }, {
             preserveScroll: true,
@@ -415,13 +463,18 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const handleGenererAddGlobal = () => {
         if (activeTab === '2' && !selectedFilters.mois_debut) {
             alert('Veuillez sélectionner un mois de démarrage pour le démarrage omis.');
+
             return;
         }
+
         const allIds = currentRows.map((row) => row.id.toString());
+
         if (allIds.length === 0) {
             alert('Aucun dossier à traiter dans cet onglet.');
+
             return;
         }
+
         setIsProcessing(true);
         router.post('/chefagence/validations/generer-add-group', { ids: allIds, type: currentTabType }, {
             preserveScroll: true,
@@ -431,6 +484,46 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             },
             onFinish: () => setIsProcessing(false),
         });
+    };
+
+    const handleGenererTresorMoneyGroup = () => {
+        if (selectedRows.length === 0) {
+            alert('Veuillez sélectionner au moins un dossier.');
+
+            return;
+        }
+
+        setIsProcessing(true);
+        // Créer un formulaire pour POST et soumettre
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/chefagence/validations/generer-tresor-money-group';
+        form.target = '_blank';
+
+        // Ajouter le token CSRF
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (csrfToken) {
+            const csrfInput = document.createElement('input');
+            csrfInput.type = 'hidden';
+            csrfInput.name = '_token';
+            csrfInput.value = csrfToken;
+            form.appendChild(csrfInput);
+        }
+
+        // Ajouter les IDs sélectionnés
+        selectedRows.forEach((id) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'ids[]';
+            input.value = id;
+            form.appendChild(input);
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+
+        setTimeout(() => setIsProcessing(false), 1000);
     };
 
     /* ─── Cartes statistiques ─── */
@@ -495,7 +588,11 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 accessorKey: 'type_structure',
                 cell: (cell: any) => {
                     const value = cell.getValue();
-                    if (!value || value === '-') return '-';
+
+                    if (!value || value === '-') {
+                        return '-';
+                    }
+
                     return <Badge color="success">{value}</Badge>;
                 },
             },
@@ -516,6 +613,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 accessorKey: 'contrat_label',
                 cell: (cell: any) => {
                     const value = cell.getValue();
+
                     return value === 'Avec Contrat' ? (
                         <Badge color="success">{value}</Badge>
                     ) : (
@@ -528,6 +626,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 accessorKey: 'incidence_financiere',
                 cell: (cell: any) => {
                     const value = cell.getValue();
+
                     return value === 'Oui' ? (
                         <Badge color="success">{value}</Badge>
                     ) : (
@@ -543,16 +642,30 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 enableSorting: false,
                 cell: (cell: any) => {
                     const row = cell.row.original as RowData;
+
                     return (
-                        <Button
-                            color="info"
-                            size="sm"
-                            className="btn-icon"
-                            onClick={() => setPreviewRow(row)}
-                            title="Voir le détail"
-                        >
-                            <i className="ri-eye-line" />
-                        </Button>
+                        <div className="d-flex gap-1">
+                            <Button
+                                color="info"
+                                size="sm"
+                                className="btn-icon"
+                                onClick={() => setPreviewRow(row)}
+                                title="Voir le détail"
+                            >
+                                <i className="ri-eye-line" />
+                            </Button>
+                            <Button
+                                color="success"
+                                size="sm"
+                                className="btn-icon"
+                                onClick={() => {
+                                    window.open(`/chefagence/validations/${row.id}/generer-contrat`, '_blank');
+                                }}
+                                title="Générer le contrat"
+                            >
+                                <i className="ri-file-text-line" />
+                            </Button>
+                        </div>
                     );
                 },
             },
@@ -769,6 +882,11 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                     Générer ADD (sélection)
                                 </Button>
                                 <span className="vr my-1" />
+                                <Button color="warning" size="sm" onClick={handleGenererTresorMoneyGroup} disabled={isProcessing || selectedRows.length === 0}>
+                                    <i className="ri-money-dollar-circle-line me-1 align-middle" />
+                                    Trésor Money (sélection)
+                                </Button>
+                                <span className="vr my-1" />
                                 <Button color="danger" size="sm" onClick={openAjournerModal} disabled={isProcessing}>
                                     <i className="ri-close-circle-line me-1 align-middle" />
                                     Ajourner la sélection
@@ -836,6 +954,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                                     <div className="d-flex flex-wrap gap-2">
                                                         {moisOmis.map((mois) => {
                                                             const isActive = selectedFilters.mois_debut === mois.value;
+
                                                             return (
                                                                 <button
                                                                     key={mois.value}

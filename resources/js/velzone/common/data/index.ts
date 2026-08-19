@@ -1,37 +1,18 @@
 import { topPages, allData, monthData, halfyearData, allaudiencesMetricsData, monthaudiencesMetricsData, halfyearaudiencesMetricsData, yaeraudiencesMetricsData, todayDeviceData, lastWeekDeviceData, lastMonthDeviceData, currentYearDeviceData, todayaudiencesCountryData, lastWeekaudiencesCountryData, lastMonthaudiencesCountryData, currentyearaudiencesCountryData } from "./analytics";
 import { apiKey } from "./apiKey";
 
-import { calenderDefaultCategories, events, defaultevent } from "./calender";
-import { chatMessage, messages, chatContactData } from "./chat";
-import { mailbox } from "./mailbox";
-import { transactions, buysellWidgets, market, CryptoOrders, watchlist, marketStatus, CryptoicoWidgets, icoWidgetsList } from "./cryptoPage";
-import { ticketsWidgets, ticketsTable } from "./supportTickets";
 
 // Pages
-import { gallery, pricing1, pricing2, pricing3, projects, documents, SearchGallery, news, video, swiper, team } from "./pagesData";
 
 import { jobApplication, jobCandidates, jobCategories, } from "./appsJobs";
+import { calenderDefaultCategories, events, defaultevent } from "./calender";
+import { chatMessage, messages, chatContactData } from "./chat";
 
 import country from "./country";
 
-import { listData, gridData } from "./pageblog"
 
-import { headData, tasklist, AddTeamMember } from "./kanban";
 
 //Ecommerce
-import {
-  productsData,
-  productDetailsWidgets,
-  reviews,
-  orders,
-  productDetails,
-  customerList,
-  shoppingCart,
-  orderSummary,
-  sellersList,
-  revenueWidgets,
-  productsReview,
-} from "./ecommerce";
 
 import { crmcontacts, companies, leads, deals } from "./crm";
 import {
@@ -43,6 +24,7 @@ import {
   cryptoSlider,
   btcPortfolioData, usdPortfolioData, euroPortfolioData, MarketGraphAll, MarketGraphYear, MarketGraphMonth, MarketGraphWeek, MarketGraphHour
 } from "./crypto";
+import { transactions, buysellWidgets, market, CryptoOrders, watchlist, marketStatus, CryptoicoWidgets, icoWidgetsList } from "./cryptoPage";
 import {
   blogwidget,
   socialShares,
@@ -79,17 +61,35 @@ import {
   teamMembers,
   overviewCounter, allProjectData, monthProjectData, halfyearProjectData, yearProjectData, allTimeData, lastWeekData, lastMonthData, lastquarterData, dashboardChat
 } from "./dashboardProjects";
+import {
+  productsData,
+  productDetailsWidgets,
+  reviews,
+  orders,
+  productDetails,
+  customerList,
+  shoppingCart,
+  orderSummary,
+  sellersList,
+  revenueWidgets,
+  productsReview,
+} from "./ecommerce";
 import { recentFile, folderList } from "./fileManager";
 import { invoiceWidgets, invoiceTable } from "./invoiceList";
+import { headData, tasklist, AddTeamMember } from "./kanban";
 import { connectData, discoverItemsData, featuresData, productData, topCreatorData } from "./LandingNFT";
+import { mailbox } from "./mailbox";
 import {
   expolreNow, aution, NFTRanking, creatorsData, creatorsListData, walletConnectData, topDrop, topCreator, topCollection, tradingArtworkData,
   nftArtworkData,
   popularCreatorsNFT, marketPlacewidget
 } from "./NFTMarketplace";
+import { listData, gridData } from "./pageblog"
+import { gallery, pricing1, pricing2, pricing3, projects, documents, SearchGallery, news, video, swiper, team } from "./pagesData";
 import {
   projectList,
 } from "./projectList";
+import { ticketsWidgets, ticketsTable } from "./supportTickets";
 import { taskWidgets, allTask, kanbanBoardData } from "./taskList";
 import { todoTaskList, todoCollapse } from "./todoData";
 import {

@@ -27,8 +27,10 @@ const MesStagiaires = () => {
 
     useEffect(() => {
         setIsMounted(true);
+
         if (typeof window !== 'undefined') {
             const saved = localStorage.getItem('mesStagiairesColumnVisibility');
+
             if (saved) {
                 try {
                     setColumnVisibility(JSON.parse(saved));
@@ -93,6 +95,7 @@ const MesStagiaires = () => {
         }
 
         const freshData = (data as any[]).find((row: any) => row.id === selectedActionStagiaire.id);
+
         if (freshData && freshData !== selectedActionStagiaire) {
             setSelectedActionStagiaire(freshData);
         }
@@ -130,7 +133,9 @@ const MesStagiaires = () => {
     });
 
     const handleSearch = (e?: any) => {
-        if (e) e.preventDefault();
+        if (e) {
+e.preventDefault();
+}
 
         get('/cip/mes-stagiaires', {
             preserveState: true,

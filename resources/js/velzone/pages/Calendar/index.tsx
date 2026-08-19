@@ -8,6 +8,7 @@ import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import React, { useEffect, useState } from "react";
 import Flatpickr from "react-flatpickr";
+import { useSelector, useDispatch } from "react-redux";
 import {
   Card,
   CardBody,
@@ -22,22 +23,22 @@ import {
   Row,
   Col
 } from "reactstrap";
+import { createSelector } from "reselect";
+import SimpleBar from "simplebar-react";
+import * as Yup from "yup";
 import { Link } from '@/velzone/inertia-router';
 
 //Import Icons
 
 
-import * as Yup from "yup";
 
 
 //redux
-import { useSelector, useDispatch } from "react-redux";
 
 import BreadCrumb from "../../Components/Common/BreadCrumb";
 import DeleteModal from "../../Components/Common/DeleteModal";
 
 //Simple bar
-import SimpleBar from "simplebar-react";
 import {
   getEvents as onGetEvents,
   getCategories as onGetCategories,
@@ -48,7 +49,6 @@ import {
 } from "../../slices/thunks";
 import UpcommingEvents from './UpcommingEvents';
 
-import { createSelector } from "reselect";
 
 const Calender = () => {
   const dispatch: any = useDispatch();

@@ -6,19 +6,24 @@ use App\Domain\Validation\Services\ValidationChefAgenceService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
+use App\Models\Adjournment\Ajournement;
 use App\Models\Company\Entreprise;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
+use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class IndexChefAgenceController extends Controller
@@ -33,7 +38,7 @@ class IndexChefAgenceController extends Controller
      * triés du plus récent au plus ancien, avec le compte de dossiers par mois.
      * Format de réponse : [{ value: "2026-08", label: "Août 2026", count: 47 }, ...]
      */
-    public function moisOmis(Request $request): \Illuminate\Http\JsonResponse
+    public function moisOmis(Request $request): JsonResponse
     {
         $user = Auth::user();
 
@@ -58,6 +63,7 @@ class IndexChefAgenceController extends Controller
 
         $mois = $rows->map(function ($row) {
             $dt = Carbon::createFromFormat('Y-m', $row->mois);
+
             return [
                 'value' => $row->mois,
                 'label' => ucfirst($dt->translatedFormat('F Y')),
@@ -158,8 +164,8 @@ class IndexChefAgenceController extends Controller
         // Compteurs par onglet (pour les cartes statistiques du frontend)
         $baseQueryCount = $this->baseQuery($request);
         $counts = [
-            'demarrage'         => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value)->count(),
-            'demarrageOmis'     => (clone $baseQueryCount)
+            'demarrage' => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value)->count(),
+            'demarrageOmis' => (clone $baseQueryCount)
                 ->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
                 ->tap($applyMoisFilter)
                 ->count(),
@@ -168,21 +174,21 @@ class IndexChefAgenceController extends Controller
 
         if ($request->wantsJson()) {
             return response()->json([
-                'demarrage'          => $demarrage,
-                'demarrageOmis'      => $demarrageOmis,
-                'retourAjournement'  => $retourAjournement,
-                'counts'             => $counts,
+                'demarrage' => $demarrage,
+                'demarrageOmis' => $demarrageOmis,
+                'retourAjournement' => $retourAjournement,
+                'counts' => $counts,
             ]);
         }
 
         return Inertia::render('ChefAgence/ValidationDemarrage/Index', [
-            'agences'            => \Illuminate\Support\Facades\Cache::remember('ref.agences', 86400, fn() => Agence::query()->orderBy('nom')->pluck('nom', 'id')),
-            'entreprises'        => \Illuminate\Support\Facades\Cache::remember('ref.entreprises', 86400, fn() => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id')),
-            'typesfinancements'  => \Illuminate\Support\Facades\Cache::remember('ref.typesfinancements', 86400, fn() => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id')),
-            'typestages'         => \Illuminate\Support\Facades\Cache::remember('ref.typestages', 86400, fn() => TypeStage::query()->orderBy('nom')->pluck('nom', 'id')),
-            'typestructures'     => \Illuminate\Support\Facades\Cache::remember('ref.typestructures', 86400, fn() => TypeStructure::query()->orderBy('nom')->pluck('nom', 'id')),
-            'periodes'           => \Illuminate\Support\Facades\Cache::remember('ref.periodes', 86400, fn() => Periode::query()->orderByDesc('code')->pluck('code', 'id')),
-            'filters'            => $filters,
+            'agences' => Cache::remember('ref.agences', 86400, fn() => Agence::query()->orderBy('nom')->pluck('nom', 'id')),
+            'entreprises' => Cache::remember('ref.entreprises', 86400, fn() => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id')),
+            'typesfinancements' => Cache::remember('ref.typesfinancements', 86400, fn() => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id')),
+            'typestages' => Cache::remember('ref.typestages', 86400, fn() => TypeStage::query()->orderBy('nom')->pluck('nom', 'id')),
+            'typestructures' => Cache::remember('ref.typestructures', 86400, fn() => TypeStructure::query()->orderBy('nom')->pluck('nom', 'id')),
+            'periodes' => Cache::remember('ref.periodes', 86400, fn() => Periode::query()->orderByDesc('code')->pluck('code', 'id')),
+            'filters' => $filters,
         ]);
     }
 
@@ -211,7 +217,7 @@ class IndexChefAgenceController extends Controller
     public function validerGroup(Request $request)
     {
         $data = $request->validate([
-            'ids'  => ['required', 'array', 'min:1'],
+            'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer', 'exists:instances_parcours,id'],
             'type' => ['required', 'string', 'in:demarrage,demarrageOmis,retourAjournement'],
         ]);
@@ -244,7 +250,7 @@ class IndexChefAgenceController extends Controller
     public function ajournerGroup(Request $request)
     {
         $data = $request->validate([
-            'ids'   => ['required', 'array', 'min:1'],
+            'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer', 'exists:instances_parcours,id'],
             'motif' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
@@ -262,39 +268,39 @@ class IndexChefAgenceController extends Controller
                 // Alimentation de la table ajournements complète
                 try {
                     $etapeOrigineId = $instance->etape_courante_id;
-                    $etapeRetour = \App\Models\Workflow\EtapeParcours::where('definition_parcours_id', $instance->definition_parcours_id)
+                    $etapeRetour = EtapeParcours::where('definition_parcours_id', $instance->definition_parcours_id)
                         ->where('code', CorbeilleEnum::CIP_MES_STAGIAIRES->value)
                         ->first();
                     $etapeRetourId = $etapeRetour ? $etapeRetour->id : $etapeOrigineId;
 
-                    $motifAjournementId = \Illuminate\Support\Facades\DB::table('motifs_ajournement')->first()->id ?? \Illuminate\Support\Facades\DB::table('motifs_ajournement')->insertGetId([
+                    $motifAjournementId = DB::table('motifs_ajournement')->first()->id ?? DB::table('motifs_ajournement')->insertGetId([
                         'code' => 'AUTRE',
                         'nom' => 'Autre',
                         'domaine' => 'Validation',
-                        'actif' => true
+                        'actif' => true,
                     ]);
 
-                    $roleCorrecteurId = \Illuminate\Support\Facades\DB::table('roles')->where('name', 'like', '%CIP%')->first()->id ?? \Illuminate\Support\Facades\DB::table('roles')->first()->id;
-                    $numeroCycle = \App\Models\Adjournment\Ajournement::where('instance_parcours_id', $instance->id)->max('numero_cycle') + 1;
+                    $roleCorrecteurId = DB::table('roles')->where('name', 'like', '%CIP%')->first()->id ?? DB::table('roles')->first()->id;
+                    $numeroCycle = Ajournement::where('instance_parcours_id', $instance->id)->max('numero_cycle') + 1;
 
-                    \App\Models\Adjournment\Ajournement::create([
-                        'uuid_public'            => \Illuminate\Support\Str::uuid(),
-                        'instance_parcours_id'   => $instance->id,
-                        'etape_origine_id'       => $etapeOrigineId,
-                        'etape_correction_id'    => $etapeRetourId,
-                        'etape_retour_id'        => $etapeOrigineId,
-                        'motif_ajournement_id'   => $motifAjournementId,
-                        'role_correcteur_id'     => $roleCorrecteurId,
-                        'auteur_id'              => $request->user()->id,
+                    Ajournement::create([
+                        'uuid_public' => Str::uuid(),
+                        'instance_parcours_id' => $instance->id,
+                        'etape_origine_id' => $etapeOrigineId,
+                        'etape_correction_id' => $etapeRetourId,
+                        'etape_retour_id' => $etapeOrigineId,
+                        'motif_ajournement_id' => $motifAjournementId,
+                        'role_correcteur_id' => $roleCorrecteurId,
+                        'auteur_id' => $request->user()->id,
                         'code_corbeille_origine' => $instance->corbeille_actuelle ?? CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
-                        'code_corbeille_retour'  => CorbeilleEnum::CIP_MES_STAGIAIRES->value,
-                        'motif_detaille'         => $data['motif'],
-                        'correction_attendue'    => "Veuillez corriger le dossier selon le motif d'ajournement fourni.",
-                        'numero_cycle'           => $numeroCycle,
-                        'statut'                 => 'OUVERT',
+                        'code_corbeille_retour' => CorbeilleEnum::CIP_MES_STAGIAIRES->value,
+                        'motif_detaille' => $data['motif'],
+                        'correction_attendue' => "Veuillez corriger le dossier selon le motif d'ajournement fourni.",
+                        'numero_cycle' => $numeroCycle,
+                        'statut' => 'OUVERT',
                     ]);
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::warning("Impossible d'enregistrer l'ajournement complet pour l'instance {$instance->id}: " . $e->getMessage());
+                    Log::warning("Impossible d'enregistrer l'ajournement complet pour l'instance {$instance->id}: " . $e->getMessage());
                 }
             }
         });
@@ -305,12 +311,80 @@ class IndexChefAgenceController extends Controller
     public function genererAddGroup(Request $request)
     {
         $data = $request->validate([
-            'ids'   => ['required', 'array', 'min:1'],
+            'ids' => ['required', 'array', 'min:1'],
             'ids.*' => ['integer', 'exists:instances_parcours,id'],
-            'type'  => ['nullable', 'string'],
+            'type' => ['nullable', 'string'],
         ]);
 
         return back()->with('success', 'La génération d\'ADD a été déclenchée pour ' . count($data['ids']) . ' dossier(s).');
+    }
+
+    /**
+     * Génère le contrat pour un stagiaire
+     */
+    public function genererContrat(Request $request, int $id)
+    {
+        $instance = $this->findInstanceForChefAgence($id, [
+            CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
+            CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS,
+        ]);
+
+        $fonction = $request->query('fonction');
+        $montant = $request->query('montant') ? (float) $request->query('montant') : null;
+
+        $service = app(\App\Services\ContratPaeService::class);
+
+        try {
+            $pdf = $service->genererContratPdf($instance->stage, $fonction, $montant);
+            $filename = $service->genererNomFichier($instance->stage);
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            Log::error('Erreur génération contrat ChefAgence', [
+                'instance_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Erreur lors de la génération du contrat : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Génère le fichier Trésor Money pour un groupe de stagiaires
+     */
+    public function genererTresorMoneyGroup(Request $request)
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:instances_parcours,id'],
+        ]);
+
+        $instances = InstanceParcours::query()
+            ->with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence'])
+            ->whereIn('id', $data['ids'])
+            ->get();
+
+        $stages = $instances->pluck('stage')->filter();
+
+        if ($stages->isEmpty()) {
+            return back()->with('error', 'Aucun stage trouvé pour les IDs sélectionnés.');
+        }
+
+        $service = app(\App\Services\TresorMoneyService::class);
+
+        try {
+            $pdf = $service->genererFichierTresorMoney($stages);
+            $filename = $service->genererNomFichier();
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            Log::error('Erreur génération Trésor Money ChefAgence', [
+                'instance_ids' => $data['ids'],
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : ' . $e->getMessage());
+        }
     }
 
     private function baseQuery(Request $request): Builder
@@ -363,27 +437,27 @@ class IndexChefAgenceController extends Controller
      */
     private function formatRow(InstanceParcours $instance): array
     {
-        $stage          = $instance->stage;
-        $beneficiaire   = $stage?->beneficiaire;
-        $contrat        = $stage?->contrats?->first();
+        $stage = $instance->stage;
+        $beneficiaire = $stage?->beneficiaire;
+        $contrat = $stage?->contrats?->first();
 
         return [
-            'id'                  => $instance->id,
-            'date'                => $instance->created_at?->format('d/m/Y') ?? '-',
-            'agence'              => $stage?->agence?->nom ?? '-',
-            'entreprise'          => $stage?->entreprise?->raison_sociale ?? '-',
-            'source_financement'  => $stage?->sourceFinancement?->nom ?? '-',
-            'type_stage'          => $stage?->typeStage?->nom ?? '-',
-            'type_structure'      => $stage?->entreprise?->typeStructure?->nom ?? '-',
-            'numero_aej'          => $beneficiaire?->numero_aej ?? '-',
-            'nom_prenoms'         => trim(($beneficiaire?->nom ?? '') . ' ' . ($beneficiaire?->prenoms ?? '')) ?: '-',
-            'date_naissance'      => $beneficiaire?->date_naissance ? Carbon::parse($beneficiaire->date_naissance)->format('d/m/Y') : '-',
-            'sexe'                => $beneficiaire?->sexe ?? '-',
-            'contrat_label'       => $contrat ? 'Avec Contrat' : 'Sans Contrat',
+            'id' => $instance->id,
+            'date' => $instance->created_at?->format('d/m/Y') ?? '-',
+            'agence' => $stage?->agence?->nom ?? '-',
+            'entreprise' => $stage?->entreprise?->raison_sociale ?? '-',
+            'source_financement' => $stage?->sourceFinancement?->nom ?? '-',
+            'type_stage' => $stage?->typeStage?->nom ?? '-',
+            'type_structure' => $stage?->entreprise?->typeStructure?->nom ?? '-',
+            'numero_aej' => $beneficiaire?->numero_aej ?? '-',
+            'nom_prenoms' => trim(($beneficiaire?->nom ?? '') . ' ' . ($beneficiaire?->prenoms ?? '')) ?: '-',
+            'date_naissance' => $beneficiaire?->date_naissance ? Carbon::parse($beneficiaire->date_naissance)->format('d/m/Y') : '-',
+            'sexe' => $beneficiaire?->sexe ?? '-',
+            'contrat_label' => $contrat ? 'Avec Contrat' : 'Sans Contrat',
             'incidence_financiere' => (float) ($contrat?->prime_mensuelle ?? 0) > 0 ? 'Oui' : 'Non',
-            'date_debut'          => $stage?->date_debut ? Carbon::parse($stage->date_debut)->translatedFormat('d M Y') : '-',
-            'date_fin'            => $stage?->date_fin_prevue ? Carbon::parse($stage->date_fin_prevue)->translatedFormat('d M Y') : '-',
-            'corbeille_actuelle'  => $instance->corbeille_actuelle,
+            'date_debut' => $stage?->date_debut ? Carbon::parse($stage->date_debut)->translatedFormat('d M Y') : '-',
+            'date_fin' => $stage?->date_fin_prevue ? Carbon::parse($stage->date_fin_prevue)->translatedFormat('d M Y') : '-',
+            'corbeille_actuelle' => $instance->corbeille_actuelle,
         ];
     }
 

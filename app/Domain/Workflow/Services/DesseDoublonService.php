@@ -4,6 +4,7 @@ namespace App\Domain\Workflow\Services;
 
 use App\Enums\CorbeilleEnum;
 use App\Enums\DoublonTypeEnum;
+use App\Models\Internship\Stage;
 use App\Models\Workflow\DesseDoublonDecision;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Database\Eloquent\Builder;
@@ -237,7 +238,7 @@ class DesseDoublonService
      * @param  array<string, Collection<int, string>>  $duplicateKeysByType  type_doublon->value() => clés en doublon
      * @return array<string, string> type_doublon->value() => clé de regroupement correspondante
      */
-    public function matchingTypesForStage(\App\Models\Internship\Stage $stage, array $duplicateKeysByType): array
+    public function matchingTypesForStage(Stage $stage, array $duplicateKeysByType): array
     {
         $selects = [];
         foreach (self::TYPES as $value => $config) {
@@ -292,7 +293,7 @@ class DesseDoublonService
         return $tresor->merge($wave)->values();
     }
 
-    private function siblingsForComptePaiement(\App\Models\Internship\Stage $stage): Collection
+    private function siblingsForComptePaiement(Stage $stage): Collection
     {
         $beneficiaire = $stage->beneficiaire;
         $tresorMoney = $beneficiaire?->numero_tresor_money;

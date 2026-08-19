@@ -17,13 +17,12 @@ import "react-perfect-scrollbar/dist/css/styles.css";
 
 
 
-import { createSelector } from "reselect";
 
 //redux
 import { useSelector, useDispatch } from "react-redux";
-import { getMailDetails, unreadMail, staredMail, labelMail, trashMail, deleteMail } from '../../slices/thunks';
 
 import { ToastContainer, toast } from 'react-toastify';
+import { createSelector } from "reselect";
 import SimpleBar from "simplebar-react";
 import { Link } from '@/velzone/inertia-router';
 import img2 from "../../assets/images/small/img-2.jpg";
@@ -34,6 +33,7 @@ import image3 from "../../assets/images/users/avatar-3.jpg";
 import image4 from "../../assets/images/users/avatar-4.jpg";
 import image5 from "../../assets/images/users/avatar-5.jpg";
 import DeleteModal from '../../Components/Common/DeleteModal';
+import { getMailDetails, unreadMail, staredMail, labelMail, trashMail, deleteMail } from '../../slices/thunks';
 
 const EmailToolbar = () => {
 

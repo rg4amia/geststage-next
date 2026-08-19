@@ -329,7 +329,8 @@ return 'N/A';
                                                         </div>
                                                     </div>
                                                 </div>
-                                            )}) : (
+                                            )
+}) : (
                                                 <div className="text-center text-muted p-3">
                                                     Aucun événement enregistré.
                                                 </div>

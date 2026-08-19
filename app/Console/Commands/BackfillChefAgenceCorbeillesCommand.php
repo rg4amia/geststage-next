@@ -15,7 +15,7 @@ class BackfillChefAgenceCorbeillesCommand extends Command
 {
     protected $signature = 'legacy:backfill-corbeille-ca {--dry-run : N\'applique aucune modification, affiche seulement ce qui serait changé}';
 
-    protected $description = "Recalcule instances_parcours.corbeille_actuelle (et etape_courante_id) pour les dossiers "
+    protected $description = 'Recalcule instances_parcours.corbeille_actuelle (et etape_courante_id) pour les dossiers '
         ."mal classés en CA_ATTENTE_VALIDATION_DEMARRAGE/OMIS par l'ancien LegacyMapperService::mapChefAgenceCorbeille, "
         .'sans rejouer toute la migration.';
 

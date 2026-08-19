@@ -30,6 +30,7 @@ import * as Yup from "yup"
 
 import { Link } from '@/velzone/inertia-router'
 import { AddTeamMember, headData } from "common/data"
+import DeleteModal from "Components/Common/DeleteModal";
 import Spinners from "Components/Common/Spinner"
 import {
   getTasks as onGetTasks,
@@ -40,7 +41,6 @@ import {
 
 //redux
 // import moment from "moment"
-import DeleteModal from "Components/Common/DeleteModal";
 
 
 //Import Breadcrumb

@@ -22,7 +22,6 @@ import chatReducer from "./chat/reducer";
 //Crypto
 
 //TicketsList
-import TicketsReducer from "./tickets/reducer";
 //Crm
 import CrmReducer from "./crm/reducer";
 import CryptoReducer from "./crypto/reducer";
@@ -38,19 +37,19 @@ import DashboardAnalyticsReducer from "./dashboardAnalytics/reducer";
 import DashboardCRMReducer from "./dashboardCRM/reducer";
 
 // Dashboard Ecommerce
+import DashboardCryptoReducer from "./dashboardCrypto/reducer";
 import DashboardEcommerceReducer from "./dashboardEcommerce/reducer";
 
 // Dashboard Cryto
-import DashboardCryptoReducer from "./dashboardCrypto/reducer";
 
 // Dashboard Cryto
+import DashboardJobReducer from "./dashboardJob/reducer";
+import DashboardNFTReducer from "./dashboardNFT/reducer";
 import DashboardProjectReducer from "./dashboardProject/reducer";
 
 // Dashboard NFT
-import DashboardNFTReducer from "./dashboardNFT/reducer";
 
 // Dashboard JOb
-import DashboardJobReducer from "./dashboardJob/reducer";
 import EcommerceReducer from "./ecommerce/reducer";
 
 // Pages > Team
@@ -68,6 +67,7 @@ import MailboxReducer from "./mailbox/reducer";
 import ProjectsReducer from "./projects/reducer";
 import TasksReducer from "./tasks/reducer";
 import TeamDataReducer from "./team/reducer";
+import TicketsReducer from "./tickets/reducer";
 import TodosReducer from "./todos/reducer";
 
 // API Key

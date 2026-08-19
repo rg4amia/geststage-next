@@ -4,7 +4,6 @@ import dropbox from "../../assets/images/brands/dropbox.png";
 import mail_chimp from "../../assets/images/brands/mail_chimp.png";
 import slack from "../../assets/images/brands/slack.png";
 import cimg1 from "../../assets/images/companies/img-1.png";
-import img8 from "../../assets/images/small/img-8.jpg";
 
 import cimg2 from "../../assets/images/companies/img-2.png";
 import cimg3 from "../../assets/images/companies/img-3.png";
@@ -18,6 +17,7 @@ import img2 from "../../assets/images/small/img-2.jpg";
 import img3 from "../../assets/images/small/img-3.jpg";
 import img4 from "../../assets/images/small/img-4.jpg";
 import img7 from "../../assets/images/small/img-7.jpg";
+import img8 from "../../assets/images/small/img-8.jpg";
 
 import Avatar1 from "../../assets/images/users/avatar-1.jpg";
 import Avatar10 from "../../assets/images/users/avatar-10.jpg";

@@ -139,7 +139,7 @@ class MigrateLegacyDataCommand extends Command
         foreach ($users as $legacyUser) {
             $email = $this->mapper->sanitizeEmail($legacyUser->email, $legacyUser->nom ?? 'User', $legacyUser->pseudo ?? '', $legacyUser->id);
 
-            $user = \App\Models\User::updateOrCreate(
+            $user = User::updateOrCreate(
                 ['email' => $email],
                 [
                     'nom' => $legacyUser->nom ?? 'Inconnu',
@@ -665,7 +665,7 @@ class MigrateLegacyDataCommand extends Command
                     ]);
 
                     // CREATE PARCOURS FOR POINTAGE
-                    $definition = \App\Models\Workflow\DefinitionParcours::firstOrCreate(
+                    $definition = DefinitionParcours::firstOrCreate(
                         ['code' => 'POINTAGE_LEGACY', 'version' => 1],
                         ['nom' => 'Parcours Pointage Legacy', 'active' => true]
                     );
@@ -684,14 +684,14 @@ class MigrateLegacyDataCommand extends Command
                     $etapeCode = strtoupper($corbeilleEnum);
                     $etapeNom = str_replace('_', ' ', $etapeCode);
 
-                    $etape = \App\Models\Workflow\EtapeParcours::firstOrCreate(
+                    $etape = EtapeParcours::firstOrCreate(
                         ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
                         ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
                     );
 
                     // L'instance de workflow reflète toujours le dernier état connu du pointage,
                     // donc de sa dernière version (resoumission) traitée.
-                    \App\Models\Workflow\InstanceParcours::updateOrCreate(
+                    InstanceParcours::updateOrCreate(
                         ['pointage_id' => $pointage->id],
                         [
                             'definition_parcours_id' => $definition->id,
@@ -845,7 +845,7 @@ class MigrateLegacyDataCommand extends Command
             // comme nouvelle version d'un pointage existant (cf. migratePointages()). On
             // résout donc d'abord via Pointage.ancien_id, puis via VersionPointage.ancien_id.
             $legacyPointageIds = $historique->pluck('pointage_id')->filter()->unique()->toArray();
-            $pointagesMap = \App\Models\Attendance\Pointage::whereIn('ancien_id', $legacyPointageIds)->pluck('id', 'ancien_id')->toArray();
+            $pointagesMap = Pointage::whereIn('ancien_id', $legacyPointageIds)->pluck('id', 'ancien_id')->toArray();
             $manquants = array_values(array_diff($legacyPointageIds, array_keys($pointagesMap)));
             if (! empty($manquants)) {
                 $pointagesMap += VersionPointage::whereIn('ancien_id', $manquants)->pluck('pointage_id', 'ancien_id')->toArray();
@@ -854,7 +854,7 @@ class MigrateLegacyDataCommand extends Command
 
             foreach ($historique as $legacyEvent) {
                 $instance = null;
-                
+
                 if ($legacyEvent->pointage_id) {
                     $pointage_id = $pointagesMap[$legacyEvent->pointage_id] ?? null;
                     if ($pointage_id) {
@@ -868,34 +868,34 @@ class MigrateLegacyDataCommand extends Command
                 }
 
                 if ($instance) {
-                        $corbeilleCible = $this->mapper->mapStatutStageToCorbeille($legacyEvent->etape_id ?? 1)->value;
-                        
-                        $etapeCode = strtoupper($corbeilleCible);
-                        $etapeNom = str_replace('_', ' ', $etapeCode);
+                    $corbeilleCible = $this->mapper->mapStatutStageToCorbeille($legacyEvent->etape_id ?? 1)->value;
 
-                        $etapeCible = EtapeParcours::firstOrCreate(
-                            ['definition_parcours_id' => $instance->definition_parcours_id, 'code' => $etapeCode],
-                            ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
-                        );
+                    $etapeCode = strtoupper($corbeilleCible);
+                    $etapeNom = str_replace('_', ' ', $etapeCode);
 
-                        EvenementParcours::updateOrCreate(
-                            [
-                                'instance_parcours_id' => $instance->id,
-                                'cle_idempotence' => 'mig_'.$legacyEvent->id.'_'.$instance->id,
-                            ],
-                            [
-                                'etape_cible_id' => $etapeCible->id,
-                                'type' => 'MIGRATION_STATUT',
-                                'donnees' => json_encode([
-                                    'commentaire' => $legacyEvent->commentaire,
-                                    'description' => "Passage à l'étape legacy ID : ".$legacyEvent->etape_id,
-                                    'corbeille_cible' => $corbeilleCible,
-                                ]),
-                                'auteur_id' => 1, // default user
-                                'survenu_le' => $this->mapper->normalizeLegacyDate($legacyEvent->created_at ?? null) ?? now(),
-                            ]
-                        );
-                    }
+                    $etapeCible = EtapeParcours::firstOrCreate(
+                        ['definition_parcours_id' => $instance->definition_parcours_id, 'code' => $etapeCode],
+                        ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
+                    );
+
+                    EvenementParcours::updateOrCreate(
+                        [
+                            'instance_parcours_id' => $instance->id,
+                            'cle_idempotence' => 'mig_'.$legacyEvent->id.'_'.$instance->id,
+                        ],
+                        [
+                            'etape_cible_id' => $etapeCible->id,
+                            'type' => 'MIGRATION_STATUT',
+                            'donnees' => json_encode([
+                                'commentaire' => $legacyEvent->commentaire,
+                                'description' => "Passage à l'étape legacy ID : ".$legacyEvent->etape_id,
+                                'corbeille_cible' => $corbeilleCible,
+                            ]),
+                            'auteur_id' => 1, // default user
+                            'survenu_le' => $this->mapper->normalizeLegacyDate($legacyEvent->created_at ?? null) ?? now(),
+                        ]
+                    );
+                }
                 $bar->advance();
             }
         });
