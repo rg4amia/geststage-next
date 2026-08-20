@@ -232,7 +232,7 @@ class MesStagiairesCipController extends Controller
             $filename = $service->genererNomFichier($instance->stage);
 
             return $pdf->stream($filename);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return back()->with('error', 'Erreur lors de la génération du contrat : '.$e->getMessage());
         }
     }
@@ -264,7 +264,7 @@ class MesStagiairesCipController extends Controller
                 'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
                 'filename' => $filename,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json(['error' => 'Erreur lors de la génération du contrat : '.$e->getMessage()], 500);
         }
     }
@@ -305,7 +305,7 @@ class MesStagiairesCipController extends Controller
             $filename = $service->genererNomFichier();
 
             return $pdf->stream($filename);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return back()->with('error', 'Erreur lors de la génération du fichier Trésor Money : '.$e->getMessage());
         }
     }
@@ -335,7 +335,7 @@ class MesStagiairesCipController extends Controller
                 'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
                 'filename' => $filename,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             return response()->json(['error' => 'Erreur lors de la génération du fichier Trésor Money : '.$e->getMessage()], 500);
         }
     }

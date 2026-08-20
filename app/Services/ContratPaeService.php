@@ -232,10 +232,10 @@ class ContratPaeService
         }
 
         if ($date instanceof Carbon) {
-            return $date->format('d/m/Y');
+            return $date->format('Y-m-d');
         }
 
-        return Carbon::parse($date)->format('d/m/Y');
+        return Carbon::parse($date)->format('Y-m-d');
     }
 
     private function calculerDureeMois(mixed $dateDebut, mixed $dateFin): int

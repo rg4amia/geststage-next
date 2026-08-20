@@ -17,19 +17,7 @@
     <br>
 
     <label>Titulaire d'un Diplôme : </label>
-    @if($stagiaire->diplome !== "AUTRE (A PRECISER)")
-    @php
-    $diplome = App\Models\Diplome::firstWhere('libelle', $stagiaire->diplome);
-    @endphp
-    @if($diplome->libelle === "ATTESTATION (FORMATION QUALIFIANTE D'UNE DURÉE INFÉRIEURE OU ÉGALE À 03 MOIS)" || $diplome->libelle === "CERTIFICAT (FORMATION QUALIFIANTE D'UNE DURÉE SUPÉRIEURE À 03 MOIS)")
-
-    <span>{{ $diplome->abrege }}</span>
-    @else
-    <span>{{ $diplome->libelle }}</span>
-    @endif
-    @else
-    <span>{{ $stagiaire->autre_diplome }}</span>
-    @endif
+    <span>{{ $stagiaire->diplome ?: ($stagiaire->autre_diplome ?: 'N/A') }}</span>
     <br>
     <label>Specialité : </label>
     <span>{{ $stagiaire->specialite }}</span>
