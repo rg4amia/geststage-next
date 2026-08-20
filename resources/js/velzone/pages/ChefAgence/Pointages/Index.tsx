@@ -183,6 +183,22 @@ const PointagesIndex = (props: PageProps) => {
         });
     };
 
+    /* ─── Validation par filtre (source_financement + type_stage) ─── */
+    const hasFilterValidation = selectedFilters.source_financement_id && selectedFilters.type_stage_id;
+
+    const handleValiderParFiltre = () => {
+        if (!hasFilterValidation || !selectedMois || isProcessing) return;
+        setIsProcessing(true);
+        router.post('/chefagence/pointages/valider-par-filtre', {
+            mois: selectedMois,
+            source_financement_id: selectedFilters.source_financement_id,
+            type_stage_id: selectedFilters.type_stage_id,
+        }, {
+            preserveScroll: true,
+            onFinish: () => setIsProcessing(false),
+        });
+    };
+
     /* ─── Ajournement individuel ─── */
     const openAjournerModal = (pointage: any) => {
         setAjournerTarget(pointage);
@@ -633,6 +649,12 @@ const PointagesIndex = (props: PageProps) => {
                                                             <i className="ri-close-circle-line me-1"></i>Ajourner la sélection
                                                         </Button>
                                                     </>
+                                                )}
+                                                {hasFilterValidation && (
+                                                    <Button color="success" size="sm" onClick={handleValiderParFiltre} disabled={isProcessing}>
+                                                        <i className="ri-check-double-line me-1"></i>
+                                                        Valider tous les pointages
+                                                    </Button>
                                                 )}
                                                 <Button
                                                     color="primary"
