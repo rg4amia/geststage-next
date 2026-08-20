@@ -36,14 +36,14 @@
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 8px 20px;
+            padding: 5px 15px;
             background: white;
             text-align: center;
-            border-bottom: 2px solid #f0f0f0;
+            border-bottom: 1px solid #f0f0f0;
         }
 
         .header img {
-            width: 85%;
+            width: 80%;
             max-width: 100%;
             height: auto;
             object-fit: contain;
@@ -51,18 +51,18 @@
 
         .footer {
             background: white;
-            padding: 8px 0;
+            padding: 5px 0;
             text-align: center;
             color: white;
             display: flex;
             justify-content: center;
             align-items: center;
-            border-top: 2px solid #f0f0f0;
-            margin-top: 10px;
+            border-top: 1px solid #f0f0f0;
+            margin-top: 5px;
         }
 
         .footer img {
-            width: 100%;
+            width: 90%;
             max-width: 100%;
             height: auto;
             object-fit: contain;
@@ -78,15 +78,15 @@
         .form-section {
             max-width: 190mm;
             margin: 0 auto;
-            padding: 5px 25px;
+            padding: 3px 20px;
         }
 
         .form-group {
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            padding-bottom: 3px;
+            padding-bottom: 2px;
         }
 
         .form-group:last-child {
@@ -96,7 +96,7 @@
         label {
             width: 220px;
             font-weight: bold;
-            font-size: 12pt;
+            font-size: 11pt;
             color: #333;
             margin-right: 15px;
             flex-shrink: 0;
@@ -106,14 +106,14 @@
             width: auto;
             font-weight: normal;
             color: #000;
-            font-size: 12pt;
+            font-size: 11pt;
             min-width: 300px;
         }
 
         p {
-            font-size: 12pt;
-            margin-bottom: 3px;
-            padding-left: 25px;
+            font-size: 11pt;
+            margin-bottom: 2px;
+            padding-left: 20px;
             font-weight: 500;
             color: #444;
         }
@@ -121,69 +121,61 @@
         .nature-paiement {
             text-align: right;
             margin-top: 0px;
-            margin-bottom: 3px;
-            padding-right: 25px;
+            margin-bottom: 2px;
+            padding-right: 20px;
             font-weight: bold;
-            font-size: 12pt;
+            font-size: 11pt;
             color: #333;
         }
 
         .types-depenses {
             text-align: center;
-            margin: 10px 0;
-            padding: 0 25px;
+            margin: 8px 0;
+            padding: 0 20px;
         }
 
         .types-depenses h2 {
-            font-size: 14pt;
+            font-size: 13pt;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             color: #333;
         }
 
         .checkbox-group {
-            display: table;
-            width: 100%;
-            margin: 10px auto;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 8px auto;
+            max-width: 600px;
         }
 
         .checkbox-item {
-            display: table-row;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .checkbox-box {
-            display: table-cell;
-            width: 60px;
-            padding: 6px 0;
-            text-align: center;
-            vertical-align: middle;
-        }
-
-        .checkbox-box::before {
-            content: '';
-            display: inline-block;
             width: 35px;
             height: 22px;
             border: 2px solid #000;
             border-radius: 6px;
             background: white;
+            flex-shrink: 0;
         }
 
         .checkbox-label {
-            display: table-cell;
-            font-size: 12pt;
+            font-size: 11pt;
             font-weight: 500;
-            text-align: center;
-            padding: 6px 0;
-            vertical-align: middle;
+            white-space: nowrap;
         }
 
         .date-signature {
-            margin: 10px 25px 5px 25px;
-            font-size: 12pt;
+            margin: 8px 20px 3px 20px;
+            font-size: 11pt;
             font-weight: 500;
             border-bottom: 2px solid #000;
-            padding-bottom: 3px;
+            padding-bottom: 2px;
         }
 
         @media print {
@@ -224,7 +216,7 @@
 
             @page {
                 size: A4;
-                margin: 8mm;
+                margin: 5mm;
             }
 
             * {
@@ -285,15 +277,15 @@
                 <div class="checkbox-group">
                     <div class="checkbox-item">
                         <div class="checkbox-box"></div>
-                        <div class="checkbox-label">Bourses</div>
+                        <span class="checkbox-label">Bourses</span>
                     </div>
                     <div class="checkbox-item">
                         <div class="checkbox-box"></div>
-                        <div class="checkbox-label">Primes</div>
+                        <span class="checkbox-label">Primes</span>
                     </div>
                     <div class="checkbox-item">
                         <div class="checkbox-box"></div>
-                        <div class="checkbox-label">Autres</div>
+                        <span class="checkbox-label">Autres</span>
                     </div>
                 </div>
             </div>
