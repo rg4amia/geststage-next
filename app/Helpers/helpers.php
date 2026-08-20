@@ -67,6 +67,44 @@ if (! function_exists('getPrimeDisplayDataByFinancementType')) {
     }
 }
 
+if (! function_exists('convertir_en_lettres')) {
+    /**
+     * Convertit un nombre en lettres françaises (alias de numberToFrenchWords).
+     */
+    function convertir_en_lettres(int $number): string
+    {
+        return numberToFrenchWords($number);
+    }
+}
+
+if (! function_exists('preparePaginatedDataWithFooterSpace')) {
+    /**
+     * Prépare les données pour une pagination personnalisée avec espace pour le footer.
+     * Première page : 11 éléments, pages suivantes : 18 éléments.
+     *
+     * @param  \Illuminate\Support\Collection $items
+     * @return array<int, \Illuminate\Support\Collection>
+     */
+    function preparePaginatedDataWithFooterSpace(\Illuminate\Support\Collection $items): array
+    {
+        $firstPageItems = 11;
+        $subsequentPageItems = 18;
+
+        $pages = [$items->take($firstPageItems)];
+
+        $remaining = $items->slice($firstPageItems);
+
+        if ($remaining->isNotEmpty()) {
+            $pages = array_merge($pages, array_map(
+                fn (array $chunk) => \Illuminate\Support\Collection::make($chunk),
+                array_chunk($remaining->all(), $subsequentPageItems)
+            ));
+        }
+
+        return $pages;
+    }
+}
+
 if (! function_exists('numberToFrenchWords')) {
     function numberToFrenchWords(int $number): string
     {

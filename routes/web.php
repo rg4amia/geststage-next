@@ -78,10 +78,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Phase 5 : Pointages Chef d'Agence
     Route::get('/chefagence/pointages', [PointageChefAgenceController::class, 'pointageAttenteValidationByChefAgence'])->name('chefagence.pointages.index');
+    Route::get('/chefagence/pointages/mois', [PointageChefAgenceController::class, 'moisDisponibles'])->name('chefagence.pointages.mois');
     Route::post('/chefagence/pointages/valider/{id}', [PointageChefAgenceController::class, 'valider'])->name('chefagence.pointages.valider');
+    Route::post('/chefagence/pointages/valider-groupe', [PointageChefAgenceController::class, 'validerGroupe'])->name('chefagence.pointages.validerGroupe');
     Route::post('/chefagence/pointages/ajourner/{id}', [PointageChefAgenceController::class, 'ajourner'])->name('chefagence.pointages.ajourner');
+    Route::post('/chefagence/pointages/ajourner-groupe', [PointageChefAgenceController::class, 'ajournerGroupe'])->name('chefagence.pointages.ajournerGroupe');
     Route::post('/chefagence/pointages-adp/{id}/valider', [PointageChefAgenceController::class, 'validerAjournementAdp'])->name('chefagence.pointages.adp.valider');
     Route::post('/chefagence/pointages-adp/{id}/rejeter', [PointageChefAgenceController::class, 'rejeterAjournementAdp'])->name('chefagence.pointages.adp.rejeter');
+    Route::post('/chefagence/pointages/generer-attestation', [PointageChefAgenceController::class, 'genererAttestation'])->name('chefagence.pointages.genererAttestation');
 
     // Phase 6 : DMG (Chaîne Financière)
     Route::get('/dmg/validation', [ValidationDmgController::class, 'index'])->name('dmg.validation.index');

@@ -81,6 +81,17 @@ class WorkflowTransitionService
     }
 
     /**
+     * 6b. Le CA valide un pointage mensuel -> le pointage passe VALIDÉ et le paiement est en attente DMG.
+     */
+    public function caValidePointage(InstanceParcours $instance): void
+    {
+        // La validation du pointage par le CA est déjà faite dans le service.
+        // Ici on s'assure que l'instance reste dans EN_STAGE
+        // car le pointage validé génère un droit de paiement traité séparément.
+        $instance->update(['corbeille_actuelle' => CorbeilleEnum::EN_STAGE]);
+    }
+
+    /**
      * 7. Le CA valide la correction -> Le pointage redevient SOUMIS pour le flux normal.
      */
     public function caValideAjournementAdp(Pointage $pointage): void
