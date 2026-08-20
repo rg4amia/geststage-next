@@ -15,8 +15,8 @@
         body {
             font-family: 'Georgia', serif;
             background-color: #f8f9fa;
-            line-height: 1.2;
-            padding: 0px;
+            line-height: 1.4;
+            padding: 0;
         }
 
         .container {
@@ -24,26 +24,20 @@
             margin: 0 auto;
             background: white;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-            page-break-after: always;
-            min-height: 277mm;
-        }
-
-        .container:last-child {
-            page-break-after: auto;
         }
 
         .header {
             display: flex;
             justify-content: center;
             align-items: center;
-            padding: 5px 15px;
+            padding: 15px 30px;
             background: white;
             text-align: center;
-            border-bottom: 1px solid #f0f0f0;
+            border-bottom: 2px solid #f0f0f0;
         }
 
         .header img {
-            width: 80%;
+            width: 90%;
             max-width: 100%;
             height: auto;
             object-fit: contain;
@@ -51,52 +45,41 @@
 
         .footer {
             background: white;
-            padding: 5px 0;
+            padding: 15px 0;
             text-align: center;
             color: white;
             display: flex;
             justify-content: center;
             align-items: center;
-            border-top: 1px solid #f0f0f0;
-            margin-top: 5px;
+            border-top: 2px solid #f0f0f0;
+            margin-top: 20px;
         }
 
         .footer img {
-            width: 90%;
+            width: 100%;
             max-width: 100%;
             height: auto;
             object-fit: contain;
         }
 
-        h1 {
-            text-align: center;
-            font-size: 20px;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-        }
-
         .form-section {
             max-width: 190mm;
             margin: 0 auto;
-            padding: 3px 20px;
+            padding: 10px 30px;
         }
 
         .form-group {
-            margin-bottom: 4px;
+            margin-bottom: 10px;
             display: flex;
             align-items: center;
             justify-content: flex-start;
-            padding-bottom: 2px;
-        }
-
-        .form-group:last-child {
-            border-bottom: none;
+            padding-bottom: 5px;
         }
 
         label {
             width: 220px;
             font-weight: bold;
-            font-size: 11pt;
+            font-size: 13pt;
             color: #333;
             margin-right: 15px;
             flex-shrink: 0;
@@ -106,117 +89,60 @@
             width: auto;
             font-weight: normal;
             color: #000;
-            font-size: 11pt;
+            font-size: 13pt;
             min-width: 300px;
         }
 
         p {
-            font-size: 11pt;
-            margin-bottom: 2px;
-            padding-left: 20px;
+            font-size: 13pt;
+            margin-bottom: 5px;
+            padding-left: 30px;
             font-weight: 500;
             color: #444;
         }
 
         .nature-paiement {
             text-align: right;
-            margin-top: 0px;
-            margin-bottom: 2px;
-            padding-right: 20px;
+            margin-top: 0;
+            margin-bottom: 5px;
+            padding-right: 3px;
             font-weight: bold;
-            font-size: 11pt;
-            color: #333;
-        }
-
-        .types-depenses {
-            text-align: center;
-            margin: 8px 0;
-            padding: 0 20px;
-        }
-
-        .types-depenses h2 {
             font-size: 13pt;
-            font-weight: bold;
-            margin-bottom: 8px;
             color: #333;
-        }
-
-        .checkbox-group {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            margin: 8px auto;
-            max-width: 600px;
-        }
-
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .checkbox-box {
-            width: 35px;
-            height: 22px;
-            border: 2px solid #000;
-            border-radius: 6px;
-            background: white;
-            flex-shrink: 0;
-        }
-
-        .checkbox-label {
-            font-size: 11pt;
-            font-weight: 500;
-            white-space: nowrap;
-        }
-
-        .date-signature {
-            margin: 8px 20px 3px 20px;
-            font-size: 11pt;
-            font-weight: 500;
-            border-bottom: 2px solid #000;
-            padding-bottom: 2px;
         }
 
         @media print {
             body {
                 margin: 0;
-                padding: 0;
+                padding: 10mm;
+                page-break-inside: avoid;
             }
 
             .container {
                 page-break-inside: avoid;
-                page-break-after: always;
                 box-shadow: none;
-            }
-
-            .container:last-child {
-                page-break-after: auto;
             }
 
             .form-section {
                 max-width: 190mm;
                 page-break-inside: avoid;
-                padding: 5mm 15mm;
+                padding: 15mm 20mm;
             }
 
             .form-group {
-                margin-bottom: 4mm;
+                margin-bottom: 8mm;
                 border-bottom: 1px dotted #ccc;
-                padding-bottom: 3mm;
+                padding-bottom: 5mm;
             }
 
-            label {
-                font-size: 11pt;
-            }
-
+            label,
             label:nth-child(2) {
-                font-size: 11pt;
+                font-size: 13pt;
             }
 
             @page {
                 size: A4;
-                margin: 5mm;
+                margin: 10mm;
             }
 
             * {
@@ -229,14 +155,11 @@
 
 <body>
     @foreach ($stagiaires as $stagiaire)
-        <div class="container">
-            <!-- En-tête officiel -->
+        <div class="container" @unless($loop->last) style="page-break-after: always;" @endunless>
             <div class="header">
-                <img src="{{ public_path('assets_tm/tm_header.png') }}" alt="TrésorMoney Header"
-                    style="width: 90%; max-width: 100%; height: auto;">
+                <img src="{{ public_path('assets_tm/tm_header.png') }}" alt="TrésorMoney Header">
             </div>
 
-            <!-- Contenu du formulaire -->
             <div class="form-section">
                 <p>Je soussigné(e)</p>
                 <div class="form-group">
@@ -271,34 +194,8 @@
             </div>
             <p class="nature-paiement">Nature du paiement :</p>
 
-            <!-- Types de dépenses -->
-            <div class="types-depenses">
-                <h2>Types de dépenses</h2>
-                <div class="checkbox-group">
-                    <div class="checkbox-item">
-                        <div class="checkbox-box"></div>
-                        <span class="checkbox-label">Bourses</span>
-                    </div>
-                    <div class="checkbox-item">
-                        <div class="checkbox-box"></div>
-                        <span class="checkbox-label">Primes</span>
-                    </div>
-                    <div class="checkbox-item">
-                        <div class="checkbox-box"></div>
-                        <span class="checkbox-label">Autres</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Date et Signature -->
-            <div class="date-signature">
-                Date et Signature :
-            </div>
-
-            <!-- Footer TrésorPay -->
             <div class="footer">
-                <img src="{{ public_path('assets_tm/tm_footer.png') }}" alt="TrésorMoney Footer"
-                    style="width: 100%; max-width: 100%; height: auto;">
+                <img src="{{ public_path('assets_tm/tm_footer.png') }}" alt="TrésorMoney Footer">
             </div>
         </div>
     @endforeach

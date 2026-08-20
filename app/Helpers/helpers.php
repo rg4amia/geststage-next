@@ -45,3 +45,108 @@ if (! function_exists('getInitials')) {
         return $initials;
     }
 }
+
+if (! function_exists('getPrimeDisplayDataByFinancementType')) {
+    /**
+     * Retourne un montant de prime exploitable par les vues legacy de contrat.
+     */
+    function getPrimeDisplayDataByFinancementType(object $stagiaire): array
+    {
+        $amount = (int) round((float) (
+            $stagiaire->montant_indemnite
+            ?? $stagiaire->prime_mensuelle
+            ?? $stagiaire->montant_du
+            ?? 0
+        ));
+
+        return [
+            'amount' => $amount,
+            'formatted_amount' => number_format($amount, 0, ',', ' '),
+            'amount_in_words' => numberToFrenchWords($amount),
+        ];
+    }
+}
+
+if (! function_exists('numberToFrenchWords')) {
+    function numberToFrenchWords(int $number): string
+    {
+        if ($number === 0) {
+            return 'zero';
+        }
+
+        $units = [
+            0 => 'zero', 1 => 'un', 2 => 'deux', 3 => 'trois', 4 => 'quatre', 5 => 'cinq',
+            6 => 'six', 7 => 'sept', 8 => 'huit', 9 => 'neuf', 10 => 'dix', 11 => 'onze',
+            12 => 'douze', 13 => 'treize', 14 => 'quatorze', 15 => 'quinze', 16 => 'seize',
+        ];
+
+        if ($number <= 16) {
+            return $units[$number];
+        }
+
+        if ($number < 20) {
+            return 'dix-' . $units[$number - 10];
+        }
+
+        if ($number < 100) {
+            $tensMap = [
+                20 => 'vingt', 30 => 'trente', 40 => 'quarante',
+                50 => 'cinquante', 60 => 'soixante',
+            ];
+
+            if ($number < 70) {
+                $tens = intdiv($number, 10) * 10;
+                $unit = $number % 10;
+                $label = $tensMap[$tens];
+
+                if ($unit === 0) {
+                    return $label;
+                }
+
+                return $unit === 1 ? $label . ' et un' : $label . '-' . numberToFrenchWords($unit);
+            }
+
+            if ($number < 80) {
+                return 'soixante-' . numberToFrenchWords($number - 60);
+            }
+
+            if ($number === 80) {
+                return 'quatre-vingts';
+            }
+
+            return 'quatre-vingt-' . numberToFrenchWords($number - 80);
+        }
+
+        if ($number < 1000) {
+            $hundreds = intdiv($number, 100);
+            $remainder = $number % 100;
+
+            if ($hundreds === 1) {
+                return $remainder === 0 ? 'cent' : 'cent ' . numberToFrenchWords($remainder);
+            }
+
+            $prefix = $units[$hundreds] . ' cent';
+
+            if ($remainder === 0) {
+                return $prefix . 's';
+            }
+
+            return $prefix . ' ' . numberToFrenchWords($remainder);
+        }
+
+        if ($number < 1000000) {
+            $thousands = intdiv($number, 1000);
+            $remainder = $number % 1000;
+
+            $prefix = $thousands === 1 ? 'mille' : numberToFrenchWords($thousands) . ' mille';
+
+            if ($remainder === 0) {
+                return $prefix;
+            }
+
+            return $prefix . ' ' . numberToFrenchWords($remainder);
+        }
+
+        return (string) $number;
+    }
+}

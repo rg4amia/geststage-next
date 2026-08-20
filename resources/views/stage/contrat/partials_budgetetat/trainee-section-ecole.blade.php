@@ -10,18 +10,7 @@
     Téléphone : <strong>{{ $stagiaire->contact1 }}</strong>
     <br>
     Admissibilité au Diplôme :
-    @if($stagiaire->diplome !== "AUTRE (A PRECISER)")
-        @php
-            $diplome = App\Models\Diplome::firstWhere('libelle', $stagiaire->diplome);
-        @endphp
-        @if($diplome->libelle === "ATTESTATION (FORMATION QUALIFIANTE D'UNE DURÉE INFÉRIEURE OU ÉGALE À 03 MOIS)" || $diplome->libelle === "CERTIFICAT (FORMATION QUALIFIANTE D'UNE DURÉE SUPÉRIEURE À 03 MOIS)")
-            <strong>{{ $diplome->abrege }}</strong>
-        @else
-            <strong>{{ $diplome->libelle }}</strong>
-        @endif
-    @else
-        <strong>{{ $stagiaire->autre_diplome }}</strong>
-    @endif
+    <strong>{{ $stagiaire->diplome ?: ($stagiaire->autre_diplome ?: 'N/A') }}</strong>
     <br>
     Specialité : <strong>{{ $stagiaire->specialite }}</strong>
     <br>

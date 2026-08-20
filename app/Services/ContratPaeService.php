@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\HistoriqueGeneration;
 use App\Models\Internship\Stage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -22,10 +23,14 @@ class ContratPaeService
             $stage->load([
                 'beneficiaire.communeResidence',
                 'beneficiaire.typePaiement',
+                'beneficiaire.diplome',
                 'entreprise.typeStructure',
+                'entreprise.commune',
                 'agence',
+                'conseiller',
                 'sourceFinancement',
                 'typeStage',
+                'contrats',
             ]);
 
             // Déterminer la vue appropriée selon la source de financement et type de stage
@@ -80,7 +85,7 @@ class ContratPaeService
             $this->logGeneration($stage, $fonction, $montant);
 
             return $pdf;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::error('Erreur lors de la génération du contrat PDF', [
                 'stage_id' => $stage->id,
                 'error' => $e->getMessage(),
@@ -133,57 +138,116 @@ class ContratPaeService
     {
         $beneficiaire = $stage->beneficiaire;
         $entreprise = $stage->entreprise;
+        $agence = $stage->agence;
+        $contrat = $stage->contrats->sortByDesc('id')->first();
+        $dateDebut = $this->formaterDate($stage->date_debut);
+        $dateFin = $this->formaterDate($stage->date_fin_prevue);
+        $dateNaissance = $this->formaterDate($beneficiaire->date_naissance);
+        $dateEntree = $this->formaterDate($stage->date_entree_portefeuille ?? $stage->created_at);
+        $montantIndemnite = $montant ?? (float) ($contrat?->prime_mensuelle ?? 0);
+        $nbreMoisPrev = $this->calculerDureeMois($stage->date_debut, $stage->date_fin_prevue);
+        $communeResidence = $beneficiaire->communeResidence?->nom
+            ?? $beneficiaire->sous_prefecture_residence
+            ?? 'N/A';
+        $villeEntreprise = $entreprise?->commune?->nom
+            ?? $stage->commune_stage
+            ?? $stage->sous_prefecture_stage
+            ?? 'NEANT';
+
+        $stagiaire = new class extends \stdClass
+        {
+            public function isPrimeMirahEligible(): bool
+            {
+                return false;
+            }
+        };
+
+        $stagiaire->nom_stagiaire = $beneficiaire->nom;
+        $stagiaire->prenoms_stagiaire = $beneficiaire->prenoms;
+        $stagiaire->numero_aej = $beneficiaire->numero_aej;
+        $stagiaire->num_piece = $beneficiaire->numero_piece_identite;
+        $stagiaire->nature_piece = $beneficiaire->nature_piece_identite;
+        $stagiaire->date_naissance = $dateNaissance;
+        $stagiaire->date_de_naissance = $dateNaissance;
+        $stagiaire->lieu_naissance = $beneficiaire->lieu_naissance;
+        $stagiaire->lieu_de_naissance = $beneficiaire->lieu_naissance;
+        $stagiaire->commune_residence = $communeResidence;
+        $stagiaire->sous_prefecture_residence = $beneficiaire->sous_prefecture_residence;
+        $stagiaire->communeresidence = (object) ['name' => $communeResidence];
+        $stagiaire->contact = $beneficiaire->telephone_principal;
+        $stagiaire->contact1 = $beneficiaire->telephone_principal;
+        $stagiaire->email = $beneficiaire->email;
+        $stagiaire->intitule_poste_stage = $fonction ?? $stage->intitule_poste;
+        $stagiaire->service_affectation = $stage->service_affectation;
+        $stagiaire->montant_indemnite = $montantIndemnite;
+        $stagiaire->prime_mensuelle = $montantIndemnite;
+        $stagiaire->date_debut = $dateDebut;
+        $stagiaire->date_fin_prevue = $dateFin;
+        $stagiaire->date_fin = $dateFin;
+        $stagiaire->date_entree = $dateEntree;
+        $stagiaire->nbre_mois_prev = $nbreMoisPrev;
+        $stagiaire->duree_mois = $nbreMoisPrev;
+        $stagiaire->diplome = $beneficiaire->diplome?->nom;
+        $stagiaire->autre_diplome = $beneficiaire->autre_diplome;
+        $stagiaire->specialite = $beneficiaire->specialite;
+        $stagiaire->entreprise = (object) [
+            'libelle_entreprise' => $entreprise?->raison_sociale ?? 'NEANT',
+            'ville' => $villeEntreprise,
+            'adresse' => $entreprise?->adresse,
+            'compte_contri' => $entreprise?->numero_contribuable,
+            'rccm' => $entreprise?->registre_commerce,
+            'cnps' => null,
+            'mail' => $entreprise?->email,
+            'contact' => $entreprise?->telephone,
+            'dg' => null,
+        ];
+        $stagiaire->agence = (object) [
+            'libelle_agence' => $agence?->nom ?? 'N/A',
+            'nom' => $agence?->nom ?? 'N/A',
+            'chef_agence' => $agence?->chef_agence ?? 'N/A',
+        ];
+        $stagiaire->typestage = (object) [
+            'libelle_type_stage' => $stage->typeStage?->nom,
+        ];
+        $stagiaire->typefinancement = (object) [
+            'libelle_financement' => $stage->sourceFinancement?->nom,
+        ];
+        $stagiaire->conseiller = (object) [
+            'nom_prenoms' => $stage->conseiller?->nom_complet ?? 'N/A',
+        ];
 
         return [
-            'stagiaire' => (object) [
-                'nom_stagiaire' => $beneficiaire->nom,
-                'prenoms_stagiaire' => $beneficiaire->prenoms,
-                'numero_aej' => $beneficiaire->numero_aej,
-                'num_piece' => $beneficiaire->numero_piece_identite,
-                'nature_piece' => $beneficiaire->typePieceIdentite?->nom,
-                'date_naissance' => $beneficiaire->date_naissance instanceof \Carbon\Carbon
-                    ? $beneficiaire->date_naissance->format('d/m/Y')
-                    : $beneficiaire->date_naissance,
-                'lieu_naissance' => $beneficiaire->lieuNaissance,
-                'commune_residence' => $beneficiaire->communeResidence?->nom,
-                'sous_prefecture_residence' => $beneficiaire->sous_prefecture_residence,
-                'contact' => $beneficiaire->contact_telephonique,
-                'email' => $beneficiaire->email,
-                'intitule_poste_stage' => $fonction ?? $stage->intitule_poste,
-                'montant_indemnite' => $montant ?? $stage->montant_indemnite,
-                'date_debut' => $stage->date_debut instanceof \Carbon\Carbon
-                    ? $stage->date_debut->format('d/m/Y')
-                    : $stage->date_debut,
-                'date_fin_prevue' => $stage->date_fin_prevue instanceof \Carbon\Carbon
-                    ? $stage->date_fin_prevue->format('d/m/Y')
-                    : $stage->date_fin_prevue,
-                'duree_mois' => $stage->duree_mois,
-                'entreprise' => (object) [
-                    'libelle_entreprise' => $entreprise->raison_sociale,
-                    'adresse' => $entreprise->adresse,
-                    'contact' => $entreprise->contact,
-                    'email' => $entreprise->email,
-                ],
-                'agence' => (object) [
-                    'libelle_agence' => $stage->agence?->nom,
-                    'nom' => $stage->agence?->nom,
-                    'chef_agence' => $stage->agence?->chef_agence ?? 'N/A',
-                ],
-                'typestage' => (object) [
-                    'libelle_type_stage' => $stage->typeStage?->nom,
-                ],
-                'typefinancement' => (object) [
-                    'libelle_financement' => $stage->sourceFinancement?->nom,
-                ],
-                'conseiller' => (object) [
-                    'nom_prenoms' => $stage->conseiller?->nom_complet ?? 'N/A',
-                ],
-            ],
+            'stagiaire' => $stagiaire,
             'fonction' => $fonction,
-            'montant' => $montant,
-            'agence' => $stage->agence,
+            'montant' => $montantIndemnite,
+            'agence' => $stagiaire->agence,
             'conseiller' => $stage->conseiller?->nom_complet ?? 'N/A',
         ];
+    }
+
+    private function formaterDate(mixed $date): ?string
+    {
+        if (empty($date)) {
+            return null;
+        }
+
+        if ($date instanceof Carbon) {
+            return $date->format('d/m/Y');
+        }
+
+        return Carbon::parse($date)->format('d/m/Y');
+    }
+
+    private function calculerDureeMois(mixed $dateDebut, mixed $dateFin): int
+    {
+        if (empty($dateDebut) || empty($dateFin)) {
+            return 6;
+        }
+
+        $debut = $dateDebut instanceof Carbon ? $dateDebut->copy() : Carbon::parse($dateDebut);
+        $fin = $dateFin instanceof Carbon ? $dateFin->copy() : Carbon::parse($dateFin);
+
+        return max(1, (int) ceil($debut->diffInDays($fin) / 30));
     }
 
     /**
@@ -210,7 +274,7 @@ class ContratPaeService
                 'uuid_public' => Str::uuid(),
                 'type_document' => 'CONTRAT',
                 'stage_id' => $stage->id,
-                'instance_parcours_id' => $stage->instancesParcours()->first()?->id,
+                'instance_parcours_id' => $stage->instanceParcours()->first()?->id,
                 'user_id' => Auth::id(),
                 'nom_fichier' => $this->genererNomFichier($stage),
                 'parametres' => [
@@ -221,7 +285,7 @@ class ContratPaeService
                 'type_stage' => $stage->typeStage?->nom,
                 'nombre_stagiaires' => 1,
             ]);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Log::warning('Impossible de logger la génération du contrat', [
                 'stage_id' => $stage->id,
                 'error' => $e->getMessage(),
