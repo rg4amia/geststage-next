@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Attendance\Services\PointageService;
+use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
@@ -13,7 +14,9 @@ use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
+use App\Models\Workflow\InstanceParcours;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -119,12 +122,9 @@ class PointageCipController extends Controller
                 $data = $query->paginate(20)->withQueryString();
 
             } elseif ($tab === 'ajourne_dmg') {
-                $query = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions.auteur'])
-                    ->where('periode_id', $periode->id)
-                    ->where('statut', 'AJOURNE_DMG');
-
-                $this->applyPointageFilters($query, $filters);
+                $query = $this->buildLegacyAjourneDmgQuery($periode, $filters);
                 $data = $query->paginate(20)->withQueryString();
+                $data->getCollection()->transform(fn (InstanceParcours $instance) => $this->mapLegacyAjourneDmgRow($instance));
             }
         }
 
@@ -174,6 +174,76 @@ class PointageCipController extends Controller
         $query->whereHas('stage', function ($q) use ($filters) {
             $this->applyStageFilters($q, $filters);
         });
+    }
+
+    private function buildLegacyAjourneDmgQuery(Periode $periode, array $filters): Builder
+    {
+        $user = Auth::user();
+
+        return InstanceParcours::with([
+            'stage.beneficiaire.typePaiement',
+            'stage.entreprise',
+            'stage.agence',
+            'stage.sourceFinancement',
+            'stage.typeStage',
+        ])
+            ->where('corbeille_actuelle', CorbeilleEnum::CIP_AJOURNE_DMG->value)
+            ->whereHas('stage', function ($query) use ($periode, $filters, $user) {
+                $query->where('date_debut', '<=', $periode->date_fin)
+                    ->where(function ($nested) use ($periode) {
+                        $nested->whereNull('date_fin_prevue')
+                            ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
+                    });
+
+                if ($user?->agence_id) {
+                    $query->where('agence_id', $user->agence_id);
+                }
+
+                $this->applyStageFilters($query, $filters);
+            })
+            ->orderByDesc('updated_at');
+    }
+
+    private function mapLegacyAjourneDmgRow(InstanceParcours $instance): array
+    {
+        $stage = $instance->stage;
+        $beneficiaire = $stage?->beneficiaire;
+
+        return [
+            'id' => $instance->id,
+            'stage_id' => $stage?->id,
+            'statut' => 'AJOURNE_DMG',
+            'date_ajournement' => $instance->updated_at?->toDateString(),
+            'observation_dmg' => $stage?->observations ?: 'Ajourné par la DMG',
+            'decisions' => [],
+            'stage' => [
+                'id' => $stage?->id,
+                'date_debut' => $stage?->date_debut?->toDateString(),
+                'date_fin_prevue' => $stage?->date_fin_prevue?->toDateString(),
+                'beneficiaire' => [
+                    'numero_aej' => $beneficiaire?->numero_aej,
+                    'nom' => $beneficiaire?->nom,
+                    'prenoms' => $beneficiaire?->prenoms,
+                    'telephone_principal' => $beneficiaire?->telephone_principal,
+                    'telephone_secondaire' => $beneficiaire?->telephone_secondaire,
+                    'type_paiement_id' => $beneficiaire?->type_paiement_id,
+                    'numero_tresor_money' => $beneficiaire?->numero_tresor_money,
+                    'numero_wave' => $beneficiaire?->numero_wave,
+                ],
+                'entreprise' => [
+                    'raison_sociale' => $stage?->entreprise?->raison_sociale,
+                ],
+                'agence' => [
+                    'nom' => $stage?->agence?->nom,
+                ],
+                'sourceFinancement' => [
+                    'nom' => $stage?->sourceFinancement?->nom,
+                ],
+                'typeStage' => [
+                    'nom' => $stage?->typeStage?->nom,
+                ],
+            ],
+        ];
     }
 
     public function soumettreBatch(Request $request)
@@ -294,14 +364,18 @@ class PointageCipController extends Controller
         return redirect()->back()->with('success', 'Pointage corrigé et renvoyé au CA.');
     }
 
-    public function editStagiaire($id)
+    public function editStagiaire(Request $request, $id)
     {
-        $stage = Stage::with('beneficiaire')->findOrFail($id);
-        $typesPaiement = TypePaiement::all();
+        $stage = Stage::with(['beneficiaire.typePaiement', 'agence', 'entreprise', 'typeStage', 'sourceFinancement', 'instanceParcours'])->findOrFail($id);
+        $typesPaiement = TypePaiement::orderBy('nom')->get();
 
         return Inertia::render('Cip/Pointages/EditStagiaire', [
             'stage' => $stage,
             'typesPaiement' => $typesPaiement,
+            'returnTo' => [
+                'tab' => $request->query('return_tab', 'ajourne_dmg'),
+                'mois' => $request->query('mois'),
+            ],
         ]);
     }
 
@@ -315,10 +389,32 @@ class PointageCipController extends Controller
             'type_paiement_id' => 'required|exists:type_paiements,id',
             'numero_tresor_money' => 'nullable|string|max:50',
             'numero_wave' => 'nullable|string|max:50',
+            'return_tab' => 'nullable|string',
+            'mois' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
         ]);
 
-        $stage->beneficiaire->update($validated);
+        $typePaiement = TypePaiement::findOrFail((int) $validated['type_paiement_id']);
+        $beneficiaireUpdates = [
+            'telephone_principal' => $validated['telephone_principal'],
+            'telephone_secondaire' => $validated['telephone_secondaire'],
+            'type_paiement_id' => $validated['type_paiement_id'],
+            'numero_tresor_money' => $validated['numero_tresor_money'],
+            'numero_wave' => $validated['numero_wave'],
+        ];
 
-        return redirect()->route('cip.pointages.index', ['tab' => 'ajourne_dmg'])->with('success', 'Informations du stagiaire mises à jour avec succès.');
+        if ($typePaiement->code === 'TRESOR_MONEY') {
+            $beneficiaireUpdates['numero_wave'] = null;
+        }
+
+        if ($typePaiement->code === 'WAVE') {
+            $beneficiaireUpdates['numero_tresor_money'] = null;
+        }
+
+        $stage->beneficiaire->update($beneficiaireUpdates);
+
+        return redirect()->route('cip.pointages.index', array_filter([
+            'tab' => $validated['return_tab'] ?? 'ajourne_dmg',
+            'mois' => $validated['mois'] ?? null,
+        ]))->with('success', 'Informations du stagiaire mises à jour avec succès.');
     }
 }

@@ -529,6 +529,10 @@ return;
             {
                 header: 'Date ajournement',
                 cell: (cell: any) => {
+                    if (cell.row.original.date_ajournement) {
+                        return formatDateFr(cell.row.original.date_ajournement);
+                    }
+
                     const decisions = cell.row.original.decisions || [];
                     const lastDecision = decisions[decisions.length - 1];
 
@@ -538,6 +542,15 @@ return;
             {
                 header: 'Observation DMG',
                 cell: (cell: any) => {
+                    if (cell.row.original.observation_dmg) {
+                        return (
+                            <span className="text-danger">
+                                <i className="ri-error-warning-line me-1"></i>
+                                {cell.row.original.observation_dmg}
+                            </span>
+                        );
+                    }
+
                     const decisions = cell.row.original.decisions || [];
                     const lastDecision = decisions[decisions.length - 1];
 
@@ -575,19 +588,28 @@ return;
             },
             {
                 header: 'Actions',
-                cell: (cell: any) => (
-                    <div className="d-flex gap-2">
-                        <Button color="dark" size="sm" href={`/cip/pointages/edit-stagiaire/${getStageData(cell.row.original).id}`}>
-                            <i className="ri-user-settings-line me-1"></i>Éditer Stagiaire
-                        </Button>
-                        <Button color="primary" size="sm" onClick={() => openCorrigerDmgModal(cell.row.original)}>
-                            <i className="ri-edit-line me-1"></i>Corriger
-                        </Button>
-                    </div>
-                ),
+                cell: (cell: any) => {
+                    const row = cell.row.original;
+                    const stageId = row.stage_id || getStageData(row).id;
+                    const editHref = `/cip/pointages/edit-stagiaire/${stageId}?return_tab=ajourne_dmg&mois=${encodeURIComponent(selectedFilters.mois || '')}`;
+                    const canCorrigerPointage = !row.stage_id;
+
+                    return (
+                        <div className="d-flex gap-2">
+                            <Button color="dark" size="sm" href={editHref}>
+                                <i className="ri-user-settings-line me-1"></i>Traiter le stagiaire
+                            </Button>
+                            {canCorrigerPointage && (
+                                <Button color="primary" size="sm" onClick={() => openCorrigerDmgModal(row)}>
+                                    <i className="ri-edit-line me-1"></i>Corriger
+                                </Button>
+                            )}
+                        </div>
+                    );
+                },
             },
         ],
-        [getStageData],
+        [getStageData, selectedFilters.mois],
     );
 
     const currentColumns = useMemo(() => {

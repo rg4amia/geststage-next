@@ -3,6 +3,7 @@
 namespace App\Domain\Attendance\Services;
 
 use App\Domain\Workflow\Services\WorkflowTransitionService;
+use App\Enums\CorbeilleEnum;
 use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
@@ -11,7 +12,9 @@ use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Workflow\InstanceParcours;
 use App\Models\User;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
@@ -109,9 +112,20 @@ class PointageService
             })
             ->count();
 
-        $counts['ajourne_dmg'] = Pointage::where('periode_id', $periodeId)
-            ->where('statut', 'AJOURNE_DMG')
-            ->whereHas('stage', function ($q) use ($stageFilters) {
+        $user = Auth::user();
+
+        $counts['ajourne_dmg'] = InstanceParcours::where('corbeille_actuelle', CorbeilleEnum::CIP_AJOURNE_DMG->value)
+            ->whereHas('stage', function ($q) use ($stageFilters, $periode, $user) {
+                $q->where('date_debut', '<=', $periode->date_fin)
+                    ->where(function ($nested) use ($periode) {
+                        $nested->whereNull('date_fin_prevue')
+                            ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
+                    });
+
+                if ($user?->agence_id) {
+                    $q->where('agence_id', $user->agence_id);
+                }
+
                 if (! empty($stageFilters['agence_id'])) {
                     $q->where('agence_id', $stageFilters['agence_id']);
                 }

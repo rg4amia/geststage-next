@@ -1,9 +1,17 @@
 import { Head, useForm, usePage } from '@inertiajs/react';
-import React, { useState } from 'react';
+import React from 'react';
 import { Container, Row, Col, Card, CardBody, CardHeader, Form, Label, Input, Button, Alert } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 
-export default function EditStagiaire({ stage, typesPaiement }: { stage: any, typesPaiement: any[] }) {
+export default function EditStagiaire({
+    stage,
+    typesPaiement,
+    returnTo,
+}: {
+    stage: any,
+    typesPaiement: any[],
+    returnTo?: { tab?: string; mois?: string | null },
+}) {
     const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
     const beneficiaire = stage.beneficiaire || {};
 
@@ -13,6 +21,8 @@ export default function EditStagiaire({ stage, typesPaiement }: { stage: any, ty
         type_paiement_id: beneficiaire.type_paiement_id || '',
         numero_tresor_money: beneficiaire.numero_tresor_money || '',
         numero_wave: beneficiaire.numero_wave || '',
+        return_tab: returnTo?.tab || 'ajourne_dmg',
+        mois: returnTo?.mois || '',
     });
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -71,7 +81,7 @@ export default function EditStagiaire({ stage, typesPaiement }: { stage: any, ty
                                                 >
                                                     <option value="">Sélectionner</option>
                                                     {typesPaiement.map((tp: any) => (
-                                                        <option key={tp.id} value={tp.id}>{tp.libelle}</option>
+                                                        <option key={tp.id} value={tp.id}>{tp.nom || tp.libelle || tp.code}</option>
                                                     ))}
                                                 </Input>
                                             </Col>
