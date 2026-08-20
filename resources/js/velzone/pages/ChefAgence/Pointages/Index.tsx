@@ -35,10 +35,10 @@ interface PageProps {
     pointagesSoumis: any;
     pointagesCorrigeAdp: any;
     filters: Record<string, string>;
-    agences: Record<number, string>;
-    entreprises: Record<number, string>;
-    sourcesFinancement: Record<number, string>;
-    typesStage: Record<number, string>;
+    agences: { id: number; nom: string }[];
+    entreprises: { id: number; raison_sociale: string }[];
+    sourcesFinancement: { id: number; nom: string }[];
+    typesStage: { id: number; nom: string }[];
 }
 
 /* ─── Helpers ─── */
@@ -74,10 +74,10 @@ const PointagesIndex = (props: PageProps) => {
         pointagesSoumis,
         pointagesCorrigeAdp,
         filters = {},
-        agences = {},
-        entreprises = {},
-        sourcesFinancement = {},
-        typesStage = {},
+        agences = [],
+        entreprises = [],
+        sourcesFinancement = [],
+        typesStage = [],
     } = props;
 
     const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
@@ -538,8 +538,8 @@ const PointagesIndex = (props: PageProps) => {
                                                 onChange={(e) => handleFilterChange('agence_id', e.target.value)}
                                             >
                                                 <option value="">Toutes</option>
-                                                {Object.entries(agences).map(([id, nom]) => (
-                                                    <option key={id} value={id}>{nom as string}</option>
+                                                {agences.map((a) => (
+                                                    <option key={a.id} value={a.id}>{a.nom}</option>
                                                 ))}
                                             </Input>
                                         </Col>
@@ -552,8 +552,8 @@ const PointagesIndex = (props: PageProps) => {
                                                 onChange={(e) => handleFilterChange('entreprise_id', e.target.value)}
                                             >
                                                 <option value="">Toutes</option>
-                                                {Object.entries(entreprises).map(([id, nom]) => (
-                                                    <option key={id} value={id}>{nom as string}</option>
+                                                {entreprises.map((e) => (
+                                                    <option key={e.id} value={e.id}>{e.raison_sociale}</option>
                                                 ))}
                                             </Input>
                                         </Col>
@@ -566,8 +566,8 @@ const PointagesIndex = (props: PageProps) => {
                                                 onChange={(e) => handleFilterChange('source_financement_id', e.target.value)}
                                             >
                                                 <option value="">Tous</option>
-                                                {Object.entries(sourcesFinancement).map(([id, nom]) => (
-                                                    <option key={id} value={id}>{nom as string}</option>
+                                                {sourcesFinancement.map((sf) => (
+                                                    <option key={sf.id} value={sf.id}>{sf.nom}</option>
                                                 ))}
                                             </Input>
                                         </Col>
@@ -580,8 +580,8 @@ const PointagesIndex = (props: PageProps) => {
                                                 onChange={(e) => handleFilterChange('type_stage_id', e.target.value)}
                                             >
                                                 <option value="">Tous</option>
-                                                {Object.entries(typesStage).map(([id, nom]) => (
-                                                    <option key={id} value={id}>{nom as string}</option>
+                                                {typesStage.map((ts) => (
+                                                    <option key={ts.id} value={ts.id}>{ts.nom}</option>
                                                 ))}
                                             </Input>
                                         </Col>

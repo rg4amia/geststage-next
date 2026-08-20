@@ -67,12 +67,12 @@ class PointageChefAgenceController extends Controller
             $dataCorrige = $queryCorrige->paginate(20)->withQueryString();
         }
 
-        // Références pour les filtres
+        // Références pour les filtres (format array d'objets pour Inertia)
         $referenceData = [
-            'agences' => Cache::remember('ref.agences', 86400, fn () => Agence::query()->orderBy('nom')->pluck('nom', 'id')),
-            'entreprises' => Cache::remember('ref.entreprises', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id')),
-            'sourcesFinancement' => Cache::remember('ref.sources_financement', 86400, fn () => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id')),
-            'typesStage' => Cache::remember('ref.types_stage', 86400, fn () => TypeStage::query()->orderBy('nom')->pluck('nom', 'id')),
+            'agences' => Cache::remember('ref.agences_arr', 86400, fn () => Agence::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'entreprises' => Cache::remember('ref.entreprises_arr', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
+            'sourcesFinancement' => Cache::remember('ref.sources_financement_arr', 86400, fn () => SourceFinancement::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'typesStage' => Cache::remember('ref.types_stage_arr', 86400, fn () => TypeStage::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
         ];
 
         return Inertia::render('ChefAgence/Pointages/Index', array_merge($referenceData, [
@@ -275,6 +275,47 @@ class PointageChefAgenceController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Validation groupée par filtre (source_financement + type_stage).
+     * POST /chefagence/pointages/valider-par-filtre
+     */
+    public function validerParFiltre(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'mois' => ['required', 'string', 'regex:/^\\d{4}-\\d{2}$/'],
+            'source_financement_id' => ['required', 'integer', 'exists:sources_financement,id'],
+            'type_stage_id' => ['required', 'integer', 'exists:types_stage,id'],
+        ]);
+
+        try {
+            $results = $this->pointageCaService->validerParFiltre(
+                mois: $validated['mois'],
+                filters: [
+                    'source_financement_id' => $validated['source_financement_id'],
+                    'type_stage_id' => $validated['type_stage_id'],
+                ],
+                ca: $request->user(),
+            );
+
+            $message = $results['total'] === 0
+                ? 'Aucun pointage trouvé pour ces critères.'
+                : "{$results['success']}/{$results['total']} pointage(s) validé(s) avec succès.";
+
+            return response()->json([
+                'success' => $results['success'] > 0,
+                'message' => $message,
+                'details' => $results,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Erreur validation par filtre: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la validation : ' . $e->getMessage(),
             ], 500);
         }
     }

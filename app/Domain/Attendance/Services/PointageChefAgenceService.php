@@ -184,6 +184,37 @@ class PointageChefAgenceService
     }
 
     /**
+     * Valide tous les pointages correspondant aux filtres donnés (source_financement + type_stage).
+     * Utilisé pour la validation groupée par filtre (legacy validationGroup).
+     *
+     * @param  array<string, mixed>  $filters  Doit contenir source_financement_id et type_stage_id.
+     * @return array{success: int, total: int, errors: list<array{pointage_id: int, message: string}>}
+     */
+    public function validerParFiltre(string $mois, array $filters, User $ca): array
+    {
+        $query = Pointage::query()
+            ->where('statut', 'SOUMIS')
+            ->whereHas('periode', fn (Builder $q) => $q->where('code', $mois));
+
+        if ($ca->agence_id) {
+            $query->whereHas('stage', fn (Builder $q) => $q->where('agence_id', $ca->agence_id));
+        }
+
+        $this->applyFilters($query, $filters);
+
+        $pointageIds = $query->pluck('id')->all();
+
+        if (empty($pointageIds)) {
+            return ['success' => 0, 'total' => 0, 'errors' => []];
+        }
+
+        $results = $this->validerGroupe($pointageIds, $ca);
+        $results['total'] = count($pointageIds);
+
+        return $results;
+    }
+
+    /**
      * Ajourne un pointage (retour au CIP pour correction).
      */
     public function ajournerPointage(Pointage $pointage, User $ca, ?string $motif = null): void
