@@ -81,6 +81,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/chefagence/pointages/mois', [PointageChefAgenceController::class, 'moisDisponibles'])->name('chefagence.pointages.mois');
     Route::post('/chefagence/pointages/valider/{id}', [PointageChefAgenceController::class, 'valider'])->name('chefagence.pointages.valider');
     Route::post('/chefagence/pointages/valider-groupe', [PointageChefAgenceController::class, 'validerGroupe'])->name('chefagence.pointages.validerGroupe');
+    Route::post('/chefagence/pointages/valider-par-filtre', [PointageChefAgenceController::class, 'validerParFiltre'])->name('chefagence.pointages.validerParFiltre');
     Route::post('/chefagence/pointages/ajourner/{id}', [PointageChefAgenceController::class, 'ajourner'])->name('chefagence.pointages.ajourner');
     Route::post('/chefagence/pointages/ajourner-groupe', [PointageChefAgenceController::class, 'ajournerGroupe'])->name('chefagence.pointages.ajournerGroupe');
     Route::post('/chefagence/pointages-adp/{id}/valider', [PointageChefAgenceController::class, 'validerAjournementAdp'])->name('chefagence.pointages.adp.valider');
