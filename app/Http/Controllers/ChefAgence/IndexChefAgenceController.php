@@ -184,12 +184,11 @@ class IndexChefAgenceController extends Controller
         }
 
         return Inertia::render('ChefAgence/ValidationDemarrage/Index', [
-            'agences' => Cache::remember('ref.agences', 86400, fn () => Agence::query()->orderBy('nom')->pluck('nom', 'id')),
-            'entreprises' => Cache::remember('ref.entreprises', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->pluck('raison_sociale', 'id')),
-            'typesfinancements' => Cache::remember('ref.typesfinancements', 86400, fn () => SourceFinancement::query()->orderBy('nom')->pluck('nom', 'id')),
-            'typestages' => Cache::remember('ref.typestages', 86400, fn () => TypeStage::query()->orderBy('nom')->pluck('nom', 'id')),
-            'typestructures' => Cache::remember('ref.typestructures', 86400, fn () => TypeStructure::query()->orderBy('nom')->pluck('nom', 'id')),
-            'periodes' => Cache::remember('ref.periodes', 86400, fn () => Periode::query()->orderByDesc('code')->pluck('code', 'id')),
+            'agences' => Cache::remember('ref.agences_arr', 86400, fn () => Agence::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'entreprises' => Cache::remember('ref.entreprises_arr', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
+            'typesfinancements' => Cache::remember('ref.typesfinancements_arr', 86400, fn () => SourceFinancement::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'typestages' => Cache::remember('ref.typestages_arr', 86400, fn () => TypeStage::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'typestructures' => Cache::remember('ref.typestructures_arr', 86400, fn () => TypeStructure::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
             'filters' => $filters,
         ]);
     }
