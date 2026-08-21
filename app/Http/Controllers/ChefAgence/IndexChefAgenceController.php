@@ -47,6 +47,8 @@ class IndexChefAgenceController extends Controller
         $rows = InstanceParcours::query()
             ->join('stages', 'stages.id', '=', 'instances_parcours.stage_id')
             ->where('instances_parcours.corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
+            ->whereNull('instances_parcours.terminee_le')
+            ->whereHas('stage.contrats')
             ->whereNotNull('stages.date_debut')
             // Même règle que le legacy : seuls les mois strictement antérieurs au mois courant
             ->whereRaw("TO_CHAR(stages.date_debut, 'YYYY-MM') < ?", [Carbon::now()->format('Y-m')])
@@ -401,9 +403,15 @@ class IndexChefAgenceController extends Controller
                 'stage.typeStage',
                 'stage.contrats',
             ])
+            // ─── EXCLURE LES INSTANCES TERMINÉES ────────────────────────────────
+            ->whereNull('terminee_le')
+            // ─── ÉLIGIBILITÉ LEGACY ──────────────────────────────────────────────
+            // Mêmes conditions que WaitCheckedChefAgenceService::stagiaireWaitValidation :
+            // Le dossier doit avoir un contrat signé (avis_contrat=1, file_contrat NOT NULL)
+            // et être à une étape CIP-compatible (etapetraitement_id IN [1, 4]).
+            // Dans le nouveau schéma : le stage doit avoir au moins un contrat actif.
+            ->whereHas('stage.contrats')
             // ─── SCOPE AGENCE DU CA CONNECTÉ ───────────────────────────────────
-            // Le CA ne voit que les dossiers de son agence (comme le legacy).
-            // Si l'utilisateur n'a pas d'agence assignée (superadmin), on ne filtre pas.
             ->when($user->agence_id, function (Builder $query) use ($user): void {
                 $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('agence_id', $user->agence_id));
             })

@@ -119,9 +119,6 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
     const [isProcessing, setIsProcessing] = useState(false);
 
-    /* ─── Validation par filtre (financement + type stage) ─── */
-    const hasFilterValidation = Boolean(selectedFilters.typesfinancement_id && selectedFilters.typestage_id);
-
     /* ─── Modales ─── */
     const [modalAjournerOpen, setModalAjournerOpen] = useState(false);
     const [modalValiderOpen, setModalValiderOpen] = useState(false);
@@ -143,6 +140,9 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         created_end: filters?.created_end || '',
         mois_debut: filters?.mois_debut || '',
     });
+
+    /* ─── Validation par filtre (financement + type stage) ─── */
+    const hasFilterValidation = Boolean(selectedFilters.typesfinancement_id && selectedFilters.typestage_id);
 
     /* ─── Données onglet courant ─── */
     const currentRows: RowData[] = useMemo(() => {
@@ -730,8 +730,12 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                 )}
 
                                 {/* Actions globales */}
-                                <Button color="primary" size="sm" onClick={handleValiderTout} disabled={isProcessing || currentRows.length === 0}
-                                    className={selectedIds.length === 0 ? '' : 'ms-auto'}>
+                                {hasFilterValidation && (
+                                    <Button color="success" size="sm" onClick={handleValiderParFiltre} disabled={isProcessing || currentRows.length === 0}>
+                                        <i className="ri-check-double-line me-1"></i>Valider tous les dossiers
+                                    </Button>
+                                )}
+                                <Button color="primary" size="sm" onClick={handleValiderTout} disabled={isProcessing || currentRows.length === 0}>
                                     <i className="ri-folder-check-line me-1"></i>Valider toute la liste
                                 </Button>
                                 <Button color="secondary" size="sm" onClick={() => handleGenererAdd(currentRows.map((r) => r.id))}
