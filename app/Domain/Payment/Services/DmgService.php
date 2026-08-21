@@ -17,6 +17,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
+use Carbon\Carbon;
 
 class DmgService
 {
@@ -30,6 +31,35 @@ class DmgService
     public function attentePaiementPresence(array $filters, ?string $mois = null): Builder
     {
         return $this->attentePaiement(CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, $filters, $mois);
+    }
+
+    /**
+     * Applique le filtre "attestation demarrage" : le stage doit commencer dans le mois selectionne.
+     * Equivalent legacy : ContratsPae::scopeAttestationDemarrage()
+     */
+    private function applyAttestationDemarrageFilter(Builder $query, string $mois): Builder
+    {
+        $date = Carbon::parse($mois);
+
+        return $query->whereHas('droitPaiement.stage', function (Builder $s) use ($date): void {
+            $s->whereYear('date_debut', $date->year)
+              ->whereMonth('date_debut', $date->month);
+        });
+    }
+
+    /**
+     * Applique le filtre "attestation presence" : le stage doit etre actif pendant le mois selectionne.
+     * Equivalent legacy : ContratsPae::scopeAttestationPresence()
+     */
+    private function applyAttestationPresenceFilter(Builder $query, string $mois): Builder
+    {
+        $startDate = Carbon::parse($mois)->startOfMonth()->toDateString();
+        $endDate = Carbon::parse($mois)->endOfMonth()->toDateString();
+
+        return $query->whereHas('droitPaiement.stage', function (Builder $s) use ($startDate, $endDate): void {
+            $s->where('date_debut', '<=', $endDate)
+              ->where('date_fin_prevue', '>=', $startDate);
+        });
     }
 
     /** @param array<string, mixed> $filters */
@@ -71,6 +101,16 @@ class DmgService
             });
 
         $this->applyFilters($query, $filters);
+
+        // Filtre de cohérence : les paiements doivent concerner des stages
+        // actifs durant la periode selectionnee (match legacy attestationDemarrage / attestationPresence)
+        if ($mois) {
+            if ($corbeille === CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE) {
+                $this->applyAttestationDemarrageFilter($query, $mois);
+            } elseif ($corbeille === CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE) {
+                $this->applyAttestationPresenceFilter($query, $mois);
+            }
+        }
 
         return $query;
     }

@@ -565,6 +565,7 @@ class MigrateLegacyDataCommand extends Command
 
     private function migratePointages()
     {
+        $this->info('Migration des pointages (pointage_models)...');
         $query = DB::connection('legacy')->table('pointage_models');
         $total = $query->count();
 
@@ -573,7 +574,26 @@ class MigrateLegacyDataCommand extends Command
 
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
 
-        $query->orderBy('id')->chunk(5000, function ($pointages) use (&$bar, &$periodesMap) {
+        // Précharger l'historique contrat_etape pour chaque pointage afin de déterminer
+        // la nature (DEMARRAGE/PRESENCE) et la corbeille exacte.
+        $this->info('  Préchargement de l\'historique contrat_etape pour les pointages...');
+        $etapePointageMap = DB::connection('legacy')
+            ->select('SELECT ce.pointage_id, ce.etape_id, ce.created_at
+                FROM contrat_etape ce
+                WHERE ce.pointage_id IS NOT NULL
+                ORDER BY ce.id');
+        // Regrouper par pointage_id : on retient la dernière étape atteinte
+        $derniereEtapeParPointage = [];
+        foreach ($etapePointageMap as $row) {
+            $pid = (int) $row->pointage_id;
+            $derniereEtapeParPointage[$pid] = (int) $row->etape_id;
+        }
+        unset($etapePointageMap);
+
+        // Compteur de pointages par stage pour déterminer si c'est le 1er (DEMARRAGE)
+        $compteurPointagesParStage = [];
+
+        $query->orderBy('id')->chunk(5000, function ($pointages) use (&$bar, &$periodesMap, $derniereEtapeParPointage, &$compteurPointagesParStage) {
             $stagiaireIds = $pointages->pluck('stagiaire_id')->filter()->unique()->toArray();
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
 
@@ -594,7 +614,7 @@ class MigrateLegacyDataCommand extends Command
                     continue;
                 }
 
-                // Mapper le statut du pointage
+                // Mapper le statut du pointage (conservé tel quel)
                 $statut = 'SOUMIS';
                 if ($legacyPointage->status_dmg == 2) {
                     $statut = 'AJOURNE_DMG';
@@ -605,6 +625,42 @@ class MigrateLegacyDataCommand extends Command
                 if ($legacyPointage->status_dmg == 1 && $legacyPointage->status_ca == 1) {
                     $statut = 'VALIDE';
                 }
+
+                // Déterminer la nature du pointage : DEMARRAGE (ADD) ou PRESENCE (ADP)
+                // via l'historique contrat_etape ou en comptant les pointages par stage.
+                $etapeLegacy = $derniereEtapeParPointage[$legacyPointage->id] ?? null;
+                $compteurPointagesParStage[$stage_id] = ($compteurPointagesParStage[$stage_id] ?? 0) + 1;
+                $naturePointage = match (true) {
+                    // etape_id=13 → DEMARRAGE (ADD) dans contrat_etape
+                    $etapeLegacy === 13 => 'DEMARRAGE',
+                    // etape_id=14 → PRESENCE (ADP) dans contrat_etape
+                    $etapeLegacy === 14 => 'PRESENCE',
+                    // Premier pointage de ce stage → DEMARRAGE
+                    $compteurPointagesParStage[$stage_id] === 1 => 'DEMARRAGE',
+                    // Sinon → PRESENCE
+                    default => 'PRESENCE',
+                };
+
+                // Déterminer la corbeille cible du pointage via etape_id legacy
+                // (beaucoup plus fiable que le statut DMG/CA seul)
+                $corbeilleEnum = match ($etapeLegacy) {
+                    2, 7 => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
+                    11 => CorbeilleEnum::CA_VALIDATION_POINTAGES->value,
+                    12 => CorbeilleEnum::CIP_AJOURNE_CA->value,
+                    13 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+                    14 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+                    15 => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG->value,
+                    16 => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG->value,
+                    17 => CorbeilleEnum::CA_VALIDATION_POINTAGE_AJOURNE_ADP->value,
+                    18 => CorbeilleEnum::CIP_AJOURNE_CA->value,
+                    19 => CorbeilleEnum::CB_DOSSIER_MULTIPLE->value,
+                    default => match ($statut) {
+                        'AJOURNE_DMG' => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG->value,
+                        'AJOURNE_CA' => CorbeilleEnum::CIP_AJOURNE_CA->value,
+                        'VALIDE' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+                        default => CorbeilleEnum::CA_VALIDATION_POINTAGES->value,
+                    },
+                };
 
                 // Créer dynamiquement une période basée sur la date de création
                 $date = $this->mapper->normalizeLegacyDate($legacyPointage->created_at ?? null) ?? now();
@@ -625,17 +681,11 @@ class MigrateLegacyDataCommand extends Command
                 $deletedAt = $this->mapper->normalizeLegacyDate($legacyPointage->deleted_at ?? null);
 
                 try {
-                    // Une stagiaire peut cumuler plusieurs stages : on ne regroupe les
-                    // resoumissions legacy que par (stage_id, periode_id, nature), jamais par
-                    // bénéficiaire, pour ne jamais mélanger deux stages d'une même personne.
-                    // Le nouveau schéma n'autorise qu'un seul pointage actif par
-                    // (stage, periode, nature) — les lignes legacy suivantes pour la même
-                    // période deviennent donc de nouvelles versions du même pointage au lieu
-                    // d'un doublon qui violerait l'index unique et serait perdu silencieusement.
+                    // Idempotence par (stage_id, periode_id, nature)
                     $pointage = Pointage::withTrashed()
                         ->where('stage_id', $stage_id)
                         ->where('periode_id', $periodeId)
-                        ->where('nature', 'PRESENCE')
+                        ->where('nature', $naturePointage)
                         ->whereNull('deleted_at')
                         ->first();
 
@@ -651,7 +701,7 @@ class MigrateLegacyDataCommand extends Command
                             'ancien_id' => $legacyPointage->id,
                             'stage_id' => $stage_id,
                             'periode_id' => $periodeId,
-                            'nature' => 'PRESENCE',
+                            'nature' => $naturePointage,
                             'statut' => $statut,
                             'version_courante' => 1,
                             'deleted_at' => $deletedAt,
@@ -675,17 +725,6 @@ class MigrateLegacyDataCommand extends Command
                         ['code' => 'POINTAGE_LEGACY', 'version' => 1],
                         ['nom' => 'Parcours Pointage Legacy', 'active' => true]
                     );
-
-                    $corbeilleEnum = 'cip_mes_stagiaires';
-                    if ($statut === 'AJOURNE_DMG') {
-                        $corbeilleEnum = 'cip_pointage_ajourne_dmg';
-                    } elseif ($statut === 'AJOURNE_CA') {
-                        $corbeilleEnum = 'cip_ajourne_ca';
-                    } elseif ($statut === 'VALIDE') {
-                        $corbeilleEnum = 'dmg_attente_paiement_presence';
-                    } elseif ($statut === 'SOUMIS') {
-                        $corbeilleEnum = 'ca_validation_pointages';
-                    }
 
                     $etapeCode = strtoupper($corbeilleEnum);
                     $etapeNom = str_replace('_', ' ', $etapeCode);
@@ -727,25 +766,21 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
-        // paiement_models ne porte pas lui-même de source de financement : c'est un attribut du
-        // stage (contrats_pae.source_financement) auquel il se rattache. Auparavant, tous les
-        // paiements migrés recevaient la MÊME source de financement (la première ligne de la
-        // table), quel que soit le stage réel — on la reprend maintenant depuis le stage.
         $defaultSourceId = SourceFinancement::orderBy('id')->value('id')
             ?? DB::table('sources_financement')->insertGetId(['code' => 'DEF', 'nom' => 'Défaut', 'actif' => true, 'created_at' => now(), 'updated_at' => now()]);
 
-        $query->orderBy('id')->chunk(5000, function ($paiements) use (&$bar, &$periodesMap, $defaultSourceId) {
+        // Compteur de paiements par stage pour déterminer DEMARRAGE (1er) vs PRESENCE (suivants)
+        $compteurPaiementsParStage = [];
+
+        $query->orderBy('id')->chunk(5000, function ($paiements) use (&$bar, &$periodesMap, $defaultSourceId, &$compteurPaiementsParStage) {
             $stagiaireIds = $paiements->pluck('stagiaire_id')->filter()->unique()->toArray();
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
             $sourceFinancementParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('source_financement_id', 'ancien_id')->toArray();
 
             foreach ($paiements as $legacyPaiement) {
-                // Créer le droit de paiement (la base du paiement dans la nouvelle architecture)
                 $stage_id = $stagesMap[$legacyPaiement->stagiaire_id] ?? null;
 
                 if (! $stage_id) {
-                    // On ne rattache jamais un paiement à un stage arbitraire : mieux vaut
-                    // ignorer la ligne que corrompre les données financières d'un autre stage.
                     $bar->advance();
 
                     continue;
@@ -753,13 +788,15 @@ class MigrateLegacyDataCommand extends Command
 
                 $source_financement_id = $sourceFinancementParStage[$legacyPaiement->stagiaire_id] ?? $defaultSourceId;
 
-                // Idempotence : si cette ligne legacy a déjà été migrée (re-run de la commande),
-                // on ne la retraite pas.
                 if (DroitPaiement::where('ancien_id', $legacyPaiement->id)->exists()) {
                     $bar->advance();
 
                     continue;
                 }
+
+                // Déterminer la nature du paiement : DEMARRAGE (ADD) ou PRESENCE (ADP)
+                $compteurPaiementsParStage[$stage_id] = ($compteurPaiementsParStage[$stage_id] ?? 0) + 1;
+                $nature = $compteurPaiementsParStage[$stage_id] === 1 ? 'DEMARRAGE' : 'PRESENCE';
 
                 // Créer dynamiquement une période basée sur la date de création du paiement
                 $date = $this->mapper->normalizeLegacyDate($legacyPaiement->created_at ?? null) ?? now();
@@ -779,15 +816,11 @@ class MigrateLegacyDataCommand extends Command
                 $periodeId = $periodesMap[$codePeriode];
 
                 try {
-                    // Une stagiaire peut cumuler plusieurs stages : on ne regroupe que par
-                    // (stage_id, periode_id, nature), jamais par bénéficiaire. Le nouveau schéma
-                    // n'autorise qu'un seul droit de paiement actif (annule_le IS NULL) par
-                    // (stage, periode, nature) — on traite les lignes legacy par id croissant
-                    // (= ordre chronologique), donc la ligne actuelle remplace toujours le droit
-                    // actif précédent au lieu de créer un doublon qui violerait l'index unique.
+                    // On ne regroupe que par (stage_id, periode_id, nature).
+                    // La ligne actuelle remplace toujours le droit actif précédent.
                     $actif = DroitPaiement::where('stage_id', $stage_id)
                         ->where('periode_id', $periodeId)
-                        ->where('nature', 'PRESENCE')
+                        ->where('nature', $nature)
                         ->whereNull('annule_le')
                         ->first();
 
@@ -803,7 +836,7 @@ class MigrateLegacyDataCommand extends Command
                         'stage_id' => $stage_id,
                         'periode_id' => $periodeId,
                         'source_financement_id' => $source_financement_id,
-                        'nature' => 'PRESENCE',
+                        'nature' => $nature,
                         'montant' => $legacyPaiement->montant,
                         'statut' => 'OUVERT',
                     ]);
@@ -830,19 +863,13 @@ class MigrateLegacyDataCommand extends Command
 
     private function backfillLegacyDossiersPaiement(): void
     {
-        $this->info('Backfill des dossiers de paiement legacy ouverts...');
+        $this->info('Backfill des dossiers de paiement legacy (ouverts ET en cours de chaîne)...');
 
+        // On récupère TOUS les dossiers non supprimés (pas seulement les ouverts) :
+        // cela couvre les dossiers qui sont déjà dans la chaîne CB/AC/OP et qui
+        // doivent être représentés dans dossiers_paiement pour la cohérence du workflow.
         $query = DB::connection('legacy')->table('dossiers')
-            ->whereNull('deleted_at')
-            ->whereNull('date_cb')
-            ->whereNull('created_by_cb')
-            ->whereNull('status_cb')
-            ->whereNull('group_by_dmg_at')
-            ->whereNull('multi_dossier_id')
-            ->whereNull('operation_id')
-            ->where(function ($q): void {
-                $q->whereNull('group_by_dmg')->orWhere('group_by_dmg', 0);
-            });
+            ->whereNull('deleted_at');
 
         $total = $query->count();
         $bar = $this->output->createProgressBar($total);
@@ -915,13 +942,24 @@ class MigrateLegacyDataCommand extends Command
                 $createdAt = $this->mapper->normalizeLegacyDate($legacyDossier->created_at ?? null) ?? $now;
                 $updatedAt = $this->mapper->normalizeLegacyDate($legacyDossier->updated_at ?? null) ?? $createdAt;
 
+                // Mapper le statut du dossier legacy vers le nouveau statut
+                $statutDossier = match (true) {
+                    $legacyDossier->operation_id !== null => 'EN_OP',
+                    $legacyDossier->multi_dossier_id !== null => 'TRANSMIS_CB',
+                    ! empty($legacyDossier->status_cb) && $legacyDossier->status_cb === 'approved' => 'VALIDE_CB',
+                    ! empty($legacyDossier->status_cb) && $legacyDossier->status_cb === 'rejected' => 'REJETE_CB',
+                    ! empty($legacyDossier->status_cb) && $legacyDossier->status_cb === 'differ' => 'DIFFERE_CB',
+                    ! empty($legacyDossier->group_by_dmg) && $legacyDossier->group_by_dmg == 1 => 'TRANSMIS_CB',
+                    default => 'BROUILLON',
+                };
+
                 $dossier->fill([
                     'periode_id' => $periodesMap[$periodeCode],
                     'agence_id' => $agenceId,
                     'source_financement_id' => $sourceFinancementId,
                     'numero' => $legacyDossier->identifiant ?: 'DOS-LEGACY-'.$legacyDossier->id,
                     'nature' => Str::startsWith((string) $legacyDossier->identifiant, 'DM') ? 'DM' : 'PS',
-                    'statut' => 'BROUILLON',
+                    'statut' => $statutDossier,
                     'ordre_paiement_id' => null,
                     'montant_total' => 0,
                     'created_at' => $dossier->exists ? $dossier->created_at : $createdAt,

@@ -82,8 +82,8 @@ class PaiementDmgController extends Controller
             ->get();
 
         return Inertia::render('Dmg/Paiements/Index', [
-            'attenteDemarrage' => $this->corbeilles->paiementRows($demarrage->orderByDesc('paiements.created_at')->limit(100)->get()),
-            'attentePresence' => $this->corbeilles->paiementRows($presence->orderByDesc('paiements.created_at')->limit(100)->get()),
+            'attenteDemarrage' => $this->corbeilles->paiementRows($demarrage->orderByDesc('paiements.created_at')->get()),
+            'attentePresence' => $this->corbeilles->paiementRows($presence->orderByDesc('paiements.created_at')->get()),
             'compteurs' => $compteurs,
             'dossiers' => $this->corbeilles->dossierRows($dossiers(['BROUILLON']), 'En elaboration'),
             'dossiersTransmis' => $this->corbeilles->dossierRows($dossiers(['TRANSMIS_CB', 'VALIDE_CB', 'EN_OP']), 'Circuit CB/OP'),

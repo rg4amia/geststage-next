@@ -791,6 +791,14 @@ const DmgPaiementsIndex = (props: PageProps) => {
         prevMoisDossiers.current = moisDossiers;
     }, [moisDossiers, dossierTab, loadMultiDossiers]);
 
+    const prevTypeTraitement = React.useRef(multiTypeTraitement);
+    React.useEffect(() => {
+        if (dossierTab === 'multi' && prevTypeTraitement.current !== multiTypeTraitement) {
+            loadMultiDossiers();
+        }
+        prevTypeTraitement.current = multiTypeTraitement;
+    }, [multiTypeTraitement, dossierTab, loadMultiDossiers]);
+
     /* ─── Stats ─── */
     const statCards = useMemo(() => [
         { label: 'Attente Démarrage', value: compteurs?.global?.demarrage ?? attenteDemarrage.length, icon: 'ri-flag-line', color: 'primary' },
@@ -1308,72 +1316,68 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                         </TabPane>
                                         <TabPane tabId="multi">
-                                            {/* ── Filtres type traitement ── */}
-                                            <Row className="g-2 mb-3">
-                                                <Col md={3}>
-                                                    <Label className="form-label fs-12 text-muted fw-semibold">Type Traitement</Label>
-                                                    <Input type="select" bsSize="sm" value={multiTypeTraitement}
-                                                        onChange={(e) => { setMultiTypeTraitement(e.target.value); }}>
-                                                        <option value="">Tout</option>
-                                                        <option value="DM">DEMARRAGE</option>
-                                                        <option value="PS">PRESENCE</option>
-                                                    </Input>
-                                                </Col>
-                                                <Col md={3}>
-                                                    <Label className="form-label fs-12 text-muted fw-semibold">Recherche dossier</Label>
-                                                    <Input type="text" bsSize="sm" placeholder="Filtrer les dossiers..."
-                                                        value={multiDossierSearch}
-                                                        onChange={(e) => setMultiDossierSearch(e.target.value)} />
-                                                </Col>
-                                            </Row>
-
-                                            {/* ── Sélection dossiers + Actions ── */}
+                                            {/* ── Filtres + Sélection + Actions ── */}
                                             <Row className="g-3 mb-3">
+                                                {/* ── Filtres ── */}
                                                 <Col lg={8} xl={9}>
                                                     <Card className="border shadow-none">
-                                                        <CardHeader className="bg-light py-2">
-                                                            <h6 className="card-title mb-0 fs-13">
-                                                                <i className="ri-folder-2-line me-1 text-warning"></i>
-                                                                Dossiers éligibles au regroupement
-                                                                {isLoadingMultiDossiers && <Spinner size="sm" className="ms-2" color="warning" />}
-                                                            </h6>
+                                                        <CardHeader className="bg-light py-2 d-flex align-items-center gap-2">
+                                                            <i className="ri-filter-3-line text-warning"></i>
+                                                            <h6 className="card-title mb-0 fs-13 fw-semibold">Filtres et Sélection</h6>
+                                                            {isLoadingMultiDossiers && <Spinner size="sm" color="warning" />}
                                                         </CardHeader>
-                                                        <CardBody className="py-2">
-                                                            <div className="d-flex flex-wrap gap-1">
-                                                                {multiDossiers.length === 0 && !isLoadingMultiDossiers && (
-                                                                    <small className="text-muted">Aucun dossier disponible pour cette période.</small>
-                                                                )}
-                                                                {multiDossiers
-                                                                    .filter((d) => !multiDossierSearch || d.identifiant.toLowerCase().includes(multiDossierSearch.toLowerCase()) || d.agence.toLowerCase().includes(multiDossierSearch.toLowerCase()))
-                                                                    .map((d) => (
-                                                                    <Badge key={d.id} color={selectedMultiDossierIds.includes(d.id) ? 'success' : 'light'}
-                                                                        pill className="fs-12 py-2 px-2" style={{ cursor: 'pointer', border: selectedMultiDossierIds.includes(d.id) ? 'none' : '1px solid #dee2e6' }}
-                                                                        onClick={() => toggleMultiDossierSelection(d.id)}>
-                                                                        <i className="ri-folder-2-fill me-1"></i>
-                                                                        {d.identifiant}
-                                                                        <span className="ms-1 text-muted">({d.nombre_stagiaires})</span>
-                                                                    </Badge>
-                                                                ))}
-                                                            </div>
-                                                            {selectedMultiDossierIds.length > 0 && (
-                                                                <div className="mt-2 d-flex align-items-center gap-2">
-                                                                    <small className="text-muted">Sélection :</small>
-                                                                    {selectedMultiDossierIds.map((id) => {
-                                                                        const d = multiDossiers.find((x) => x.id === id);
-                                                                        return d ? (
-                                                                            <Badge key={id} color="primary" pill className="fs-11 py-1 px-2"
-                                                                                style={{ cursor: 'pointer' }} onClick={() => toggleMultiDossierSelection(id)}>
-                                                                                {d.identifiant} <i className="ri-close-circle-fill ms-1"></i>
-                                                                            </Badge>
-                                                                        ) : null;
-                                                                    })}
-                                                                </div>
-                                                            )}
+                                                        <CardBody className="py-3">
+                                                            <Row className="g-3 align-items-end">
+                                                                <Col md={3}>
+                                                                    <Label className="form-label fs-12 text-muted fw-semibold">Type Traitement</Label>
+                                                                    <Input type="select" bsSize="sm" value={multiTypeTraitement}
+                                                                        onChange={(e) => setMultiTypeTraitement(e.target.value)}>
+                                                                        <option value="">Tout</option>
+                                                                        <option value="DM">DÉMARRAGE</option>
+                                                                        <option value="PS">PRÉSENCE</option>
+                                                                    </Input>
+                                                                </Col>
+                                                                <Col md={9}>
+                                                                    <Label className="form-label fs-12 text-muted fw-semibold">
+                                                                        <i className="ri-folder-2-fill me-1 text-warning"></i>Sélectionner les dossiers
+                                                                        <Badge color="secondary" pill className="ms-2 fs-11">{multiDossiers.length} disponible(s)</Badge>
+                                                                    </Label>
+                                                                    <Select
+                                                                        isMulti
+                                                                        options={multiDossiers.map((d) => ({
+                                                                            value: d.id,
+                                                                            label: `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires} stagi., ${Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA)`,
+                                                                            dossier: d,
+                                                                        }))}
+                                                                        value={multiDossiers
+                                                                            .filter((d) => selectedMultiDossierIds.includes(d.id))
+                                                                            .map((d) => ({
+                                                                                value: d.id,
+                                                                                label: `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires})`,
+                                                                            }))}
+                                                                        onChange={(selected: any) => {
+                                                                            const ids = (selected || []).map((s: any) => s.value);
+                                                                            setSelectedMultiDossierIds(ids);
+                                                                            setStagiairePage(1);
+                                                                        }}
+                                                                        placeholder="Rechercher et sélectionner des dossiers..."
+                                                                        noOptionsMessage={() => 'Aucun dossier disponible'}
+                                                                        isDisabled={isLoadingMultiDossiers}
+                                                                        classNamePrefix="react-select"
+                                                                        styles={{
+                                                                            control: (base) => ({ ...base, minHeight: 38, borderColor: '#dee2e6', fontSize: 13 }),
+                                                                            menu: (base) => ({ ...base, zIndex: 9999 }),
+                                                                        }}
+                                                                    />
+                                                                </Col>
+                                                            </Row>
                                                         </CardBody>
                                                     </Card>
                                                 </Col>
+
+                                                {/* ── Actions ── */}
                                                 <Col lg={4} xl={3}>
-                                                    <Card className="border shadow-none">
+                                                    <Card className="border shadow-none h-100">
                                                         <CardHeader className="bg-success bg-opacity-10 py-2">
                                                             <h6 className="card-title mb-0 fs-13 text-success">
                                                                 <i className="ri-settings-3-line me-1"></i>Actions
@@ -1392,6 +1396,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                 onClick={() => setModalMultiAjournerStagiaireOpen(true)}>
                                                                 <i className="ri-user-unfollow-line me-1"></i>Retirer Stagiaire(s) ({selectedStagiaireIds.length})
                                                             </Button>
+                                                            <hr className="my-1" />
                                                             <div className="d-flex gap-1">
                                                                 <Button color="info" className="flex-fill" size="sm" disabled={selectedMultiDossierIds.length === 0}
                                                                     onClick={() => handleMultiGenererPdf('paiement')}>
@@ -1402,6 +1407,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                     <i className="ri-file-shield-line me-1"></i>ADD/ADP
                                                                 </Button>
                                                             </div>
+                                                            {selectedMultiDossierIds.length > 0 && (
+                                                                <div className="text-center mt-1">
+                                                                    <Badge color="success" pill className="fs-11">{selectedMultiDossierIds.length} dossier(s) sélectionné(s)</Badge>
+                                                                </div>
+                                                            )}
                                                         </CardBody>
                                                     </Card>
                                                 </Col>
