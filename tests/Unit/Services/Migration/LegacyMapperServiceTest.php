@@ -83,6 +83,10 @@ class LegacyMapperServiceTest extends TestCase
             'etat_chef_agence' => 0,
             'date_chef_agence' => '0000-00-00 00:00:00',
             'date_debut' => '2026-08-10',
+            'agent_id' => 3,
+            'avis_contrat' => 1,
+            'file_contrat' => 'contrat.pdf',
+            'etapetraitement_id' => 1,
         ];
 
         $this->assertSame(
@@ -100,11 +104,19 @@ class LegacyMapperServiceTest extends TestCase
             'etat_chef_agence' => 0,
             'date_chef_agence' => null,
             'date_debut' => '2026-08-10',
+            'agent_id' => 3,
+            'avis_contrat' => 1,
+            'file_contrat' => 'contrat.pdf',
+            'etapetraitement_id' => 1,
         ];
         $omis = (object) [
             'etat_chef_agence' => 0,
             'date_chef_agence' => null,
             'date_debut' => '2026-07-10',
+            'agent_id' => 3,
+            'avis_contrat' => 1,
+            'file_contrat' => 'contrat.pdf',
+            'etapetraitement_id' => 1,
         ];
 
         $this->assertSame(
@@ -114,6 +126,41 @@ class LegacyMapperServiceTest extends TestCase
         $this->assertSame(
             CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS,
             $mapper->mapChefAgenceCorbeille($omis)
+        );
+    }
+
+    public function test_resolve_legacy_period_prefers_business_month_over_created_at(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $date = $mapper->resolveLegacyPeriodDate((object) [
+            'mois' => '2026-08',
+            'created_at' => '2026-09-04 12:00:00',
+        ]);
+
+        $this->assertSame('2026-08-01', $date?->format('Y-m-d'));
+    }
+
+    public function test_nature_is_demarrage_only_for_the_stage_start_month(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame('DEMARRAGE', $mapper->naturePaiementPourPeriode('2026-08-14', '2026-08'));
+        $this->assertSame('PRESENCE', $mapper->naturePaiementPourPeriode('2026-08-14', '2026-09'));
+        $this->assertSame('PRESENCE', $mapper->naturePaiementPourPeriode(null, '2026-08'));
+    }
+
+    public function test_validated_pointage_fallback_uses_its_nature_for_the_dmg_queue(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
+            $mapper->mapPointageToCorbeille(null, 'VALIDE', 'DEMARRAGE')
+        );
+        $this->assertSame(
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+            $mapper->mapPointageToCorbeille(null, 'VALIDE', 'PRESENCE')
         );
     }
 }

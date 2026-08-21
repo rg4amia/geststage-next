@@ -47,14 +47,14 @@ class InitialSchemaTest extends TestCase
         $this->assertFalse(Schema::hasColumn('contrats', 'etape_courante_id'));
     }
 
-    public function test_all_154_legacy_contract_columns_have_a_conservation_strategy(): void
+    public function test_all_155_legacy_contract_columns_have_a_conservation_strategy(): void
     {
         $this->seed(DatabaseSeeder::class);
 
         $mappings = DB::table('correspondances_colonnes_contrats_pae')->get();
 
-        $this->assertCount(154, $mappings);
-        $this->assertSame(154, $mappings->pluck('nom_colonne_source')->unique()->count());
+        $this->assertCount(155, $mappings);
+        $this->assertSame(155, $mappings->pluck('nom_colonne_source')->unique()->count());
         $this->assertSame(0, $mappings->whereNotIn('strategie_conservation', [
             'NORMALISEE',
             'ARCHIVEE',

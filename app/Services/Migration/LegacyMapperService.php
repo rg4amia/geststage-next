@@ -45,7 +45,7 @@ class LegacyMapperService
      */
     public function normalizeLegacyDateRange(?string $startValue, ?string $endValue, int $fallbackMonths = 6): array
     {
-        $start = $this->normalizeLegacyDate($startValue) ?? now();
+        $start = $this->normalizeLegacyDate($startValue) ?? Carbon::now();
         $end = $this->normalizeLegacyDate($endValue);
 
         if ($end === null) {
@@ -216,44 +216,70 @@ class LegacyMapperService
     }
 
     // ────────────────────────────────────────────────────────────────────
-    //  Nature du paiement (ADD vs ADP) d'après la table contrat_etape
+    //  Période et nature ADD/ADP
     //
-    //  On inspecte les étapes traversées par le dossier pour déterminer
-    //  s'il s'agit d'un paiement DEMARRAGE (ADD, etape_id=13) ou
-    //  PRESENCE (ADP, etape_id=14).
+    //  La colonne `mois` est la période métier legacy. `created_at` ne sert
+    //  que de repli : il peut correspondre à une saisie tardive.
     // ────────────────────────────────────────────────────────────────────
 
-    /**
-     * Détermine la nature du droit de paiement à créer pour un pointage legacy donné.
-     *
-     *  - etape_id=13 dans contrat_etape → DEMARRAGE (ADD)
-     *  - etape_id=14 dans contrat_etape → PRESENCE (ADP)
-     *
-     * @param  object  $legacyPointage  Ligne de pointage_models
-     * @param  array<int, array{id: int, etape_id: int|null}>  $historiques  Map contrat_id => [{etape_id}]
-     */
-    public function naturePaiementFromPointage(object $legacyPointage, array $historiques): string
+    public function resolveLegacyPeriodDate(object $legacyRow): ?Carbon
     {
-        $contratId = $legacyPointage->stagiaire_id;
+        $mois = trim((string) ($legacyRow->mois ?? ''));
 
-        if (isset($historiques[$contratId])) {
-            $etapes = array_column($historiques[$contratId], 'etape_id');
+        if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $mois) === 1) {
+            return Carbon::createFromFormat('!Y-m', $mois)->startOfMonth();
+        }
 
-            // Cherche la dernière étape de type pointage (11→13 ou 14)
-            $derniereEtape = max(array_filter($etapes, fn ($e) => in_array((int) $e, [11, 13, 14], true)));
+        foreach ([
+            'date_pointage',
+            'date_confirm_pay',
+            'date_paiement_op',
+            'date_bordereau',
+            'date_borderau',
+            'created_at',
+        ] as $field) {
+            $date = $this->normalizeLegacyDate($legacyRow->{$field} ?? null);
 
-            if ((int) $derniereEtape === 13) {
-                return 'DEMARRAGE';
-            }
-
-            if ((int) $derniereEtape === 14) {
-                return 'PRESENCE';
+            if ($date !== null) {
+                return $date->startOfMonth();
             }
         }
 
-        // Fallback : si le pointage est le premier du stage → DEMARRAGE
-        // Sinon → PRESENCE
-        return 'PRESENCE';
+        return null;
+    }
+
+    public function naturePaiementPourPeriode(?string $dateDebutStage, string $codePeriode): string
+    {
+        $dateDebut = $this->normalizeLegacyDate($dateDebutStage);
+
+        if ($dateDebut === null) {
+            return 'PRESENCE';
+        }
+
+        return $dateDebut->format('Y-m') === $codePeriode ? 'DEMARRAGE' : 'PRESENCE';
+    }
+
+    public function mapPointageToCorbeille(?int $legacyEtapeId, string $statut, string $nature): CorbeilleEnum
+    {
+        return match ($legacyEtapeId) {
+            2, 7 => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
+            11 => CorbeilleEnum::CA_VALIDATION_POINTAGES,
+            12, 18 => CorbeilleEnum::CIP_AJOURNE_CA,
+            13 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
+            14 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+            15, 16 => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG,
+            17 => CorbeilleEnum::CA_VALIDATION_POINTAGE_AJOURNE_ADP,
+            19 => CorbeilleEnum::CB_DOSSIER_MULTIPLE,
+            20, 21 => CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE,
+            default => match ($statut) {
+                'AJOURNE_DMG' => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG,
+                'AJOURNE_CA' => CorbeilleEnum::CIP_AJOURNE_CA,
+                'VALIDE' => $nature === 'DEMARRAGE'
+                    ? CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE
+                    : CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+                default => CorbeilleEnum::CA_VALIDATION_POINTAGES,
+            },
+        };
     }
 
     /**

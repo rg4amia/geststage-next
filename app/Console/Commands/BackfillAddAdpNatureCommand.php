@@ -2,20 +2,22 @@
 
 namespace App\Console\Commands;
 
-use App\Enums\CorbeilleEnum;
-use App\Models\Attendance\Pointage;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
-use App\Models\Payment\Paiement;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
-use Carbon\Carbon;
+use App\Services\Migration\LegacyMapperService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class BackfillAddAdpNatureCommand extends Command
 {
+    public function __construct(private LegacyMapperService $mapper)
+    {
+        parent::__construct();
+    }
+
     /**
      * The name and signature of the console command.
      *
@@ -90,19 +92,10 @@ class BackfillAddAdpNatureCommand extends Command
             // car le paiement_models ne pointe pas toujours vers le bon pointage.
             // La règle la plus fiable est : si la période du droit correspond au
             // mois de date_debut du stage → DEMARRAGE, sinon → PRESENCE.
-            $natureOrigine = 'PRESENCE';
-
-            if ($droit->stage && $droit->periode) {
-                $stageDebut = $droit->stage->date_debut;
-                $periodeCode = $droit->periode->code;
-
-                if ($stageDebut && $periodeCode) {
-                    $moisDebut = Carbon::parse($stageDebut)->format('Y-m');
-                    if ($periodeCode === $moisDebut) {
-                        $natureOrigine = 'DEMARRAGE';
-                    }
-                }
-            }
+            $natureOrigine = $this->mapper->naturePaiementPourPeriode(
+                (string) $droit->stage?->getAttribute('date_debut'),
+                (string) $droit->periode?->getAttribute('code')
+            );
 
             // Si la nature doit être corrigée
             if ($natureOrigine === 'DEMARRAGE' && $droit->nature === 'PRESENCE') {
@@ -147,8 +140,7 @@ class BackfillAddAdpNatureCommand extends Command
         $nbCorbeilleChanges = 0;
         $definitionsMap = [];
 
-        $mapper = $this;
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$nbCorbeilleChanges, &$definitionsMap, $dryRun, $mapper): void {
+        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$nbCorbeilleChanges, &$definitionsMap, $dryRun): void {
             $ancienIds = $contrats->pluck('ancien_id')->toArray();
             $stagesMap = Stage::withTrashed()->whereIn('ancien_id', $ancienIds)->pluck('id', 'ancien_id');
 
@@ -168,48 +160,7 @@ class BackfillAddAdpNatureCommand extends Command
                     continue;
                 }
 
-                // Mapper la vraie corbeille
-                $etapeId = (int) ($legacyContrat->etapetraitement_id ?? 1);
-
-                $corbeilleEnum = match ($etapeId) {
-                    1, 7 => CorbeilleEnum::CIP_MES_STAGIAIRES,
-                    2 => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
-                    3, 9 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
-                    4 => CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER,
-                    5, 6 => CorbeilleEnum::DESSE_DOUBLONS_TRAITES,
-                    8 => CorbeilleEnum::DESSE_SUIVI_PROCESSUS,
-                    10 => CorbeilleEnum::CIP_AJOURNE_DMG,
-                    11 => CorbeilleEnum::CA_VALIDATION_POINTAGES,
-                    12, 18 => CorbeilleEnum::CIP_AJOURNE_CA,
-                    13 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
-                    14 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
-                    15, 16 => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG,
-                    17 => CorbeilleEnum::CA_VALIDATION_POINTAGE_AJOURNE_ADP,
-                    19 => CorbeilleEnum::CB_DOSSIER_MULTIPLE,
-                    20, 21 => CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE,
-                    22 => CorbeilleEnum::DMG_ELABORATION_OP,
-                    23 => CorbeilleEnum::DMG_OP_ATTENTE_BORDEREAU,
-                    24, 25, 30, 31 => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE,
-                    26, 29 => CorbeilleEnum::DMG_OP_REJETE_AC,
-                    27, 28 => CorbeilleEnum::CIP_DIFFERE_AC,
-                    default => CorbeilleEnum::CIP_MES_STAGIAIRES,
-                };
-
-                // Cas Chef d'Agence : etat_chef_agence=0 et pas de date → pas encore en CA
-                if ($etapeId === 1 && (int) ($legacyContrat->etat_chef_agence ?? 0) === 0) {
-                    $estEligibleCA = (int) ($legacyContrat->agent_id ?? 0) === 3
-                        && (int) ($legacyContrat->avis_contrat ?? 0) === 1
-                        && ! empty($legacyContrat->file_contrat);
-
-                    if (! $estEligibleCA) {
-                        $corbeilleEnum = CorbeilleEnum::CIP_MES_STAGIAIRES;
-                    } else {
-                        $dateDebut = $mapper->normalizeDate($legacyContrat->date_debut);
-                        $corbeilleEnum = ($dateDebut && $dateDebut->format('Y-m') < now()->format('Y-m'))
-                            ? CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS
-                            : CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE;
-                    }
-                }
+                $corbeilleEnum = $this->mapper->mapChefAgenceCorbeille($legacyContrat);
 
                 if ($instance->corbeille_actuelle === $corbeilleEnum->value) {
                     continue;
@@ -254,20 +205,5 @@ class BackfillAddAdpNatureCommand extends Command
         }
 
         return self::SUCCESS;
-    }
-
-    private function normalizeDate(?string $value): ?Carbon
-    {
-        if ($value === null || trim((string) $value) === '' || str_starts_with(trim((string) $value), '0000')) {
-            return null;
-        }
-
-        try {
-            $c = Carbon::parse(trim((string) $value));
-
-            return $c->year < 1970 ? null : $c;
-        } catch (\Throwable) {
-            return null;
-        }
     }
 }
