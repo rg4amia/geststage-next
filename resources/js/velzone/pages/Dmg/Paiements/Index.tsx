@@ -691,32 +691,32 @@ const DmgPaiementsIndex = (props: PageProps) => {
                         </CardHeader>
                         <CardBody>
                             {/* ── Onglets Principaux ── */}
-                            <Row className="g-3">
-                                <Col xl={3} lg={4}>
-                            <Nav pills vertical className="nav-pills-custom nav-success flex-column gap-2">
+                        <Row className="g-3">
+                            <Col xs={12}>
+<Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
                                 <NavItem>
-                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '1' })} onClick={() => toggleTab('1')}>
+                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '1' }, 'fw-semibold py-3')} onClick={() => toggleTab('1')}>
                                         <i className="ri-flag-line me-1 align-middle"></i>
-                                        Attente Démarrage <Badge color="primary" className="ms-1">{compteurs?.global?.demarrage ?? attenteDemarrage.length}</Badge>
+                                        Attente Démarrage <Badge color="primary" pill className="ms-2">{compteurs?.global?.demarrage ?? attenteDemarrage.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
-                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '2' })} onClick={() => toggleTab('2')}>
+                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '2' }, 'fw-semibold py-3')} onClick={() => toggleTab('2')}>
                                         <i className="ri-user-follow-line me-1 align-middle"></i>
-                                        Attente Présence <Badge color="info" className="ms-1">{compteurs?.global?.presence ?? attentePresence.length}</Badge>
+                                        Attente Présence <Badge color="info" pill className="ms-2">{compteurs?.global?.presence ?? attentePresence.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
-                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '3' })} onClick={() => toggleTab('3')}>
+                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '3' }, 'fw-semibold py-3')} onClick={() => toggleTab('3')}>
                                         <i className="ri-folder-2-line me-1 align-middle"></i>
-                                        Dossiers & OP <Badge color="warning" className="ms-1">{dossiers.length + dossiersTransmis.length}</Badge>
+                                        Dossiers & OP <Badge color="warning" pill className="ms-2">{dossiers.length + dossiersTransmis.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                             </Nav>
-                                </Col>
-                                <Col xl={9} lg={8}>
+                            </Col>
+                            <Col xs={12}>
 
-                            <TabContent activeTab={activeTab} className="text-muted">
+<TabContent activeTab={activeTab} className="pt-4 text-muted">
                                 {/* ═══════ ONGLET 1 : ATTENTE DÉMARRAGE ═══════ */}
                                 <TabPane tabId="1">
                                     {/* ── Actions globales démarrage ── */}
@@ -819,31 +819,31 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
                                     {/* ── Sous-onglets Cohorte ── */}
                                     <Row className="g-3">
-                                        <Col xl={3} lg={4}>
-                                    <Nav pills vertical className="nav-pills-custom nav-success flex-column gap-2">
+                                        <Col xs={12}>
+<Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'global' })} onClick={() => toggleDemarrageTab('global')}>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'global' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('global')}>
                                                 Cohorte Global {cohortBadge('global', 'demarrage')}
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte1' })} onClick={() => toggleDemarrageTab('cohorte1')}>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte1' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte1')}>
                                                 Cohorte 1 {cohortBadge('cohorte1', 'demarrage')}
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte2' })} onClick={() => toggleDemarrageTab('cohorte2')}>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte2' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte2')}>
                                                 Cohorte 2 {cohortBadge('cohorte2', 'demarrage')}
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte3' })} onClick={() => toggleDemarrageTab('cohorte3')}>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte3' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte3')}>
                                                 Cohorte 3 {cohortBadge('cohorte3', 'demarrage')}
                                             </NavLink>
                                         </NavItem>
                                     </Nav>
                                         </Col>
-                                        <Col xl={9} lg={8}>
+                                        <Col xs={12}>
 
                                     {/* ── Tableau Démarrage ── */}
                                     {isLoading ? (
@@ -951,41 +951,41 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                 <TabPane tabId="3">
                                     {/* ── Sous-onglets dossiers ── */}
                                     <Row className="g-3">
-                                        <Col xl={3} lg={4}>
-                                    <Nav pills vertical className="nav-pills-custom nav-success flex-column gap-2">
+                                        <Col xs={12}>
+<Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'brouillon' })} onClick={() => setDossierTab('brouillon')}>
-                                                <i className="ri-draft-line me-1"></i>En élaboration <Badge color="warning" className="ms-1">{dossiers.length}</Badge>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'brouillon' }, 'fw-semibold py-3')} onClick={() => setDossierTab('brouillon')}>
+                                                <i className="ri-draft-line me-1"></i>En élaboration <Badge color="warning" pill className="ms-2">{dossiers.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'transmis' })} onClick={() => setDossierTab('transmis')}>
-                                                <i className="ri-send-plane-line me-1"></i>Transmis CB <Badge color="info" className="ms-1">{dossiersTransmis.length}</Badge>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'transmis' }, 'fw-semibold py-3')} onClick={() => setDossierTab('transmis')}>
+                                                <i className="ri-send-plane-line me-1"></i>Transmis CB <Badge color="info" pill className="ms-2">{dossiersTransmis.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ajournes' })} onClick={() => setDossierTab('ajournes')}>
-                                                <i className="ri-close-circle-line me-1"></i>Ajournés <Badge color="danger" className="ms-1">{dossiersAjournes.length}</Badge>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ajournes' }, 'fw-semibold py-3')} onClick={() => setDossierTab('ajournes')}>
+                                                <i className="ri-close-circle-line me-1"></i>Ajournés <Badge color="danger" pill className="ms-2">{dossiersAjournes.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'multi' })} onClick={() => setDossierTab('multi')}>
-                                                <i className="ri-folder-shared-line me-1"></i>Multi-dossiers <Badge color="warning" className="ms-1">{groupesDossiers.length}</Badge>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'multi' }, 'fw-semibold py-3')} onClick={() => setDossierTab('multi')}>
+                                                <i className="ri-folder-shared-line me-1"></i>Multi-dossiers <Badge color="warning" pill className="ms-2">{groupesDossiers.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ops' })} onClick={() => setDossierTab('ops')}>
-                                                <i className="ri-file-list-3-line me-1"></i>Ordres de Paiement <Badge color="primary" className="ms-1">{ops.length}</Badge>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ops' }, 'fw-semibold py-3')} onClick={() => setDossierTab('ops')}>
+                                                <i className="ri-file-list-3-line me-1"></i>Ordres de Paiement <Badge color="primary" pill className="ms-2">{ops.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'bordereaux' })} onClick={() => setDossierTab('bordereaux')}>
-                                                <i className="ri-file-shield-2-line me-1"></i>Bordereaux <Badge color="success" className="ms-1">{bordereaux.length}</Badge>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'bordereaux' }, 'fw-semibold py-3')} onClick={() => setDossierTab('bordereaux')}>
+                                                <i className="ri-file-shield-2-line me-1"></i>Bordereaux <Badge color="success" pill className="ms-2">{bordereaux.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                     </Nav>
                                         </Col>
-                                        <Col xl={9} lg={8}>
+                                        <Col xs={12}>
 
                                     <div className="d-flex gap-2 mb-3">
                                             <Button color="success" size="sm" onClick={handleGenererDossiers} disabled={!props.periode || processing || (selectedDemarrageIds.length + selectedPresenceIds.length === 0)}>
@@ -993,7 +993,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                         </Button>
                                     </div>
 
-                                    <TabContent activeTab={dossierTab}>
+<TabContent activeTab={dossierTab} className="pt-4">
                                         <TabPane tabId="brouillon">
                                             <TableContainerReactTable columns={dossierColumns} data={dossiers} isGlobalFilter={true} customPageSize={10}
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
@@ -1010,7 +1010,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             </div>
                                             <TableContainerReactTable
                                                 columns={[
-                                                    { header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpDossierIds)} /> },
+                                                    { id: 'select', header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpDossierIds)} /> },
                                                     ...dossierColumns.filter((column: any) => column.header !== 'Actions'),
                                                 ]}
                                                 data={dossiersEligiblesOp} isGlobalFilter={true} customPageSize={10}
@@ -1035,7 +1035,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             </div>
                                             <TableContainerReactTable
                                                 columns={[
-                                                    { header: '', cell: (c: any) => <Input type="checkbox" checked={selectedDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedDossierIds)} /> },
+                                                    { id: 'select', header: '', cell: (c: any) => <Input type="checkbox" checked={selectedDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedDossierIds)} /> },
                                                     ...dossierColumns.filter((column: any) => column.header !== 'Actions'),
                                                 ]}
                                                 data={dossiersGroupables} isGlobalFilter={true} customPageSize={10}
@@ -1069,7 +1069,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             ) : (
                                                 <TableContainerReactTable
                                                     columns={[
-                                                        { header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpIds)} /> },
+                                                        { id: 'select', header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpIds)} /> },
                                                         { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
                                                         { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
                                                         { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)} className="fs-11">{c.row.original.statut}</Badge> },
