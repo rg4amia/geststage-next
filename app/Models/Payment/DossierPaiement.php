@@ -2,7 +2,7 @@
 
 namespace App\Models\Payment;
 
-use App\Models\Company\Agence;
+use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use Illuminate\Database\Eloquent\Factories\HasFactory;

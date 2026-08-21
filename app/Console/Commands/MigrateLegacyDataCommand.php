@@ -12,7 +12,9 @@ use App\Models\Company\Entreprise;
 use App\Models\Company\OffreEmploi;
 use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
+use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\DroitPaiement;
+use App\Models\Payment\LigneDossierPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Commune;
@@ -47,7 +49,7 @@ class MigrateLegacyDataCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'migrate:legacy-data {--step=all : L\'étape de migration à exécuter (agences, users, stages, desse_doublons, all)}';
+    protected $signature = 'migrate:legacy-data {--step=all : L\'étape de migration à exécuter (agences, users, stages, paiements, dossiers_paiement, desse_doublons, all)}';
 
     /**
      * The console command description.
@@ -113,6 +115,10 @@ class MigrateLegacyDataCommand extends Command
 
         if ($step === 'all' || $step === 'paiements') {
             $this->migratePaiements();
+        }
+
+        if ($step === 'all' || $step === 'paiements' || $step === 'dossiers_paiement') {
+            $this->backfillLegacyDossiersPaiement();
         }
 
         if ($step === 'all' || $step === 'evenements') {
@@ -814,6 +820,149 @@ class MigrateLegacyDataCommand extends Command
                 } catch (\Throwable $e) {
                     $this->warn("Paiement legacy #{$legacyPaiement->id} ignoré : {$e->getMessage()}");
                 }
+                $bar->advance();
+            }
+        });
+
+        $bar->finish();
+        $this->newLine();
+    }
+
+    private function backfillLegacyDossiersPaiement(): void
+    {
+        $this->info('Backfill des dossiers de paiement legacy ouverts...');
+
+        $query = DB::connection('legacy')->table('dossiers')
+            ->whereNull('deleted_at')
+            ->whereNull('date_cb')
+            ->whereNull('created_by_cb')
+            ->whereNull('status_cb')
+            ->whereNull('group_by_dmg_at')
+            ->whereNull('multi_dossier_id')
+            ->whereNull('operation_id')
+            ->where(function ($q): void {
+                $q->whereNull('group_by_dmg')->orWhere('group_by_dmg', 0);
+            });
+
+        $total = $query->count();
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
+        $agencesMap = Agence::pluck('id', 'ancien_id')->toArray();
+        $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
+        $now = now();
+
+        $query->orderBy('id')->chunk(500, function ($legacyDossiers) use (&$bar, &$periodesMap, $agencesMap, $sourcesMap, $now): void {
+            $legacyDossierIds = $legacyDossiers->pluck('id')->all();
+
+            $legacyPaiementsByDossier = DB::connection('legacy')->table('paiement_models')
+                ->select('id', 'dossier_id', 'montant', 'created_at')
+                ->whereIn('dossier_id', $legacyDossierIds)
+                ->where('status_dmg', 1)
+                ->where('status_cb', 0)
+                ->whereNull('date_vise_cb')
+                ->whereNull('created_by_cb')
+                ->orderBy('id')
+                ->get()
+                ->groupBy('dossier_id');
+
+            $legacyPaiementIds = $legacyPaiementsByDossier->flatten(1)->pluck('id')->unique()->values()->all();
+            $paiementsParAncienId = Paiement::query()
+                ->whereIn('ancien_id', $legacyPaiementIds)
+                ->get()
+                ->keyBy('ancien_id');
+
+            $activeLinesParPaiementId = LigneDossierPaiement::query()
+                ->when(
+                    $paiementsParAncienId->isNotEmpty(),
+                    fn ($q) => $q->whereIn('paiement_id', $paiementsParAncienId->pluck('id')->all()),
+                    fn ($q) => $q->whereRaw('1 = 0')
+                )
+                ->whereNull('retire_le')
+                ->get()
+                ->keyBy('paiement_id');
+
+            foreach ($legacyDossiers as $legacyDossier) {
+                $agenceId = $agencesMap[$legacyDossier->agence_id] ?? null;
+                $sourceFinancementId = $sourcesMap[$legacyDossier->type_financement_id] ?? null;
+
+                if (! $agenceId || ! $sourceFinancementId) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $periodeCode = (string) $legacyDossier->mois;
+                if (! isset($periodesMap[$periodeCode])) {
+                    $date = $this->mapper->normalizeLegacyDate($periodeCode.'-01') ?? $now;
+                    $periodesMap[$periodeCode] = DB::table('periodes')->insertGetId([
+                        'code' => $periodeCode,
+                        'date_debut' => $date->copy()->startOfMonth()->toDateString(),
+                        'date_fin' => $date->copy()->endOfMonth()->toDateString(),
+                        'ouverte_pointage' => false,
+                        'ouverte_paiement' => false,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
+                }
+
+                $dossier = DossierPaiement::query()->firstOrNew(['ancien_id' => $legacyDossier->id]);
+                if (! $dossier->exists) {
+                    $dossier->uuid_public = (string) Str::uuid();
+                }
+
+                $createdAt = $this->mapper->normalizeLegacyDate($legacyDossier->created_at ?? null) ?? $now;
+                $updatedAt = $this->mapper->normalizeLegacyDate($legacyDossier->updated_at ?? null) ?? $createdAt;
+
+                $dossier->fill([
+                    'periode_id' => $periodesMap[$periodeCode],
+                    'agence_id' => $agenceId,
+                    'source_financement_id' => $sourceFinancementId,
+                    'numero' => $legacyDossier->identifiant ?: 'DOS-LEGACY-'.$legacyDossier->id,
+                    'nature' => Str::startsWith((string) $legacyDossier->identifiant, 'DM') ? 'DM' : 'PS',
+                    'statut' => 'BROUILLON',
+                    'ordre_paiement_id' => null,
+                    'montant_total' => 0,
+                    'created_at' => $dossier->exists ? $dossier->created_at : $createdAt,
+                    'updated_at' => $updatedAt,
+                ]);
+                $dossier->save();
+
+                $montantTotal = 0;
+                foreach ($legacyPaiementsByDossier->get($legacyDossier->id, collect()) as $legacyPaiement) {
+                    $paiement = $paiementsParAncienId->get($legacyPaiement->id);
+                    if (! $paiement) {
+                        continue;
+                    }
+
+                    $activeLine = $activeLinesParPaiementId->get($paiement->id);
+                    if ($activeLine && (int) $activeLine->dossier_paiement_id !== (int) $dossier->id) {
+                        continue;
+                    }
+
+                    $ligne = LigneDossierPaiement::query()->firstOrNew([
+                        'dossier_paiement_id' => $dossier->id,
+                        'paiement_id' => $paiement->id,
+                    ]);
+                    $ligne->fill([
+                        'montant' => $paiement->montant,
+                        'ajoute_le' => $this->mapper->normalizeLegacyDate($legacyPaiement->created_at ?? null) ?? $createdAt,
+                        'retire_le' => null,
+                        'motif_retrait' => null,
+                    ]);
+                    $ligne->save();
+
+                    $activeLinesParPaiementId->put($paiement->id, $ligne);
+
+                    if ($paiement->statut !== 'EN_DOSSIER') {
+                        $paiement->update(['statut' => 'EN_DOSSIER']);
+                    }
+
+                    $montantTotal += (float) $paiement->montant;
+                }
+
+                $dossier->update(['montant_total' => $montantTotal]);
                 $bar->advance();
             }
         });
