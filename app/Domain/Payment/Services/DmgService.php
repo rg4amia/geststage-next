@@ -2,174 +2,243 @@
 
 namespace App\Domain\Payment\Services;
 
-use App\Domain\Workflow\Services\WorkflowTransitionService;
+use App\Enums\CorbeilleEnum;
 use App\Models\Payment\BordereauPaiement;
+use App\Models\Payment\DecisionPaiement;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\LigneDossierPaiement;
 use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
+use App\Models\User;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class DmgService
 {
-    public function __construct(private WorkflowTransitionService $workflowService) {}
-
-    /**
-     * Regroupe les paiements en attente ("A_TRAITER") en Dossiers de Paiement.
-     * Le regroupement se fait par : Période, Agence, Source de Financement.
-     */
-    public function genererDossiersPaiement(int $periodeId): void
+    /** @param array<string, mixed> $filters */
+    public function attentePaiementDemarrage(array $filters, ?string $mois = null): Builder
     {
-        DB::transaction(function () use ($periodeId) {
-            // 1. Récupérer tous les paiements A_TRAITER pour la période donnée
-            $paiements = Paiement::where('statut', 'A_TRAITER')
-                ->whereHas('droitPaiement', function ($q) use ($periodeId) {
-                    $q->where('periode_id', $periodeId);
-                })
-                ->with(['droitPaiement.stage']) // Eager load pour grouper
-                ->get();
+        return $this->attentePaiement(CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, $filters, $mois);
+    }
 
-            if ($paiements->isEmpty()) {
-                return;
-            }
+    /** @param array<string, mixed> $filters */
+    public function attentePaiementPresence(array $filters, ?string $mois = null): Builder
+    {
+        return $this->attentePaiement(CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, $filters, $mois);
+    }
 
-            // 2. Grouper par [Agence - Source Financement]
-            $groupes = $paiements->groupBy(function ($p) {
-                $agenceId = $p->droitPaiement->stage->agence_id;
-                $financementId = $p->droitPaiement->stage->source_financement_id;
-
-                return $agenceId.'-'.$financementId;
+    /** @param array<string, mixed> $filters */
+    private function attentePaiement(CorbeilleEnum $corbeille, array $filters, ?string $mois): Builder
+    {
+        $query = Paiement::query()
+            ->with([
+                'droitPaiement.stage.beneficiaire', 'droitPaiement.stage.entreprise.typeStructure',
+                'droitPaiement.stage.agence', 'droitPaiement.stage.sourceFinancement',
+                'droitPaiement.stage.typeStage', 'droitPaiement.stage.contrats',
+                'droitPaiement.stage.instanceParcours', 'droitPaiement.periode',
+            ])
+            ->where('statut', 'A_TRAITER')
+            ->whereHas('droitPaiement', function (Builder $droit) use ($corbeille, $mois): void {
+                $droit->whereNull('annule_le')
+                    ->when($mois, fn (Builder $q) => $q->whereHas('periode', fn (Builder $p) => $p->where('code', $mois)))
+                    ->whereHas('stage.contrats')
+                    ->whereHas('stage.instanceParcours', function (Builder $instance) use ($corbeille): void {
+                        $instance->whereNull('terminee_le')->where(function (Builder $workflow) use ($corbeille): void {
+                            $workflow->whereHas('taches', fn (Builder $tache) => $tache
+                                ->where('code_corbeille', $corbeille->value)
+                                ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']))
+                                ->orWhere(function (Builder $fallback) use ($corbeille): void {
+                                    $fallback->whereDoesntHave('taches', fn (Builder $tache) => $tache
+                                        ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']))
+                                        ->where('corbeille_actuelle', $corbeille->value);
+                                });
+                        });
+                    });
             });
 
-            // 3. Créer un DossierPaiement pour chaque groupe
-            foreach ($groupes as $key => $paiementsGroupe) {
-                [$agenceId, $financementId] = explode('-', $key);
+        $this->applyFilters($query, $filters);
 
-                $dossier = DossierPaiement::create([
-                    'uuid_public' => Str::uuid(),
-                    'periode_id' => $periodeId,
-                    'agence_id' => $agenceId,
-                    'source_financement_id' => $financementId,
-                    'numero' => 'BORD-'.date('Ym').'-'.strtoupper(Str::random(5)),
-                    'nature' => $paiementsGroupe->first()->droitPaiement->nature,
-                    'statut' => 'BROUILLON',
-                    'montant_total' => $paiementsGroupe->sum('montant'),
-                ]);
+        return $query;
+    }
 
-                // 4. Attacher les paiements via la table pivot
-                foreach ($paiementsGroupe as $paiement) {
-                    LigneDossierPaiement::create([
-                        'dossier_paiement_id' => $dossier->id,
-                        'paiement_id' => $paiement->id,
-                        'montant' => $paiement->montant,
-                    ]);
+    /** @param array<string, mixed> $filters */
+    private function applyFilters(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['agence_id'] ?? null, fn (Builder $q, $id) => $q->whereHas('droitPaiement.stage', fn (Builder $s) => $s->where('agence_id', $id)))
+            ->when($filters['entreprise_id'] ?? null, fn (Builder $q, $id) => $q->whereHas('droitPaiement.stage', fn (Builder $s) => $s->where('entreprise_id', $id)))
+            ->when($filters['source_financement_id'] ?? null, fn (Builder $q, $id) => $q->whereHas('droitPaiement', fn (Builder $d) => $d->where('source_financement_id', $id)))
+            ->when($filters['type_stage_id'] ?? null, fn (Builder $q, $id) => $q->whereHas('droitPaiement.stage', fn (Builder $s) => $s->where('type_stage_id', $id)))
+            ->when($filters['type_structure_id'] ?? null, fn (Builder $q, $id) => $q->whereHas('droitPaiement.stage.entreprise', fn (Builder $e) => $e->where('type_structure_id', $id)))
+            ->when(($filters['date_debut'] ?? null) && ($filters['date_fin'] ?? null), fn (Builder $q) => $q
+                ->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereBetween('date_debut', [$filters['date_debut'], $filters['date_fin']])))
+            ->when($filters['dossier_physique'] ?? null, fn (Builder $q, $statut) => $q->where('statut_dossier_physique', $statut))
+            ->when($filters['search'] ?? null, function (Builder $q, string $search): void {
+                $operator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
+                $term = '%'.addcslashes($search, '%_').'%';
+                $q->whereHas('droitPaiement.stage.beneficiaire', fn (Builder $b) => $b
+                    ->where('nom', $operator, $term)->orWhere('prenoms', $operator, $term)
+                    ->orWhere('numero_aej', $operator, $term));
+            });
+    }
 
-                    // Marquer le paiement comme EN_COURS (lié à un dossier)
-                    $paiement->update(['statut' => 'EN_COURS']);
-                }
+    public function applyCohorteFilter(Builder $query, string $cohorte): Builder
+    {
+        return match (str_replace('cohorte', '', strtolower($cohorte))) {
+            '1' => $query->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereDay('date_debut', '>=', 1)->whereDay('date_debut', '<=', 5)),
+            '2' => $query->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereDay('date_debut', 10)),
+            '3' => $query->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereDay('date_debut', 20)),
+            default => $query,
+        };
+    }
 
-                $this->workflowService->dmgElaboreDossier($dossier);
+    /** @param list<int> $paiementIds @return Collection<int, DossierPaiement> */
+    public function genererDossiersPaiement(int $periodeId, array $paiementIds, User $auteur): Collection
+    {
+        return DB::transaction(function () use ($periodeId, $paiementIds, $auteur): Collection {
+            $ids = array_values(array_unique($paiementIds));
+            $paiements = Paiement::query()->lockForUpdate()
+                ->with(['droitPaiement.stage.instanceParcours'])
+                ->whereIn('id', $ids)->where('statut', 'A_TRAITER')
+                ->whereHas('droitPaiement', fn (Builder $d) => $d->where('periode_id', $periodeId)->whereNull('annule_le'))
+                ->get();
+            if ($paiements->count() !== count($ids)) {
+                throw ValidationException::withMessages(['paiement_ids' => 'La selection contient un paiement absent, annule ou deja traite.']);
             }
+
+            $corbeilles = [CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value];
+            if ($paiements->contains(fn (Paiement $p) => ! in_array($p->droitPaiement?->stage?->instanceParcours?->corbeille_actuelle, $corbeilles, true))) {
+                throw ValidationException::withMessages(['paiement_ids' => 'Un paiement ne se trouve plus dans une corbeille DMG.']);
+            }
+
+            $dossiers = collect();
+            $groupes = $paiements->groupBy(function (Paiement $paiement): string {
+                $droit = $paiement->droitPaiement;
+                $nature = $droit->stage->instanceParcours->corbeille_actuelle === CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value ? 'DM' : 'PS';
+                return "{$droit->stage->agence_id}:{$droit->source_financement_id}:{$nature}";
+            });
+
+            foreach ($groupes as $cle => $groupe) {
+                [$agenceId, $financementId, $nature] = explode(':', $cle);
+                $dossier = DossierPaiement::create([
+                    'uuid_public' => (string) Str::uuid(), 'periode_id' => $periodeId,
+                    'agence_id' => (int) $agenceId, 'source_financement_id' => (int) $financementId,
+                    'numero' => $this->numero('DOS-'.$nature), 'nature' => $nature,
+                    'statut' => 'BROUILLON', 'montant_total' => $groupe->sum('montant'),
+                ]);
+                foreach ($groupe as $paiement) {
+                    LigneDossierPaiement::create(['dossier_paiement_id' => $dossier->id, 'paiement_id' => $paiement->id, 'montant' => $paiement->montant, 'ajoute_le' => now()]);
+                    $paiement->update(['statut' => 'EN_DOSSIER']);
+                    DecisionPaiement::enregistrer($paiement, $auteur, 'VALIDE_DMG', null, 'A_TRAITER', 'EN_DOSSIER');
+                }
+                $dossiers->push($dossier);
+            }
+            return $dossiers;
         });
     }
 
-    /**
-     * Transmet un dossier Brouillon au Chef de Bureau (CB).
-     */
+    /** @param list<int> $paiementIds */
+    public function ajournerPaiements(array $paiementIds, string $motif, User $auteur): int
+    {
+        return DB::transaction(function () use ($paiementIds, $motif, $auteur): int {
+            $ids = array_values(array_unique($paiementIds));
+            $paiements = Paiement::query()->lockForUpdate()->with('droitPaiement.stage.instanceParcours')
+                ->whereIn('id', $ids)->where('statut', 'A_TRAITER')->get();
+            if ($paiements->count() !== count($ids)) {
+                throw ValidationException::withMessages(['paiement_ids' => 'Selection de paiements invalide.']);
+            }
+            foreach ($paiements as $paiement) {
+                $paiement->update(['statut' => 'AJOURNE_DMG']);
+                $paiement->droitPaiement?->stage?->instanceParcours?->update(['corbeille_actuelle' => CorbeilleEnum::CIP_MES_STAGIAIRES->value]);
+                DecisionPaiement::enregistrer($paiement, $auteur, 'AJOURNE_DMG', $motif, 'A_TRAITER', 'AJOURNE_DMG');
+            }
+            return $paiements->count();
+        });
+    }
+
+    /** @param list<int> $paiementIds */
+    public function marquerDossiersPhysiques(array $paiementIds, string $statut, User $auteur): int
+    {
+        return DB::transaction(function () use ($paiementIds, $statut, $auteur): int {
+            $paiements = Paiement::query()->lockForUpdate()->whereIn('id', array_unique($paiementIds))->where('statut', 'A_TRAITER')->get();
+            foreach ($paiements as $paiement) {
+                $paiement->update(['statut_dossier_physique' => $statut, 'dossier_physique_marque_par_id' => $auteur->id, 'dossier_physique_marque_le' => now()]);
+                DecisionPaiement::enregistrer($paiement, $auteur, 'DOSSIER_PHYSIQUE_'.$statut);
+            }
+            return $paiements->count();
+        });
+    }
+
     public function transmettreDossierCb(DossierPaiement $dossier): void
     {
-        DB::transaction(function () use ($dossier) {
-            $dossier->update(['statut' => 'TRANSMIS_CB']);
-        });
+        $this->changerStatut($dossier, 'BROUILLON', 'TRANSMIS_CB');
     }
 
-    /**
-     * Retrait d'un paiement d'un dossier
-     */
-    public function retirerPaiementDossier(DossierPaiement $dossier, Paiement $paiement, string $motif = ''): void
+    public function retirerPaiementDossier(DossierPaiement $dossier, Paiement $paiement, string $motif, User $auteur): void
     {
-        DB::transaction(function () use ($dossier, $paiement, $motif) {
-            $dossier->paiements()->updateExistingPivot($paiement->id, [
-                'retire_le' => now(),
-                'motif_retrait' => $motif,
-            ]);
+        DB::transaction(function () use ($dossier, $paiement, $motif, $auteur): void {
+            $ligne = LigneDossierPaiement::query()->lockForUpdate()->where('dossier_paiement_id', $dossier->id)
+                ->where('paiement_id', $paiement->id)->whereNull('retire_le')->firstOrFail();
+            $ligne->update(['retire_le' => now(), 'motif_retrait' => $motif]);
             $paiement->update(['statut' => 'A_TRAITER']);
-
-            // Recalculer le montant
-            $montantRetire = $dossier->paiements()->where('paiement_id', $paiement->id)->first()->pivot->montant ?? 0;
-            $dossier->update([
-                'montant_total' => $dossier->montant_total - $montantRetire,
-            ]);
+            $dossier->decrement('montant_total', $ligne->montant);
+            DecisionPaiement::enregistrer($paiement, $auteur, 'RETIRE_DOSSIER', $motif, 'EN_DOSSIER', 'A_TRAITER');
         });
     }
 
-    /**
-     * Élabore un OP à partir de plusieurs dossiers validés par le CB.
-     */
+    /** @param list<int> $dossierIds */
     public function elaborerOp(array $dossierIds, int $periodeId): OrdrePaiement
     {
-        return DB::transaction(function () use ($dossierIds, $periodeId) {
-            $dossiers = DossierPaiement::whereIn('id', $dossierIds)->where('statut', 'VALIDE_CB')->get();
-            $montantTotal = $dossiers->sum('montant_total');
-
-            $op = OrdrePaiement::create([
-                'uuid_public' => Str::uuid(),
-                'numero' => 'OP-'.date('Ym').'-'.strtoupper(Str::random(5)),
-                'periode_id' => $periodeId,
-                'montant_total' => $montantTotal,
-                'statut' => 'BROUILLON',
-            ]);
-
-            foreach ($dossiers as $dossier) {
-                $dossier->update([
-                    'ordre_paiement_id' => $op->id,
-                    'statut' => 'EN_OP',
-                ]);
+        return DB::transaction(function () use ($dossierIds, $periodeId): OrdrePaiement {
+            $ids = array_values(array_unique($dossierIds));
+            $dossiers = DossierPaiement::query()->lockForUpdate()->whereIn('id', $ids)
+                ->where('periode_id', $periodeId)->where('statut', 'VALIDE_CB')->get();
+            if ($dossiers->count() !== count($ids) || $dossiers->isEmpty() || $dossiers->pluck('source_financement_id')->unique()->count() !== 1) {
+                throw ValidationException::withMessages(['dossiers' => 'Les dossiers doivent etre valides CB et partager le meme financement.']);
             }
-
-            $this->workflowService->dmgElaboreOp($op);
-
+            $op = OrdrePaiement::create(['uuid_public' => (string) Str::uuid(), 'numero' => $this->numero('OP'),
+                'periode_id' => $periodeId, 'source_financement_id' => $dossiers->first()->source_financement_id,
+                'montant_total' => $dossiers->sum('montant_total'), 'statut' => 'BROUILLON']);
+            DossierPaiement::whereKey($ids)->update(['ordre_paiement_id' => $op->id, 'statut' => 'EN_OP']);
             return $op;
         });
     }
 
-    /**
-     * Crée un Bordereau à partir de plusieurs OP.
-     */
+    /** @param list<int> $opIds */
     public function creerBordereau(array $opIds, int $periodeId): BordereauPaiement
     {
-        return DB::transaction(function () use ($opIds, $periodeId) {
-            $ops = OrdrePaiement::whereIn('id', $opIds)->where('statut', 'BROUILLON')->get();
-            $montantTotal = $ops->sum('montant_total');
-
-            $bordereau = BordereauPaiement::create([
-                'uuid_public' => Str::uuid(),
-                'numero' => 'BORD-'.date('Ym').'-'.strtoupper(Str::random(5)),
-                'periode_id' => $periodeId,
-                'montant_total' => $montantTotal,
-                'statut' => 'BROUILLON',
-            ]);
-
-            foreach ($ops as $op) {
-                $op->update([
-                    'bordereau_paiement_id' => $bordereau->id,
-                    'statut' => 'EN_BORDEREAU',
-                ]);
+        return DB::transaction(function () use ($opIds, $periodeId): BordereauPaiement {
+            $ids = array_values(array_unique($opIds));
+            $ops = OrdrePaiement::query()->lockForUpdate()->whereIn('id', $ids)
+                ->where('periode_id', $periodeId)->where('statut', 'BROUILLON')->get();
+            if ($ops->count() !== count($ids) || $ops->isEmpty() || $ops->pluck('source_financement_id')->unique()->count() !== 1) {
+                throw ValidationException::withMessages(['ops' => 'Les OP doivent etre disponibles et partager le meme financement.']);
             }
-
+            $bordereau = BordereauPaiement::create(['uuid_public' => (string) Str::uuid(), 'numero' => $this->numero('BORD'),
+                'periode_id' => $periodeId, 'source_financement_id' => $ops->first()->source_financement_id,
+                'montant_total' => $ops->sum('montant_total'), 'statut' => 'BROUILLON']);
+            OrdrePaiement::whereKey($ids)->update(['bordereau_paiement_id' => $bordereau->id, 'statut' => 'EN_BORDEREAU']);
             return $bordereau;
         });
     }
 
-    /**
-     * Transmet un Bordereau à l'Agent Comptable.
-     */
     public function transmettreBordereauAc(BordereauPaiement $bordereau): void
     {
-        DB::transaction(function () use ($bordereau) {
-            $bordereau->update(['statut' => 'TRANSMIS_AC']);
-            $this->workflowService->dmgTransmetBordereauAc($bordereau);
-        });
+        $this->changerStatut($bordereau, 'BROUILLON', 'TRANSMIS_AC');
+    }
+
+    private function changerStatut(DossierPaiement|BordereauPaiement $model, string $attendu, string $nouveau): void
+    {
+        if ($model->newQuery()->whereKey($model->getKey())->where('statut', $attendu)->update(['statut' => $nouveau]) !== 1) {
+            throw ValidationException::withMessages(['statut' => "Le statut {$attendu} n est plus courant."]);
+        }
+    }
+
+    private function numero(string $prefixe): string
+    {
+        return $prefixe.'-'.now()->format('Ym').'-'.strtoupper(Str::random(8));
     }
 }

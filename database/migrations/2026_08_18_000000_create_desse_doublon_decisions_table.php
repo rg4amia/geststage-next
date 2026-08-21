@@ -26,7 +26,9 @@ return new class extends Migration
             $table->index(['type_doublon', 'cle_doublon']);
         });
 
-        DB::statement("ALTER TABLE desse_doublon_decisions ADD CONSTRAINT desse_doublon_decisions_decision_valide CHECK (decision IN ('avere', 'non_avere'))");
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement("ALTER TABLE desse_doublon_decisions ADD CONSTRAINT desse_doublon_decisions_decision_valide CHECK (decision IN ('avere', 'non_avere'))");
+        }
     }
 
     /**

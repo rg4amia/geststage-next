@@ -29,6 +29,10 @@ class PointageChefAgenceService
     {
         $query = Pointage::query()
             ->where('statut', 'SOUMIS')
+            // ─── EXCLURE LES INSTANCES TERMINÉES ────────────────────────────
+            ->whereHas('stage.instanceParcours', fn (Builder $q) => $q->whereNull('terminee_le'))
+            // ─── ÉLIGIBILITÉ : AU MOINS UN CONTRAT ACTIF ────────────────────
+            ->whereHas('stage.contrats')
             ->whereHas('stage', function (Builder $q) use ($agenceId) {
                 if ($agenceId) {
                     $q->where('agence_id', $agenceId);
@@ -71,6 +75,10 @@ class PointageChefAgenceService
             'versionCourante.saisiPar',
         ])
             ->where('statut', 'SOUMIS')
+            // ─── EXCLURE LES INSTANCES TERMINÉES ────────────────────────────
+            ->whereHas('stage.instanceParcours', fn (Builder $q) => $q->whereNull('terminee_le'))
+            // ─── ÉLIGIBILITÉ : AU MOINS UN CONTRAT ACTIF ────────────────────
+            ->whereHas('stage.contrats')
             ->whereHas('periode', function (Builder $q) use ($mois) {
                 $q->where('code', $mois);
             });
@@ -108,6 +116,10 @@ class PointageChefAgenceService
             'versionCourante.saisiPar',
         ])
             ->where('statut', 'CORRIGE_CIP')
+            // ─── EXCLURE LES INSTANCES TERMINÉES ────────────────────────────
+            ->whereHas('stage.instanceParcours', fn (Builder $q) => $q->whereNull('terminee_le'))
+            // ─── ÉLIGIBILITÉ : AU MOINS UN CONTRAT ACTIF ────────────────────
+            ->whereHas('stage.contrats')
             ->whereHas('periode', function (Builder $q) use ($mois) {
                 $q->where('code', $mois);
             });
@@ -194,6 +206,10 @@ class PointageChefAgenceService
     {
         $query = Pointage::query()
             ->where('statut', 'SOUMIS')
+            // ─── EXCLURE LES INSTANCES TERMINÉES ────────────────────────────
+            ->whereHas('stage.instanceParcours', fn (Builder $q) => $q->whereNull('terminee_le'))
+            // ─── ÉLIGIBILITÉ : AU MOINS UN CONTRAT ACTIF ────────────────────
+            ->whereHas('stage.contrats')
             ->whereHas('periode', fn (Builder $q) => $q->where('code', $mois));
 
         if ($ca->agence_id) {

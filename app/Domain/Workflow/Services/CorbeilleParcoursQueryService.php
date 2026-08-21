@@ -76,6 +76,13 @@ class CorbeilleParcoursQueryService
     {
         $stage = $paiement->droitPaiement?->stage;
         $beneficiaire = $stage?->beneficiaire;
+        $jourDebut = $stage?->date_debut?->day;
+        $cohorte = match (true) {
+            $jourDebut >= 1 && $jourDebut <= 5 => 1,
+            $jourDebut === 10 => 2,
+            $jourDebut === 20 => 3,
+            default => 0,
+        };
 
         return [
             'id' => $paiement->id,
@@ -95,16 +102,16 @@ class CorbeilleParcoursQueryService
             ],
             'stage' => [
                 'source_financement' => $stage?->sourceFinancement?->nom ?? '-',
-                'type_stage' => $stage?->type_stage ?? '-',
-                'date_validation' => $stage?->date_validation ? Carbon::parse($stage->date_validation)->format('d/m/Y') : '-',
+                'type_stage' => $stage?->typeStage?->nom ?? '-',
+                'date_validation' => '-',
                 'date_debut' => $stage?->date_debut ? Carbon::parse($stage->date_debut)->format('d/m/Y') : '-',
-                'date_fin' => $stage?->date_fin ? Carbon::parse($stage->date_fin)->format('d/m/Y') : '-',
+                'date_fin' => $stage?->date_fin_prevue ? Carbon::parse($stage->date_fin_prevue)->format('d/m/Y') : '-',
             ],
             'montant' => $paiement->montant,
             'statut' => $statut,
             'date_creation' => $paiement->created_at?->format('d/m/Y'),
-            'piece_jointe' => $paiement->piece_jointe ?? null,
-            'cohorte' => 1,
+            'piece_jointe' => $paiement->statut_dossier_physique,
+            'cohorte' => $cohorte,
         ];
     }
 

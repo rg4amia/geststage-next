@@ -12,6 +12,9 @@ use App\Http\Controllers\Company\OffreEmploiController;
 use App\Http\Controllers\Daicg\StagiaireDaicgController;
 use App\Http\Controllers\Desse\StagiaireDesseController;
 use App\Http\Controllers\Dmg\OperationDmgController;
+use App\Http\Controllers\Dmg\AttentePaiementDmgController;
+use App\Http\Controllers\Dmg\DossierPaiementDmgController;
+use App\Http\Controllers\Dmg\OperationPaiementDmgController;
 use App\Http\Controllers\Dmg\PaiementDmgController;
 use App\Http\Controllers\Dmg\RejetDmgController;
 use App\Http\Controllers\Dmg\ValidationDmgController;
@@ -88,15 +91,19 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/chefagence/pointages/generer-attestation', [PointageChefAgenceController::class, 'genererAttestation'])->name('chefagence.pointages.genererAttestation');
 
     // Phase 6 : DMG (Chaîne Financière)
-    Route::get('/dmg/validation', [ValidationDmgController::class, 'index'])->name('dmg.validation.index');
-    Route::get('/dmg/paiements', [PaiementDmgController::class, 'index'])->name('dmg.paiements.index');
-    Route::post('/dmg/paiements/generer', [PaiementDmgController::class, 'generer'])->name('dmg.paiements.generer');
-    Route::post('/dmg/paiements/transmettre/{id}', [PaiementDmgController::class, 'transmettre'])->name('dmg.paiements.transmettre');
-    Route::post('/dmg/paiements/elaborer-op', [PaiementDmgController::class, 'elaborerOp'])->name('dmg.paiements.elaborer_op');
-    Route::post('/dmg/paiements/creer-bordereau', [PaiementDmgController::class, 'creerBordereau'])->name('dmg.paiements.creer_bordereau');
-    Route::post('/dmg/paiements/transmettre-bordereau/{id}', [PaiementDmgController::class, 'transmettreBordereau'])->name('dmg.paiements.transmettre_bordereau');
-    Route::get('/dmg/operations', [OperationDmgController::class, 'index'])->name('dmg.operations.index');
-    Route::get('/dmg/rejets', [RejetDmgController::class, 'index'])->name('dmg.rejets.index');
+    Route::get('/dmg/validation', [ValidationDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.validation.index');
+    Route::get('/dmg/paiements', [PaiementDmgController::class, 'index'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.index');
+    Route::get('/dmg/paiements/json', [AttentePaiementDmgController::class, 'index'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.json');
+    Route::post('/dmg/paiements/ajourner', [AttentePaiementDmgController::class, 'ajourner'])->middleware('can:ajourner_paiement_dmg')->name('dmg.paiements.ajourner');
+    Route::post('/dmg/paiements/marquer-dossier-physique', [AttentePaiementDmgController::class, 'marquerDossierPhysique'])->middleware('can:marquer_dossier_physique')->name('dmg.paiements.marquer_dossier_physique');
+    Route::post('/dmg/paiements/generer', [DossierPaiementDmgController::class, 'generer'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.generer');
+    Route::post('/dmg/paiements/transmettre/{dossier}', [DossierPaiementDmgController::class, 'transmettre'])->middleware('can:transmettre_cb')->name('dmg.paiements.transmettre');
+    Route::post('/dmg/paiements/retirer-paiement', [DossierPaiementDmgController::class, 'retirer'])->middleware('can:retirer_paiement_dossier')->name('dmg.paiements.retirer_paiement');
+    Route::post('/dmg/paiements/elaborer-op', [OperationPaiementDmgController::class, 'elaborer'])->middleware('can:elaborer_op')->name('dmg.paiements.elaborer_op');
+    Route::post('/dmg/paiements/creer-bordereau', [OperationPaiementDmgController::class, 'creerBordereau'])->middleware('can:creer_bordereau')->name('dmg.paiements.creer_bordereau');
+    Route::post('/dmg/paiements/transmettre-bordereau/{bordereau}', [OperationPaiementDmgController::class, 'transmettreBordereau'])->middleware('can:transmettre_bordereau_ac')->name('dmg.paiements.transmettre_bordereau');
+    Route::get('/dmg/operations', [OperationDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.operations.index');
+    Route::get('/dmg/rejets', [RejetDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.rejets.index');
 
     // Phase 7 : Agent Comptable
     Route::get('/agent-comptable/paiements', [PaiementAcController::class, 'index'])->name('ac.paiements.index');

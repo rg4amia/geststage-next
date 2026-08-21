@@ -23,6 +23,9 @@ class Paiement extends Model
         'montant',
         'statut',
         'corbeille_actuelle',
+        'statut_dossier_physique',
+        'dossier_physique_marque_par_id',
+        'dossier_physique_marque_le',
         'reference_externe',
         'paye_le',
         'version_verrouillage',
@@ -31,6 +34,7 @@ class Paiement extends Model
     protected $casts = [
         'paye_le' => 'datetime',
         'montant' => 'decimal:2',
+        'dossier_physique_marque_le' => 'datetime',
     ];
 
     public function droitPaiement(): BelongsTo

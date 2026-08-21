@@ -55,6 +55,34 @@ class RolePermissionSeeder extends Seeder
                 'valider_pejedec',
                 'valider_aaf',
             ],
+        'dmg_paiements' => [
+            'voir_paiements_dmg',
+            'voir_attente_paiement_demarrage',
+                'voir_attente_paiement_presence',
+                'valider_paiement_dmg',
+                'generer_dossier_paiement',
+                'generer_etat_financier',
+                'generer_attestation',
+                'fusionner_tresor_pay',
+                'marquer_dossier_physique',
+                'ajourner_paiement_dmg',
+                'elaborer_op',
+            'creer_bordereau',
+            'transmettre_cb',
+            'transmettre_bordereau_ac',
+            'retirer_paiement_dossier',
+            ],
+            'cb_paiements' => [
+                'voir_dossier_cb',
+                'valider_dossier_cb',
+                'ajourner_dossier_cb',
+            ],
+            'ac_paiements' => [
+                'voir_bordereau_ac',
+                'viser_bordereau_ac',
+                'ajourner_bordereau_ac',
+                'rejeter_bordereau_ac',
+            ],
         ];
 
         // Création des permissions
@@ -124,6 +152,21 @@ class RolePermissionSeeder extends Seeder
             'voir_contrats',
             'voir_pointages',
             'valider_dmg',
+            'voir_paiements_dmg',
+            'voir_attente_paiement_demarrage',
+            'voir_attente_paiement_presence',
+            'valider_paiement_dmg',
+            'generer_dossier_paiement',
+            'generer_etat_financier',
+            'generer_attestation',
+            'fusionner_tresor_pay',
+            'marquer_dossier_physique',
+            'ajourner_paiement_dmg',
+            'elaborer_op',
+            'creer_bordereau',
+            'transmettre_cb',
+            'transmettre_bordereau_ac',
+            'retirer_paiement_dossier',
         ]);
 
         $cb = Role::findByName('cb');
@@ -132,12 +175,19 @@ class RolePermissionSeeder extends Seeder
             'voir_contrats',
             'voir_pointages',
             'valider_cb',
+            'voir_dossier_cb',
+            'valider_dossier_cb',
+            'ajourner_dossier_cb',
         ]);
 
         $agentComptable = Role::findByName('agent_comptable');
         $agentComptable->givePermissionTo([
             'voir_beneficiaires',
             'valider_ac',
+            'voir_bordereau_ac',
+            'viser_bordereau_ac',
+            'ajourner_bordereau_ac',
+            'rejeter_bordereau_ac',
         ]);
 
         $pejedec = Role::findByName('pejedec');

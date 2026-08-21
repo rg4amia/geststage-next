@@ -825,7 +825,11 @@ e.preventDefault();
                                                 {totalStagiaires}
                                             </span>
                                         </h5>
-                                        <Dropdown isOpen={columnsDropdownOpen} toggle={() => setColumnsDropdownOpen(!columnsDropdownOpen)}>
+                                        <div className="d-flex gap-2 align-items-center">
+                                            <Link href="/inscriptions/create" className="btn btn-success btn-sm">
+                                                <i className="ri-add-circle-line me-1"></i>Ajouter un stagiaire
+                                            </Link>
+                                            <Dropdown isOpen={columnsDropdownOpen} toggle={() => setColumnsDropdownOpen(!columnsDropdownOpen)}>
                                             <DropdownToggle color="light" size="sm" className="btn-icon">
                                                 <i className="ri-layout-column-line"></i> Colonnes
                                             </DropdownToggle>
@@ -851,6 +855,7 @@ e.preventDefault();
                                                 })}
                                             </DropdownMenu>
                                         </Dropdown>
+                                        </div>
                                     </div>
                                 </CardHeader>
                                 <CardBody className="p-0">
