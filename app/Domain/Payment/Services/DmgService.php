@@ -48,16 +48,25 @@ class DmgService
                     ->when($mois, fn (Builder $q) => $q->whereHas('periode', fn (Builder $p) => $p->where('code', $mois)))
                     ->whereHas('stage.contrats')
                     ->whereHas('stage.instanceParcours', function (Builder $instance) use ($corbeille): void {
-                        $instance->whereNull('terminee_le')->where(function (Builder $workflow) use ($corbeille): void {
-                            $workflow->whereHas('taches', fn (Builder $tache) => $tache
-                                ->where('code_corbeille', $corbeille->value)
-                                ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']))
+                        $instance->whereNull('terminee_le')
+                            ->where(function (Builder $workflow) use ($corbeille): void {
+                                // 1) Priorité : tâche ouverte dans la corbeille cible
+                                $workflow->whereHas('taches', fn (Builder $tache) => $tache
+                                    ->where('code_corbeille', $corbeille->value)
+                                    ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']))
+                                // 2) Fallback : aucune tâche ouverte ET corbeille_actuelle correspondante
+                                //    (couvre le cas où les tâches n'existent pas encore ou sont toutes fermées)
                                 ->orWhere(function (Builder $fallback) use ($corbeille): void {
-                                    $fallback->whereDoesntHave('taches', fn (Builder $tache) => $tache
-                                        ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']))
-                                        ->where('corbeille_actuelle', $corbeille->value);
+                                    $fallback->where('corbeille_actuelle', $corbeille->value)
+                                        ->where(function (Builder $noOpenTasks): void {
+                                            $noOpenTasks->whereDoesntHave('taches')
+                                                ->orWhere(function (Builder $onlyClosed): void {
+                                                    $onlyClosed->whereDoesntHave('taches', fn (Builder $t) => $t
+                                                        ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']));
+                                                });
+                                        });
                                 });
-                        });
+                            });
                     });
             });
 

@@ -112,6 +112,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dmg/paiements/elaborer-op', [OperationPaiementDmgController::class, 'elaborer'])->middleware('can:elaborer_op')->name('dmg.paiements.elaborer_op');
     Route::post('/dmg/paiements/creer-bordereau', [OperationPaiementDmgController::class, 'creerBordereau'])->middleware('can:creer_bordereau')->name('dmg.paiements.creer_bordereau');
     Route::post('/dmg/paiements/transmettre-bordereau/{bordereau}', [OperationPaiementDmgController::class, 'transmettreBordereau'])->middleware('can:transmettre_bordereau_ac')->name('dmg.paiements.transmettre_bordereau');
+    Route::get('/dmg/multi-dossier', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'index'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.index');
+    Route::get('/dmg/multi-dossier/dossiers', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getDossiers'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-dossiers');
+    Route::post('/dmg/multi-dossier/stagiaires', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getStagiaires'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-stagiaires');
+    Route::post('/dmg/multi-dossier/validate', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'validateSelection'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.validate');
+    Route::post('/dmg/multi-dossier/ajourner-dossier', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'ajournerDossier'])->middleware('can:ajourner_paiement_dmg')->name('dmg.multi-dossier.ajourner-dossier');
+    Route::post('/dmg/multi-dossier/ajourner-stagiaire', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'ajournerStagiaire'])->middleware('can:ajourner_paiement_dmg')->name('dmg.multi-dossier.ajourner-stagiaire');
+    Route::post('/dmg/multi-dossier/generer-pdf-paiement', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'generatePdfPaiement'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.generate-pdf-paiement');
+    Route::post('/dmg/multi-dossier/generer-pdf-attestations', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'generatePdfAttestations'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.generate-pdf-attestations');
+    Route::get('/dmg/multi-dossier/download-attestation/{groupe}', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'downloadAttestation'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.download_attestation');
+    Route::get('/dmg/multi-dossier/download-etat-financier/{groupe}', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'downloadEtatFinancier'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.download_etat_financier');
     Route::get('/dmg/operations', [OperationDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.operations.index');
     Route::get('/dmg/rejets', [RejetDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.rejets.index');
 

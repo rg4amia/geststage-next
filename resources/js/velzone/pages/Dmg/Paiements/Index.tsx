@@ -95,6 +95,34 @@ interface DossierGroupeRow {
     etat_financier_path?: string | null;
 }
 
+interface DossierMultiItem {
+    id: number;
+    identifiant: string;
+    agence: string;
+    source_financement: string;
+    nature: string;
+    nombre_stagiaires: number;
+    montant_total: number;
+    statut: string;
+}
+
+interface StagiaireRow {
+    paiement_id: number;
+    created_at: string;
+    agence: string;
+    entreprise: string;
+    source_financement: string;
+    type_stage: string;
+    numero_aej: string;
+    nom_prenoms: string;
+    date_naissance: string;
+    date_debut: string;
+    date_fin: string;
+    tresor_pay: string;
+    montant: number;
+    statut: string;
+}
+
 interface Compteurs {
     global: { demarrage: number; presence: number };
     cohorte1: { demarrage: number; presence: number };
@@ -197,7 +225,20 @@ const DmgPaiementsIndex = (props: PageProps) => {
         date_validation_fin: filters?.date_validation_fin || '',
         search: filters?.search || '',
     });
-    const [moisSelectionne, setMoisSelectionne] = useState(moisActuel || '');
+    const [moisDemarrage, setMoisDemarrage] = useState(moisActuel || '');
+    const [moisPresence, setMoisPresence] = useState(moisActuel || '');
+    const [moisDossiers, setMoisDossiers] = useState(moisActuel || '');
+
+    const getMoisForTab = (tab: string) => {
+        if (tab === '1') return moisDemarrage;
+        if (tab === '2') return moisPresence;
+        return moisDossiers;
+    };
+    const setMoisForTab = (tab: string, value: string) => {
+        if (tab === '1') setMoisDemarrage(value);
+        else if (tab === '2') setMoisPresence(value);
+        else setMoisDossiers(value);
+    };
 
     /* ─── Modales ─── */
     const [modalAjournerOpen, setModalAjournerOpen] = useState(false);
@@ -209,6 +250,25 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [motifAjourner, setMotifAjourner] = useState('');
     const [dossierStatus, setDossierStatus] = useState('en_attente');
     const [observationGroupe, setObservationGroupe] = useState('');
+
+    /* ─── États Multi-dossier intégrés ─── */
+    const [multiDossiers, setMultiDossiers] = useState<DossierMultiItem[]>([]);
+    const [isLoadingMultiDossiers, setIsLoadingMultiDossiers] = useState(false);
+    const [selectedMultiDossierIds, setSelectedMultiDossierIds] = useState<number[]>([]);
+    const [multiTypeTraitement, setMultiTypeTraitement] = useState('');
+    const [multiDossierSearch, setMultiDossierSearch] = useState('');
+    const [stagiaires, setStagiaires] = useState<StagiaireRow[]>([]);
+    const [selectedStagiaireIds, setSelectedStagiaireIds] = useState<number[]>([]);
+    const [stagiaireSearch, setStagiaireSearch] = useState('');
+    const [stagiairePage, setStagiairePage] = useState(1);
+    const [stagiaireTotal, setStagiaireTotal] = useState(0);
+    const [stagiaireLoading, setStagiaireLoading] = useState(false);
+    const [modalMultiValiderOpen, setModalMultiValiderOpen] = useState(false);
+    const [modalMultiAjournerDossierOpen, setModalMultiAjournerDossierOpen] = useState(false);
+    const [modalMultiAjournerStagiaireOpen, setModalMultiAjournerStagiaireOpen] = useState(false);
+    const [multiObservation, setMultiObservation] = useState('');
+    const [motifMultiAjournerDossier, setMotifMultiAjournerDossier] = useState('');
+    const [motifMultiAjournerStagiaire, setMotifMultiAjournerStagiaire] = useState('');
 
     /* ─── Données onglet courant ─── */
     const currentDemarrageRows = useMemo(() => attenteDemarrage || [], [attenteDemarrage]);
@@ -224,7 +284,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
     /* ─── Navigation filtres ─── */
     const applyFilters = useCallback(() => {
         const params: Record<string, string> = {};
-        if (moisSelectionne) params.mois = moisSelectionne;
+        const mois = getMoisForTab(activeTab);
+        if (mois) params.mois = mois;
         Object.entries(selectedFilters).forEach(([key, val]) => {
             if (val) params[key] = val;
         });
@@ -243,7 +304,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
             preserveState: true,
             onFinish: () => setIsLoading(false),
         });
-    }, [moisSelectionne, selectedFilters, demarrageTab, activeTab]);
+    }, [moisDemarrage, moisPresence, moisDossiers, selectedFilters, demarrageTab, activeTab]);
 
     const resetFilters = () => {
         setSelectedFilters({
@@ -251,7 +312,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
             type_stage_id: '', type_structure_id: '', date_debut: '',
             date_fin: '', date_validation_debut: '', date_validation_fin: '', search: '',
         });
-        setMoisSelectionne(moisActuel || '');
+        setMoisDemarrage(moisActuel || '');
+        setMoisPresence(moisActuel || '');
+        setMoisDossiers(moisActuel || '');
         router.visit('/dmg/paiements', { preserveState: false });
     };
 
@@ -354,7 +417,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const handleGenererPdf = (type: 'etat_paiement' | 'attestation_demarrage' | 'attestation_presence' | 'fusion_tresor', scope: 'liste' | 'selected') => {
         const ids = scope === 'selected' ? (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds) : [];
         const params = new URLSearchParams();
-        params.set('mois', moisSelectionne);
+        params.set('mois', getMoisForTab(activeTab));
         params.set('type', type);
         params.set('nature', activeTab === '2' ? 'presence' : 'demarrage');
         Object.entries(selectedFilters).forEach(([key, value]) => {
@@ -444,6 +507,153 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
     const handleTransmettreBordereau = (id: number) => {
         router.post(`/dmg/paiements/transmettre-bordereau/${id}`, {}, { preserveScroll: true });
+    };
+
+    /* ═══════════════════════════════════════════════════════════════════
+       MULTI-DOSSIER — Chargement dossiers via AJAX
+       ═══════════════════════════════════════════════════════════════════ */
+    const loadMultiDossiers = useCallback(() => {
+        setIsLoadingMultiDossiers(true);
+        const params = new URLSearchParams();
+        if (moisDossiers) params.set('mois', moisDossiers);
+        if (selectedFilters.agence_id) params.set('agence_id', selectedFilters.agence_id);
+        if (selectedFilters.source_financement_id) params.set('source_financement_id', selectedFilters.source_financement_id);
+        if (multiTypeTraitement) params.set('typetraitement', multiTypeTraitement);
+
+        fetch(`/dmg/multi-dossier/dossiers?${params.toString()}`, {
+            headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+        })
+            .then((r) => r.json())
+            .then((data: DossierMultiItem[]) => {
+                setMultiDossiers(data);
+                setSelectedMultiDossierIds([]);
+                setStagiaires([]);
+                setStagiaireTotal(0);
+            })
+            .catch(() => setMultiDossiers([]))
+            .finally(() => setIsLoadingMultiDossiers(false));
+    }, [moisDossiers, selectedFilters.agence_id, selectedFilters.source_financement_id, multiTypeTraitement]);
+
+    /* ═══════════════════════════════════════════════════════════════════
+       MULTI-DOSSIER — Chargement stagiaires (serveur-side)
+       ═══════════════════════════════════════════════════════════════════ */
+    const loadStagiairesMulti = useCallback(() => {
+        if (selectedMultiDossierIds.length === 0) {
+            setStagiaires([]);
+            setStagiaireTotal(0);
+            return;
+        }
+        setStagiaireLoading(true);
+        const body = new URLSearchParams();
+        body.set('draw', String(Date.now()));
+        body.set('start', String((stagiairePage - 1) * 10));
+        body.set('length', '10');
+        body.set('search.value', stagiaireSearch);
+        selectedMultiDossierIds.forEach((id) => body.append('dossiers[]', String(id)));
+
+        fetch('/dmg/multi-dossier/stagiaires', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? ''),
+            },
+            body: body.toString(),
+        })
+            .then((r) => r.json())
+            .then((res) => {
+                setStagiaires(res.data || []);
+                setStagiaireTotal(res.recordsFiltered || 0);
+            })
+            .catch(() => { setStagiaires([]); setStagiaireTotal(0); })
+            .finally(() => setStagiaireLoading(false));
+    }, [selectedMultiDossierIds, stagiairePage, stagiaireSearch]);
+
+    /* ═══════════════════════════════════════════════════════════════════
+       MULTI-DOSSIER — Actions
+       ═══════════════════════════════════════════════════════════════════ */
+    const toggleMultiDossierSelection = (id: number) => {
+        setSelectedMultiDossierIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
+        setStagiairePage(1);
+    };
+
+    const toggleAllMultiDossiers = () => {
+        setSelectedMultiDossierIds((prev) => (prev.length === multiDossiers.length ? [] : multiDossiers.map((d) => d.id)));
+        setStagiairePage(1);
+    };
+
+    const toggleStagiaireSelection = (id: number) => {
+        setSelectedStagiaireIds((prev) => prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]);
+    };
+
+    const toggleAllStagiaires = () => {
+        setSelectedStagiaireIds((prev) => (prev.length === stagiaires.length ? [] : stagiaires.map((s) => s.paiement_id)));
+    };
+
+    const handleMultiValiderSelection = () => {
+        if (selectedMultiDossierIds.length === 0 || !moisDossiers) return;
+        setProcessing(true);
+        fetch('/dmg/multi-dossier/validate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            body: JSON.stringify({ dossiers: selectedMultiDossierIds, mois: moisDossiers, observation: multiObservation.trim() || null }),
+        })
+            .then((r) => r.json())
+            .then((res) => {
+                if (res.success) {
+                    setModalMultiValiderOpen(false);
+                    setMultiObservation('');
+                    setSelectedMultiDossierIds([]);
+                    loadMultiDossiers();
+                    router.reload({ only: ['groupesDossiers'] });
+                }
+            })
+            .catch(() => {})
+            .finally(() => setProcessing(false));
+    };
+
+    const handleMultiAjournerDossier = () => {
+        if (selectedMultiDossierIds.length === 0 || motifMultiAjournerDossier.trim().length < 5) return;
+        setProcessing(true);
+        fetch('/dmg/multi-dossier/ajourner-dossier', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            body: JSON.stringify({ dossier_id: selectedMultiDossierIds, motif: motifMultiAjournerDossier, mois: moisDossiers }),
+        })
+            .then((r) => r.json())
+            .then(() => { setModalMultiAjournerDossierOpen(false); setMotifMultiAjournerDossier(''); setSelectedMultiDossierIds([]); loadMultiDossiers(); })
+            .catch(() => {})
+            .finally(() => setProcessing(false));
+    };
+
+    const handleMultiAjournerStagiaire = () => {
+        if (selectedStagiaireIds.length === 0 || motifMultiAjournerStagiaire.trim().length < 5) return;
+        setProcessing(true);
+        fetch('/dmg/multi-dossier/ajourner-stagiaire', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            body: JSON.stringify({ paiementIds: selectedStagiaireIds, motif: motifMultiAjournerStagiaire }),
+        })
+            .then((r) => r.json())
+            .then(() => { setModalMultiAjournerStagiaireOpen(false); setMotifMultiAjournerStagiaire(''); setSelectedStagiaireIds([]); loadStagiairesMulti(); })
+            .catch(() => {})
+            .finally(() => setProcessing(false));
+    };
+
+    const handleMultiGenererPdf = (type: 'paiement' | 'attestations') => {
+        if (selectedMultiDossierIds.length === 0) return;
+        const url = type === 'paiement' ? '/dmg/multi-dossier/generer-pdf-paiement' : '/dmg/multi-dossier/generer-pdf-attestations';
+        const body = new URLSearchParams();
+        selectedMultiDossierIds.forEach((id) => body.append('dossiers[]', String(id)));
+        fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            body: body.toString(),
+        })
+            .then((r) => { if (!r.ok) throw new Error(); return r.blob(); })
+            .then((blob) => { const u = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${type}_${new Date().toISOString().slice(0, 10)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); })
+            .catch(() => {});
     };
 
     /* ─── Badge helpers ─── */
@@ -560,6 +770,26 @@ const DmgPaiementsIndex = (props: PageProps) => {
     /* ─── Données dossiers par statut ─── */
     const [dossierTab, setDossierTab] = useState('brouillon');
 
+    /* ─── Charger les dossiers multi quand l'onglet est actif ou que la periode change ─── */
+    const prevDossierTab = React.useRef(dossierTab);
+    React.useEffect(() => {
+        if (dossierTab === 'multi' && prevDossierTab.current !== 'multi') {
+            loadMultiDossiers();
+        }
+        if (dossierTab === 'multi') {
+            loadStagiairesMulti();
+        }
+        prevDossierTab.current = dossierTab;
+    }, [dossierTab, loadMultiDossiers, loadStagiairesMulti]);
+
+    const prevMoisDossiers = React.useRef(moisDossiers);
+    React.useEffect(() => {
+        if (dossierTab === 'multi' && prevMoisDossiers.current !== moisDossiers) {
+            loadMultiDossiers();
+        }
+        prevMoisDossiers.current = moisDossiers;
+    }, [moisDossiers, dossierTab, loadMultiDossiers]);
+
     /* ─── Stats ─── */
     const statCards = useMemo(() => [
         { label: 'Attente Démarrage', value: compteurs?.global?.demarrage ?? attenteDemarrage.length, icon: 'ri-flag-line', color: 'primary' },
@@ -627,13 +857,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                 <i className="ri-filter-3-line me-1"></i>Filtres de recherche
                             </h5>
                             <Row className="g-2 align-items-end mb-2">
-                                <Col xs={6} sm={3} md={2}>
-                                    <Label className="form-label fs-12 text-muted mb-1">Période</Label>
-                                    <Input type="select" bsSize="sm" value={moisSelectionne} onChange={(e) => setMoisSelectionne(e.target.value)}>
-                                        <option value="">Toutes</option>
-                                        {periodeOptions.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}
-                                    </Input>
-                                </Col>
                                 <Col xs={6} sm={3} md={2}>
                                     <Label className="form-label fs-12 text-muted mb-1">Agence</Label>
                                     <Input type="select" bsSize="sm" value={selectedFilters.agence_id || ''} onChange={(e) => handleFilterChange('agence_id', e.target.value)}>
@@ -737,6 +960,20 @@ const DmgPaiementsIndex = (props: PageProps) => {
 <TabContent activeTab={activeTab} className="pt-4 text-muted">
                                 {/* ═══════ ONGLET 1 : ATTENTE DÉMARRAGE ═══════ */}
                                 <TabPane tabId="1">
+                                    {/* ── Sélecteur de période Démarrage ── */}
+                                    <div className="d-flex align-items-center gap-2 mb-3">
+                                        <i className="ri-calendar-line text-primary fs-16"></i>
+                                        <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
+                                        <Input type="select" bsSize="sm" style={{ width: 180 }} value={moisDemarrage}
+                                            onChange={(e) => setMoisDemarrage(e.target.value)}>
+                                            <option value="">Toutes les périodes</option>
+                                            {periodeOptions.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}
+                                        </Input>
+                                        <Button color="primary" size="sm" onClick={applyFilters} disabled={isLoading}>
+                                            <i className="ri-search-line me-1"></i>Appliquer
+                                        </Button>
+                                        <Badge color="primary" pill className="fs-11">{filteredDemarrageRows.length} paiement(s)</Badge>
+                                    </div>
                                     {/* ── Actions globales démarrage ── */}
                                     <Card className="border shadow-none mb-3">
                                         <CardHeader className="bg-light border-bottom border-light d-flex align-items-center">
@@ -884,6 +1121,20 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
                                 {/* ═══════ ONGLET 2 : ATTENTE PRÉSENCE ═══════ */}
                                 <TabPane tabId="2">
+                                    {/* ── Sélecteur de période Présence ── */}
+                                    <div className="d-flex align-items-center gap-2 mb-3">
+                                        <i className="ri-calendar-line text-info fs-16"></i>
+                                        <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
+                                        <Input type="select" bsSize="sm" style={{ width: 180 }} value={moisPresence}
+                                            onChange={(e) => setMoisPresence(e.target.value)}>
+                                            <option value="">Toutes les périodes</option>
+                                            {periodeOptions.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}
+                                        </Input>
+                                        <Button color="info" size="sm" onClick={applyFilters} disabled={isLoading}>
+                                            <i className="ri-search-line me-1"></i>Appliquer
+                                        </Button>
+                                        <Badge color="info" pill className="fs-11">{currentPresenceRows.length} paiement(s)</Badge>
+                                    </div>
                                     {/* ── Actions globales présence ── */}
                                     <Card className="border shadow-none mb-3">
                                         <CardHeader className="bg-light border-bottom border-light d-flex align-items-center">
@@ -967,6 +1218,20 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
                                 {/* ═══════ ONGLET 3 : DOSSIERS & OP ═══════ */}
                                 <TabPane tabId="3">
+                                    {/* ── Sélecteur de période Dossiers ── */}
+                                    <div className="d-flex align-items-center gap-2 mb-3">
+                                        <i className="ri-calendar-line text-warning fs-16"></i>
+                                        <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
+                                        <Input type="select" bsSize="sm" style={{ width: 180 }} value={moisDossiers}
+                                            onChange={(e) => setMoisDossiers(e.target.value)}>
+                                            <option value="">Toutes les périodes</option>
+                                            {periodeOptions.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}
+                                        </Input>
+                                        <Button color="warning" size="sm" onClick={applyFilters} disabled={isLoading}>
+                                            <i className="ri-search-line me-1"></i>Appliquer
+                                        </Button>
+                                        <Badge color="warning" pill className="fs-11">{dossiers.length} dossier(s)</Badge>
+                                    </div>
                                     {/* ── Sous-onglets dossiers ── */}
                                     <Row className="g-3">
                                         <Col xs={12}>
@@ -1042,23 +1307,186 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                         </TabPane>
                                         <TabPane tabId="multi">
-                                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                                                <div>
-                                                    <h5 className="fs-14 mb-1">Dossiers éligibles au regroupement</h5>
-                                                    <p className="text-muted mb-0 fs-12">Même période, nature et source de financement; aucun OP ni groupe actif.</p>
-                                                </div>
-                                                <Button color="warning" size="sm" disabled={selectedDossierIds.length < 2} onClick={() => setModalGroupeOpen(true)}>
-                                                    <i className="ri-folder-shared-line me-1"></i>Créer un multi-dossier ({selectedDossierIds.length})
-                                                </Button>
-                                            </div>
-                                            <TableContainerReactTable
-                                                columns={[
-                                                    { id: 'select', header: '', cell: (c: any) => <Input type="checkbox" checked={selectedDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedDossierIds)} /> },
-                                                    ...dossierColumns.filter((column: any) => column.header !== 'Actions'),
-                                                ]}
-                                                data={dossiersGroupables} isGlobalFilter={true} customPageSize={10}
-                                                divClass="table-responsive table-card mb-4" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
-                                            <h5 className="fs-14 mb-3">Multi-dossiers constitués</h5>
+                                            {/* ── Filtres type traitement ── */}
+                                            <Row className="g-2 mb-3">
+                                                <Col md={3}>
+                                                    <Label className="form-label fs-12 text-muted fw-semibold">Type Traitement</Label>
+                                                    <Input type="select" bsSize="sm" value={multiTypeTraitement}
+                                                        onChange={(e) => { setMultiTypeTraitement(e.target.value); }}>
+                                                        <option value="">Tout</option>
+                                                        <option value="DM">DEMARRAGE</option>
+                                                        <option value="PS">PRESENCE</option>
+                                                    </Input>
+                                                </Col>
+                                                <Col md={3}>
+                                                    <Label className="form-label fs-12 text-muted fw-semibold">Recherche dossier</Label>
+                                                    <Input type="text" bsSize="sm" placeholder="Filtrer les dossiers..."
+                                                        value={multiDossierSearch}
+                                                        onChange={(e) => setMultiDossierSearch(e.target.value)} />
+                                                </Col>
+                                            </Row>
+
+                                            {/* ── Sélection dossiers + Actions ── */}
+                                            <Row className="g-3 mb-3">
+                                                <Col lg={8} xl={9}>
+                                                    <Card className="border shadow-none">
+                                                        <CardHeader className="bg-light py-2">
+                                                            <h6 className="card-title mb-0 fs-13">
+                                                                <i className="ri-folder-2-line me-1 text-warning"></i>
+                                                                Dossiers éligibles au regroupement
+                                                                {isLoadingMultiDossiers && <Spinner size="sm" className="ms-2" color="warning" />}
+                                                            </h6>
+                                                        </CardHeader>
+                                                        <CardBody className="py-2">
+                                                            <div className="d-flex flex-wrap gap-1">
+                                                                {multiDossiers.length === 0 && !isLoadingMultiDossiers && (
+                                                                    <small className="text-muted">Aucun dossier disponible pour cette période.</small>
+                                                                )}
+                                                                {multiDossiers
+                                                                    .filter((d) => !multiDossierSearch || d.identifiant.toLowerCase().includes(multiDossierSearch.toLowerCase()) || d.agence.toLowerCase().includes(multiDossierSearch.toLowerCase()))
+                                                                    .map((d) => (
+                                                                    <Badge key={d.id} color={selectedMultiDossierIds.includes(d.id) ? 'success' : 'light'}
+                                                                        pill className="fs-12 py-2 px-2" style={{ cursor: 'pointer', border: selectedMultiDossierIds.includes(d.id) ? 'none' : '1px solid #dee2e6' }}
+                                                                        onClick={() => toggleMultiDossierSelection(d.id)}>
+                                                                        <i className="ri-folder-2-fill me-1"></i>
+                                                                        {d.identifiant}
+                                                                        <span className="ms-1 text-muted">({d.nombre_stagiaires})</span>
+                                                                    </Badge>
+                                                                ))}
+                                                            </div>
+                                                            {selectedMultiDossierIds.length > 0 && (
+                                                                <div className="mt-2 d-flex align-items-center gap-2">
+                                                                    <small className="text-muted">Sélection :</small>
+                                                                    {selectedMultiDossierIds.map((id) => {
+                                                                        const d = multiDossiers.find((x) => x.id === id);
+                                                                        return d ? (
+                                                                            <Badge key={id} color="primary" pill className="fs-11 py-1 px-2"
+                                                                                style={{ cursor: 'pointer' }} onClick={() => toggleMultiDossierSelection(id)}>
+                                                                                {d.identifiant} <i className="ri-close-circle-fill ms-1"></i>
+                                                                            </Badge>
+                                                                        ) : null;
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </CardBody>
+                                                    </Card>
+                                                </Col>
+                                                <Col lg={4} xl={3}>
+                                                    <Card className="border shadow-none">
+                                                        <CardHeader className="bg-success bg-opacity-10 py-2">
+                                                            <h6 className="card-title mb-0 fs-13 text-success">
+                                                                <i className="ri-settings-3-line me-1"></i>Actions
+                                                            </h6>
+                                                        </CardHeader>
+                                                        <CardBody className="py-2 d-flex flex-column gap-2">
+                                                            <Button color="success" size="sm" block disabled={selectedMultiDossierIds.length === 0 || !moisDossiers || processing}
+                                                                onClick={() => setModalMultiValiderOpen(true)}>
+                                                                <i className="ri-check-double-line me-1"></i>Valider sélection
+                                                            </Button>
+                                                            <Button color="warning" size="sm" block disabled={selectedMultiDossierIds.length === 0}
+                                                                onClick={() => setModalMultiAjournerDossierOpen(true)}>
+                                                                <i className="ri-close-circle-line me-1"></i>Retirer le dossier
+                                                            </Button>
+                                                            <Button color="warning" size="sm" block disabled={selectedStagiaireIds.length === 0}
+                                                                onClick={() => setModalMultiAjournerStagiaireOpen(true)}>
+                                                                <i className="ri-user-unfollow-line me-1"></i>Retirer Stagiaire(s) ({selectedStagiaireIds.length})
+                                                            </Button>
+                                                            <div className="d-flex gap-1">
+                                                                <Button color="info" className="flex-fill" size="sm" disabled={selectedMultiDossierIds.length === 0}
+                                                                    onClick={() => handleMultiGenererPdf('paiement')}>
+                                                                    <i className="ri-file-text-line me-1"></i>État Paiement
+                                                                </Button>
+                                                                <Button color="info" className="flex-fill" size="sm" disabled={selectedMultiDossierIds.length === 0}
+                                                                    onClick={() => handleMultiGenererPdf('attestations')}>
+                                                                    <i className="ri-file-shield-line me-1"></i>ADD/ADP
+                                                                </Button>
+                                                            </div>
+                                                        </CardBody>
+                                                    </Card>
+                                                </Col>
+                                            </Row>
+
+                                            {/* ── Tableau Stagiaires (serveur-side) ── */}
+                                            {selectedMultiDossierIds.length > 0 && (
+                                                <Card className="border shadow-none mb-3">
+                                                    <CardHeader className="bg-info bg-opacity-10 py-2 d-flex justify-content-between align-items-center">
+                                                        <h6 className="card-title mb-0 fs-13 text-info">
+                                                            <i className="ri-user-search-line me-1"></i>Liste des Stagiaires
+                                                            <Badge color="info" pill className="ms-2 fs-11">{stagiaireTotal}</Badge>
+                                                        </h6>
+                                                        <Input type="text" bsSize="sm" placeholder="Rechercher..." style={{ maxWidth: 220 }}
+                                                            value={stagiaireSearch} onChange={(e) => { setStagiaireSearch(e.target.value); setStagiairePage(1); }} />
+                                                    </CardHeader>
+                                                    <CardBody className="p-0">
+                                                        {stagiaireLoading ? (
+                                                            <div className="d-flex justify-content-center py-4"><Spinner color="info" size="sm" /></div>
+                                                        ) : stagiaires.length === 0 ? (
+                                                            <p className="text-muted text-center py-4 mb-0"><i className="ri-inbox-line me-1"></i>Aucun stagiaire trouvé.</p>
+                                                        ) : (
+                                                            <div className="table-responsive">
+                                                                <table className="table table-striped table-hover align-middle mb-0">
+                                                                    <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                                        <tr>
+                                                                            <th style={{ width: 35 }}><Input type="checkbox" className="form-check-input"
+                                                                                checked={stagiaires.length > 0 && selectedStagiaireIds.length === stagiaires.length}
+                                                                                onChange={toggleAllStagiaires} /></th>
+                                                                            <th>Date Création</th>
+                                                                            <th>Agence</th>
+                                                                            <th>Entreprise</th>
+                                                                            <th>Financement</th>
+                                                                            <th>Type Stage</th>
+                                                                            <th>N° AEJ</th>
+                                                                            <th>Nom et Prénoms</th>
+                                                                            <th>Date Naiss.</th>
+                                                                            <th>Date Début</th>
+                                                                            <th>Date Fin</th>
+                                                                            <th>N° Trésor Pay</th>
+                                                                            <th>Montant</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {stagiaires.map((s) => (
+                                                                            <tr key={s.paiement_id}>
+                                                                                <td><Input type="checkbox" className="form-check-input"
+                                                                                    checked={selectedStagiaireIds.includes(s.paiement_id)}
+                                                                                    onChange={() => toggleStagiaireSelection(s.paiement_id)} /></td>
+                                                                                <td className="fs-12">{s.created_at}</td>
+                                                                                <td>{s.agence}</td>
+                                                                                <td className="text-truncate" style={{ maxWidth: 130 }}>{s.entreprise}</td>
+                                                                                <td>{s.source_financement}</td>
+                                                                                <td className="text-truncate" style={{ maxWidth: 100 }}>{s.type_stage}</td>
+                                                                                <td className="text-muted">{s.numero_aej}</td>
+                                                                                <td className="fw-semibold">{s.nom_prenoms}</td>
+                                                                                <td className="fs-12">{s.date_naissance}</td>
+                                                                                <td className="fs-12">{s.date_debut}</td>
+                                                                                <td className="fs-12">{s.date_fin}</td>
+                                                                                <td className="text-muted">{s.tresor_pay}</td>
+                                                                                <td className="fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        )}
+                                                        {Math.ceil(stagiaireTotal / 10) > 1 && (
+                                                            <div className="d-flex justify-content-between align-items-center p-2 border-top">
+                                                                <small className="text-muted">{stagiaireTotal} résultat(s)</small>
+                                                                <div className="d-flex gap-1">
+                                                                    <Button size="sm" color="light" disabled={stagiairePage <= 1} onClick={() => setStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                    {Array.from({ length: Math.min(Math.ceil(stagiaireTotal / 10), 5) }, (_, i) => {
+                                                                        const page = i + 1;
+                                                                        return <Button key={page} size="sm" color={page === stagiairePage ? 'primary' : 'light'} onClick={() => setStagiairePage(page)}>{page}</Button>;
+                                                                    })}
+                                                                    <Button size="sm" color="light" disabled={stagiairePage >= Math.ceil(stagiaireTotal / 10)} onClick={() => setStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </CardBody>
+                                                </Card>
+                                            )}
+
+                                            {/* ── Multi-dossiers constitués ── */}
+                                            <h5 className="fs-14 mb-3"><i className="ri-folder-shared-line me-1 text-warning"></i>Multi-dossiers constitués</h5>
                                             <TableContainerReactTable
                                                 columns={[
                                                     { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
@@ -1070,24 +1498,16 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                     { header: 'Actions', cell: (c: any) => (
                                                         <div className="d-flex gap-1">
                                                             {c.row.original.statut === 'BROUILLON' && (
-                                                                <Button color="warning" size="sm" outline onClick={() => handleGenererPdfsGroupe(c.row.original.id)} title="Générer les PDFs">
-                                                                    <i className="ri-file-pdf-2-line"></i>
-                                                                </Button>
+                                                                <Button color="warning" size="sm" outline onClick={() => handleGenererPdfsGroupe(c.row.original.id)} title="Générer les PDFs"><i className="ri-file-pdf-2-line"></i></Button>
                                                             )}
                                                             {c.row.original.attestation_path && (
-                                                                <Button color="info" size="sm" outline onClick={() => handleDownloadAttestation(c.row.original.id)} title="Attestation de présence">
-                                                                    <i className="ri-file-text-line"></i>
-                                                                </Button>
+                                                                <Button color="info" size="sm" outline onClick={() => handleDownloadAttestation(c.row.original.id)} title="Attestation"><i className="ri-file-text-line"></i></Button>
                                                             )}
                                                             {c.row.original.etat_financier_path && (
-                                                                <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancier(c.row.original.id)} title="État financier">
-                                                                    <i className="ri-money-dollar-circle-line"></i>
-                                                                </Button>
+                                                                <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancier(c.row.original.id)} title="État financier"><i className="ri-money-dollar-circle-line"></i></Button>
                                                             )}
                                                             {c.row.original.statut === 'BROUILLON' && (
-                                                                <Button color="info" size="sm" outline onClick={() => handleTransmettreGroupe(c.row.original.id)} title="Transmettre CB">
-                                                                    <i className="ri-send-plane-line"></i>
-                                                                </Button>
+                                                                <Button color="info" size="sm" outline onClick={() => handleTransmettreGroupe(c.row.original.id)} title="Transmettre CB"><i className="ri-send-plane-line"></i></Button>
                                                             )}
                                                         </div>
                                                     ) },
@@ -1248,6 +1668,79 @@ const DmgPaiementsIndex = (props: PageProps) => {
                 <ModalFooter>
                     <Button color="light" onClick={() => setModalDossierOpen(false)} disabled={processing}>Annuler</Button>
                     <Button color="dark" onClick={() => handleMarquerDossier(activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds, dossierStatus)} disabled={processing}>
+                        {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : 'Confirmer'}
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ═══════ MODALES MULTI-DOSSIER ═══════ */}
+
+            {/* ─── Valider sélection ─── */}
+            <Modal isOpen={modalMultiValiderOpen} toggle={() => !processing && setModalMultiValiderOpen(false)} centered>
+                <ModalHeader toggle={() => !processing && setModalMultiValiderOpen(false)} className="bg-success text-white">
+                    <i className="ri-check-double-line me-2"></i>Validation de la Sélection
+                </ModalHeader>
+                <ModalBody>
+                    <Alert color="info" className="mb-3">
+                        Création d'un Multi-Dossier avec <strong className="text-primary">{selectedMultiDossierIds.length}</strong> dossier(s).
+                    </Alert>
+                    <Label className="form-label fw-semibold">Observation (optionnelle)</Label>
+                    <Input type="textarea" rows={3} value={multiObservation}
+                        onChange={(e) => setMultiObservation(e.target.value)}
+                        placeholder="Note concernant ce Multi-Dossier..." disabled={processing} />
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalMultiValiderOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button color="success" onClick={handleMultiValiderSelection}
+                        disabled={processing || selectedMultiDossierIds.length === 0 || !moisDossiers}>
+                        {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : <><i className="ri-check-double-line me-1"></i>Valider</>}
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ─── Ajourner dossier ─── */}
+            <Modal isOpen={modalMultiAjournerDossierOpen} toggle={() => !processing && setModalMultiAjournerDossierOpen(false)} centered>
+                <ModalHeader toggle={() => !processing && setModalMultiAjournerDossierOpen(false)}>
+                    <i className="ri-close-circle-line me-2 text-warning"></i>Retirer le dossier
+                </ModalHeader>
+                <ModalBody>
+                    <p className="text-muted mb-3">{selectedMultiDossierIds.length} dossier(s) seront retirés et leurs paiements remis en attente.</p>
+                    <Label className="form-label fw-semibold">Motif <span className="text-danger">*</span></Label>
+                    <Input type="textarea" rows={3} value={motifMultiAjournerDossier}
+                        onChange={(e) => setMotifMultiAjournerDossier(e.target.value)}
+                        placeholder="Motif du retrait..." disabled={processing} />
+                    {motifMultiAjournerDossier.trim().length > 0 && motifMultiAjournerDossier.trim().length < 5 && (
+                        <small className="text-danger">Le motif doit contenir au moins 5 caractères.</small>
+                    )}
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalMultiAjournerDossierOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button color="warning" onClick={handleMultiAjournerDossier}
+                        disabled={processing || motifMultiAjournerDossier.trim().length < 5}>
+                        {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : 'Confirmer'}
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ─── Ajourner stagiaire ─── */}
+            <Modal isOpen={modalMultiAjournerStagiaireOpen} toggle={() => !processing && setModalMultiAjournerStagiaireOpen(false)} centered>
+                <ModalHeader toggle={() => !processing && setModalMultiAjournerStagiaireOpen(false)}>
+                    <i className="ri-user-unfollow-line me-2 text-warning"></i>Retirer le(s) stagiaire(s)
+                </ModalHeader>
+                <ModalBody>
+                    <p className="text-muted mb-3">{selectedStagiaireIds.length} stagiaire(s) seront retirés et remis en attente.</p>
+                    <Label className="form-label fw-semibold">Motif <span className="text-danger">*</span></Label>
+                    <Input type="textarea" rows={3} value={motifMultiAjournerStagiaire}
+                        onChange={(e) => setMotifMultiAjournerStagiaire(e.target.value)}
+                        placeholder="Motif du retrait..." disabled={processing} />
+                    {motifMultiAjournerStagiaire.trim().length > 0 && motifMultiAjournerStagiaire.trim().length < 5 && (
+                        <small className="text-danger">Le motif doit contenir au moins 5 caractères.</small>
+                    )}
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalMultiAjournerStagiaireOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button color="warning" onClick={handleMultiAjournerStagiaire}
+                        disabled={processing || motifMultiAjournerStagiaire.trim().length < 5}>
                         {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : 'Confirmer'}
                     </Button>
                 </ModalFooter>
