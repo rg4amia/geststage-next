@@ -14,6 +14,7 @@ use App\Http\Controllers\Desse\StagiaireDesseController;
 use App\Http\Controllers\Dmg\OperationDmgController;
 use App\Http\Controllers\Dmg\AttentePaiementDmgController;
 use App\Http\Controllers\Dmg\DossierPaiementDmgController;
+use App\Http\Controllers\Dmg\ExportPaiementDmgController;
 use App\Http\Controllers\Dmg\OperationPaiementDmgController;
 use App\Http\Controllers\Dmg\PaiementDmgController;
 use App\Http\Controllers\Dmg\RejetDmgController;
@@ -35,9 +36,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'offres' => 'offre_emploi',
     ]);
     Route::resource('inscriptions', InscriptionController::class);
+    Route::get('/api/stagiaires/demandeur/{matricule}', [\App\Http\Controllers\Registration\InscriptionController::class, 'demandeur'])->name('inscriptions.demandeur');
 
     // Phase CIP : Mes Stagiaires et Ajournements
     Route::get('/cip/mes-stagiaires', [MesStagiairesCipController::class, 'index'])->name('cip.mes_stagiaires');
+    Route::get('/cip/mes-stagiaires/ajournes-ca', [MesStagiairesCipController::class, 'ajournesChefAgence'])->name('cip.mes_stagiaires.ajournes_ca');
     Route::get('/cip/pointage/ajourne-dmg', [MesStagiairesCipController::class, 'pointageAjourneDmg'])->name('cip.pointages.ajourne_dmg');
     Route::get('/cip/suivi', [MesStagiairesCipController::class, 'suivi'])->name('cip.suivi.index');
 
@@ -94,10 +97,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dmg/validation', [ValidationDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.validation.index');
     Route::get('/dmg/paiements', [PaiementDmgController::class, 'index'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.index');
     Route::get('/dmg/paiements/json', [AttentePaiementDmgController::class, 'index'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.json');
+    Route::get('/dmg/paiements/generer-pdf', ExportPaiementDmgController::class)->middleware('can:generer_etat_financier')->name('dmg.paiements.generer_pdf');
     Route::post('/dmg/paiements/ajourner', [AttentePaiementDmgController::class, 'ajourner'])->middleware('can:ajourner_paiement_dmg')->name('dmg.paiements.ajourner');
     Route::post('/dmg/paiements/marquer-dossier-physique', [AttentePaiementDmgController::class, 'marquerDossierPhysique'])->middleware('can:marquer_dossier_physique')->name('dmg.paiements.marquer_dossier_physique');
     Route::post('/dmg/paiements/generer', [DossierPaiementDmgController::class, 'generer'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.generer');
     Route::post('/dmg/paiements/transmettre/{dossier}', [DossierPaiementDmgController::class, 'transmettre'])->middleware('can:transmettre_cb')->name('dmg.paiements.transmettre');
+    Route::post('/dmg/paiements/groupes', [DossierPaiementDmgController::class, 'grouper'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.groupes.store');
+    Route::post('/dmg/paiements/groupes/{groupe}/transmettre', [DossierPaiementDmgController::class, 'transmettreGroupe'])->middleware('can:transmettre_cb')->name('dmg.paiements.groupes.transmettre');
+    Route::post('/dmg/paiements/groupes/{groupe}/retirer-dossier', [DossierPaiementDmgController::class, 'retirerDuGroupe'])->middleware('can:retirer_paiement_dossier')->name('dmg.paiements.groupes.retirer_dossier');
     Route::post('/dmg/paiements/retirer-paiement', [DossierPaiementDmgController::class, 'retirer'])->middleware('can:retirer_paiement_dossier')->name('dmg.paiements.retirer_paiement');
     Route::post('/dmg/paiements/elaborer-op', [OperationPaiementDmgController::class, 'elaborer'])->middleware('can:elaborer_op')->name('dmg.paiements.elaborer_op');
     Route::post('/dmg/paiements/creer-bordereau', [OperationPaiementDmgController::class, 'creerBordereau'])->middleware('can:creer_bordereau')->name('dmg.paiements.creer_bordereau');

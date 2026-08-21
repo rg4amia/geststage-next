@@ -63,6 +63,16 @@ class DossierPaiement extends Model
         return $this->belongsTo(OrdrePaiement::class, 'ordre_paiement_id');
     }
 
+    public function groupes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            DossierGroupe::class,
+            'lignes_dossiers_groupes',
+            'dossier_paiement_id',
+            'dossier_groupe_id',
+        )->withPivot(['ajoute_le', 'retire_le', 'motif_retrait'])->wherePivotNull('retire_le');
+    }
+
     // Scopes pour les vues
     public function scopeBrouillon($query)
     {

@@ -81,6 +81,40 @@ class InscriptionController extends Controller
         ]);
     }
 
+    /**
+     * API : charge les informations d'un demandeur AEJ par matricule.
+     * GET /api/stagiaires/demandeur/{matricule}
+     */
+    public function demandeur(string $matricule)
+    {
+        $beneficiaire = \App\Models\Beneficiary\Beneficiaire::where('numero_aej', $matricule)->first();
+
+        if (! $beneficiaire) {
+            return response()->json(['message' => 'Demandeur non trouvé pour ce matricule.'], 404);
+        }
+
+        return response()->json([
+            'data' => [
+                'numero_aej' => $beneficiaire->numero_aej,
+                'nom' => $beneficiaire->nom,
+                'prenom' => $beneficiaire->prenoms,
+                'date_naissance' => $beneficiaire->date_naissance?->format('Y-m-d'),
+                'lieu_naissance' => $beneficiaire->lieu_naissance,
+                'telephone' => $beneficiaire->telephone_principal,
+                'sexe' => $beneficiaire->sexe,
+                'type_piece_identite' => $beneficiaire->nature_piece_identite,
+                'numero_identite' => $beneficiaire->numero_piece_identite,
+                'specialite' => $beneficiaire->specialite,
+                'etablissement_frequente' => $beneficiaire->etablissement_frequente,
+                'type_enseignement' => $beneficiaire->type_enseignement_id,
+                'handicap' => $beneficiaire->handicap_id,
+                'commune_de_residence' => $beneficiaire->communeResidence?->nom,
+                'personne_urgence' => $beneficiaire->personne_urgence,
+                'prsurgent_tel1' => $beneficiaire->contact_urgence_1,
+            ],
+        ]);
+    }
+
     public function store(Request $request)
     {
         $validated = $request->validate([

@@ -8,6 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class DecisionPaiement extends Model
 {
+    protected $table = 'decisions_paiements';
+
     protected $fillable = [
         'paiement_id', 'auteur_id', 'decision', 'statut_avant',
         'statut_apres', 'motif', 'decide_le',

@@ -12,6 +12,7 @@ use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
+use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -25,6 +26,8 @@ class CorbeilleWiringTest extends TestCase
     public function test_pages_corbeilles_financieres_sont_branchees_sur_inertia(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('administrateur');
 
         $pages = [
             '/dmg/validation' => ['Dmg/Validation/Index', ['attenteVerification', 'valides']],

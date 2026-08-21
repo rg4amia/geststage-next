@@ -16,6 +16,7 @@ class BordereauPaiement extends Model
         'uuid_public',
         'numero',
         'periode_id',
+        'source_financement_id',
         'montant_total',
         'statut',
     ];

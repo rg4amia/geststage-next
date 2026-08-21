@@ -7,6 +7,7 @@ use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
 use App\Http\Controllers\Controller;
 use App\Models\Company\Entreprise;
 use App\Models\Payment\BordereauPaiement;
+use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\OrdrePaiement;
 use App\Models\Reference\Agence;
@@ -50,6 +51,35 @@ class PaiementDmgController extends Controller
             ->with(['agence', 'sourceFinancement', 'periode'])->withCount('paiements')
             ->whereIn('statut', $statuts)->where('periode_id', $periodeId)
             ->orderByDesc('created_at')->limit(500)->get();
+        $dossiersGroupables = DossierPaiement::query()
+            ->where('periode_id', $periodeId)
+            ->where('statut', 'BROUILLON')
+            ->whereNull('ordre_paiement_id')
+            ->whereDoesntHave('groupes')
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get();
+        $dossiersEligiblesOp = DossierPaiement::query()
+            ->where('periode_id', $periodeId)
+            ->where('statut', 'VALIDE_CB')
+            ->whereNull('ordre_paiement_id')
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get();
+        $groupesDossiers = DossierGroupe::query()
+            ->with('sourceFinancement:id,nom')
+            ->withCount('dossiers')
+            ->where('periode_id', $periodeId)
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get();
+        $opsEligiblesBordereau = OrdrePaiement::query()
+            ->where('periode_id', $periodeId)
+            ->where('statut', 'BROUILLON')
+            ->whereNull('bordereau_paiement_id')
+            ->orderByDesc('created_at')
+            ->limit(500)
+            ->get();
 
         return Inertia::render('Dmg/Paiements/Index', [
             'attenteDemarrage' => $this->corbeilles->paiementRows($demarrage->orderByDesc('paiements.created_at')->limit(100)->get()),
@@ -58,7 +88,11 @@ class PaiementDmgController extends Controller
             'dossiers' => $this->corbeilles->dossierRows($dossiers(['BROUILLON']), 'En elaboration'),
             'dossiersTransmis' => $this->corbeilles->dossierRows($dossiers(['TRANSMIS_CB', 'VALIDE_CB', 'EN_OP']), 'Circuit CB/OP'),
             'dossiersAjournes' => $this->corbeilles->dossierRows($dossiers(['AJOURNE_DMG', 'AJOURNE_CB']), 'Ajourne DMG/CB'),
+            'dossiersGroupables' => $this->corbeilles->dossierRows($dossiersGroupables, 'Eligible multi-dossier'),
+            'dossiersEligiblesOp' => $this->corbeilles->dossierRows($dossiersEligiblesOp, 'Valide CB'),
+            'groupesDossiers' => $groupesDossiers,
             'ops' => OrdrePaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(),
+            'opsEligiblesBordereau' => $opsEligiblesBordereau,
             'bordereaux' => BordereauPaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(),
             'moisActuel' => $mois,
             'periode' => $periode,
@@ -87,6 +121,7 @@ class PaiementDmgController extends Controller
             }
             $result[$cohorte] = ['demarrage' => $demarrage->count(), 'presence' => $presence->count()];
         }
+
         return $result;
     }
 }

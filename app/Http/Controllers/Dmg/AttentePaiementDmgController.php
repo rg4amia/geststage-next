@@ -36,6 +36,7 @@ class AttentePaiementDmgController extends Controller
     {
         $data = $request->validate(['paiement_ids' => ['required', 'array', 'min:1', 'max:500'], 'paiement_ids.*' => ['integer', 'distinct', 'exists:paiements,id'], 'motif' => ['required', 'string', 'min:5', 'max:1000']]);
         $nombre = $this->service->ajournerPaiements($data['paiement_ids'], $data['motif'], $request->user());
+
         return back()->with('success', "{$nombre} paiement(s) ajourne(s).");
     }
 
@@ -43,6 +44,7 @@ class AttentePaiementDmgController extends Controller
     {
         $data = $request->validate(['paiement_ids' => ['required', 'array', 'min:1', 'max:500'], 'paiement_ids.*' => ['integer', 'distinct', 'exists:paiements,id'], 'statut' => ['required', 'in:EN_ATTENTE,RECU,CONFORME']]);
         $nombre = $this->service->marquerDossiersPhysiques($data['paiement_ids'], $data['statut'], $request->user());
+
         return back()->with('success', "{$nombre} dossier(s) physique(s) marque(s).");
     }
 }

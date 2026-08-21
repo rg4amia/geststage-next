@@ -5,10 +5,12 @@ namespace App\Domain\Payment\Services;
 use App\Enums\CorbeilleEnum;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DecisionPaiement;
+use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\LigneDossierPaiement;
 use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Reference\Periode;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -118,6 +120,7 @@ class DmgService
             $groupes = $paiements->groupBy(function (Paiement $paiement): string {
                 $droit = $paiement->droitPaiement;
                 $nature = $droit->stage->instanceParcours->corbeille_actuelle === CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value ? 'DM' : 'PS';
+
                 return "{$droit->stage->agence_id}:{$droit->source_financement_id}:{$nature}";
             });
 
@@ -136,6 +139,7 @@ class DmgService
                 }
                 $dossiers->push($dossier);
             }
+
             return $dossiers;
         });
     }
@@ -155,6 +159,7 @@ class DmgService
                 $paiement->droitPaiement?->stage?->instanceParcours?->update(['corbeille_actuelle' => CorbeilleEnum::CIP_MES_STAGIAIRES->value]);
                 DecisionPaiement::enregistrer($paiement, $auteur, 'AJOURNE_DMG', $motif, 'A_TRAITER', 'AJOURNE_DMG');
             }
+
             return $paiements->count();
         });
     }
@@ -168,6 +173,7 @@ class DmgService
                 $paiement->update(['statut_dossier_physique' => $statut, 'dossier_physique_marque_par_id' => $auteur->id, 'dossier_physique_marque_le' => now()]);
                 DecisionPaiement::enregistrer($paiement, $auteur, 'DOSSIER_PHYSIQUE_'.$statut);
             }
+
             return $paiements->count();
         });
     }
@@ -175,6 +181,99 @@ class DmgService
     public function transmettreDossierCb(DossierPaiement $dossier): void
     {
         $this->changerStatut($dossier, 'BROUILLON', 'TRANSMIS_CB');
+    }
+
+    /** @param list<int> $dossierIds */
+    public function grouperDossiers(int $periodeId, array $dossierIds, ?string $observation, User $auteur): DossierGroupe
+    {
+        return DB::transaction(function () use ($periodeId, $dossierIds, $observation, $auteur): DossierGroupe {
+            $ids = array_values(array_unique($dossierIds));
+            $dossiers = DossierPaiement::query()->lockForUpdate()
+                ->whereIn('id', $ids)
+                ->where('periode_id', $periodeId)
+                ->where('statut', 'BROUILLON')
+                ->whereNull('ordre_paiement_id')
+                ->whereDoesntHave('groupes')
+                ->get();
+
+            if ($dossiers->isEmpty() || $dossiers->count() !== count($ids)) {
+                throw ValidationException::withMessages([
+                    'dossiers' => 'Chaque dossier doit etre en brouillon, sans OP et sans multi-dossier actif.',
+                ]);
+            }
+            if ($dossiers->pluck('nature')->unique()->count() !== 1 || $dossiers->pluck('source_financement_id')->unique()->count() !== 1) {
+                throw ValidationException::withMessages([
+                    'dossiers' => 'Un multi-dossier doit partager la meme nature et la meme source de financement.',
+                ]);
+            }
+
+            $groupe = DossierGroupe::create([
+                'uuid_public' => (string) Str::uuid(),
+                'periode_id' => $periodeId,
+                'source_financement_id' => $dossiers->first()->source_financement_id,
+                'cree_par_id' => $auteur->id,
+                'numero' => $this->numero('GRP'),
+                'nature' => $dossiers->first()->nature,
+                'statut' => 'BROUILLON',
+                'montant_total' => $dossiers->sum('montant_total'),
+                'observation' => $observation,
+            ]);
+            $codePeriode = (string) Periode::whereKey($periodeId)->value('code');
+            $groupe->update([
+                'numero' => $groupe->nature.substr($codePeriode, -2).'-'.$groupe->id.'-G',
+            ]);
+
+            $now = now();
+            DB::table('lignes_dossiers_groupes')->insert($dossiers->map(fn (DossierPaiement $dossier) => [
+                'dossier_groupe_id' => $groupe->id,
+                'dossier_paiement_id' => $dossier->id,
+                'ajoute_le' => $now,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ])->all());
+
+            return $groupe->load(['dossiers', 'periode', 'sourceFinancement']);
+        });
+    }
+
+    public function transmettreGroupeCb(DossierGroupe $groupe): void
+    {
+        DB::transaction(function () use ($groupe): void {
+            $locked = DossierGroupe::query()->lockForUpdate()->with('dossiers')->findOrFail($groupe->id);
+            if (
+                $locked->statut !== 'BROUILLON'
+                || $locked->dossiers->isEmpty()
+                || $locked->dossiers->contains(fn (DossierPaiement $dossier) => $dossier->statut !== 'BROUILLON')
+            ) {
+                throw ValidationException::withMessages(['groupe' => 'Le multi-dossier ne peut plus etre transmis.']);
+            }
+            DossierPaiement::whereKey($locked->dossiers->modelKeys())->where('statut', 'BROUILLON')->update(['statut' => 'TRANSMIS_CB']);
+            $locked->update(['statut' => 'TRANSMIS_CB']);
+        });
+    }
+
+    public function retirerDossierGroupe(DossierGroupe $groupe, DossierPaiement $dossier, string $motif): void
+    {
+        DB::transaction(function () use ($groupe, $dossier, $motif): void {
+            $groupe = DossierGroupe::query()->lockForUpdate()->findOrFail($groupe->id);
+            if ($groupe->statut !== 'BROUILLON') {
+                throw ValidationException::withMessages(['groupe' => 'Seul un multi-dossier en brouillon peut etre modifie.']);
+            }
+            $ligne = DB::table('lignes_dossiers_groupes')
+                ->where('dossier_groupe_id', $groupe->id)
+                ->where('dossier_paiement_id', $dossier->id)
+                ->whereNull('retire_le')
+                ->lockForUpdate()
+                ->first();
+            if (! $ligne) {
+                throw ValidationException::withMessages(['dossier_id' => 'Ce dossier ne fait pas partie du multi-dossier.']);
+            }
+            DB::table('lignes_dossiers_groupes')->where('id', $ligne->id)->update([
+                'retire_le' => now(), 'motif_retrait' => $motif, 'updated_at' => now(),
+            ]);
+            $reste = $groupe->dossiers()->sum('dossiers_paiement.montant_total');
+            $groupe->update(['montant_total' => $reste, 'statut' => $reste > 0 ? 'BROUILLON' : 'ANNULE']);
+        });
     }
 
     public function retirerPaiementDossier(DossierPaiement $dossier, Paiement $paiement, string $motif, User $auteur): void
@@ -203,6 +302,7 @@ class DmgService
                 'periode_id' => $periodeId, 'source_financement_id' => $dossiers->first()->source_financement_id,
                 'montant_total' => $dossiers->sum('montant_total'), 'statut' => 'BROUILLON']);
             DossierPaiement::whereKey($ids)->update(['ordre_paiement_id' => $op->id, 'statut' => 'EN_OP']);
+
             return $op;
         });
     }
@@ -221,6 +321,7 @@ class DmgService
                 'periode_id' => $periodeId, 'source_financement_id' => $ops->first()->source_financement_id,
                 'montant_total' => $ops->sum('montant_total'), 'statut' => 'BROUILLON']);
             OrdrePaiement::whereKey($ids)->update(['bordereau_paiement_id' => $bordereau->id, 'statut' => 'EN_BORDEREAU']);
+
             return $bordereau;
         });
     }

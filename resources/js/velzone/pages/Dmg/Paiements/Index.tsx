@@ -78,7 +78,19 @@ interface DossierRow {
     montant: number;
     montant_total: number;
     statut: string;
+    statut_code: string;
     date_creation: string;
+}
+
+interface DossierGroupeRow {
+    id: number;
+    numero: string;
+    nature: string;
+    statut: string;
+    montant_total: number;
+    observation?: string | null;
+    dossiers_count: number;
+    source_financement?: { nom: string } | null;
 }
 
 interface Compteurs {
@@ -108,7 +120,11 @@ interface PageProps {
     dossiers: DossierRow[];
     dossiersTransmis: DossierRow[];
     dossiersAjournes: DossierRow[];
+    dossiersGroupables: DossierRow[];
+    dossiersEligiblesOp: DossierRow[];
+    groupesDossiers: DossierGroupeRow[];
     ops: any[];
+    opsEligiblesBordereau: any[];
     bordereaux: any[];
     moisActuel: string;
     periode: PeriodeOption | null;
@@ -134,7 +150,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
         dossiers = [],
         dossiersTransmis = [],
         dossiersAjournes = [],
+        dossiersGroupables = [],
+        dossiersEligiblesOp = [],
+        groupesDossiers = [],
         ops = [],
+        opsEligiblesBordereau = [],
         bordereaux = [],
         moisActuel,
         filters = {},
@@ -158,6 +178,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
     /* ─── Sélection ─── */
     const [selectedDemarrageIds, setSelectedDemarrageIds] = useState<number[]>([]);
     const [selectedPresenceIds, setSelectedPresenceIds] = useState<number[]>([]);
+    const [selectedDossierIds, setSelectedDossierIds] = useState<number[]>([]);
+    const [selectedOpDossierIds, setSelectedOpDossierIds] = useState<number[]>([]);
+    const [selectedOpIds, setSelectedOpIds] = useState<number[]>([]);
 
     /* ─── Filtres ─── */
     const [selectedFilters, setSelectedFilters] = useState<Filters>({
@@ -179,9 +202,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [modalValiderOpen, setModalValiderOpen] = useState(false);
     const [modalDetailOpen, setModalDetailOpen] = useState(false);
     const [modalDossierOpen, setModalDossierOpen] = useState(false);
+    const [modalGroupeOpen, setModalGroupeOpen] = useState(false);
     const [detailRow, setDetailRow] = useState<PaiementRow | null>(null);
     const [motifAjourner, setMotifAjourner] = useState('');
     const [dossierStatus, setDossierStatus] = useState('en_attente');
+    const [observationGroupe, setObservationGroupe] = useState('');
 
     /* ─── Données onglet courant ─── */
     const currentDemarrageRows = useMemo(() => attenteDemarrage || [], [attenteDemarrage]);
@@ -329,8 +354,78 @@ const DmgPaiementsIndex = (props: PageProps) => {
         const params = new URLSearchParams();
         params.set('mois', moisSelectionne);
         params.set('type', type);
+        params.set('nature', activeTab === '2' ? 'presence' : 'demarrage');
+        Object.entries(selectedFilters).forEach(([key, value]) => {
+            if (value) params.set(key, value);
+        });
         if (scope === 'selected') ids.forEach((id) => params.append('ids[]', String(id)));
         window.open(`/dmg/paiements/generer-pdf?${params.toString()}`, '_blank');
+    };
+
+    const handleTransmettreDossier = (id: number) => {
+        router.post(`/dmg/paiements/transmettre/${id}`, {}, { preserveScroll: true });
+    };
+
+    const toggleSelection = (id: number, setter: React.Dispatch<React.SetStateAction<number[]>>) => {
+        setter((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+    };
+
+    const handleGrouperDossiers = () => {
+        if (!props.periode || selectedDossierIds.length < 2) return;
+        setProcessing(true);
+        router.post('/dmg/paiements/groupes', {
+            periode_id: props.periode.id,
+            dossiers: selectedDossierIds,
+            observation: observationGroupe || null,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setSelectedDossierIds([]);
+                setObservationGroupe('');
+                setModalGroupeOpen(false);
+            },
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const handleTransmettreGroupe = (id: number) => {
+        router.post(`/dmg/paiements/groupes/${id}/transmettre`, {}, { preserveScroll: true });
+    };
+
+    const handleElaborerSelection = () => {
+        if (!props.periode || selectedOpDossierIds.length === 0) return;
+        router.post('/dmg/paiements/elaborer-op', {
+            dossiers: selectedOpDossierIds,
+            periode_id: props.periode.id,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => setSelectedOpDossierIds([]),
+        });
+    };
+
+    const handleElaborerOp = (id: number) => {
+        if (!props.periode) return;
+        router.post('/dmg/paiements/elaborer-op', { dossiers: [id], periode_id: props.periode.id }, { preserveScroll: true });
+    };
+
+    const handleCreerBordereau = (id: number) => {
+        if (!props.periode) return;
+        router.post('/dmg/paiements/creer-bordereau', { ops: [id], periode_id: props.periode.id }, { preserveScroll: true });
+    };
+
+    const handleCreerBordereauSelection = () => {
+        if (!props.periode || selectedOpIds.length === 0 || selectedOpIds.length > 10) return;
+        router.post('/dmg/paiements/creer-bordereau', {
+            ops: selectedOpIds,
+            periode_id: props.periode.id,
+        }, {
+            preserveScroll: true,
+            onSuccess: () => setSelectedOpIds([]),
+        });
+    };
+
+    const handleTransmettreBordereau = (id: number) => {
+        router.post(`/dmg/paiements/transmettre-bordereau/${id}`, {}, { preserveScroll: true });
     };
 
     /* ─── Badge helpers ─── */
@@ -430,19 +525,19 @@ const DmgPaiementsIndex = (props: PageProps) => {
         { header: 'Statut', cell: (cell: any) => <Badge color={getStatutBadge(cell.row.original.statut)} className="fs-11">{cell.row.original.statut}</Badge> },
         { header: 'Actions', cell: (cell: any) => (
             <div className="d-flex gap-1">
-                {cell.row.original.statut === 'En élaboration' && (
-                    <Button color="success" size="sm" outline onClick={() => handleGenererDossiers()} title="Générer OP">
-                        <i className="ri-file-list-3-line"></i>
+                {cell.row.original.statut_code === 'BROUILLON' && (
+                    <Button color="success" size="sm" outline onClick={() => handleTransmettreDossier(cell.row.original.id)} title="Transmettre au CB">
+                        <i className="ri-send-plane-line"></i>
                     </Button>
                 )}
-                {cell.row.original.statut === 'Transmis CB' && (
-                    <Button color="primary" size="sm" outline title="Créer Bordereau">
-                        <i className="ri-file-shield-2-line"></i>
+                {cell.row.original.statut_code === 'VALIDE_CB' && (
+                    <Button color="primary" size="sm" outline onClick={() => handleElaborerOp(cell.row.original.id)} title="Elaborer un OP">
+                        <i className="ri-file-list-3-line"></i>
                     </Button>
                 )}
             </div>
         )},
-    ], []);
+    ], [props.periode]);
 
     /* ─── Données dossiers par statut ─── */
     const [dossierTab, setDossierTab] = useState('brouillon');
@@ -596,7 +691,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                         </CardHeader>
                         <CardBody>
                             {/* ── Onglets Principaux ── */}
-                            <Nav tabs className="nav-tabs-custom nav-success nav-justified mb-3">
+                            <Row className="g-3">
+                                <Col xl={3} lg={4}>
+                            <Nav pills vertical className="nav-pills-custom nav-success flex-column gap-2">
                                 <NavItem>
                                     <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '1' })} onClick={() => toggleTab('1')}>
                                         <i className="ri-flag-line me-1 align-middle"></i>
@@ -616,6 +713,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                     </NavLink>
                                 </NavItem>
                             </Nav>
+                                </Col>
+                                <Col xl={9} lg={8}>
 
                             <TabContent activeTab={activeTab} className="text-muted">
                                 {/* ═══════ ONGLET 1 : ATTENTE DÉMARRAGE ═══════ */}
@@ -719,7 +818,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                     </Row>
 
                                     {/* ── Sous-onglets Cohorte ── */}
-                                    <Nav tabs className="nav-tabs-custom nav-success mb-3 border-bottom">
+                                    <Row className="g-3">
+                                        <Col xl={3} lg={4}>
+                                    <Nav pills vertical className="nav-pills-custom nav-success flex-column gap-2">
                                         <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'global' })} onClick={() => toggleDemarrageTab('global')}>
                                                 Cohorte Global {cohortBadge('global', 'demarrage')}
@@ -741,6 +842,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             </NavLink>
                                         </NavItem>
                                     </Nav>
+                                        </Col>
+                                        <Col xl={9} lg={8}>
 
                                     {/* ── Tableau Démarrage ── */}
                                     {isLoading ? (
@@ -757,6 +860,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             SearchPlaceholder="Rechercher..."
                                         />
                                     )}
+                                        </Col>
+                                    </Row>
                                 </TabPane>
 
                                 {/* ═══════ ONGLET 2 : ATTENTE PRÉSENCE ═══════ */}
@@ -845,7 +950,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                 {/* ═══════ ONGLET 3 : DOSSIERS & OP ═══════ */}
                                 <TabPane tabId="3">
                                     {/* ── Sous-onglets dossiers ── */}
-                                    <Nav tabs className="nav-tabs-custom nav-success mb-3 border-bottom">
+                                    <Row className="g-3">
+                                        <Col xl={3} lg={4}>
+                                    <Nav pills vertical className="nav-pills-custom nav-success flex-column gap-2">
                                         <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'brouillon' })} onClick={() => setDossierTab('brouillon')}>
                                                 <i className="ri-draft-line me-1"></i>En élaboration <Badge color="warning" className="ms-1">{dossiers.length}</Badge>
@@ -862,6 +969,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'multi' })} onClick={() => setDossierTab('multi')}>
+                                                <i className="ri-folder-shared-line me-1"></i>Multi-dossiers <Badge color="warning" className="ms-1">{groupesDossiers.length}</Badge>
+                                            </NavLink>
+                                        </NavItem>
+                                        <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ops' })} onClick={() => setDossierTab('ops')}>
                                                 <i className="ri-file-list-3-line me-1"></i>Ordres de Paiement <Badge color="primary" className="ms-1">{ops.length}</Badge>
                                             </NavLink>
@@ -872,6 +984,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             </NavLink>
                                         </NavItem>
                                     </Nav>
+                                        </Col>
+                                        <Col xl={9} lg={8}>
 
                                     <div className="d-flex gap-2 mb-3">
                                             <Button color="success" size="sm" onClick={handleGenererDossiers} disabled={!props.periode || processing || (selectedDemarrageIds.length + selectedPresenceIds.length === 0)}>
@@ -885,6 +999,23 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                         </TabPane>
                                         <TabPane tabId="transmis">
+                                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                                <div>
+                                                    <h5 className="fs-14 mb-1">Dossiers validés CB sans ordre de paiement</h5>
+                                                    <p className="text-muted mb-0 fs-12">Une sélection produit un seul ordre de paiement.</p>
+                                                </div>
+                                                <Button color="primary" size="sm" disabled={selectedOpDossierIds.length === 0} onClick={handleElaborerSelection}>
+                                                    <i className="ri-file-list-3-line me-1"></i>Élaborer l'OP ({selectedOpDossierIds.length})
+                                                </Button>
+                                            </div>
+                                            <TableContainerReactTable
+                                                columns={[
+                                                    { header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpDossierIds)} /> },
+                                                    ...dossierColumns.filter((column: any) => column.header !== 'Actions'),
+                                                ]}
+                                                data={dossiersEligiblesOp} isGlobalFilter={true} customPageSize={10}
+                                                divClass="table-responsive table-card mb-4" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                            <h5 className="fs-14 mb-3">Suivi du circuit CB / OP</h5>
                                             <TableContainerReactTable columns={dossierColumns} data={dossiersTransmis} isGlobalFilter={true} customPageSize={10}
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                         </TabPane>
@@ -892,17 +1023,58 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             <TableContainerReactTable columns={dossierColumns} data={dossiersAjournes} isGlobalFilter={true} customPageSize={10}
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                         </TabPane>
+                                        <TabPane tabId="multi">
+                                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                                <div>
+                                                    <h5 className="fs-14 mb-1">Dossiers éligibles au regroupement</h5>
+                                                    <p className="text-muted mb-0 fs-12">Même période, nature et source de financement; aucun OP ni groupe actif.</p>
+                                                </div>
+                                                <Button color="warning" size="sm" disabled={selectedDossierIds.length < 2} onClick={() => setModalGroupeOpen(true)}>
+                                                    <i className="ri-folder-shared-line me-1"></i>Créer un multi-dossier ({selectedDossierIds.length})
+                                                </Button>
+                                            </div>
+                                            <TableContainerReactTable
+                                                columns={[
+                                                    { header: '', cell: (c: any) => <Input type="checkbox" checked={selectedDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedDossierIds)} /> },
+                                                    ...dossierColumns.filter((column: any) => column.header !== 'Actions'),
+                                                ]}
+                                                data={dossiersGroupables} isGlobalFilter={true} customPageSize={10}
+                                                divClass="table-responsive table-card mb-4" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                            <h5 className="fs-14 mb-3">Multi-dossiers constitués</h5>
+                                            <TableContainerReactTable
+                                                columns={[
+                                                    { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
+                                                    { header: 'Nature', cell: (c: any) => c.row.original.nature },
+                                                    { header: 'Financement', cell: (c: any) => c.row.original.source_financement?.nom || '-' },
+                                                    { header: 'Dossiers', cell: (c: any) => <Badge color="info">{c.row.original.dossiers_count}</Badge> },
+                                                    { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
+                                                    { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)}>{c.row.original.statut}</Badge> },
+                                                    { header: 'Actions', cell: (c: any) => c.row.original.statut === 'BROUILLON' ? <Button color="info" size="sm" outline onClick={() => handleTransmettreGroupe(c.row.original.id)}><i className="ri-send-plane-line me-1"></i>Transmettre CB</Button> : null },
+                                                ]}
+                                                data={groupesDossiers} isGlobalFilter={true} customPageSize={10}
+                                                divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                        </TabPane>
                                         <TabPane tabId="ops">
-                                            {ops.length === 0 ? (
+                                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                                <div>
+                                                    <h5 className="fs-14 mb-1">OP en attente de bordereau</h5>
+                                                    <p className="text-muted mb-0 fs-12">Le legacy limite un bordereau à 10 ordres de paiement.</p>
+                                                </div>
+                                                <Button color="success" size="sm" disabled={selectedOpIds.length === 0 || selectedOpIds.length > 10} onClick={handleCreerBordereauSelection}>
+                                                    <i className="ri-file-shield-2-line me-1"></i>Créer le bordereau ({selectedOpIds.length}/10)
+                                                </Button>
+                                            </div>
+                                            {opsEligiblesBordereau.length === 0 ? (
                                                 <p className="text-muted text-center py-4"><i className="ri-inbox-line me-1"></i>Aucun ordre de paiement pour cette période.</p>
                                             ) : (
                                                 <TableContainerReactTable
                                                     columns={[
+                                                        { header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpIds)} /> },
                                                         { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
                                                         { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
                                                         { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)} className="fs-11">{c.row.original.statut}</Badge> },
                                                     ]}
-                                                    data={ops} isGlobalFilter={true} customPageSize={10}
+                                                    data={opsEligiblesBordereau} isGlobalFilter={true} customPageSize={10}
                                                     divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                             )}
                                         </TabPane>
@@ -915,20 +1087,45 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
                                                         { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
                                                         { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)} className="fs-11">{c.row.original.statut}</Badge> },
+                                                        { header: 'Actions', cell: (c: any) => c.row.original.statut === 'BROUILLON' ? <Button color="success" size="sm" outline onClick={() => handleTransmettreBordereau(c.row.original.id)}><i className="ri-send-plane-line me-1"></i>Transmettre AC</Button> : null },
                                                     ]}
                                                     data={bordereaux} isGlobalFilter={true} customPageSize={10}
                                                     divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                             )}
                                         </TabPane>
                                     </TabContent>
+                                        </Col>
+                                    </Row>
                                 </TabPane>
                             </TabContent>
+                                </Col>
+                            </Row>
                         </CardBody>
                     </Card>
                 </Container>
             </div>
 
             {/* ═══════ MODALES ═══════ */}
+
+            <Modal isOpen={modalGroupeOpen} toggle={() => !processing && setModalGroupeOpen(false)} centered>
+                <ModalHeader toggle={() => !processing && setModalGroupeOpen(false)}>
+                    Créer un multi-dossier
+                </ModalHeader>
+                <ModalBody>
+                    <Alert color="info" className="fs-12">
+                        {selectedDossierIds.length} dossiers seront regroupés. Le serveur contrôle la période, la nature, le financement et l'absence d'OP ou de groupe actif.
+                    </Alert>
+                    <Label for="observation-groupe">Observation</Label>
+                    <Input id="observation-groupe" type="textarea" rows={4} maxLength={1000} value={observationGroupe} onChange={(event) => setObservationGroupe(event.target.value)} disabled={processing} />
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalGroupeOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button color="warning" onClick={handleGrouperDossiers} disabled={processing || selectedDossierIds.length < 2}>
+                        {processing ? <Spinner size="sm" className="me-1" /> : <i className="ri-folder-shared-line me-1"></i>}
+                        Créer le multi-dossier
+                    </Button>
+                </ModalFooter>
+            </Modal>
 
             {/* Modale — Détail paiement */}
             <Modal isOpen={modalDetailOpen} toggle={() => setModalDetailOpen(false)} size="lg" centered>

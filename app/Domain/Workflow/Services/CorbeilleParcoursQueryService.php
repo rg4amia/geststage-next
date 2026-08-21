@@ -138,6 +138,7 @@ class CorbeilleParcoursQueryService
                 'motif_ajournement' => $statut,
                 'motif_rejet' => $statut,
                 'statut' => $statut,
+                'statut_code' => $dossier->statut,
             ])
             ->values();
     }

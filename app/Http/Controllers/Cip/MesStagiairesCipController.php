@@ -190,6 +190,85 @@ class MesStagiairesCipController extends Controller
     }
 
     /**
+     * Stagiaires ajournés par le Chef d'Agence.
+     * Corbeille : cip_ajourne_ca — instance retournée au CIP pour correction.
+     *
+     * Équivalent legacy : StagiaireController@liste_stagiaires_rejetes
+     * Conditions legacy : active_chef_agence=0, etat_chef_agence=1, agent_id=3
+     */
+    public function ajournesChefAgence(Request $request)
+    {
+        $filters = $request->only([
+            'agence_id', 'entreprise_id', 'typesfinancement_id',
+            'typestage_id', 'type_structure_id', 'search', 'page',
+        ]);
+
+        $user = Auth::user();
+
+        $query = InstanceParcours::with([
+            'stage.beneficiaire',
+            'stage.entreprise.typeStructure',
+            'stage.agence',
+            'stage.sourceFinancement',
+            'stage.typeStage',
+            'stage.contrats',
+            'etapeCourante',
+            'evenements.acteur',
+        ])
+            ->where('corbeille_actuelle', CorbeilleEnum::CIP_AJOURNE_CA->value)
+            ->whereHas('stage', function ($q) use ($user) {
+                if ($user && $user->agence_id) {
+                    $q->where('agence_id', $user->agence_id);
+                }
+            });
+
+        if (! empty($filters['agence_id'])) {
+            $query->whereHas('stage', fn ($q) => $q->where('agence_id', $filters['agence_id']));
+        }
+        if (! empty($filters['entreprise_id'])) {
+            $query->whereHas('stage', fn ($q) => $q->where('entreprise_id', $filters['entreprise_id']));
+        }
+        if (! empty($filters['typesfinancement_id'])) {
+            $query->whereHas('stage', fn ($q) => $q->where('source_financement_id', $filters['typesfinancement_id']));
+        }
+        if (! empty($filters['typestage_id'])) {
+            $query->whereHas('stage', fn ($q) => $q->where('type_stage_id', $filters['typestage_id']));
+        }
+        if (! empty($filters['type_structure_id'])) {
+            $query->whereHas('stage.entreprise', fn ($q) => $q->where('type_structure_id', $filters['type_structure_id']));
+        }
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('stage.beneficiaire', function ($q) use ($search) {
+                $q->where('nom', 'ilike', "%{$search}%")
+                    ->orWhere('prenoms', 'ilike', "%{$search}%")
+                    ->orWhere('numero_aej', 'ilike', "%{$search}%");
+            });
+        }
+
+        $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
+
+        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $entreprises = Cache::remember('filter_entreprises_mes_stagiaires', 1800, fn () =>
+            Entreprise::when($user && $user->agence_id, fn ($q) => $q->where('agence_id', $user->agence_id))
+                ->orderBy('raison_sociale')->pluck('raison_sociale', 'id')->toArray()
+        );
+        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
+
+        return Inertia::render('Cip/MesStagiaires/AjournesChefAgence', [
+            'instances' => $instances,
+            'agences' => $agences,
+            'entreprises' => $entreprises,
+            'typesfinancements' => $typesfinancements,
+            'typestages' => $typestages,
+            'typestructures' => $typestructures,
+            'filters' => $filters,
+        ]);
+    }
+
+    /**
      * Corbeille : Pointage Ajourné par DMG
      */
     public function pointageAjourneDmg(Request $request)
