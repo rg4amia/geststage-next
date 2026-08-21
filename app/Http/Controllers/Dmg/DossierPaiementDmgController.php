@@ -3,16 +3,22 @@
 namespace App\Http\Controllers\Dmg;
 
 use App\Domain\Payment\Services\DmgService;
+use App\Domain\Payment\Services\MultiDossierPdfService;
 use App\Http\Controllers\Controller;
 use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\Paiement;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\Response;
 
 class DossierPaiementDmgController extends Controller
 {
-    public function __construct(private DmgService $service) {}
+    public function __construct(
+        private DmgService $service,
+        private MultiDossierPdfService $pdfService,
+    ) {}
 
     public function generer(Request $request): RedirectResponse
     {
@@ -77,5 +83,34 @@ class DossierPaiementDmgController extends Controller
         $this->service->retirerPaiementDossier(DossierPaiement::findOrFail($data['dossier_id']), Paiement::findOrFail($data['paiement_id']), $data['motif'], $request->user());
 
         return back()->with('success', 'Paiement retire du dossier.');
+    }
+
+    public function genererPdfs(DossierGroupe $groupe): RedirectResponse
+    {
+        $groupe = $this->pdfService->genererPdfs($groupe);
+
+        return back()->with('success', 'PDFs generes pour le multi-dossier ' . $groupe->numero . '.');
+    }
+
+    public function downloadAttestation(DossierGroupe $groupe): Response
+    {
+        if (! $groupe->attestation_path || ! Storage::disk('temp_files')->exists($groupe->attestation_path)) {
+            abort(404, 'Fichier introuvable.');
+        }
+
+        $filePath = Storage::disk('temp_files')->path($groupe->attestation_path);
+
+        return response()->download($filePath, basename($groupe->attestation_path));
+    }
+
+    public function downloadEtatFinancier(DossierGroupe $groupe): Response
+    {
+        if (! $groupe->etat_financier_path || ! Storage::disk('temp_files')->exists($groupe->etat_financier_path)) {
+            abort(404, 'Fichier introuvable.');
+        }
+
+        $filePath = Storage::disk('temp_files')->path($groupe->etat_financier_path);
+
+        return response()->download($filePath, basename($groupe->etat_financier_path));
     }
 }

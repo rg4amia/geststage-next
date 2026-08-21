@@ -16,6 +16,7 @@ class DossierGroupe extends Model
     protected $fillable = [
         'uuid_public', 'ancien_id', 'periode_id', 'source_financement_id',
         'cree_par_id', 'numero', 'nature', 'statut', 'montant_total', 'observation',
+        'attestation_path', 'etat_financier_path',
     ];
 
     protected $casts = ['montant_total' => 'decimal:2'];

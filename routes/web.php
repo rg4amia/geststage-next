@@ -105,6 +105,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dmg/paiements/groupes', [DossierPaiementDmgController::class, 'grouper'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.groupes.store');
     Route::post('/dmg/paiements/groupes/{groupe}/transmettre', [DossierPaiementDmgController::class, 'transmettreGroupe'])->middleware('can:transmettre_cb')->name('dmg.paiements.groupes.transmettre');
     Route::post('/dmg/paiements/groupes/{groupe}/retirer-dossier', [DossierPaiementDmgController::class, 'retirerDuGroupe'])->middleware('can:retirer_paiement_dossier')->name('dmg.paiements.groupes.retirer_dossier');
+    Route::post('/dmg/paiements/groupes/{groupe}/generer-pdfs', [DossierPaiementDmgController::class, 'genererPdfs'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.groupes.generer_pdfs');
+    Route::get('/dmg/paiements/groupes/{groupe}/download-attestation', [DossierPaiementDmgController::class, 'downloadAttestation'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.groupes.download_attestation');
+    Route::get('/dmg/paiements/groupes/{groupe}/download-etat-financier', [DossierPaiementDmgController::class, 'downloadEtatFinancier'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.groupes.download_etat_financier');
     Route::post('/dmg/paiements/retirer-paiement', [DossierPaiementDmgController::class, 'retirer'])->middleware('can:retirer_paiement_dossier')->name('dmg.paiements.retirer_paiement');
     Route::post('/dmg/paiements/elaborer-op', [OperationPaiementDmgController::class, 'elaborer'])->middleware('can:elaborer_op')->name('dmg.paiements.elaborer_op');
     Route::post('/dmg/paiements/creer-bordereau', [OperationPaiementDmgController::class, 'creerBordereau'])->middleware('can:creer_bordereau')->name('dmg.paiements.creer_bordereau');

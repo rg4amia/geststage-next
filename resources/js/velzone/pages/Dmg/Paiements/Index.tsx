@@ -91,6 +91,8 @@ interface DossierGroupeRow {
     observation?: string | null;
     dossiers_count: number;
     source_financement?: { nom: string } | null;
+    attestation_path?: string | null;
+    etat_financier_path?: string | null;
 }
 
 interface Compteurs {
@@ -390,6 +392,22 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
     const handleTransmettreGroupe = (id: number) => {
         router.post(`/dmg/paiements/groupes/${id}/transmettre`, {}, { preserveScroll: true });
+    };
+
+    const handleGenererPdfsGroupe = (id: number) => {
+        setProcessing(true);
+        router.post(`/dmg/paiements/groupes/${id}/generer-pdfs`, {}, {
+            preserveScroll: true,
+            onFinish: () => setProcessing(false),
+        });
+    };
+
+    const handleDownloadAttestation = (id: number) => {
+        window.open(`/dmg/paiements/groupes/${id}/download-attestation`, '_blank');
+    };
+
+    const handleDownloadEtatFinancier = (id: number) => {
+        window.open(`/dmg/paiements/groupes/${id}/download-etat-financier`, '_blank');
     };
 
     const handleElaborerSelection = () => {
@@ -1049,7 +1067,30 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                     { header: 'Dossiers', cell: (c: any) => <Badge color="info">{c.row.original.dossiers_count}</Badge> },
                                                     { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
                                                     { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)}>{c.row.original.statut}</Badge> },
-                                                    { header: 'Actions', cell: (c: any) => c.row.original.statut === 'BROUILLON' ? <Button color="info" size="sm" outline onClick={() => handleTransmettreGroupe(c.row.original.id)}><i className="ri-send-plane-line me-1"></i>Transmettre CB</Button> : null },
+                                                    { header: 'Actions', cell: (c: any) => (
+                                                        <div className="d-flex gap-1">
+                                                            {c.row.original.statut === 'BROUILLON' && (
+                                                                <Button color="warning" size="sm" outline onClick={() => handleGenererPdfsGroupe(c.row.original.id)} title="Générer les PDFs">
+                                                                    <i className="ri-file-pdf-2-line"></i>
+                                                                </Button>
+                                                            )}
+                                                            {c.row.original.attestation_path && (
+                                                                <Button color="info" size="sm" outline onClick={() => handleDownloadAttestation(c.row.original.id)} title="Attestation de présence">
+                                                                    <i className="ri-file-text-line"></i>
+                                                                </Button>
+                                                            )}
+                                                            {c.row.original.etat_financier_path && (
+                                                                <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancier(c.row.original.id)} title="État financier">
+                                                                    <i className="ri-money-dollar-circle-line"></i>
+                                                                </Button>
+                                                            )}
+                                                            {c.row.original.statut === 'BROUILLON' && (
+                                                                <Button color="info" size="sm" outline onClick={() => handleTransmettreGroupe(c.row.original.id)} title="Transmettre CB">
+                                                                    <i className="ri-send-plane-line"></i>
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    ) },
                                                 ]}
                                                 data={groupesDossiers} isGlobalFilter={true} customPageSize={10}
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />

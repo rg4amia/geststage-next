@@ -38,6 +38,13 @@ return [
             'report' => false,
         ],
 
+        'temp_files' => [
+            'driver' => 'local',
+            'root' => storage_path('app/temp_files'),
+            'throw' => false,
+            'report' => false,
+        ],
+
         'public' => [
             'driver' => 'local',
             'root' => storage_path('app/public'),
