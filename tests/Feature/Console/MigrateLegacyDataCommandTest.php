@@ -242,6 +242,78 @@ class MigrateLegacyDataCommandTest extends TestCase
         ]);
     }
 
+    public function test_duplicate_legacy_dossier_numbers_are_preserved_with_deterministic_target_numbers(): void
+    {
+        Agence::factory()->create(['ancien_id' => 12]);
+        Agence::factory()->create(['ancien_id' => 13]);
+        SourceFinancement::factory()->create(['ancien_id' => 3]);
+
+        DB::connection('legacy')->table('dossiers')->insert([
+            [
+                'id' => 3759,
+                'identifiant' => 'DM122025-3759',
+                'mois' => '2025-12',
+                'type_financement_id' => 3,
+                'agence_id' => 12,
+                'group_by_dmg' => 1,
+                'created_at' => '2025-12-11 15:40:24',
+                'updated_at' => '2025-12-31 11:09:02',
+            ],
+            [
+                'id' => 3760,
+                'identifiant' => 'DM122025-3759',
+                'mois' => '2025-12',
+                'type_financement_id' => 3,
+                'agence_id' => 13,
+                'group_by_dmg' => 1,
+                'created_at' => '2025-12-11 15:57:57',
+                'updated_at' => '2025-12-31 11:09:02',
+            ],
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'dossiers_paiement'])->assertExitCode(0);
+        $this->artisan('migrate:legacy-data', ['--step' => 'dossiers_paiement'])->assertExitCode(0);
+
+        $this->assertDatabaseHas('dossiers_paiement', [
+            'ancien_id' => 3759,
+            'numero' => 'DM122025-3759',
+        ]);
+        $this->assertDatabaseHas('dossiers_paiement', [
+            'ancien_id' => 3760,
+            'numero' => 'DM122025-3759-LEGACY-3760',
+        ]);
+        $this->assertDatabaseCount('dossiers_paiement', 2);
+        $this->assertDatabaseCount('anomalies_migration', 2);
+    }
+
+    public function test_multi_agency_legacy_dossier_is_preserved_without_inventing_an_agency(): void
+    {
+        SourceFinancement::factory()->create(['ancien_id' => 3]);
+        DB::connection('legacy')->table('dossiers')->insert([
+            'id' => 3900,
+            'identifiant' => 'PS122025-3900',
+            'mois' => '2025-12',
+            'type_financement_id' => 3,
+            'agence_id' => null,
+            'group_by_dmg' => 1,
+            'created_at' => '2025-12-15 10:00:00',
+            'updated_at' => '2025-12-15 10:00:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'dossiers_paiement'])->assertExitCode(0);
+
+        $this->assertDatabaseHas('dossiers_paiement', [
+            'ancien_id' => 3900,
+            'numero' => 'PS122025-3900',
+            'agence_id' => null,
+        ]);
+        $this->assertDatabaseHas('anomalies_migration', [
+            'code' => 'DOSSIER_AGENCE_A_RECONCILIER',
+            'table_source' => 'dossiers',
+            'id_source' => '3900',
+        ]);
+    }
+
     public function test_payment_migration_uses_business_month_and_repairs_existing_nature_idempotently(): void
     {
         $agence = Agence::factory()->create(['ancien_id' => 12]);

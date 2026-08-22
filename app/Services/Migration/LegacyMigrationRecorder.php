@@ -52,6 +52,23 @@ class LegacyMigrationRecorder
         ]);
     }
 
+    public function failStaleExecutions(string $sourceVersionPrefix): int
+    {
+        $now = now();
+
+        return DB::table('executions_migration')
+            ->where('statut', 'EN_COURS')
+            ->where('version_source', 'like', $sourceVersionPrefix.'%')
+            ->update([
+                'statut' => 'ECHEC',
+                'compteurs' => json_encode([
+                    'erreur' => 'Exécution précédente interrompue sans finalisation ; reprise par une nouvelle commande.',
+                ], JSON_THROW_ON_ERROR),
+                'terminee_le' => $now,
+                'updated_at' => $now,
+            ]);
+    }
+
     /** @param array<string, mixed> $counters */
     public function complete(int $executionId, array $counters): void
     {
@@ -168,7 +185,7 @@ class LegacyMigrationRecorder
     }
 
     /** @param array<string, mixed> $data */
-    private function fingerprint(array $data): string
+    public function fingerprint(array $data): string
     {
         ksort($data);
 

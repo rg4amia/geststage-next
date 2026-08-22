@@ -36,7 +36,6 @@ use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\DesseDoublonDecision;
 use App\Models\Workflow\EtapeParcours;
-use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
 use App\Models\Workflow\TacheParcours;
 use App\Services\Migration\LegacyMapperService;
@@ -57,7 +56,7 @@ class MigrateLegacyDataCommand extends Command
      * @var string
      */
     protected $signature = 'migrate:legacy-data
-        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, all)}
+        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, remaining, all)}
         {--dry-run : Exécute toutes les transformations puis annule les écritures PostgreSQL}';
 
     /**
@@ -94,7 +93,7 @@ class MigrateLegacyDataCommand extends Command
         $allowedSteps = [
             'all', 'references', 'agences', 'users', 'entreprises', 'offres', 'beneficiaires',
             'stages', 'pointages', 'paiements', 'dossiers_paiement', 'dossiers_groupes',
-            'operations', 'bordereaux', 'evenements', 'desse_doublons',
+            'operations', 'bordereaux', 'evenements', 'desse_doublons', 'remaining',
         ];
         if (! in_array($step, $allowedSteps, true)) {
             $this->error("Phase inconnue : {$step}.");
@@ -115,12 +114,23 @@ class MigrateLegacyDataCommand extends Command
             return 1;
         }
 
-        if ($dryRun) {
-            DB::beginTransaction();
-            $this->warn('Mode dry-run : toutes les écritures PostgreSQL seront annulées.');
+        if (! $this->acquireMigrationLock()) {
+            $this->error('Une autre migration legacy est déjà en cours. Aucune nouvelle exécution n’a été démarrée.');
+
+            return self::FAILURE;
         }
 
         try {
+            if (! $dryRun) {
+                $staleCount = $this->recorder->failStaleExecutions(self::SOURCE_VERSION);
+                if ($staleCount > 0) {
+                    $this->warn("{$staleCount} exécution(s) interrompue(s) précédemment ont été classées en échec.");
+                }
+            } else {
+                DB::beginTransaction();
+                $this->warn('Mode dry-run : toutes les écritures PostgreSQL seront annulées.');
+            }
+
             if (in_array($step, ['all', 'beneficiaires', 'stages'], true)) {
                 $this->call('db:seed', [
                     '--class' => ContratsPaeColumnMappingSeeder::class,
@@ -170,27 +180,27 @@ class MigrateLegacyDataCommand extends Command
                 $this->migratePaiements();
             }
 
-            if ($step === 'all' || $step === 'paiements' || $step === 'dossiers_paiement') {
+            if ($step === 'all' || $step === 'remaining' || $step === 'paiements' || $step === 'dossiers_paiement') {
                 $this->backfillLegacyDossiersPaiement();
             }
 
-            if ($step === 'all' || $step === 'dossiers_groupes') {
+            if ($step === 'all' || $step === 'remaining' || $step === 'dossiers_groupes') {
                 $this->migrateDossiersGroupes();
             }
 
-            if ($step === 'all' || $step === 'operations') {
+            if ($step === 'all' || $step === 'remaining' || $step === 'operations') {
                 $this->migrateOperations();
             }
 
-            if ($step === 'all' || $step === 'bordereaux') {
+            if ($step === 'all' || $step === 'remaining' || $step === 'bordereaux') {
                 $this->migrateBordereaux();
             }
 
-            if ($step === 'all' || $step === 'evenements') {
+            if ($step === 'all' || $step === 'remaining' || $step === 'evenements') {
                 $this->migrateEvenements();
             }
 
-            if ($step === 'all' || $step === 'desse_doublons') {
+            if ($step === 'all' || $step === 'remaining' || $step === 'desse_doublons') {
                 $this->migrateDesseDoublonDecisions();
             }
 
@@ -212,11 +222,31 @@ class MigrateLegacyDataCommand extends Command
             $this->error('Migration interrompue : '.$e->getMessage());
 
             return self::FAILURE;
+        } finally {
+            $this->releaseMigrationLock();
         }
 
         $this->info('Migration terminée !');
 
         return self::SUCCESS;
+    }
+
+    private function acquireMigrationLock(): bool
+    {
+        if (DB::getDriverName() !== 'pgsql') {
+            return true;
+        }
+
+        $result = DB::selectOne('SELECT pg_try_advisory_lock(hashtext(?)) AS acquired', [self::SOURCE_VERSION]);
+
+        return (bool) data_get($result, 'acquired', false);
+    }
+
+    private function releaseMigrationLock(): void
+    {
+        if (DB::getDriverName() === 'pgsql') {
+            DB::selectOne('SELECT pg_advisory_unlock(hashtext(?))', [self::SOURCE_VERSION]);
+        }
     }
 
     private function migrateUsers(): void
@@ -1099,7 +1129,9 @@ class MigrateLegacyDataCommand extends Command
                 $periodeId = $periodesMap[$codePeriode];
 
                 try {
-                    DB::transaction(function () use ($legacyPaiement, $stage_id, $periodeId, $source_financement_id, $nature, $date): void {
+                    // Chaque écriture est idempotente. Une transaction PostgreSQL par paiement
+                    // ajoutait deux allers-retours BEGIN/COMMIT sur près de 200 000 lignes.
+                    (function () use ($legacyPaiement, $stage_id, $periodeId, $source_financement_id, $nature, $date): void {
                         $droit = DroitPaiement::where('ancien_id', $legacyPaiement->id)->first();
 
                         // On ne regroupe que par (stage_id, periode_id, nature).
@@ -1176,7 +1208,7 @@ class MigrateLegacyDataCommand extends Command
                             $paiement->id,
                             (array) $legacyPaiement,
                         );
-                    });
+                    })();
                 } catch (Throwable $e) {
                     $this->warn("Paiement legacy #{$legacyPaiement->id} ignoré : {$e->getMessage()}");
                     $this->recorder->anomaly(
@@ -1213,18 +1245,50 @@ class MigrateLegacyDataCommand extends Command
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
         $agencesMap = Agence::pluck('id', 'ancien_id')->toArray();
         $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
+        $duplicateNumeroOwners = DB::connection('legacy')->table('dossiers')
+            ->select('identifiant', DB::raw('MIN(id) AS owner_id'))
+            ->whereNull('deleted_at')
+            ->whereNotNull('identifiant')
+            ->where('identifiant', '<>', '')
+            ->groupBy('identifiant')
+            ->havingRaw('COUNT(*) > 1')
+            ->pluck('owner_id', 'identifiant')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+        $targetNumeroOwners = DossierPaiement::query()
+            ->whereNotNull('ancien_id')
+            ->pluck('ancien_id', 'numero')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
         $now = now();
 
-        $query->orderBy('id')->chunk(500, function ($legacyDossiers) use (&$bar, &$periodesMap, $agencesMap, $sourcesMap, $now): void {
+        $query->orderBy('id')->chunk(500, function ($legacyDossiers) use (
+            &$bar,
+            &$periodesMap,
+            &$targetNumeroOwners,
+            $agencesMap,
+            $sourcesMap,
+            $duplicateNumeroOwners,
+            $now,
+        ): void {
             $legacyDossierIds = $legacyDossiers->pluck('id')->all();
 
             $legacyPaiementsByDossier = DB::connection('legacy')->table('paiement_models')
-                ->select('id', 'dossier_id', 'montant', 'created_at')
+                ->select('id', 'dossier_id', 'stagiaire_id', 'montant', 'created_at')
                 ->whereIn('dossier_id', $legacyDossierIds)
                 ->whereNull('deleted_at')
                 ->orderBy('id')
                 ->get()
                 ->groupBy('dossier_id');
+            $legacyStagiaireIds = $legacyPaiementsByDossier->flatten(1)
+                ->pluck('stagiaire_id')
+                ->filter()
+                ->unique()
+                ->values()
+                ->all();
+            $agencesParStagiaire = Stage::query()
+                ->whereIn('ancien_id', $legacyStagiaireIds)
+                ->pluck('agence_id', 'ancien_id');
 
             $legacyPaiementIds = $legacyPaiementsByDossier->flatten(1)->pluck('id')->unique()->values()->all();
             $paiementsParAncienId = Paiement::query()
@@ -1243,10 +1307,40 @@ class MigrateLegacyDataCommand extends Command
                 ->keyBy('paiement_id');
 
             foreach ($legacyDossiers as $legacyDossier) {
-                $agenceId = $agencesMap[$legacyDossier->agence_id] ?? null;
+                $agenceId = $legacyDossier->agence_id !== null
+                    ? ($agencesMap[$legacyDossier->agence_id] ?? null)
+                    : null;
                 $sourceFinancementId = $sourcesMap[$legacyDossier->type_financement_id] ?? null;
 
-                if (! $agenceId || ! $sourceFinancementId) {
+                if ($legacyDossier->agence_id === null) {
+                    $agencesDossier = $legacyPaiementsByDossier
+                        ->get($legacyDossier->id, collect())
+                        ->pluck('stagiaire_id')
+                        ->map(fn ($stagiaireId) => $agencesParStagiaire->get($stagiaireId))
+                        ->filter()
+                        ->unique()
+                        ->values();
+
+                    if ($agencesDossier->count() === 1) {
+                        $agenceId = (int) $agencesDossier->first();
+                    } else {
+                        $this->recorder->anomaly(
+                            $this->executionId,
+                            'DOSSIER_AGENCE_A_RECONCILIER',
+                            'dossiers',
+                            $legacyDossier->id,
+                            $agencesDossier->isEmpty()
+                                ? 'Dossier legacy sans agence et sans stagiaire permettant de la dériver.'
+                                : 'Dossier legacy regroupant plusieurs agences ; agence cible laissée vide.',
+                            [
+                                'agence_id_legacy' => null,
+                                'agences_cibles_detectees' => $agencesDossier->all(),
+                            ],
+                        );
+                    }
+                }
+
+                if (($legacyDossier->agence_id !== null && ! $agenceId) || ! $sourceFinancementId) {
                     $this->recorder->anomaly(
                         $this->executionId,
                         'DOSSIER_RELATION_INTROUVABLE',
@@ -1281,6 +1375,31 @@ class MigrateLegacyDataCommand extends Command
 
                 $createdAt = $this->mapper->normalizeLegacyDate($legacyDossier->created_at ?? null) ?? $now;
                 $updatedAt = $this->mapper->normalizeLegacyDate($legacyDossier->updated_at ?? null) ?? $createdAt;
+                $baseNumero = trim((string) ($legacyDossier->identifiant ?: 'DOS-LEGACY-'.$legacyDossier->id));
+                $sourceId = (int) $legacyDossier->id;
+                $canonicalSourceId = $duplicateNumeroOwners[$baseNumero] ?? $sourceId;
+                $existingTargetOwner = $targetNumeroOwners[$baseNumero] ?? null;
+                $requiresSuffix = $canonicalSourceId !== $sourceId
+                    || ($existingTargetOwner !== null && $existingTargetOwner !== $sourceId);
+                $targetNumero = $requiresSuffix
+                    ? mb_substr($baseNumero, 0, 230).'-LEGACY-'.$sourceId
+                    : $baseNumero;
+
+                if (isset($duplicateNumeroOwners[$baseNumero])) {
+                    $this->recorder->anomaly(
+                        $this->executionId,
+                        'DOSSIER_NUMERO_DUPLIQUE',
+                        'dossiers',
+                        $legacyDossier->id,
+                        "Numéro legacy partagé par plusieurs dossiers : {$baseNumero}.",
+                        [
+                            'numero_legacy' => $baseNumero,
+                            'source_canonique_id' => $canonicalSourceId,
+                            'numero_cible' => $targetNumero,
+                        ],
+                        'NON_BLOQUANTE',
+                    );
+                }
 
                 // Mapper le statut du dossier legacy vers le nouveau statut
                 $statutDossier = match (true) {
@@ -1297,7 +1416,7 @@ class MigrateLegacyDataCommand extends Command
                     'periode_id' => $periodesMap[$periodeCode],
                     'agence_id' => $agenceId,
                     'source_financement_id' => $sourceFinancementId,
-                    'numero' => $legacyDossier->identifiant ?: 'DOS-LEGACY-'.$legacyDossier->id,
+                    'numero' => $targetNumero,
                     'nature' => Str::startsWith((string) $legacyDossier->identifiant, 'DM') ? 'DM' : 'PS',
                     'statut' => $statutDossier,
                     'montant_total' => 0,
@@ -1305,6 +1424,7 @@ class MigrateLegacyDataCommand extends Command
                     'updated_at' => $updatedAt,
                 ]);
                 $dossier->save();
+                $targetNumeroOwners[$targetNumero] = $sourceId;
 
                 $montantTotal = 0;
                 foreach ($legacyPaiementsByDossier->get($legacyDossier->id, collect()) as $legacyPaiement) {
@@ -1913,11 +2033,16 @@ class MigrateLegacyDataCommand extends Command
         $query = DB::connection('legacy')->table('contrat_etape');
         $total = $query->count();
         $fallbackAuthorId = User::query()->orderBy('id')->value('id');
+        /** @var array<string, int> $etapesCache */
+        $etapesCache = [];
 
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(5000, function ($historique) use (&$bar, $fallbackAuthorId): void {
+        $query->orderBy('id')->chunk(5000, function ($historique) use (&$bar, &$etapesCache, $fallbackAuthorId): void {
+            $eventRows = [];
+            $eventSourcesByKey = [];
+            $batchNow = now();
             // MAP STAGES
             $contratIds = $historique->pluck('contrat_id')->filter()->unique()->toArray();
             $stagesMap = Stage::whereIn('ancien_id', $contratIds)->pluck('id', 'ancien_id')->toArray();
@@ -2008,38 +2133,70 @@ class MigrateLegacyDataCommand extends Command
 
                 $corbeilleCible = $this->mapper->mapStatutStageToCorbeille((int) ($legacyEvent->etape_id ?? 1))->value;
                 $etapeCode = strtoupper($corbeilleCible);
-                $etapeCible = EtapeParcours::firstOrCreate(
-                    ['definition_parcours_id' => $instance->definition_parcours_id, 'code' => $etapeCode],
-                    ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
-                );
+                $etapeCacheKey = $instance->definition_parcours_id.':'.$etapeCode;
+                if (! isset($etapesCache[$etapeCacheKey])) {
+                    $etapesCache[$etapeCacheKey] = EtapeParcours::firstOrCreate(
+                        ['definition_parcours_id' => $instance->definition_parcours_id, 'code' => $etapeCode],
+                        ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
+                    )->id;
+                }
 
-                $event = EvenementParcours::firstOrCreate(
-                    ['cle_idempotence' => 'mig_'.$legacyEvent->id.'_'.$instance->id],
-                    [
-                        'instance_parcours_id' => $instance->id,
-                        'etape_cible_id' => $etapeCible->id,
-                        'type' => 'MIGRATION_STATUT',
-                        'donnees' => [
-                            'commentaire' => $legacyEvent->commentaire,
-                            'description' => "Passage à l'étape legacy ID : ".$legacyEvent->etape_id,
-                            'corbeille_cible' => $corbeilleCible,
-                            'contrat_etape_ancien_id' => $legacyEvent->id,
-                            'paiement_ancien_id' => $legacyEvent->paiement_id,
-                            'pointage_ancien_id' => $legacyEvent->pointage_id,
-                        ],
-                        'auteur_id' => $auteurId,
-                        'survenu_le' => $this->mapper->normalizeLegacyDate($legacyEvent->created_at ?? null) ?? now(),
-                    ]
-                );
-                $this->recorder->correspondence(
-                    $this->executionId,
-                    'contrat_etape',
-                    $legacyEvent->id,
-                    'evenements_parcours',
-                    $event->id,
-                    (array) $legacyEvent,
-                );
+                $idempotencyKey = 'mig_'.$legacyEvent->id.'_'.$instance->id;
+                $sourceData = (array) $legacyEvent;
+                $eventRows[] = [
+                    'uuid_public' => (string) Str::uuid(),
+                    'instance_parcours_id' => $instance->id,
+                    'etape_cible_id' => $etapesCache[$etapeCacheKey],
+                    'auteur_id' => $auteurId,
+                    'type' => 'MIGRATION_STATUT',
+                    'cle_idempotence' => $idempotencyKey,
+                    'donnees' => json_encode([
+                        'commentaire' => $legacyEvent->commentaire,
+                        'description' => "Passage à l'étape legacy ID : ".$legacyEvent->etape_id,
+                        'corbeille_cible' => $corbeilleCible,
+                        'contrat_etape_ancien_id' => $legacyEvent->id,
+                        'paiement_ancien_id' => $legacyEvent->paiement_id,
+                        'pointage_ancien_id' => $legacyEvent->pointage_id,
+                    ], JSON_THROW_ON_ERROR),
+                    'survenu_le' => $this->mapper->normalizeLegacyDate($legacyEvent->created_at ?? null) ?? $batchNow,
+                    'created_at' => $batchNow,
+                    'updated_at' => $batchNow,
+                ];
+                $eventSourcesByKey[$idempotencyKey] = $sourceData;
                 $bar->advance();
+            }
+
+            if ($eventRows === []) {
+                return;
+            }
+
+            DB::table('evenements_parcours')->insertOrIgnore($eventRows);
+            $eventIds = DB::table('evenements_parcours')
+                ->whereIn('cle_idempotence', array_keys($eventSourcesByKey))
+                ->pluck('id', 'cle_idempotence');
+            $correspondenceRows = [];
+            foreach ($eventSourcesByKey as $idempotencyKey => $sourceData) {
+                $eventId = $eventIds[$idempotencyKey] ?? null;
+                if ($eventId === null) {
+                    continue;
+                }
+                $correspondenceRows[] = [
+                    'execution_migration_id' => $this->executionId,
+                    'table_source' => 'contrat_etape',
+                    'id_source' => (string) $sourceData['id'],
+                    'table_cible' => 'evenements_parcours',
+                    'id_cible' => (int) $eventId,
+                    'empreinte_source' => $this->recorder->fingerprint($sourceData),
+                    'created_at' => $batchNow,
+                    'updated_at' => $batchNow,
+                ];
+            }
+            if ($correspondenceRows !== []) {
+                DB::table('correspondances_ancien_systeme')->upsert(
+                    $correspondenceRows,
+                    ['table_source', 'id_source', 'table_cible'],
+                    ['execution_migration_id', 'id_cible', 'empreinte_source', 'updated_at'],
+                );
             }
         });
 
