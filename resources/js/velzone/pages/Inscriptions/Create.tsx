@@ -44,6 +44,15 @@ interface OffreItem {
     sourceFinancement?: { nom: string };
 }
 
+interface ConseillerItem {
+    id: number;
+    nom: string;
+    prenoms?: string;
+    nom_complet: string;
+    agence_id: number;
+    agence?: { id: number; nom: string };
+}
+
 interface Props {
     offres: OffreItem[];
     agences: RefItem[];
@@ -61,6 +70,8 @@ interface Props {
     statutsStage: RefItem[];
     situationsStage: RefItem[];
     typesStructure: RefItem[];
+    conseillers: ConseillerItem[];
+    authUserAgenceIds: number[];
 }
 
 interface DemandeurAej {
@@ -569,6 +580,7 @@ const Create = ({
     liensParente, niveauxEtude, diplomes, typesEnseignement,
     handicaps, typesHandicap, typesPaiement, sourcesFinancement,
     statutsStage, situationsStage, typesStructure,
+    conseillers, authUserAgenceIds,
 }: Props) => {
     const { flash, auth } = usePage<{ flash: { success?: string; error?: string }; auth: { user?: { type_user_id?: number } } }>().props;
 
@@ -709,6 +721,13 @@ const Create = ({
     /* ═══════════════════════════════════════════════════════════════════════
        AUTO-EFFECTS
        ═══════════════════════════════════════════════════════════════════════ */
+
+    /** Auto-sélectionner l'agence si l'utilisateur n'en a qu'une seule dans son périmètre */
+    useEffect(() => {
+        if (authUserAgenceIds.length === 1 && !stage.agence_id) {
+            setStage(s => ({ ...s, agence_id: String(authUserAgenceIds[0]) }));
+        }
+    }, [authUserAgenceIds]);
 
     /** Origine PEJEDEC → forcer financement=3, stage=ECOLE, durée=6, date_debut visible */
     useEffect(() => {
@@ -1512,7 +1531,9 @@ const Create = ({
                                                     <Label className="fw-semibold">Agence <span className="text-danger">*</span></Label>
                                                     <RsSelect
                                                         value={stage.agence_id}
-                                                        options={agences.map(a => ({ value: String(a.id), label: a.nom }))}
+                                                        options={agences
+                                                            .filter(a => authUserAgenceIds.length === 0 || authUserAgenceIds.includes(a.id))
+                                                            .map(a => ({ value: String(a.id), label: a.nom }))}
                                                         onChange={v => setStage(s => ({ ...s, agence_id: v, conseiller_id: '', entreprise_id: '' }))}
                                                         placeholder="Sélectionner"
                                                         className={fieldError('agence_id') ? 'is-invalid' : ''}
@@ -1521,11 +1542,16 @@ const Create = ({
                                                 </Col>
                                                 <Col lg={3}>
                                                     <Label className="fw-semibold">Conseiller référent <span className="text-danger">*</span></Label>
-                                                    <Input type="text" className={fieldError('conseiller_id') ? 'is-invalid' : ''}
+                                                    <RsSelect
                                                         value={stage.conseiller_id}
-                                                        onChange={e => setStage(s => ({ ...s, conseiller_id: e.target.value }))}
-                                                        placeholder={stage.agence_id ? 'Nom du conseiller' : 'Sélectionner agence d\'abord'}
-                                                        disabled={!stage.agence_id} />
+                                                        options={conseillers
+                                                            .filter(c => stage.agence_id && c.agence_id === Number(stage.agence_id))
+                                                            .map(c => ({ value: String(c.id), label: c.nom_complet }))}
+                                                        onChange={v => setStage(s => ({ ...s, conseiller_id: v }))}
+                                                        placeholder={stage.agence_id ? 'Sélectionner un conseiller' : 'Sélectionner agence d\'abord'}
+                                                        isDisabled={!stage.agence_id}
+                                                        className={fieldError('conseiller_id') ? 'is-invalid' : ''}
+                                                    />
                                                     <div className="invalid-feedback">{fieldError('conseiller_id')}</div>
                                                 </Col>
                                                 <Col lg={3}>

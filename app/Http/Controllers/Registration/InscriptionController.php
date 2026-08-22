@@ -16,6 +16,7 @@ use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeEnseignement;
 use App\Models\Reference\TypeHandicap;
 use App\Models\Reference\TypePaiement;
+use App\Models\Reference\Conseiller;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\InstanceParcours;
@@ -69,6 +70,16 @@ class InscriptionController extends Controller
         $situationsStage = DB::table('situations_stage')->get();
         $typesStructure = TypeStructure::where('actif', true)->get();
 
+        // Conseillers avec leur agence
+        $conseillers = Conseiller::with('agence')
+            ->where('actif', true)
+            ->orderBy('nom')
+            ->get();
+
+        // Périmètres d'agences de l'utilisateur connecté
+        $user = Auth::user();
+        $authUserAgenceIds = $user->perimetresAgences()->pluck('agences.id')->toArray();
+
         return Inertia::render('Inscriptions/Create', [
             'offres' => $offres,
             'agences' => $agences,
@@ -86,6 +97,8 @@ class InscriptionController extends Controller
             'statutsStage' => $statutsStage,
             'situationsStage' => $situationsStage,
             'typesStructure' => $typesStructure,
+            'conseillers' => $conseillers,
+            'authUserAgenceIds' => $authUserAgenceIds,
         ]);
     }
 
