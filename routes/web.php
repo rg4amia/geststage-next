@@ -114,6 +114,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dmg/paiements/transmettre-bordereau/{bordereau}', [OperationPaiementDmgController::class, 'transmettreBordereau'])->middleware('can:transmettre_bordereau_ac')->name('dmg.paiements.transmettre_bordereau');
     Route::get('/dmg/paiements/dossiers-cb', [PaiementDmgController::class, 'dossiersCbByMois'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.dossiers_cb');
     Route::post('/dmg/paiements/stagiaires', [PaiementDmgController::class, 'stagiairesByDossier'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.stagiaires');
+    Route::get('/dmg/paiements/documents', [PaiementDmgController::class, 'documentsByStage'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.documents');
     Route::get('/dmg/multi-dossier', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'index'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.index');
     Route::get('/dmg/multi-dossier/dossiers', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getDossiers'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-dossiers');
     Route::post('/dmg/multi-dossier/stagiaires', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getStagiaires'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-stagiaires');

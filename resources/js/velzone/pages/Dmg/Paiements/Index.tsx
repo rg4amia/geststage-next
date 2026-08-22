@@ -247,6 +247,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [modalDetailOpen, setModalDetailOpen] = useState(false);
     const [modalDossierOpen, setModalDossierOpen] = useState(false);
     const [modalGroupeOpen, setModalGroupeOpen] = useState(false);
+    const [modalPreviewOpen, setModalPreviewOpen] = useState(false);
+    const [previewStagiaire, setPreviewStagiaire] = useState<any>(null);
+    const [previewDocs, setPreviewDocs] = useState<any[]>([]);
+    const [isLoadingPreviewDocs, setIsLoadingPreviewDocs] = useState(false);
+    const [activePreviewTab, setActivePreviewTab] = useState<string | null>(null);
     const [detailRow, setDetailRow] = useState<PaiementRow | null>(null);
     const [motifAjourner, setMotifAjourner] = useState('');
     const [dossierStatus, setDossierStatus] = useState('en_attente');
@@ -507,6 +512,26 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
     const handleTransmettreBordereau = (id: number) => {
         router.post(`/dmg/paiements/transmettre-bordereau/${id}`, {}, { preserveScroll: true });
+    };
+
+    const handlePreviewDocs = (stagiaire: any) => {
+        setPreviewStagiaire(stagiaire);
+        setPreviewDocs([]);
+        setIsLoadingPreviewDocs(true);
+        setModalPreviewOpen(true);
+        setActivePreviewTab(null);
+        
+        fetch(`/dmg/paiements/documents?stage_id=${stagiaire.stage_id}`)
+            .then(res => res.json())
+            .then(data => {
+                const docs = data.data || [];
+                setPreviewDocs(docs);
+                if (docs.length > 0) {
+                    setActivePreviewTab(docs[0].id.toString());
+                }
+            })
+            .catch(() => setPreviewDocs([]))
+            .finally(() => setIsLoadingPreviewDocs(false));
     };
 
     /* ─── Données dossiers par statut ─── */
@@ -1492,6 +1517,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                                                                         <th>Début</th>
                                                                                                                         <th>Fin</th>
                                                                                                                         <th className="text-end">Montant</th>
+                                                                                                                        <th className="text-center">Actions</th>
                                                                                                                     </tr>
                                                                                                                 </thead>
                                                                                                                 <tbody>
@@ -1505,6 +1531,18 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                                                                             <td className="fs-12">{s.date_debut}</td>
                                                                                                                             <td className="fs-12">{s.date_fin}</td>
                                                                                                                             <td className="text-end fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                                                            <td className="text-center">
+                                                                                                                                <Button 
+                                                                                                                                    color="info" 
+                                                                                                                                    size="sm" 
+                                                                                                                                    className="btn-icon" 
+                                                                                                                                    outline
+                                                                                                                                    onClick={() => handlePreviewDocs(s)}
+                                                                                                                                    title="Prévisualiser les fichiers"
+                                                                                                                                >
+                                                                                                                                    <i className="ri-folder-open-line"></i>
+                                                                                                                                </Button>
+                                                                                                                            </td>
                                                                                                                         </tr>
                                                                                                                     ))}
                                                                                                                 </tbody>
@@ -1788,6 +1826,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                             <th>Date Fin</th>
                                                                             <th>N° Trésor Pay</th>
                                                                             <th>Montant</th>
+                                                                            <th className="text-center">Actions</th>
                                                                         </tr>
                                                                     </thead>
                                                                     <tbody>
@@ -1808,6 +1847,18 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                                 <td className="fs-12">{s.date_fin}</td>
                                                                                 <td className="text-muted">{s.tresor_pay}</td>
                                                                                 <td className="fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                <td className="text-center">
+                                                                                    <Button 
+                                                                                        color="info" 
+                                                                                        size="sm" 
+                                                                                        className="btn-icon" 
+                                                                                        outline
+                                                                                        onClick={() => handlePreviewDocs(s)}
+                                                                                        title="Prévisualiser les fichiers"
+                                                                                    >
+                                                                                        <i className="ri-folder-open-line"></i>
+                                                                                    </Button>
+                                                                                </td>
                                                                             </tr>
                                                                         ))}
                                                                     </tbody>
@@ -1980,6 +2031,56 @@ const DmgPaiementsIndex = (props: PageProps) => {
                 <ModalFooter>
                     <Button color="light" onClick={() => setModalDetailOpen(false)}>Fermer</Button>
                 </ModalFooter>
+            </Modal>
+
+            {/* Modale — Prévisualisation des documents */}
+            <Modal isOpen={modalPreviewOpen} toggle={() => setModalPreviewOpen(false)} size="xl" centered>
+                <ModalHeader toggle={() => setModalPreviewOpen(false)} className="text-uppercase text-muted fs-15 fw-semibold border-bottom-0 pb-0">
+                    Prévisualisation fichier
+                </ModalHeader>
+                <ModalBody className="pt-2 pb-4 px-4">
+                    {isLoadingPreviewDocs ? (
+                        <div className="d-flex justify-content-center py-5">
+                            <Spinner color="primary" />
+                        </div>
+                    ) : previewDocs.length === 0 ? (
+                        <div className="text-center py-5">
+                            <i className="ri-file-close-line text-muted fs-48 mb-2 d-block"></i>
+                            <p className="text-muted mb-0">Aucun document trouvé pour ce stagiaire.</p>
+                        </div>
+                    ) : (
+                        <>
+                            <Nav tabs className="nav-tabs-custom mb-3 border-bottom-0">
+                                {previewDocs.map(doc => (
+                                    <NavItem key={doc.id}>
+                                        <NavLink
+                                            style={{ cursor: 'pointer' }}
+                                            className={classnames({ active: activePreviewTab === doc.id.toString() }, 'fw-semibold text-primary')}
+                                            onClick={() => setActivePreviewTab(doc.id.toString())}
+                                        >
+                                            {(doc.type_nom || doc.type_code || doc.nom).toUpperCase()}
+                                        </NavLink>
+                                    </NavItem>
+                                ))}
+                            </Nav>
+                            <TabContent activeTab={activePreviewTab || ''}>
+                                {previewDocs.map(doc => (
+                                    <TabPane tabId={doc.id.toString()} key={doc.id}>
+                                        <div className="border border-1" style={{ height: '70vh' }}>
+                                            <iframe 
+                                                src={`/storage/${doc.chemin}`} 
+                                                width="100%" 
+                                                height="100%" 
+                                                style={{ border: 'none' }}
+                                                title={doc.nom_original || doc.nom}
+                                            />
+                                        </div>
+                                    </TabPane>
+                                ))}
+                            </TabContent>
+                        </>
+                    )}
+                </ModalBody>
             </Modal>
 
             {/* Modale — Ajourner */}
