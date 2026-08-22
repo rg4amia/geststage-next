@@ -257,7 +257,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [isLoadingMultiDossiers, setIsLoadingMultiDossiers] = useState(false);
     const [selectedMultiDossierIds, setSelectedMultiDossierIds] = useState<number[]>([]);
     const [multiTypeTraitement, setMultiTypeTraitement] = useState('');
-    const [multiDossierSearch, setMultiDossierSearch] = useState('');
     const [stagiaires, setStagiaires] = useState<StagiaireRow[]>([]);
     const [selectedStagiaireIds, setSelectedStagiaireIds] = useState<number[]>([]);
     const [stagiaireSearch, setStagiaireSearch] = useState('');
@@ -510,6 +509,109 @@ const DmgPaiementsIndex = (props: PageProps) => {
         router.post(`/dmg/paiements/transmettre-bordereau/${id}`, {}, { preserveScroll: true });
     };
 
+    /* ─── Données dossiers par statut ─── */
+    const [dossierTab, setDossierTab] = useState('brouillon');
+
+    /* ─── Dossiers CB (DMG vue) ─── */
+    const [dossiersCbTransmis, setDossiersCbTransmis] = useState<any[]>([]);
+    const [dossiersCbValides, setDossiersCbValides] = useState<any[]>([]);
+    const [isLoadingCbDossiers, setIsLoadingCbDossiers] = useState(false);
+    const [expandedCbDossierId, setExpandedCbDossierId] = useState<number | null>(null);
+    const [cbStagiaires, setCbStagiaires] = useState<any[]>([]);
+    const [cbStagiaireTotal, setCbStagiaireTotal] = useState(0);
+    const [cbStagiairePage, setCbStagiairePage] = useState(1);
+    const [cbStagiaireSearch, setCbStagiaireSearch] = useState('');
+    const [cbStagiaireLoading, setCbStagiaireLoading] = useState(false);
+    const [cbDossiersSearch, setCbDossiersSearch] = useState('');
+    const CB_DOSSIERS_PER_PAGE = 5;
+    const [cbTransmisPage, setCbTransmisPage] = useState(1);
+    const [cbValidesPage, setCbValidesPage] = useState(1);
+    const cbDossiersRef = React.useRef<HTMLDivElement>(null);
+
+    /* ═══════════════════════════════════════════════════════════════════
+       DOSSIERS CB — Chargement dossiers par statut
+       ═══════════════════════════════════════════════════════════════════ */
+    const loadDossiersCb = useCallback(() => {
+        setIsLoadingCbDossiers(true);
+        const mois = moisDossiers || moisActuel;
+        const searchParam = cbDossiersSearch ? `&search=${encodeURIComponent(cbDossiersSearch)}` : '';
+        Promise.all([
+            fetch(`/dmg/paiements/dossiers-cb?mois=${mois}&statut=TRANSMIS_CB${searchParam}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            }).then((r) => r.json()),
+            fetch(`/dmg/paiements/dossiers-cb?mois=${mois}&statut=VALIDE_CB${searchParam}`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            }).then((r) => r.json()),
+        ])
+            .then(([transmis, valides]) => {
+                setDossiersCbTransmis(transmis || []);
+                setDossiersCbValides(valides || []);
+            })
+            .catch(() => {
+                setDossiersCbTransmis([]);
+                setDossiersCbValides([]);
+            })
+            .finally(() => setIsLoadingCbDossiers(false));
+    }, [moisDossiers, moisActuel]);
+
+    const loadCbStagiaires = useCallback((dossierId: number) => {
+        setCbStagiaireLoading(true);
+        const body = new URLSearchParams();
+        body.set('dossier_id', String(dossierId));
+        body.set('start', String((cbStagiairePage - 1) * 10));
+        body.set('length', '10');
+        body.set('search', cbStagiaireSearch);
+        body.set('draw', String(Date.now()));
+
+        fetch('/dmg/paiements/stagiaires', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? ''),
+            },
+            body: body.toString(),
+        })
+            .then((r) => r.json())
+            .then((res) => {
+                setCbStagiaires(res.data || []);
+                setCbStagiaireTotal(res.recordsFiltered || 0);
+            })
+            .catch(() => {
+                setCbStagiaires([]);
+                setCbStagiaireTotal(0);
+            })
+            .finally(() => setCbStagiaireLoading(false));
+    }, [cbStagiairePage, cbStagiaireSearch]);
+
+    const toggleExpandCbDossier = (dossierId: number) => {
+        if (expandedCbDossierId === dossierId) {
+            setExpandedCbDossierId(null);
+            setCbStagiaires([]);
+            setCbStagiaireTotal(0);
+        } else {
+            setExpandedCbDossierId(dossierId);
+            setCbStagiairePage(1);
+            setCbStagiaireSearch('');
+        }
+    };
+
+    /* Charger les dossiers CB quand l'onglet transmis est actif */
+    const prevDossierTabCb = React.useRef(dossierTab);
+    React.useEffect(() => {
+        if (dossierTab === 'transmis' && prevDossierTabCb.current !== 'transmis') {
+            loadDossiersCb();
+        }
+        prevDossierTabCb.current = dossierTab;
+    }, [dossierTab, loadDossiersCb]);
+
+    React.useEffect(() => {
+        if (dossierTab === 'transmis' && expandedCbDossierId) {
+            loadCbStagiaires(expandedCbDossierId);
+        }
+    }, [expandedCbDossierId, cbStagiairePage, cbStagiaireSearch, dossierTab, loadCbStagiaires]);
+
     /* ═══════════════════════════════════════════════════════════════════
        MULTI-DOSSIER — Chargement dossiers via AJAX
        ═══════════════════════════════════════════════════════════════════ */
@@ -653,7 +755,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
             body: body.toString(),
         })
             .then((r) => { if (!r.ok) throw new Error(); return r.blob(); })
-            .then((blob) => { const u = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${type}_${new Date().toISOString().slice(0, 10)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); })
+            .then((blob) => { const u = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${type}_${new Date().toISOString().slice(0, 10)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(u); })
             .catch(() => {});
     };
 
@@ -767,9 +869,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
             </div>
         )},
     ], [props.periode]);
-
-    /* ─── Données dossiers par statut ─── */
-    const [dossierTab, setDossierTab] = useState('brouillon');
 
     /* ─── Charger les dossiers multi quand l'onglet est actif ou que la periode change ─── */
     const prevDossierTab = React.useRef(dossierTab);
@@ -1252,7 +1351,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                         </NavItem>
                                         <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'transmis' }, 'fw-semibold py-3')} onClick={() => setDossierTab('transmis')}>
-                                                <i className="ri-send-plane-line me-1"></i>Transmis CB <Badge color="info" pill className="ms-2">{dossiersTransmis.length}</Badge>
+                                                <i className="ri-send-plane-line me-1"></i>Transmis CB <Badge color="info" pill className="ms-2">{dossiersCbTransmis.length + dossiersCbValides.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
@@ -1290,26 +1389,262 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             <TableContainerReactTable columns={dossierColumns} data={dossiers} isGlobalFilter={true} customPageSize={10}
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                         </TabPane>
-                                        <TabPane tabId="transmis">
-                                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                                                <div>
-                                                    <h5 className="fs-14 mb-1">Dossiers validés CB sans ordre de paiement</h5>
-                                                    <p className="text-muted mb-0 fs-12">Une sélection produit un seul ordre de paiement.</p>
-                                                </div>
-                                                <Button color="primary" size="sm" disabled={selectedOpDossierIds.length === 0} onClick={handleElaborerSelection}>
-                                                    <i className="ri-file-list-3-line me-1"></i>Élaborer l'OP ({selectedOpDossierIds.length})
-                                                </Button>
-                                            </div>
-                                            <TableContainerReactTable
-                                                columns={[
-                                                    { id: 'select', header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpDossierIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpDossierIds)} /> },
-                                                    ...dossierColumns.filter((column: any) => column.header !== 'Actions'),
-                                                ]}
-                                                data={dossiersEligiblesOp} isGlobalFilter={true} customPageSize={10}
-                                                divClass="table-responsive table-card mb-4" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
-                                            <h5 className="fs-14 mb-3">Suivi du circuit CB / OP</h5>
-                                            <TableContainerReactTable columns={dossierColumns} data={dossiersTransmis} isGlobalFilter={true} customPageSize={10}
-                                                divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                        <TabPane tabId="transmis" ref={cbDossiersRef as any}>
+                                            {isLoadingCbDossiers ? (
+                                                <div className="d-flex justify-content-center py-5"><Spinner color="info" /></div>
+                                            ) : (
+                                                <>
+                                                    {/* ═══ Section 1 : Dossiers en attente CB ═══ */}
+                                                    <Card className="border shadow-none mb-4">
+                                                        <CardHeader className="bg-warning bg-opacity-10 py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                            <h6 className="card-title mb-0 fs-14 text-warning fw-bold">
+                                                                <i className="ri-folder-check-line me-1"></i>
+                                                                Dossiers en attente de validation CB
+                                                                <Badge color="warning" pill className="ms-2 fs-11">{dossiersCbTransmis.length}</Badge>
+                                                            </h6>
+                                                            <div className="d-flex align-items-center">
+                                                                <div className="search-box me-2">
+                                                                    <Input
+                                                                        type="text"
+                                                                        placeholder="Rechercher dossier, stagiaire..."
+                                                                        className="form-control form-control-sm search"
+                                                                        value={cbDossiersSearch}
+                                                                        onChange={(e) => setCbDossiersSearch(e.target.value)}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === 'Enter') loadDossiersCb();
+                                                                        }}
+                                                                        style={{ minWidth: '250px' }}
+                                                                    />
+                                                                    <i className="ri-search-line search-icon"></i>
+                                                                </div>
+                                                                <Button color="primary" size="sm" onClick={loadDossiersCb}>
+                                                                    <i className="ri-search-line"></i>
+                                                                </Button>
+                                                            </div>
+                                                        </CardHeader>
+                                                        <CardBody className="p-0">
+                                                            <div className="table-responsive">
+                                                                <table className="table table-striped table-hover align-middle mb-0">
+                                                                    <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                                        <tr>
+                                                                            <th style={{ width: 40 }}>#</th>
+                                                                            <th>Numéro</th>
+                                                                            <th>Agence</th>
+                                                                            <th>Financement</th>
+                                                                            <th className="text-center">Stagiaires</th>
+                                                                            <th className="text-end">Montant</th>
+                                                                            <th>Statut</th>
+                                                                            <th style={{ width: 60 }}></th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {(() => {
+                                                                            const tp = Math.max(1, Math.ceil(dossiersCbTransmis.length / CB_DOSSIERS_PER_PAGE));
+                                                                            const safePage = Math.min(cbTransmisPage, tp);
+                                                                            const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
+                                                                            const rows = dossiersCbTransmis.slice(si, si + CB_DOSSIERS_PER_PAGE);
+                                                                            return rows.map((d: any, idx: number) => (
+                                                                                <React.Fragment key={d.id}>
+                                                                                    <tr
+                                                                                        className={expandedCbDossierId === d.id ? 'table-active' : ''}
+                                                                                        style={{ cursor: 'pointer' }}
+                                                                                        onClick={() => toggleExpandCbDossier(d.id)}>
+                                                                                        <td>{si + idx + 1}</td>
+                                                                                        <td className="fw-medium text-primary">{d.identifiant}</td>
+                                                                                        <td>{d.agence}</td>
+                                                                                        <td><Badge color="info-subtle" className="text-info">{d.source_financement}</Badge></td>
+                                                                                        <td className="text-center"><Badge color="warning" pill>{d.nombre_stagiaires}</Badge></td>
+                                                                                        <td className="text-end fw-bold">{Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                        <td><Badge color="warning" className="fs-11">TRANSMIS_CB</Badge></td>
+                                                                                        <td><i className={`ri-arrow-${expandedCbDossierId === d.id ? 'up' : 'down'}-s-line text-muted`}></i></td>
+                                                                                    </tr>
+                                                                                    {expandedCbDossierId === d.id && (
+                                                                                        <tr>
+                                                                                            <td colSpan={8} className="p-0 border-0">
+                                                                                                <div className="bg-light p-3">
+                                                                                                    <div className="d-flex justify-content-end mb-2">
+                                                                                                        <Input
+                                                                                                            type="text"
+                                                                                                            bsSize="sm"
+                                                                                                            placeholder="Rechercher stagiaire..."
+                                                                                                            value={cbStagiaireSearch}
+                                                                                                            onChange={(e) => setCbStagiaireSearch(e.target.value)}
+                                                                                                            onKeyDown={(e) => {
+                                                                                                                if (e.key === 'Enter') loadCbStagiaires(d.id);
+                                                                                                            }}
+                                                                                                            style={{ width: '200px' }}
+                                                                                                        />
+                                                                                                    </div>
+                                                                                                    {cbStagiaireLoading ? (
+                                                                                                        <div className="d-flex justify-content-center py-3"><Spinner size="sm" color="info" /></div>
+                                                                                                    ) : cbStagiaires.length === 0 ? (
+                                                                                                        <p className="text-muted text-center mb-0">Aucun stagiaire trouvé.</p>
+                                                                                                    ) : (
+                                                                                                        <>
+                                                                                                            <table className="table table-sm table-bordered mb-2">
+                                                                                                                <thead className="table-light fs-11">
+                                                                                                                    <tr>
+                                                                                                                        <th>N° AEJ</th>
+                                                                                                                        <th>Nom et Prénoms</th>
+                                                                                                                        <th>Entreprise</th>
+                                                                                                                        <th>Financement</th>
+                                                                                                                        <th>Type Stage</th>
+                                                                                                                        <th>Début</th>
+                                                                                                                        <th>Fin</th>
+                                                                                                                        <th className="text-end">Montant</th>
+                                                                                                                    </tr>
+                                                                                                                </thead>
+                                                                                                                <tbody>
+                                                                                                                    {cbStagiaires.map((s: any) => (
+                                                                                                                        <tr key={s.paiement_id}>
+                                                                                                                            <td className="text-muted">{s.numero_aej}</td>
+                                                                                                                            <td className="fw-semibold">{s.nom} {s.prenoms}</td>
+                                                                                                                            <td className="text-truncate" style={{ maxWidth: 120 }}>{s.entreprise}</td>
+                                                                                                                            <td>{s.source_financement}</td>
+                                                                                                                            <td>{s.type_stage}</td>
+                                                                                                                            <td className="fs-12">{s.date_debut}</td>
+                                                                                                                            <td className="fs-12">{s.date_fin}</td>
+                                                                                                                            <td className="text-end fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                                                        </tr>
+                                                                                                                    ))}
+                                                                                                                </tbody>
+                                                                                                            </table>
+                                                                                                            {cbStagiaireTotal > 10 && (
+                                                                                                                <div className="d-flex justify-content-between align-items-center">
+                                                                                                                    <small className="text-muted">{cbStagiaireTotal} stagiaire(s)</small>
+                                                                                                                    <div className="d-flex gap-1">
+                                                                                                                        <Button size="sm" color="light" disabled={cbStagiairePage <= 1} onClick={() => setCbStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                                                                        <Button size="sm" color="light" disabled={cbStagiairePage >= Math.ceil(cbStagiaireTotal / 10)} onClick={() => setCbStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                                                                    </div>
+                                                                                                                </div>
+                                                                                                            )}
+                                                                                                        </>
+                                                                                                    )}
+                                                                                                </div>
+                                                                                            </td>
+                                                                                        </tr>
+                                                                                    )}
+                                                                                </React.Fragment>
+                                                                            ));
+                                                                        })()}
+                                                                        {dossiersCbTransmis.length === 0 && (
+                                                                            <tr><td colSpan={8} className="text-center py-4 text-muted">
+                                                                                <i className="ri-inbox-line fs-24 d-block mb-2"></i>Aucun dossier en attente de validation CB.
+                                                                            </td></tr>
+                                                                        )}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                            {dossiersCbTransmis.length > CB_DOSSIERS_PER_PAGE && (() => {
+                                                                const tp = Math.ceil(dossiersCbTransmis.length / CB_DOSSIERS_PER_PAGE);
+                                                                const maxV = 7;
+                                                                let pgs: (number | '...')[] = [];
+                                                                if (tp <= maxV) { pgs = Array.from({ length: tp }, (_, i) => i + 1); }
+                                                                else {
+                                                                    pgs = [1];
+                                                                    if (cbTransmisPage > 3) pgs.push('...');
+                                                                    for (let i = Math.max(2, cbTransmisPage - 1); i <= Math.min(tp - 1, cbTransmisPage + 1); i++) pgs.push(i);
+                                                                    if (cbTransmisPage < tp - 2) pgs.push('...');
+                                                                    pgs.push(tp);
+                                                                }
+                                                                const siT = (Math.min(cbTransmisPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
+                                                                return (
+                                                                    <div className="d-flex justify-content-between align-items-center p-2 border-top">
+                                                                        <small className="text-muted">{siT + 1}–{Math.min(siT + CB_DOSSIERS_PER_PAGE, dossiersCbTransmis.length)} sur {dossiersCbTransmis.length}</small>
+                                                                        <div className="d-flex align-items-center gap-1">
+                                                                            <Button size="sm" color="light" disabled={cbTransmisPage <= 1} onClick={() => setCbTransmisPage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                            {pgs.map((page, i) => page === '...' ? <span key={`t-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === cbTransmisPage ? 'warning' : 'light'} onClick={() => setCbTransmisPage(page)}>{page}</Button>)}
+                                                                            <Button size="sm" color="light" disabled={cbTransmisPage >= tp} onClick={() => setCbTransmisPage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </CardBody>
+                                                    </Card>
+
+                                                    {/* ═══ Section 2 : Dossiers validés CB ═══ */}
+                                                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                                        <div>
+                                                            <h5 className="fs-14 mb-1 text-success fw-bold">
+                                                                <i className="ri-check-double-line me-1"></i>Dossiers validés CB — Éligibles OP
+                                                            </h5>
+                                                            <p className="text-muted mb-0 fs-12">Sélectionnez pour élaborer un Ordre de Paiement.</p>
+                                                        </div>
+                                                        <Button color="success" size="sm" disabled={selectedOpDossierIds.length === 0} onClick={handleElaborerSelection}>
+                                                            <i className="ri-file-list-3-line me-1"></i>Élaborer l'OP ({selectedOpDossierIds.length})
+                                                        </Button>
+                                                    </div>
+                                                    <Card className="border shadow-none">
+                                                        <CardBody className="p-0">
+                                                            <div className="table-responsive">
+                                                                <table className="table table-striped table-hover align-middle mb-0">
+                                                                    <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                                        <tr>
+                                                                            <th style={{ width: 40 }}><Input type="checkbox" className="form-check-input" checked={selectedOpDossierIds.length === dossiersCbValides.length && dossiersCbValides.length > 0} onChange={() => { const all = dossiersCbValides.map((d: any) => d.id); setSelectedOpDossierIds((prev) => prev.length === all.length ? [] : all); }} /></th>
+                                                                            <th>#</th>
+                                                                            <th>Numéro</th>
+                                                                            <th>Agence</th>
+                                                                            <th>Financement</th>
+                                                                            <th className="text-center">Stagiaires</th>
+                                                                            <th className="text-end">Montant</th>
+                                                                            <th>Statut</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {(() => {
+                                                                            const tp = Math.max(1, Math.ceil(dossiersCbValides.length / CB_DOSSIERS_PER_PAGE));
+                                                                            const safePage = Math.min(cbValidesPage, tp);
+                                                                            const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
+                                                                            const rows = dossiersCbValides.slice(si, si + CB_DOSSIERS_PER_PAGE);
+                                                                            return rows.map((d: any, idx: number) => (
+                                                                                <tr key={d.id}>
+                                                                                    <td><Input type="checkbox" className="form-check-input" checked={selectedOpDossierIds.includes(d.id)} onChange={() => toggleSelection(d.id, setSelectedOpDossierIds)} /></td>
+                                                                                    <td>{si + idx + 1}</td>
+                                                                                    <td className="fw-medium text-success">{d.identifiant}</td>
+                                                                                    <td>{d.agence}</td>
+                                                                                    <td><Badge color="success-subtle" className="text-success">{d.source_financement}</Badge></td>
+                                                                                    <td className="text-center"><Badge color="success" pill>{d.nombre_stagiaires}</Badge></td>
+                                                                                    <td className="text-end fw-bold">{Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                    <td><Badge color="success" className="fs-11">VALIDE_CB</Badge></td>
+                                                                                </tr>
+                                                                            ));
+                                                                        })()}
+                                                                        {dossiersCbValides.length === 0 && (
+                                                                            <tr><td colSpan={8} className="text-center py-4 text-muted">
+                                                                                <i className="ri-inbox-line fs-24 d-block mb-2"></i>Aucun dossier validé CB.
+                                                                            </td></tr>
+                                                                        )}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                            {dossiersCbValides.length > CB_DOSSIERS_PER_PAGE && (() => {
+                                                                const tp = Math.ceil(dossiersCbValides.length / CB_DOSSIERS_PER_PAGE);
+                                                                const maxV = 7;
+                                                                let pgs: (number | '...')[] = [];
+                                                                if (tp <= maxV) { pgs = Array.from({ length: tp }, (_, i) => i + 1); }
+                                                                else {
+                                                                    pgs = [1];
+                                                                    if (cbValidesPage > 3) pgs.push('...');
+                                                                    for (let i = Math.max(2, cbValidesPage - 1); i <= Math.min(tp - 1, cbValidesPage + 1); i++) pgs.push(i);
+                                                                    if (cbValidesPage < tp - 2) pgs.push('...');
+                                                                    pgs.push(tp);
+                                                                }
+                                                                const siP = (Math.min(cbValidesPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
+                                                                return (
+                                                                    <div className="d-flex justify-content-between align-items-center p-2 border-top">
+                                                                        <small className="text-muted">{siP + 1}–{Math.min(siP + CB_DOSSIERS_PER_PAGE, dossiersCbValides.length)} sur {dossiersCbValides.length}</small>
+                                                                        <div className="d-flex align-items-center gap-1">
+                                                                            <Button size="sm" color="light" disabled={cbValidesPage <= 1} onClick={() => setCbValidesPage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                            {pgs.map((page, i) => page === '...' ? <span key={`v-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === cbValidesPage ? 'success' : 'light'} onClick={() => setCbValidesPage(page)}>{page}</Button>)}
+                                                                            <Button size="sm" color="light" disabled={cbValidesPage >= tp} onClick={() => setCbValidesPage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })()}
+                                                        </CardBody>
+                                                    </Card>
+                                                </>
+                                            )}
                                         </TabPane>
                                         <TabPane tabId="ajournes">
                                             <TableContainerReactTable columns={dossierColumns} data={dossiersAjournes} isGlobalFilter={true} customPageSize={10}
@@ -1479,19 +1814,30 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                 </table>
                                                             </div>
                                                         )}
-                                                        {Math.ceil(stagiaireTotal / 10) > 1 && (
-                                                            <div className="d-flex justify-content-between align-items-center p-2 border-top">
-                                                                <small className="text-muted">{stagiaireTotal} résultat(s)</small>
-                                                                <div className="d-flex gap-1">
-                                                                    <Button size="sm" color="light" disabled={stagiairePage <= 1} onClick={() => setStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
-                                                                    {Array.from({ length: Math.min(Math.ceil(stagiaireTotal / 10), 5) }, (_, i) => {
-                                                                        const page = i + 1;
-                                                                        return <Button key={page} size="sm" color={page === stagiairePage ? 'primary' : 'light'} onClick={() => setStagiairePage(page)}>{page}</Button>;
-                                                                    })}
-                                                                    <Button size="sm" color="light" disabled={stagiairePage >= Math.ceil(stagiaireTotal / 10)} onClick={() => setStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                        {(() => {
+                                                            const stPages = Math.ceil(stagiaireTotal / 10);
+                                                            if (stPages <= 1) return null;
+                                                            const maxVis = 7;
+                                                            let stPageNums: (number | '...')[] = [];
+                                                            if (stPages <= maxVis) { stPageNums = Array.from({ length: stPages }, (_, i) => i + 1); }
+                                                            else {
+                                                                stPageNums = [1];
+                                                                if (stagiairePage > 3) stPageNums.push('...');
+                                                                for (let i = Math.max(2, stagiairePage - 1); i <= Math.min(stPages - 1, stagiairePage + 1); i++) stPageNums.push(i);
+                                                                if (stagiairePage < stPages - 2) stPageNums.push('...');
+                                                                stPageNums.push(stPages);
+                                                            }
+                                                            return (
+                                                                <div className="d-flex justify-content-between align-items-center p-2 border-top">
+                                                                    <small className="text-muted">{stagiaireTotal} résultat(s) — Page {stagiairePage}/{stPages}</small>
+                                                                    <div className="d-flex align-items-center gap-1">
+                                                                        <Button size="sm" color="light" disabled={stagiairePage <= 1} onClick={() => setStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                        {stPageNums.map((page, i) => page === '...' ? <span key={`mds-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === stagiairePage ? 'primary' : 'light'} onClick={() => setStagiairePage(page)}>{page}</Button>)}
+                                                                        <Button size="sm" color="light" disabled={stagiairePage >= stPages} onClick={() => setStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        )}
+                                                            );
+                                                        })()}
                                                     </CardBody>
                                                 </Card>
                                             )}

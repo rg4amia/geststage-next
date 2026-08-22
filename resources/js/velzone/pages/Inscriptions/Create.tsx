@@ -262,7 +262,7 @@ const RecapitulatifInscription: React.FC<RecapitulatifProps> = ({ beneficiaire, 
 
     return (
         <Card className="shadow border-0">
-            <CardHeader className="bg-gradient-danger text-white">
+            <CardHeader className="bg-gradient-primary text-white">
                 <h5 className="mb-0 fw-bold">
                     <i className="ri-file-list-3-line me-2" />
                     RÉCAPITULATIF DE L'INSCRIPTION
@@ -1439,10 +1439,10 @@ const Create = ({
                                             className="stepper-circle rounded-circle d-inline-flex align-items-center justify-content-center"
                                             style={{
                                                 width: 56, height: 56,
-                                                backgroundColor: idx < currentStep ? '#198754' : idx === currentStep ? '#dc3545' : '#e9ecef',
+                                                backgroundColor: idx < currentStep ? '#198754' : idx === currentStep ? 'var(--vz-primary)' : '#e9ecef',
                                                 color: idx <= currentStep ? '#fff' : '#6c757d',
                                                 transition: 'all 0.3s ease',
-                                                boxShadow: idx === currentStep ? '0 0 0 4px rgba(220,53,69,0.25)' : idx < currentStep ? '0 2px 8px rgba(25,135,84,0.3)' : 'none',
+                                                boxShadow: idx === currentStep ? '0 0 0 4px rgba(var(--vz-primary-rgb), 0.25)' : idx < currentStep ? '0 2px 8px rgba(25,135,84,0.3)' : 'none',
                                                 border: idx === currentStep ? '3px solid #fff' : 'none',
                                             }}>
                                             {idx < currentStep ? (
@@ -1453,7 +1453,7 @@ const Create = ({
                                         </div>
                                         <div className="mt-2" style={{
                                             fontSize: 13, fontWeight: idx === currentStep ? 700 : 500,
-                                            color: idx === currentStep ? '#dc3545' : idx < currentStep ? '#198754' : '#6c757d',
+                                            color: idx === currentStep ? 'var(--vz-primary)' : idx < currentStep ? '#198754' : '#6c757d',
                                             whiteSpace: 'nowrap',
                                             textTransform: 'uppercase',
                                             letterSpacing: '0.5px',
@@ -1484,7 +1484,7 @@ const Create = ({
                     <div className="mb-4">
                         <div className="d-flex justify-content-between align-items-center mb-2">
                             <div className="d-flex align-items-center gap-2">
-                                <Badge color="danger" pill style={{ fontSize: 13, fontWeight: 600, padding: '6px 12px' }}>
+                                <Badge color="primary" pill style={{ fontSize: 13, fontWeight: 600, padding: '6px 12px' }}>
                                     Étape {currentStep + 1}/{STEPS.length}
                                 </Badge>
                                 <span className="text-muted fw-semibold">{STEPS[currentStep].label}</span>
@@ -1498,13 +1498,13 @@ const Create = ({
                         </div>
                         <div className="progress" style={{ height: 8, borderRadius: 10 }}>
                             <div
-                                className="progress-bar bg-gradient-danger"
+                                className="progress-bar bg-gradient-primary"
                                 role="progressbar"
                                 style={{
                                     width: `${((currentStep + 1) / STEPS.length) * 100}%`,
                                     transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
                                     borderRadius: 10,
-                                    boxShadow: '0 2px 4px rgba(220,53,69,0.3)',
+                                    boxShadow: '0 2px 4px rgba(var(--vz-primary-rgb), 0.3)',
                                 }}
                                 aria-valuenow={(currentStep + 1) / STEPS.length * 100}
                                 aria-valuemin={0}
@@ -1520,8 +1520,8 @@ const Create = ({
                             {currentStep === 0 && (
                                 <Col lg={12} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
                                     <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-danger-subtle">
-                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                        <CardHeader className="bg-primary-subtle">
+                                            <h5 className="card-title mb-0 text-primary fw-bold">
                                                 <i className="ri-building-2-line me-1" />AGENCE REGIONALE
                                             </h5>
                                         </CardHeader>
@@ -1627,8 +1627,8 @@ const Create = ({
                             {currentStep === 1 && (
                                 <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
                                     <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-danger-subtle">
-                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                        <CardHeader className="bg-primary-subtle">
+                                            <h5 className="card-title mb-0 text-primary fw-bold">
                                                 <i className="ri-user-3-line me-1" />IDENTIFICATION STAGIAIRE
                                             </h5>
                                         </CardHeader>
@@ -2043,8 +2043,8 @@ const Create = ({
                             {currentStep === 2 && (
                                 <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
                                     <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-danger-subtle">
-                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                        <CardHeader className="bg-primary-subtle">
+                                            <h5 className="card-title mb-0 text-primary fw-bold">
                                                 <i className="ri-briefcase-line me-1" />MISE EN STAGE
                                             </h5>
                                         </CardHeader>
@@ -2242,8 +2242,8 @@ const Create = ({
                             {currentStep === 3 && (
                                 <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
                                     <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-danger-subtle">
-                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                        <CardHeader className="bg-primary-subtle">
+                                            <h5 className="card-title mb-0 text-primary fw-bold">
                                                 <i className="ri-file-upload-line me-1" />PIECES JUSTIFICATIVES
                                             </h5>
                                         </CardHeader>
@@ -2388,8 +2388,8 @@ const Create = ({
                         {/* ═══ OBSERVATIONS (étapes 2 et 3) ═══ */}
                         {(currentStep === 2 || currentStep === 3) && (
                             <Card className="shadow-sm border-0 mt-3">
-                                <CardHeader className="bg-danger-subtle">
-                                    <h5 className="card-title mb-0 text-danger fw-bold">OBSERVATIONS</h5>
+                                <CardHeader className="bg-primary-subtle">
+                                    <h5 className="card-title mb-0 text-primary fw-bold">OBSERVATIONS</h5>
                                 </CardHeader>
                                 <CardBody>
                                     <Input type="textarea" rows={3}
@@ -2402,7 +2402,7 @@ const Create = ({
                         )}
 
                         {/* ═══ NAVIGATION WIZARD ═══ */}
-                        <Card className="shadow-sm border-0 mt-4" style={{ borderTop: '3px solid #dc3545' }}>
+                        <Card className="shadow-sm border-0 mt-4" style={{ borderTop: '3px solid var(--vz-primary)' }}>
                             <CardBody className="p-4">
                                 <div className="d-flex justify-content-between align-items-center">
                                     <div>
@@ -2426,14 +2426,14 @@ const Create = ({
                                     <div className="d-flex gap-3">
                                         {currentStep < STEPS.length - 1 ? (
                                             <Button
-                                                color="danger"
+                                                color="primary"
                                                 type="button"
                                                 onClick={handleNext}
                                                 size="lg"
                                                 className="px-5"
                                                 style={{
                                                     fontWeight: 600,
-                                                    boxShadow: '0 4px 12px rgba(220,53,69,0.3)',
+                                                    boxShadow: '0 4px 12px rgba(var(--vz-primary-rgb), 0.3)',
                                                     transition: 'all 0.3s ease',
                                                 }}
                                             >

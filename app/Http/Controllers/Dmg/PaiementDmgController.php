@@ -16,8 +16,10 @@ use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -105,6 +107,117 @@ class PaiementDmgController extends Controller
             'typesStage' => Cache::remember('ref.types_stage_arr', 86400, fn () => TypeStage::orderBy('nom')->get(['id', 'nom'])->toArray()),
             'typestructures' => Cache::remember('ref.typestructures_arr', 86400, fn () => TypeStructure::orderBy('nom')->get(['id', 'nom'])->toArray()),
             'periodeOptions' => Cache::remember('ref.periodes_paiement', 3600, fn () => Periode::orderByDesc('code')->get(['id', 'code'])->toArray()),
+        ]);
+    }
+
+    /**
+     * API : Dossiers CB par mois (DMG - onglet Transmis CB)
+     */
+    public function dossiersCbByMois(Request $request): JsonResponse
+    {
+        $mois = $request->query('mois', Carbon::now()->format('Y-m'));
+        $periode = Periode::where('code', $mois)->first();
+        $statut = $request->query('statut', 'TRANSMIS_CB');
+        $search = $request->query('search');
+
+        $query = DossierPaiement::with(['agence', 'sourceFinancement'])
+            ->withCount('paiements')
+            ->where('statut', $statut)
+            ->where('periode_id', $periode?->id);
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('numero', 'like', "%{$search}%")
+                  ->orWhereHas('paiements.droitPaiement.stage.beneficiaire', function ($q2) use ($search) {
+                      $q2->where('nom', 'like', "%{$search}%")
+                         ->orWhere('prenoms', 'like', "%{$search}%")
+                         ->orWhere('numero_aej', 'like', "%{$search}%");
+                  });
+            });
+        }
+
+        $dossiers = $query
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn (DossierPaiement $d) => [
+                'id' => $d->id,
+                'identifiant' => $d->numero,
+                'agence' => $d->agence?->nom ?? '-',
+                'source_financement' => $d->sourceFinancement?->nom ?? '-',
+                'nombre_stagiaires' => $d->paiements_count,
+                'montant_total' => $d->montant_total,
+                'statut' => $d->statut,
+            ]);
+
+        return response()->json($dossiers);
+    }
+
+    /**
+     * API : Stagiaires d'un dossier pour la vue DMG
+     */
+    public function stagiairesByDossier(Request $request): JsonResponse
+    {
+        $request->validate([
+            'dossier_id' => 'required|integer',
+            'start' => 'nullable|integer',
+            'length' => 'nullable|integer',
+            'search' => 'nullable|string',
+        ]);
+
+        $dossierId = $request->input('dossier_id');
+        $start = $request->integer('start', 0);
+        $length = $request->integer('length', 10);
+        $search = $request->input('search', '');
+
+        $query = DB::table('lignes_dossiers_paiement')
+            ->join('paiements', 'lignes_dossiers_paiement.paiement_id', '=', 'paiements.id')
+            ->join('droits_paiement', 'paiements.droit_paiement_id', '=', 'droits_paiement.id')
+            ->join('stages', 'droits_paiement.stage_id', '=', 'stages.id')
+            ->join('beneficiaires', 'stages.beneficiaire_id', '=', 'beneficiaires.id')
+            ->leftJoin('entreprises', 'stages.entreprise_id', '=', 'entreprises.id')
+            ->leftJoin('agences', 'stages.agence_id', '=', 'agences.id')
+            ->leftJoin('sources_financement', 'droits_paiement.source_financement_id', '=', 'sources_financement.id')
+            ->leftJoin('types_stage', 'stages.type_stage_id', '=', 'types_stage.id')
+            ->where('lignes_dossiers_paiement.dossier_paiement_id', $dossierId)
+            ->whereNull('lignes_dossiers_paiement.retire_le')
+            ->select(
+                'paiements.id as paiement_id',
+                'paiements.created_at',
+                'lignes_dossiers_paiement.montant',
+                'paiements.statut',
+                'beneficiaires.nom',
+                'beneficiaires.prenoms',
+                'beneficiaires.numero_aej',
+                'beneficiaires.date_naissance',
+                'beneficiaires.numero_tresor_money as tresor_pay',
+                'entreprises.raison_sociale as entreprise',
+                'agences.nom as agence',
+                'sources_financement.nom as source_financement',
+                'types_stage.nom as type_stage',
+                'stages.id as stage_id',
+                'stages.date_debut',
+                'stages.date_fin_prevue as date_fin'
+            );
+
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('beneficiaires.nom', 'LIKE', "%{$search}%")
+                  ->orWhere('beneficiaires.prenoms', 'LIKE', "%{$search}%")
+                  ->orWhere('beneficiaires.numero_aej', 'LIKE', "%{$search}%");
+            });
+        }
+
+        $total = (clone $query)->count();
+        $stagiaires = $query->orderByDesc('paiements.created_at')
+            ->offset($start)
+            ->limit($length)
+            ->get();
+
+        return response()->json([
+            'draw' => $request->integer('draw', 1),
+            'recordsTotal' => $total,
+            'recordsFiltered' => $total,
+            'data' => $stagiaires,
         ]);
     }
 

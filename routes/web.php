@@ -112,6 +112,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dmg/paiements/elaborer-op', [OperationPaiementDmgController::class, 'elaborer'])->middleware('can:elaborer_op')->name('dmg.paiements.elaborer_op');
     Route::post('/dmg/paiements/creer-bordereau', [OperationPaiementDmgController::class, 'creerBordereau'])->middleware('can:creer_bordereau')->name('dmg.paiements.creer_bordereau');
     Route::post('/dmg/paiements/transmettre-bordereau/{bordereau}', [OperationPaiementDmgController::class, 'transmettreBordereau'])->middleware('can:transmettre_bordereau_ac')->name('dmg.paiements.transmettre_bordereau');
+    Route::get('/dmg/paiements/dossiers-cb', [PaiementDmgController::class, 'dossiersCbByMois'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.dossiers_cb');
+    Route::post('/dmg/paiements/stagiaires', [PaiementDmgController::class, 'stagiairesByDossier'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.stagiaires');
     Route::get('/dmg/multi-dossier', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'index'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.index');
     Route::get('/dmg/multi-dossier/dossiers', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getDossiers'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-dossiers');
     Route::post('/dmg/multi-dossier/stagiaires', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getStagiaires'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-stagiaires');
@@ -135,6 +137,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Phase 8 : Chef de Bureau (CB)
     Route::get('/cb/paiements', [PaiementCbController::class, 'index'])->name('cb.paiements.index');
+    Route::get('/cb/paiements/dossiers', [PaiementCbController::class, 'dossiersByMois'])->name('cb.paiements.dossiers');
+    Route::post('/cb/paiements/stagiaires', [PaiementCbController::class, 'stagiairesByDossier'])->name('cb.paiements.stagiaires');
+    Route::get('/cb/paiements/documents', [PaiementCbController::class, 'documentsByStage'])->name('cb.paiements.documents');
     Route::post('/cb/paiements/valider/{id}', [PaiementCbController::class, 'valider'])->name('cb.paiements.valider');
     Route::post('/cb/paiements/ajourner/{id}', [PaiementCbController::class, 'ajourner'])->name('cb.paiements.ajourner');
 
