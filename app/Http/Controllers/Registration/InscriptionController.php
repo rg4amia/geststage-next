@@ -17,9 +17,11 @@ use App\Models\Reference\TypeEnseignement;
 use App\Models\Reference\TypeHandicap;
 use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
+use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class InscriptionController extends Controller
@@ -63,6 +65,9 @@ class InscriptionController extends Controller
         $typesHandicap = TypeHandicap::where('actif', true)->get();
         $typesPaiement = TypePaiement::where('actif', true)->get();
         $sourcesFinancement = SourceFinancement::where('actif', true)->get();
+        $statutsStage = DB::table('statuts_stage')->get();
+        $situationsStage = DB::table('situations_stage')->get();
+        $typesStructure = TypeStructure::where('actif', true)->get();
 
         return Inertia::render('Inscriptions/Create', [
             'offres' => $offres,
@@ -78,6 +83,9 @@ class InscriptionController extends Controller
             'typesHandicap' => $typesHandicap,
             'typesPaiement' => $typesPaiement,
             'sourcesFinancement' => $sourcesFinancement,
+            'statutsStage' => $statutsStage,
+            'situationsStage' => $situationsStage,
+            'typesStructure' => $typesStructure,
         ]);
     }
 

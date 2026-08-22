@@ -1589,10 +1589,28 @@ class MigrateLegacyDataCommand extends Command
         $query = DB::connection('legacy')->table('operations');
         $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
+        $duplicateNumeroOwners = DB::connection('legacy')->table('operations')
+            ->select('id', 'numero_operation')
+            ->get()
+            ->groupBy(fn ($row): string => trim((string) $row->numero_operation))
+            ->filter(fn ($rows, $numero): bool => $numero !== '' && $rows->count() > 1)
+            ->map(fn ($rows): int => (int) $rows->min('id'))
+            ->all();
+        $targetNumeroOwners = OrdrePaiement::query()
+            ->whereNotNull('ancien_id')
+            ->pluck('ancien_id', 'numero')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
         $bar = $this->output->createProgressBar($query->count());
         $bar->start();
 
-        $query->orderBy('id')->chunk(500, function ($operations) use (&$periodesMap, $sourcesMap, &$bar): void {
+        $query->orderBy('id')->chunk(500, function ($operations) use (
+            &$periodesMap,
+            &$targetNumeroOwners,
+            $sourcesMap,
+            $duplicateNumeroOwners,
+            &$bar,
+        ): void {
             foreach ($operations as $legacyOperation) {
                 $date = $this->mapper->resolveLegacyPeriodDate($legacyOperation);
                 if ($date === null) {
@@ -1625,18 +1643,42 @@ class MigrateLegacyDataCommand extends Command
                     );
                 }
 
+                $baseNumero = trim((string) ($legacyOperation->numero_operation ?: 'OP-LEGACY-'.$legacyOperation->id));
+                $resolvedNumber = $this->resolveUniqueLegacyNumber(
+                    $baseNumero,
+                    (int) $legacyOperation->id,
+                    $duplicateNumeroOwners,
+                    $targetNumeroOwners,
+                );
+                if (isset($duplicateNumeroOwners[$baseNumero])) {
+                    $this->recorder->anomaly(
+                        $this->executionId,
+                        'OP_NUMERO_DUPLIQUE',
+                        'operations',
+                        $legacyOperation->id,
+                        "Numéro legacy partagé par plusieurs opérations : {$baseNumero}.",
+                        [
+                            'numero_legacy' => $baseNumero,
+                            'source_canonique_id' => $resolvedNumber['canonical_source_id'],
+                            'numero_cible' => $resolvedNumber['numero'],
+                        ],
+                        'NON_BLOQUANTE',
+                    );
+                }
+
                 $ordre = OrdrePaiement::firstOrNew(['ancien_id' => $legacyOperation->id]);
                 if (! $ordre->exists) {
                     $ordre->uuid_public = (string) Str::uuid();
                 }
                 $ordre->forceFill([
                     'ancien_id' => $legacyOperation->id,
-                    'numero' => Str::limit((string) ($legacyOperation->numero_operation ?: 'OP-LEGACY-'.$legacyOperation->id), 50, ''),
+                    'numero' => $resolvedNumber['numero'],
                     'periode_id' => $this->ensurePeriod($date, $periodesMap),
                     'source_financement_id' => $sourceFinancementId,
                     'montant_total' => (float) ($legacyOperation->montant_op ?? $legacyOperation->montant ?? 0),
                     'statut' => $this->mapLegacyOperationStatus($legacyOperation),
                 ])->save();
+                $targetNumeroOwners[$resolvedNumber['numero']] = (int) $legacyOperation->id;
 
                 $dossierStatus = match ($ordre->statut) {
                     'VISE_AC' => 'VISE_AC',
@@ -1681,10 +1723,28 @@ class MigrateLegacyDataCommand extends Command
         $query = DB::connection('legacy')->table('borderaus');
         $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
+        $duplicateNumeroOwners = DB::connection('legacy')->table('borderaus')
+            ->select('id', 'numero_borderau', 'numero_bordereau')
+            ->get()
+            ->groupBy(fn ($row): string => trim((string) ($row->numero_borderau ?: $row->numero_bordereau)))
+            ->filter(fn ($rows, $numero): bool => $numero !== '' && $rows->count() > 1)
+            ->map(fn ($rows): int => (int) $rows->min('id'))
+            ->all();
+        $targetNumeroOwners = BordereauPaiement::query()
+            ->whereNotNull('ancien_id')
+            ->pluck('ancien_id', 'numero')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
         $bar = $this->output->createProgressBar($query->count());
         $bar->start();
 
-        $query->orderBy('id')->chunk(500, function ($bordereaux) use (&$periodesMap, $sourcesMap, &$bar): void {
+        $query->orderBy('id')->chunk(500, function ($bordereaux) use (
+            &$periodesMap,
+            &$targetNumeroOwners,
+            $sourcesMap,
+            $duplicateNumeroOwners,
+            &$bar,
+        ): void {
             foreach ($bordereaux as $legacyBordereau) {
                 $date = $this->mapper->resolveLegacyPeriodDate($legacyBordereau);
                 if ($date === null) {
@@ -1717,18 +1777,46 @@ class MigrateLegacyDataCommand extends Command
                     );
                 }
 
+                $baseNumero = trim((string) (
+                    $legacyBordereau->numero_borderau
+                    ?: $legacyBordereau->numero_bordereau
+                    ?: 'BRD-LEGACY-'.$legacyBordereau->id
+                ));
+                $resolvedNumber = $this->resolveUniqueLegacyNumber(
+                    $baseNumero,
+                    (int) $legacyBordereau->id,
+                    $duplicateNumeroOwners,
+                    $targetNumeroOwners,
+                );
+                if (isset($duplicateNumeroOwners[$baseNumero])) {
+                    $this->recorder->anomaly(
+                        $this->executionId,
+                        'BORDEREAU_NUMERO_DUPLIQUE',
+                        'borderaus',
+                        $legacyBordereau->id,
+                        "Numéro legacy partagé par plusieurs bordereaux : {$baseNumero}.",
+                        [
+                            'numero_legacy' => $baseNumero,
+                            'source_canonique_id' => $resolvedNumber['canonical_source_id'],
+                            'numero_cible' => $resolvedNumber['numero'],
+                        ],
+                        'NON_BLOQUANTE',
+                    );
+                }
+
                 $bordereau = BordereauPaiement::firstOrNew(['ancien_id' => $legacyBordereau->id]);
                 if (! $bordereau->exists) {
                     $bordereau->uuid_public = (string) Str::uuid();
                 }
                 $bordereau->forceFill([
                     'ancien_id' => $legacyBordereau->id,
-                    'numero' => Str::limit((string) ($legacyBordereau->numero_borderau ?: $legacyBordereau->numero_bordereau ?: 'BRD-LEGACY-'.$legacyBordereau->id), 50, ''),
+                    'numero' => $resolvedNumber['numero'],
                     'periode_id' => $this->ensurePeriod($date, $periodesMap),
                     'source_financement_id' => $sourceFinancementId,
                     'montant_total' => (float) ($legacyBordereau->montant_total ?? 0),
                     'statut' => $this->mapLegacyBordereauStatus($legacyBordereau),
                 ])->save();
+                $targetNumeroOwners[$resolvedNumber['numero']] = (int) $legacyBordereau->id;
 
                 OrdrePaiement::whereIn('ancien_id', $legacyOperationIds)->update(['bordereau_paiement_id' => $bordereau->id]);
 
@@ -1775,6 +1863,40 @@ class MigrateLegacyDataCommand extends Command
         }
 
         return (int) $periodesMap[$code];
+    }
+
+    /**
+     * @param  array<string, int>  $duplicateOwners
+     * @param  array<string, int>  $targetOwners
+     * @return array{numero: string, canonical_source_id: int, conflict: bool}
+     */
+    private function resolveUniqueLegacyNumber(
+        string $baseNumber,
+        int $sourceId,
+        array $duplicateOwners,
+        array $targetOwners,
+        int $maxLength = 50,
+    ): array {
+        $canonicalSourceId = $duplicateOwners[$baseNumber] ?? $sourceId;
+        $targetOwner = $targetOwners[$baseNumber] ?? null;
+        $conflict = $canonicalSourceId !== $sourceId
+            || ($targetOwner !== null && $targetOwner !== $sourceId);
+
+        if (! $conflict) {
+            return [
+                'numero' => mb_substr($baseNumber, 0, $maxLength),
+                'canonical_source_id' => $canonicalSourceId,
+                'conflict' => false,
+            ];
+        }
+
+        $suffix = '-LEGACY-'.$sourceId;
+
+        return [
+            'numero' => mb_substr($baseNumber, 0, max(1, $maxLength - mb_strlen($suffix))).$suffix,
+            'canonical_source_id' => $canonicalSourceId,
+            'conflict' => true,
+        ];
     }
 
     private function mapLegacyGroupStatus(object $legacyGroupe): string

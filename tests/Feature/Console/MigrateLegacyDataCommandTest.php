@@ -314,6 +314,64 @@ class MigrateLegacyDataCommandTest extends TestCase
         ]);
     }
 
+    public function test_duplicate_operation_and_bordereau_numbers_are_preserved_idempotently(): void
+    {
+        SourceFinancement::factory()->create(['ancien_id' => 7]);
+        DB::connection('legacy')->table('operations')->insert([
+            [
+                'id' => 46,
+                'numero_operation' => '74',
+                'mois' => '2025-04',
+                'type_financement_id' => 7,
+                'montant_op' => 0,
+                'status_operation' => 'destroyed',
+                'borderau_id' => 1,
+                'deleted_at' => '2025-04-30 10:00:00',
+            ],
+            [
+                'id' => 121,
+                'numero_operation' => '74',
+                'mois' => '2025-05',
+                'type_financement_id' => 7,
+                'montant_op' => 0,
+                'status_operation' => 'validated',
+                'borderau_id' => 8,
+                'deleted_at' => null,
+            ],
+        ]);
+        DB::connection('legacy')->table('borderaus')->insert([
+            [
+                'id' => 1,
+                'numero_borderau' => 'BOR-05',
+                'mois' => '2025-04',
+                'type_financement_id' => 7,
+                'montant_total' => 0,
+                'status_borderau' => 'pending',
+            ],
+            [
+                'id' => 8,
+                'numero_borderau' => 'BOR-05',
+                'mois' => '2025-05',
+                'type_financement_id' => 7,
+                'montant_total' => 0,
+                'status_borderau' => 'pending',
+            ],
+        ]);
+
+        foreach (['operations', 'bordereaux', 'operations', 'bordereaux'] as $step) {
+            $this->artisan('migrate:legacy-data', ['--step' => $step])->assertExitCode(0);
+        }
+
+        $this->assertDatabaseHas('ordre_paiements', ['ancien_id' => 46, 'numero' => '74']);
+        $this->assertDatabaseHas('ordre_paiements', ['ancien_id' => 121, 'numero' => '74-LEGACY-121']);
+        $this->assertDatabaseHas('bordereau_paiements', ['ancien_id' => 1, 'numero' => 'BOR-05']);
+        $this->assertDatabaseHas('bordereau_paiements', ['ancien_id' => 8, 'numero' => 'BOR-05-LEGACY-8']);
+        $this->assertDatabaseCount('ordre_paiements', 2);
+        $this->assertDatabaseCount('bordereau_paiements', 2);
+        $this->assertSame(2, DB::table('anomalies_migration')->where('code', 'OP_NUMERO_DUPLIQUE')->count());
+        $this->assertSame(2, DB::table('anomalies_migration')->where('code', 'BORDEREAU_NUMERO_DUPLIQUE')->count());
+    }
+
     public function test_payment_migration_uses_business_month_and_repairs_existing_nature_idempotently(): void
     {
         $agence = Agence::factory()->create(['ancien_id' => 12]);
