@@ -15,6 +15,7 @@ import {
     Label,
     Row,
     Spinner,
+    UncontrolledTooltip,
 } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
 
@@ -121,6 +122,312 @@ const TYPE_HANDICAP_OPTIONS = [
     { value: 'AUTRE', label: 'Autre' },
 ];
 
+/** Extensions autorisées pour les fichiers */
+const ALLOWED_DOC_EXTENSIONS = ['pdf', 'doc', 'docx'];
+const ALLOWED_IMAGE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
+const MAX_FILE_SIZE_KB = 10240; // 10 MB
+
+/** Valider l'extension d'un fichier */
+const validateFileExtension = (file: File, allowedExts: string[]): boolean => {
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    return allowedExts.includes(ext);
+};
+
+/** Valider la taille d'un fichier (max en KB) */
+const validateFileSize = (file: File, maxKB: number): boolean => {
+    return file.size <= maxKB * 1024;
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   WRAPPER REACT-SELECT
+   ═══════════════════════════════════════════════════════════════════════════ */
+interface RsSelectOption {
+    value: string;
+    label: string;
+}
+
+/** Wrapper react-select compatible avec les states string existants */
+const RsSelect = ({
+    value, options, onChange, placeholder, isDisabled, className, id,
+}: {
+    value: string;
+    options: RsSelectOption[];
+    onChange: (val: string) => void;
+    placeholder?: string;
+    isDisabled?: boolean;
+    className?: string;
+    id?: string;
+}) => {
+    const selected = options.find(o => o.value === value) || null;
+    return (
+        <Select<RsSelectOption>
+            inputId={id}
+            className={className}
+            classNamePrefix="select2"
+            options={options}
+            value={selected}
+            onChange={opt => onChange(opt?.value ?? '')}
+            placeholder={placeholder || 'Sélectionner...'}
+            isDisabled={isDisabled}
+            isClearable
+            noOptionsMessage={() => 'Aucune option'}
+            formatOptionLabel={(opt) => opt.label}
+        />
+    );
+};
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   COMPOSANTS D'AIDE
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/**
+ * Composant Tooltip d'aide contextuelle pour les champs complexes
+ */
+const FieldTooltip: React.FC<{ id: string; children: React.ReactNode }> = ({ id, children }) => {
+    return (
+        <>
+            <i
+                id={`tooltip-${id}`}
+                className="ri-information-line text-primary ms-1"
+                style={{ cursor: 'help', fontSize: '16px' }}
+            />
+            <UncontrolledTooltip placement="top" target={`tooltip-${id}`}>
+                {children}
+            </UncontrolledTooltip>
+        </>
+    );
+};
+
+/**
+ * Composant Label amélioré avec support tooltip optionnel
+ */
+const EnhancedLabel: React.FC<{
+    label: string;
+    required?: boolean;
+    tooltipId?: string;
+    tooltipContent?: React.ReactNode;
+}> = ({ label, required, tooltipId, tooltipContent }) => {
+    return (
+        <Label className="fw-semibold">
+            {label}
+            {required && <span className="text-danger">*</span>}
+            {tooltipId && tooltipContent && <FieldTooltip id={tooltipId}>{tooltipContent}</FieldTooltip>}
+        </Label>
+    );
+};
+
+/**
+ * Composant de récapitulatif avant validation finale
+ */
+interface RecapitulatifProps {
+    beneficiaire: Partial<BenefData>;
+    stage: Partial<StageData>;
+    documents: Record<string, File | null>;
+    refData: {
+        agences: RefItem[];
+        communes: RefItem[];
+        typesStage: RefItem[];
+        sourcesFinancement: RefItem[];
+        originesStagiaire: RefItem[];
+        niveauxEtude: RefItem[];
+        diplomes: RefItem[];
+        entreprises: RefItem[];
+        typesPaiement: RefItem[];
+    };
+}
+
+const RecapitulatifInscription: React.FC<RecapitulatifProps> = ({ beneficiaire, stage, documents, refData }) => {
+    const getRefLabel = (items: RefItem[], id: string | undefined) => {
+        if (!id) return '—';
+        const item = items.find(i => String(i.id) === id);
+        return item?.nom || '—';
+    };
+
+    const formatDate = (date: string | undefined) => {
+        if (!date) return '—';
+        const d = new Date(date);
+        return d.toLocaleDateString('fr-FR');
+    };
+
+    return (
+        <Card className="shadow border-0">
+            <CardHeader className="bg-gradient-danger text-white">
+                <h5 className="mb-0 fw-bold">
+                    <i className="ri-file-list-3-line me-2" />
+                    RÉCAPITULATIF DE L'INSCRIPTION
+                </h5>
+                <small>Veuillez vérifier toutes les informations avant de valider</small>
+            </CardHeader>
+            <CardBody>
+                <Row className="g-4">
+                    {/* Section Agence */}
+                    <Col md={6}>
+                        <div className="border-start border-3 border-danger ps-3">
+                            <h6 className="text-danger fw-bold mb-3">
+                                <i className="ri-building-2-line me-1" />Informations Agence
+                            </h6>
+                            <div className="mb-2">
+                                <strong>Agence :</strong> {getRefLabel(refData.agences, stage.agence_id)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Conseiller :</strong> {stage.conseiller_id || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Origine :</strong> {getRefLabel(refData.originesStagiaire, stage.origine_stagiaire_id)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Financement :</strong> {getRefLabel(refData.sourcesFinancement, stage.source_financement_id)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Type de stage :</strong> {getRefLabel(refData.typesStage, stage.type_stage_id)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Durée :</strong> {stage.duree_stage ? `${stage.duree_stage} mois` : '—'}
+                            </div>
+                        </div>
+                    </Col>
+
+                    {/* Section Bénéficiaire */}
+                    <Col md={6}>
+                        <div className="border-start border-3 border-info ps-3">
+                            <h6 className="text-info fw-bold mb-3">
+                                <i className="ri-user-3-line me-1" />Identité Stagiaire
+                            </h6>
+                            <div className="mb-2">
+                                <strong>N° AEJ :</strong> {beneficiaire.numero_aej || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Nom :</strong> {beneficiaire.nom || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Prénoms :</strong> {beneficiaire.prenoms || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Date de naissance :</strong> {formatDate(beneficiaire.date_naissance)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Sexe :</strong> {beneficiaire.sexe || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Téléphone :</strong> {beneficiaire.telephone_principal || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>N° CMU :</strong> {beneficiaire.numero_cmu || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Pièce d'identité :</strong> {beneficiaire.numero_piece_identite || '—'}
+                            </div>
+                        </div>
+                    </Col>
+
+                    {/* Section Formation */}
+                    <Col md={6}>
+                        <div className="border-start border-3 border-success ps-3">
+                            <h6 className="text-success fw-bold mb-3">
+                                <i className="ri-graduation-cap-line me-1" />Formation
+                            </h6>
+                            <div className="mb-2">
+                                <strong>Niveau d'étude :</strong> {getRefLabel(refData.niveauxEtude, beneficiaire.niveau_etude_id)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Diplôme :</strong> {getRefLabel(refData.diplomes, beneficiaire.diplome_id)}
+                            </div>
+                            {beneficiaire.specialite && (
+                                <div className="mb-2">
+                                    <strong>Spécialité :</strong> {beneficiaire.specialite}
+                                </div>
+                            )}
+                            {beneficiaire.annee_diplome && (
+                                <div className="mb-2">
+                                    <strong>Année :</strong> {beneficiaire.annee_diplome}
+                                </div>
+                            )}
+                        </div>
+                    </Col>
+
+                    {/* Section Entreprise */}
+                    <Col md={6}>
+                        <div className="border-start border-3 border-warning ps-3">
+                            <h6 className="text-warning fw-bold mb-3">
+                                <i className="ri-building-4-line me-1" />Entreprise d'accueil
+                            </h6>
+                            <div className="mb-2">
+                                <strong>Entreprise :</strong> {getRefLabel(refData.entreprises, stage.entreprise_id)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Service :</strong> {stage.service_affectation || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Encadreur :</strong> {stage.nom_encadreur || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Fonction encadreur :</strong> {stage.fonction_encadreur || '—'}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Contact encadreur :</strong> {stage.contact_encadreur || '—'}
+                            </div>
+                        </div>
+                    </Col>
+
+                    {/* Section Dates */}
+                    <Col md={6}>
+                        <div className="border-start border-3 border-primary ps-3">
+                            <h6 className="text-primary fw-bold mb-3">
+                                <i className="ri-calendar-line me-1" />Dates
+                            </h6>
+                            <div className="mb-2">
+                                <strong>Date début :</strong> {formatDate(stage.date_debut)}
+                            </div>
+                            <div className="mb-2">
+                                <strong>Date fin prévue :</strong> {formatDate(stage.date_fin_prevue)}
+                            </div>
+                            {stage.date_demarrage_capitalisation && (
+                                <div className="mb-2">
+                                    <strong>Début capitalisation :</strong> {formatDate(stage.date_demarrage_capitalisation)}
+                                </div>
+                            )}
+                        </div>
+                    </Col>
+
+                    {/* Section Documents */}
+                    <Col md={6}>
+                        <div className="border-start border-3 border-secondary ps-3">
+                            <h6 className="text-secondary fw-bold mb-3">
+                                <i className="ri-file-upload-line me-1" />Documents joints
+                            </h6>
+                            {Object.entries(documents).map(([key, file]) => {
+                                if (!file) return null;
+                                return (
+                                    <div key={key} className="mb-2">
+                                        <i className="ri-file-3-line text-success me-1" />
+                                        <small>{file.name}</small>
+                                    </div>
+                                );
+                            })}
+                            {Object.values(documents).every(f => !f) && (
+                                <div className="text-muted">
+                                    <i className="ri-file-warning-line me-1" />
+                                    Aucun document joint
+                                </div>
+                            )}
+                        </div>
+                    </Col>
+
+                    {/* Observations */}
+                    {stage.observations && (
+                        <Col md={12}>
+                            <Alert color="info" className="mb-0">
+                                <strong>Observations :</strong>
+                                <div className="mt-2">{stage.observations}</div>
+                            </Alert>
+                        </Col>
+                    )}
+                </Row>
+            </CardBody>
+        </Card>
+    );
+};
+
 /* ═══════════════════════════════════════════════════════════════════════════
    HELPERS
    ═══════════════════════════════════════════════════════════════════════════ */
@@ -217,31 +524,21 @@ const getFilteredTypeStageIds = (
 };
 
 /** Durées selon financement et type stage (replication exacte du legacy getTypeStage)
- * 
+ *
  * Legacy: Le serveur retourne les durées configurées pour chaque type stage.
  * - type_stage.duree=6 → ajoute "6 mois"
  * - type_stage.duree=3 → si BMZ(PEJEDEC): [3]; sinon: ["", 1, 1.5, 2, 3]
- * 
- * Nouveau système: on reconstruit la logique basée sur le nom du type stage:
- * - STAGE ECOLE → duree=6 → seulement "6 mois"
- * - STAGE DE QUALIFICATION → duree=6 ET duree=3 → [1, 1.5, 2, 3, 6]
- *   sauf si PEJEDEC → seulement [3]
+ *
+ * Logique durée par type de stage:
+ * - STAGE ECOLE → [1, 1.5, 2, 3, 6] mois
+ * - STAGE DE QUALIFICATION → strictement 6 mois
  */
 const getDurationOptions = (financementCode: string, typeStageLabel: string): { value: string; label: string }[] => {
-    const isBMZ = financementCode.includes('PEJEDEC');
     const isEcole = normalizeLabel(typeStageLabel).includes('ECOLE');
     const isQualif = normalizeLabel(typeStageLabel).includes('QUALIFICATION');
 
-    // STAGE ECOLE → toujours 6 mois
+    // STAGE ECOLE → [1, 1.5, 2, 3, 6] mois
     if (isEcole) {
-        return [{ value: '6', label: '6 mois' }];
-    }
-    // STAGE DE QUALIFICATION + PEJEDEC → seulement 3 mois
-    if (isQualif && isBMZ) {
-        return [{ value: '3', label: '3 mois' }];
-    }
-    // STAGE DE QUALIFICATION (autre financement) → [1, 1.5, 2, 3, 6]
-    if (isQualif) {
         return [
             { value: '1', label: '1 mois' },
             { value: '1.5', label: '1.5 mois' },
@@ -249,6 +546,10 @@ const getDurationOptions = (financementCode: string, typeStageLabel: string): { 
             { value: '3', label: '3 mois' },
             { value: '6', label: '6 mois' },
         ];
+    }
+    // STAGE DE QUALIFICATION → strictement 6 mois
+    if (isQualif) {
+        return [{ value: '6', label: '6 mois' }];
     }
     // Par défaut → toutes les durées
     return [
@@ -303,6 +604,17 @@ const Create = ({
 
     const [contrat, setContrat] = useState({ numero: '', date_debut: '', date_fin: '', prime_mensuelle: '' });
     const [documents, setDocuments] = useState<Record<string, File | null>>({});
+
+    /* ─── Wizard stepper ─── */
+    const STEPS = [
+        { key: 'agence', label: 'Agence Régionale', icon: 'ri-building-2-line' },
+        { key: 'identification', label: 'Identification', icon: 'ri-user-3-line' },
+        { key: 'stage', label: 'Mise en Stage', icon: 'ri-briefcase-line' },
+        { key: 'documents', label: 'Documents', icon: 'ri-file-upload-line' },
+        { key: 'recapitulatif', label: 'Récapitulatif', icon: 'ri-check-double-line' },
+    ] as const;
+    type StepKey = typeof STEPS[number]['key'];
+    const [currentStep, setCurrentStep] = useState<number>(0);
 
     /* ─── UI states ─── */
     const [errors, setErrors] = useState<FormErrors>({});
@@ -748,7 +1060,7 @@ const Create = ({
         // ─── MISE EN STAGE ───
         req('entreprise_id', stage.entreprise_id, 'Entreprise');
         req('service_affectation', stage.service_affectation, 'Service d\'affectation');
-        req('intitule_poste', stage.intitule_poste, 'Intitulé du poste');
+        // intitule_poste: NON requis dans le legacy (pas dans les règles jQuery)
         req('localite_stage', stage.localite_stage, 'Localité / Lieu de stage');
         req('commune_stage', stage.commune_stage, 'Commune du lieu de stage');
         req('sous_prefecture_stage', stage.sous_prefecture_stage, 'S/P du lieu de stage');
@@ -811,20 +1123,86 @@ const Create = ({
         req('observations', stage.observations, 'Observations');
 
         // ─── FICHIERS OBLIGATOIRES ───
-        if (!documents.piece_identite) {
-            req('piece_identite', '', 'Pièce d\'identité');
+        // Fichier CMU — toujours obligatoire (legacy: HTML required + label *)
+        if (!documents.fichier_cmu) {
+            e.fichier_cmu = 'Le fichier CMU est obligatoire.';
+        } else {
+            if (!validateFileExtension(documents.fichier_cmu, ALLOWED_IMAGE_EXTENSIONS)) {
+                e.fichier_cmu = 'Le fichier doit être au format PDF, JPG ou PNG.';
+            }
+            if (!validateFileSize(documents.fichier_cmu, MAX_FILE_SIZE_KB)) {
+                e.fichier_cmu = 'La taille du fichier ne doit pas dépasser 10 MB.';
+            }
         }
+
+        // Pièce d'identité — toujours obligatoire
+        if (!documents.piece_identite) {
+            e.piece_identite = 'La pièce d\'identité est obligatoire.';
+        } else {
+            if (!validateFileExtension(documents.piece_identite, ALLOWED_DOC_EXTENSIONS)) {
+                e.piece_identite = 'Le fichier doit être au format PDF, DOC ou DOCX.';
+            }
+            if (!validateFileSize(documents.piece_identite, MAX_FILE_SIZE_KB)) {
+                e.piece_identite = 'La taille du fichier ne doit pas dépasser 10 MB.';
+            }
+        }
+
+        // Attestation d'admissibilité — obligatoire si STAGE ECOLE
         if (isStageEcole) {
             if (!documents.fichier_attestation) {
                 e.fichier_attestation = 'L\'attestation d\'admissibilité est obligatoire pour ce type de stage.';
+            } else {
+                if (!validateFileExtension(documents.fichier_attestation, ALLOWED_DOC_EXTENSIONS)) {
+                    e.fichier_attestation = 'Le fichier doit être au format PDF, DOC ou DOCX.';
+                }
+                if (!validateFileSize(documents.fichier_attestation, MAX_FILE_SIZE_KB)) {
+                    e.fichier_attestation = 'La taille du fichier ne doit pas dépasser 10 MB.';
+                }
             }
+            // Certificat de fréquentation — obligatoire si STAGE ECOLE
             if (!documents.fichier_certificat_frequentation) {
                 e.fichier_certificat_frequentation = 'Le certificat de fréquentation est obligatoire pour ce type de stage.';
+            } else {
+                if (!validateFileExtension(documents.fichier_certificat_frequentation, ALLOWED_DOC_EXTENSIONS)) {
+                    e.fichier_certificat_frequentation = 'Le fichier doit être au format PDF, DOC ou DOCX.';
+                }
+                if (!validateFileSize(documents.fichier_certificat_frequentation, MAX_FILE_SIZE_KB)) {
+                    e.fichier_certificat_frequentation = 'La taille du fichier ne doit pas dépasser 10 MB.';
+                }
             }
         }
+
+        // Diplôme — obligatoire si STAGE DE QUALIFICATION
         if (isStageQualification) {
             if (!documents.fichier_diplome) {
                 e.fichier_diplome = 'Le diplôme est obligatoire pour ce type de stage.';
+            } else {
+                if (!validateFileExtension(documents.fichier_diplome, ALLOWED_DOC_EXTENSIONS)) {
+                    e.fichier_diplome = 'Le fichier doit être au format PDF, DOC ou DOCX.';
+                }
+                if (!validateFileSize(documents.fichier_diplome, MAX_FILE_SIZE_KB)) {
+                    e.fichier_diplome = 'La taille du fichier ne doit pas dépasser 10 MB.';
+                }
+            }
+        }
+
+        // Fiche Trésor Money — obligatoire si C2D
+        if (requiresYup && documents.fiche_tresor_money) {
+            if (!validateFileExtension(documents.fiche_tresor_money, ALLOWED_DOC_EXTENSIONS)) {
+                e.fiche_tresor_money = 'Le fichier doit être au format PDF, DOC ou DOCX.';
+            }
+            if (!validateFileSize(documents.fiche_tresor_money, MAX_FILE_SIZE_KB)) {
+                e.fiche_tresor_money = 'La taille du fichier ne doit pas dépasser 10 MB.';
+            }
+        }
+
+        // Fiche Wave — obligatoire si PEJEDEC/BMZ
+        if (requiresWave && documents.fiche_wave) {
+            if (!validateFileExtension(documents.fiche_wave, ALLOWED_DOC_EXTENSIONS)) {
+                e.fiche_wave = 'Le fichier doit être au format PDF, DOC ou DOCX.';
+            }
+            if (!validateFileSize(documents.fiche_wave, MAX_FILE_SIZE_KB)) {
+                e.fiche_wave = 'La taille du fichier ne doit pas dépasser 10 MB.';
             }
         }
 
@@ -832,11 +1210,72 @@ const Create = ({
     }, [beneficiaire, stage, documents, requiresYup, requiresWave, showOffre, isAEJ, isPEJEDEC, isSpontaneOuDAICG,
         isFinancementBMZ, isStageEcole, isStageQualification, isNiveauAucun, isDiplomeAutre, showDateDebut, age]);
 
+    /** Valide uniquement les champs de l'étape n */
+    const validateStep = useCallback((step: number): FormErrors => {
+        const all = validate();
+        const stepFields: Record<number, string[]> = {
+            0: ['agence_id', 'conseiller_id', 'origine_stagiaire_id', 'source_financement_id', 'type_stage_id', 'duree_stage', 'offre_emploi_id', 'type_structure_id'],
+            1: ['numero_aej', 'nom', 'prenoms', 'date_naissance', 'sexe', 'lieu_naissance', 'sous_prefecture_naissance',
+                'commune_residence_text', 'sous_prefecture_residence', 'nature_piece_identite', 'numero_piece_identite',
+                'numero_cmu', 'telephone_principal', 'contact_urgence_1', 'personne_urgence', 'lien_parente_id',
+                'niveau_etude_id', 'diplome_id', 'specialite', 'annee_diplome', 'etablissement_frequente',
+                'type_enseignement_id', 'handicap_id', 'type_handicap_id', 'autre_handicap',
+                'autre_diplome', 'telephone_secondaire', 'contact_urgence_2'],
+            2: ['entreprise_id', 'service_affectation', 'localite_stage', 'commune_stage', 'sous_prefecture_stage',
+                'nom_encadreur', 'fonction_encadreur', 'contact_encadreur', 'situation_stage',
+                'date_debut', 'date_fin_prevue', 'observations',
+                'date_demarrage_capitalisation_sans_financiere', 'nbr_mois_capitaliser', 'date_demarrage_capitalisation'],
+            3: ['fichier_cmu', 'piece_identite', 'fichier_attestation', 'fichier_certificat_frequentation',
+                'fichier_diplome', 'fiche_tresor_money', 'fiche_wave', 'type_paiement_id'],
+            4: [], // Étape récapitulatif - pas de validation spécifique
+        };
+        const fields = stepFields[step] || [];
+        const stepErrors: FormErrors = {};
+        fields.forEach(f => { if (all[f]) stepErrors[f] = all[f]; });
+        return stepErrors;
+    }, [validate]);
+
+    /** Navigation étapes */
+    const handleNext = useCallback(() => {
+        const stepErrors = validateStep(currentStep);
+        setErrors(stepErrors);
+        if (Object.keys(stepErrors).length === 0 && currentStep < STEPS.length - 1) {
+            setCurrentStep(s => s + 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [currentStep, validateStep]);
+
+    const handlePrev = useCallback(() => {
+        if (currentStep > 0) {
+            setErrors({});
+            setCurrentStep(s => s - 1);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+    }, [currentStep]);
+
+    const handleStepClick = useCallback((idx: number) => {
+        // On ne peut cliquer que sur les étapes déjà visitées ou la suivante
+        if (idx < currentStep) {
+            setErrors({});
+            setCurrentStep(idx);
+        }
+    }, [currentStep]);
+
+    /** Compteur d'erreurs par étape */
+    const getStepErrorCount = useCallback((step: number): number => {
+        return Object.keys(validateStep(step)).length;
+    }, [validateStep]);
+
     /* ═══════════════════════════════════════════════════════════════════════
        DOUBLON CHECK + SUBMIT
        ═══════════════════════════════════════════════════════════════════════ */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        // Sur les étapes 0-2, Enter ne doit pas soumettre — avancer à la place
+        if (currentStep < STEPS.length - 1) {
+            handleNext();
+            return;
+        }
         const clientErrors = validate();
         setErrors(clientErrors);
         if (Object.keys(clientErrors).length > 0) return;
@@ -931,6 +1370,35 @@ const Create = ({
     return (
         <React.Fragment>
             <Head title="Nouveau Stagiaire" />
+            <style>{`
+                @keyframes fadeInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @keyframes pulse {
+                    0%, 100% {
+                        transform: scale(1);
+                    }
+                    50% {
+                        transform: scale(1.05);
+                    }
+                }
+
+                .wizard-step-enter {
+                    animation: fadeInUp 0.4s ease-in-out;
+                }
+
+                .stepper-circle:hover {
+                    animation: pulse 0.6s ease-in-out;
+                }
+            `}</style>
             <div className="page-content">
                 <Container fluid>
                     <BreadCrumb title="Nouveau Stagiaire" pageTitle="CIP" />
@@ -939,792 +1407,1066 @@ const Create = ({
                     {flash?.error && <Alert color="danger" className="border-0"><i className="ri-error-warning-line me-2" />{flash.error}</Alert>}
                     {errors._form && <Alert color="danger" className="border-0"><i className="ri-error-warning-line me-2" />{errors._form}</Alert>}
 
+                    {/* ═══ STEPPER WIZARD ═══ */}
+                    <div className="d-flex justify-content-center mb-4">
+                        <div className="d-flex align-items-center" style={{ gap: 0 }}>
+                            {STEPS.map((step, idx) => (
+                                <React.Fragment key={step.key}>
+                                    {/* Cercle étape */}
+                                    <div
+                                        onClick={() => handleStepClick(idx)}
+                                        className="text-center" style={{ cursor: idx <= currentStep ? 'pointer' : 'default' }}>
+                                        <div
+                                            className="stepper-circle rounded-circle d-inline-flex align-items-center justify-content-center"
+                                            style={{
+                                                width: 56, height: 56,
+                                                backgroundColor: idx < currentStep ? '#198754' : idx === currentStep ? '#dc3545' : '#e9ecef',
+                                                color: idx <= currentStep ? '#fff' : '#6c757d',
+                                                transition: 'all 0.3s ease',
+                                                boxShadow: idx === currentStep ? '0 0 0 4px rgba(220,53,69,0.25)' : idx < currentStep ? '0 2px 8px rgba(25,135,84,0.3)' : 'none',
+                                                border: idx === currentStep ? '3px solid #fff' : 'none',
+                                            }}>
+                                            {idx < currentStep ? (
+                                                <i className="ri-check-line" style={{ fontSize: 24, fontWeight: 'bold' }} />
+                                            ) : (
+                                                <i className={step.icon} style={{ fontSize: 22 }} />
+                                            )}
+                                        </div>
+                                        <div className="mt-2" style={{
+                                            fontSize: 13, fontWeight: idx === currentStep ? 700 : 500,
+                                            color: idx === currentStep ? '#dc3545' : idx < currentStep ? '#198754' : '#6c757d',
+                                            whiteSpace: 'nowrap',
+                                            textTransform: 'uppercase',
+                                            letterSpacing: '0.5px',
+                                        }}>
+                                            {step.label}
+                                        </div>
+                                        {getStepErrorCount(idx) > 0 && idx !== currentStep && (
+                                            <Badge color="danger" pill className="mt-1" style={{ fontSize: 10, fontWeight: 600 }}>
+                                                {getStepErrorCount(idx)} {getStepErrorCount(idx) === 1 ? 'erreur' : 'erreurs'}
+                                            </Badge>
+                                        )}
+                                    </div>
+                                    {/* Ligne connexion */}
+                                    {idx < STEPS.length - 1 && (
+                                        <div style={{
+                                            width: 80, height: 3, margin: '0 8px', marginBottom: 20,
+                                            backgroundColor: idx < currentStep ? '#198754' : '#e9ecef',
+                                            transition: 'background-color 0.3s ease',
+                                            borderRadius: 2,
+                                        }} />
+                                    )}
+                                </React.Fragment>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* ═══ BARRE PROGRESSION ═══ */}
+                    <div className="mb-4">
+                        <div className="d-flex justify-content-between align-items-center mb-2">
+                            <div className="d-flex align-items-center gap-2">
+                                <Badge color="danger" pill style={{ fontSize: 13, fontWeight: 600, padding: '6px 12px' }}>
+                                    Étape {currentStep + 1}/{STEPS.length}
+                                </Badge>
+                                <span className="text-muted fw-semibold">{STEPS[currentStep].label}</span>
+                            </div>
+                            {Object.keys(errors).length > 0 && currentStep < STEPS.length - 1 && (
+                                <small className="text-danger fw-semibold">
+                                    <i className="ri-error-warning-line me-1" />
+                                    {Object.keys(errors).length} {Object.keys(errors).length === 1 ? 'erreur détectée' : 'erreurs détectées'}
+                                </small>
+                            )}
+                        </div>
+                        <div className="progress" style={{ height: 8, borderRadius: 10 }}>
+                            <div
+                                className="progress-bar bg-gradient-danger"
+                                role="progressbar"
+                                style={{
+                                    width: `${((currentStep + 1) / STEPS.length) * 100}%`,
+                                    transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    borderRadius: 10,
+                                    boxShadow: '0 2px 4px rgba(220,53,69,0.3)',
+                                }}
+                                aria-valuenow={(currentStep + 1) / STEPS.length * 100}
+                                aria-valuemin={0}
+                                aria-valuemax={100}
+                            />
+                        </div>
+                    </div>
+
                     <Form onSubmit={handleSubmit} encType="multipart/form-data" id="createStagiaireForm">
                         <Row className="g-3">
 
-                            {/* ═══ AGENCE REGIONALE ═══ */}
-                            <Col lg={12}>
-                                <Card className="shadow-sm border-0">
-                                    <CardHeader className="bg-danger-subtle">
-                                        <h5 className="card-title mb-0 text-danger fw-bold">
-                                            <i className="ri-building-2-line me-1" />AGENCE REGIONALE
-                                        </h5>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <Row className="g-3">
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Agence <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('agence_id') ? 'is-invalid' : ''}`}
-                                                    value={stage.agence_id}
-                                                    onChange={e => setStage(s => ({ ...s, agence_id: e.target.value, conseiller_id: '', entreprise_id: '' }))}>
-                                                    <option value="">Sélectionner</option>
-                                                    {agences.map(a => <option key={a.id} value={a.id}>{a.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('agence_id')}</div>
-                                            </Col>
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Conseiller référent <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('conseiller_id') ? 'is-invalid' : ''}
-                                                    value={stage.conseiller_id}
-                                                    onChange={e => setStage(s => ({ ...s, conseiller_id: e.target.value }))}
-                                                    placeholder={stage.agence_id ? 'Nom du conseiller' : 'Sélectionner agence d\'abord'}
-                                                    disabled={!stage.agence_id} />
-                                                <div className="invalid-feedback">{fieldError('conseiller_id')}</div>
-                                            </Col>
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Origine du stagiaire <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('origine_stagiaire_id') ? 'is-invalid' : ''}`}
-                                                    value={stage.origine_stagiaire_id}
-                                                    onChange={e => setStage(s => ({ ...s, origine_stagiaire_id: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {originesStagiaire.map(o => <option key={o.id} value={o.id}>{o.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('origine_stagiaire_id')}</div>
-                                            </Col>
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Source de financement <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('source_financement_id') ? 'is-invalid' : ''}`}
-                                                    value={stage.source_financement_id}
-                                                    onChange={e => setStage(s => ({ ...s, source_financement_id: e.target.value }))}
-                                                    disabled={isPEJEDEC}>
-                                                    <option value="">Selectionner Source Financement</option>
-                                                    {sourcesFinancement.map(s => <option key={s.id} value={s.id}>{s.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('source_financement_id')}</div>
-                                            </Col>
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Type de stage <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('type_stage_id') ? 'is-invalid' : ''}`}
-                                                    value={stage.type_stage_id}
-                                                    onChange={e => setStage(s => ({ ...s, type_stage_id: e.target.value }))}>
-                                                    <option value="">Selectionner type stage</option>
-                                                    {filteredTypesStage.map(ts => <option key={ts.id} value={ts.id}>{ts.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('type_stage_id')}</div>
-                                            </Col>
-                                            {showTypeStructure && (
+                            {/* ═══ ÉTAPE 0 : AGENCE REGIONALE ═══ */}
+                            {currentStep === 0 && (
+                                <Col lg={12} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
+                                    <Card className="shadow-sm border-0">
+                                        <CardHeader className="bg-danger-subtle">
+                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                                <i className="ri-building-2-line me-1" />AGENCE REGIONALE
+                                            </h5>
+                                        </CardHeader>
+                                        <CardBody>
+                                            <Row className="g-3">
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Type de structure <span className="text-danger">*</span></Label>
-                                                    <Input type="text" className={fieldError('type_structure_id') ? 'is-invalid' : ''}
-                                                        value={stage.type_structure_id}
-                                                        onChange={e => setStage(s => ({ ...s, type_structure_id: e.target.value }))} />
-                                                    <div className="invalid-feedback">{fieldError('type_structure_id')}</div>
+                                                    <Label className="fw-semibold">Agence <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.agence_id}
+                                                        options={agences.map(a => ({ value: String(a.id), label: a.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, agence_id: v, conseiller_id: '', entreprise_id: '' }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('agence_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('agence_id')}</div>
                                                 </Col>
-                                            )}
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Durée prévisionnelle du stage <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('duree_stage') ? 'is-invalid' : ''}`}
-                                                    value={stage.duree_stage}
-                                                    onChange={e => setStage(s => ({ ...s, duree_stage: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {durationOptions.map(d => <option key={d.value} value={d.value}>{d.label}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('duree_stage')}</div>
-                                            </Col>
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Date d'entrée dans le portefeuille</Label>
-                                                <Input type="date" value={stage.date_entree_portefeuille}
-                                                    onChange={e => setStage(s => ({ ...s, date_entree_portefeuille: e.target.value }))} />
-                                            </Col>
-                                        </Row>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-
-                            {/* ═══ IDENTIFICATION STAGIAIRE ═══ */}
-                            <Col lg={6}>
-                                <Card className="shadow-sm border-0">
-                                    <CardHeader className="bg-danger-subtle">
-                                        <h5 className="card-title mb-0 text-danger fw-bold">
-                                            <i className="ri-user-3-line me-1" />IDENTIFICATION STAGIAIRE
-                                        </h5>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <Row className="g-3">
-                                            {/* Offre fields (AEJ/PEJEDEC) */}
-                                            {showOffre && (
-                                                <>
-                                                    <Col lg={12}>
-                                                        <Label className="fw-semibold">
-                                                            Numéro de l'offre {isAEJ && <span className="text-danger">*</span>}
-                                                        </Label>
-                                                        <Select
-                                                            options={offres
-                                                                .filter(o => !stage.agence_id || o.agence_id === Number(stage.agence_id))
-                                                                .map(o => ({
-                                                                    value: o.id,
-                                                                    label: `${o.numero} - ${o.intitule} (${o.entreprise?.raison_sociale})`,
-                                                                    offre: o,
-                                                                }))}
-                                                            onChange={handleOffreChange}
-                                                            placeholder="Selectionner Numéro de l'offre du stage"
+                                                <Col lg={3}>
+                                                    <Label className="fw-semibold">Conseiller référent <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('conseiller_id') ? 'is-invalid' : ''}
+                                                        value={stage.conseiller_id}
+                                                        onChange={e => setStage(s => ({ ...s, conseiller_id: e.target.value }))}
+                                                        placeholder={stage.agence_id ? 'Nom du conseiller' : 'Sélectionner agence d\'abord'}
+                                                        disabled={!stage.agence_id} />
+                                                    <div className="invalid-feedback">{fieldError('conseiller_id')}</div>
+                                                </Col>
+                                                <Col lg={3}>
+                                                    <Label className="fw-semibold">Origine du stagiaire <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.origine_stagiaire_id}
+                                                        options={originesStagiaire.map(o => ({ value: String(o.id), label: o.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, origine_stagiaire_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('origine_stagiaire_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('origine_stagiaire_id')}</div>
+                                                </Col>
+                                                <Col lg={3}>
+                                                    <Label className="fw-semibold">Source de financement <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.source_financement_id}
+                                                        options={sourcesFinancement.map(s => ({ value: String(s.id), label: s.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, source_financement_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        isDisabled={isPEJEDEC}
+                                                        className={fieldError('source_financement_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('source_financement_id')}</div>
+                                                </Col>
+                                                <Col lg={3}>
+                                                    <Label className="fw-semibold">Type de stage <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.type_stage_id}
+                                                        options={filteredTypesStage.map(ts => ({ value: String(ts.id), label: ts.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, type_stage_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('type_stage_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('type_stage_id')}</div>
+                                                </Col>
+                                                {showTypeStructure && (
+                                                    <Col lg={3}>
+                                                        <Label className="fw-semibold">Type de structure <span className="text-danger">*</span></Label>
+                                                        <RsSelect
+                                                            value={stage.type_structure_id}
+                                                            options={(typesStructure || []).map(ts => ({ value: String(ts.id), label: ts.nom }))}
+                                                            onChange={v => setStage(s => ({ ...s, type_structure_id: v }))}
+                                                            placeholder="Sélectionner"
+                                                            className={fieldError('type_structure_id') ? 'is-invalid' : ''}
                                                         />
+                                                        <div className="invalid-feedback">{fieldError('type_structure_id')}</div>
                                                     </Col>
-                                                    {showOffreDetail && (
-                                                        <>
-                                                            <Col lg={6}>
-                                                                <Label className="fw-semibold">Intitulé de l'offre</Label>
-                                                                <Input type="text" value={stage.intitule_offre} readOnly />
-                                                            </Col>
-                                                            <Col lg={6}>
-                                                                <Label className="fw-semibold">Nombre de place</Label>
-                                                                <Input type="number" value={stage.nombre_de_place} readOnly />
-                                                            </Col>
-                                                        </>
-                                                    )}
-                                                </>
-                                            )}
-
-                                            {/* Numéro AEJ / Matricule */}
-                                            <Col lg={12}>
-                                                <Label className="fw-semibold">
-                                                    {isFinancementC2d ? 'Matricule' : 'Numéro AEJ'} / Téléphone <span className="text-danger">*</span>
-                                                </Label>
-                                                <Input type="text"
-                                                    className={fieldError('numero_aej') || demandeurError ? 'is-invalid' : ''}
-                                                    value={beneficiaire.numero_aej}
-                                                    onChange={e => {
-                                                        setBeneficiaire(b => ({ ...b, numero_aej: e.target.value }));
-                                                        setDemandeurLoaded(false);
-                                                        setDemandeurError('');
-                                                    }}
-                                                    readOnly={demandeurLoaded}
-                                                    minLength={10} maxLength={14}
-                                                    placeholder="Numero AEJ/Téléphone"
-                                                    autoComplete="off" />
-                                                <div className="invalid-feedback">{fieldError('numero_aej') || demandeurError}</div>
-                                                <div className="mt-2">
-                                                    {!demandeurLoaded ? (
-                                                        <Button color="info" type="button" size="sm"
-                                                            disabled={demandeurLoading || beneficiaire.numero_aej.length < 10}
-                                                            onClick={handleLoadDemandeur}>
-                                                            {demandeurLoading ? <><Spinner size="sm" className="me-1" />Chargement...</> : 'Vérifier'}
-                                                        </Button>
-                                                    ) : (
-                                                        <Button color="success" type="button" size="sm" onClick={handleRestart}>
-                                                            <i className="ri-repeat-line me-1" />Réinitialiser
-                                                        </Button>
-                                                    )}
-                                                </div>
-                                            </Col>
-
-                                            {/* Nom / Prénoms */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Nom <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('nom') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.nom}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, nom: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))}
-                                                    readOnly={demandeurLoaded} autoComplete="off" />
-                                                <div className="invalid-feedback">{fieldError('nom')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Prénoms <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('prenoms') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.prenoms}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, prenoms: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))}
-                                                    readOnly={demandeurLoaded} autoComplete="off" />
-                                                <div className="invalid-feedback">{fieldError('prenoms')}</div>
-                                            </Col>
-
-                                            {/* Lieu + Date naissance */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Lieu de naissance <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('lieu_naissance') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.lieu_naissance}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, lieu_naissance: e.target.value.toUpperCase() }))} />
-                                                <div className="invalid-feedback">{fieldError('lieu_naissance')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Date de naissance <span className="text-danger">*</span></Label>
-                                                <Input type="date"
-                                                    className={fieldError('date_naissance') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.date_naissance}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, date_naissance: e.target.value }))}
-                                                    readOnly={demandeurLoaded} max={todayString()} />
-                                                {age > 0 && <small className="text-muted">{age} ans</small>}
-                                                <div className="invalid-feedback">{fieldError('date_naissance')}</div>
-                                            </Col>
-
-                                            {/* Sexe + Sous-pref nais */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Sexe <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('sexe') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.sexe}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, sexe: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    <option value="Femme">Femme</option>
-                                                    <option value="Homme">Homme</option>
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('sexe')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Sous-préfecture de naissance <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('sous_prefecture_naissance') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.sous_prefecture_naissance}
-                                                    onChange={e => setBeneficiaire(b => ({
-                                                        ...b,
-                                                        sous_prefecture_naissance: e.target.value,
-                                                        custom_sous_prefecture: '',
-                                                    }))}>
-                                                    <option value="">Sélectionner</option>
-                                                    {communes.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
-                                                    <option value="autre">Autre</option>
-                                                </select>
-                                                {beneficiaire.sous_prefecture_naissance === 'autre' && (
-                                                    <Input type="text" className="mt-2" placeholder="Entrez la sous-préfecture"
-                                                        value={beneficiaire.custom_sous_prefecture}
-                                                        onChange={e => setBeneficiaire(b => ({ ...b, custom_sous_prefecture: e.target.value.toUpperCase() }))} />
                                                 )}
-                                                <div className="invalid-feedback">{fieldError('sous_prefecture_naissance')}</div>
-                                            </Col>
-
-                                            {/* Commune + SP résidence */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Commune de résidence <span className="text-danger">*</span></Label>
-                                                <Input type="text"
-                                                    className={fieldError('commune_residence_text') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.commune_residence_text}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, commune_residence_text: e.target.value.toUpperCase() }))} />
-                                                <div className="invalid-feedback">{fieldError('commune_residence_text')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">S/P de résidence <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('sous_prefecture_residence') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.sous_prefecture_residence}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, sous_prefecture_residence: e.target.value }))}>
-                                                    <option value="">Sélectionner</option>
-                                                    {communes.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('sous_prefecture_residence')}</div>
-                                            </Col>
-
-                                            {/* Nature + Numéro pièce */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Nature pièce d'identité <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('nature_piece_identite') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.nature_piece_identite}
-                                                    onChange={e => setBeneficiaire(b => ({
-                                                        ...b,
-                                                        nature_piece_identite: e.target.value,
-                                                        numero_piece_identite: '',
-                                                    }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {TYPE_PIECE_OPTIONS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('nature_piece_identite')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Numéro pièce d'identité <span className="text-danger">*</span></Label>
-                                                <div className="input-group">
-                                                    {piecePrefix && <span className="input-group-text">{piecePrefix}</span>}
-                                                    <Input type="text"
-                                                        className={fieldError('numero_piece_identite') ? 'is-invalid' : ''}
-                                                        value={pieceNumberDisplay}
-                                                        maxLength={pieceMaxLength}
-                                                        onChange={e => setBeneficiaire(b => ({
-                                                            ...b,
-                                                            numero_piece_identite: `${piecePrefix}${e.target.value.replace(/\s/g, '').toUpperCase()}`,
-                                                        }))} />
-                                                </div>
-                                                <div className="invalid-feedback">{fieldError('numero_piece_identite')}</div>
-                                            </Col>
-
-                                            {/* Numéro CMU */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Numéro CMU <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('numero_cmu') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.numero_cmu}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, numero_cmu: e.target.value.toUpperCase() }))}
-                                                    maxLength={50} autoComplete="off" />
-                                                <div className="invalid-feedback">{fieldError('numero_cmu')}</div>
-                                            </Col>
-
-                                            {/* Contacts */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Contact téléphonique 1 <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('telephone_principal') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.telephone_principal}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, telephone_principal: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
-                                                    maxLength={10} />
-                                                <div className="invalid-feedback">{fieldError('telephone_principal')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Contact téléphonique 2</Label>
-                                                <Input type="text"
-                                                    value={beneficiaire.telephone_secondaire}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, telephone_secondaire: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
-                                                    maxLength={10} />
-                                            </Col>
-
-                                            {/* Urgence */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Personne à contacter en cas d'urgence <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('personne_urgence') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.personne_urgence}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, personne_urgence: e.target.value.toUpperCase() }))} />
-                                                <div className="invalid-feedback">{fieldError('personne_urgence')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Lien de parenté <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('lien_parente_id') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.lien_parente_id}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, lien_parente_id: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {liensParente.map(l => <option key={l.id} value={l.id}>{l.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('lien_parente_id')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Contact téléphonique 1 du parent <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('contact_urgence_1') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.contact_urgence_1}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, contact_urgence_1: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
-                                                    maxLength={10} />
-                                                <div className="invalid-feedback">{fieldError('contact_urgence_1')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Contact téléphonique 2 du parent</Label>
-                                                <Input type="text"
-                                                    value={beneficiaire.contact_urgence_2}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, contact_urgence_2: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
-                                                    maxLength={10} />
-                                            </Col>
-
-                                            {/* Formation */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Niveau d'études <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('niveau_etude_id') ? 'is-invalid' : ''}`}
-                                                    value={stage.niveau_etude_id}
-                                                    onChange={e => setStage(s => ({ ...s, niveau_etude_id: e.target.value }))}>
-                                                    <option value="">Selectionner Niveau Etude</option>
-                                                    {niveauxEtude.map(n => <option key={n.id} value={n.id}>{n.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('niveau_etude_id')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Diplôme <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('diplome_id') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.diplome_id}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, diplome_id: e.target.value }))}>
-                                                    <option value="">Selectionner Diplome</option>
-                                                    {filteredDiplomes.map(d => <option key={d.id} value={d.id}>{d.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('diplome_id')}</div>
-                                            </Col>
-                                            {isDiplomeAutre && (
-                                                <Col lg={6}>
-                                                    <Label className="fw-semibold">Préciser Diplôme <span className="text-danger">*</span></Label>
-                                                    <Input type="text" className={fieldError('autre_diplome') ? 'is-invalid' : ''}
-                                                        value={beneficiaire.autre_diplome}
-                                                        onChange={e => setBeneficiaire(b => ({ ...b, autre_diplome: e.target.value }))} />
-                                                    <div className="invalid-feedback">{fieldError('autre_diplome')}</div>
+                                                <Col lg={3}>
+                                                    <Label className="fw-semibold">Durée prévisionnelle du stage <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.duree_stage}
+                                                        options={durationOptions.map(d => ({ value: d.value, label: d.label }))}
+                                                        onChange={v => setStage(s => ({ ...s, duree_stage: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('duree_stage') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('duree_stage')}</div>
                                                 </Col>
-                                            )}
+                                                <Col lg={3}>
+                                                    <Label className="fw-semibold">Date d'entrée dans le portefeuille</Label>
+                                                    <Input type="date" value={stage.date_entree_portefeuille}
+                                                        onChange={e => setStage(s => ({ ...s, date_entree_portefeuille: e.target.value }))} />
+                                                </Col>
+                                            </Row>
+                                        </CardBody>
+                                    </Card>
+                                </Col>
+                            )}
 
-                                            {/* Spécialité + Année */}
-                                            <Col lg={9}>
-                                                <Label className="fw-semibold">Spécialité <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('specialite') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.specialite}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, specialite: e.target.value.toUpperCase() }))} />
-                                                <Alert color="info" className="mt-2 py-2" style={{ borderLeft: '4px solid #17a2b8' }}>
-                                                    <small>Ce champ doit correspondre à la spécialité du diplôme sélectionné.</small>
-                                                </Alert>
-                                                <div className="invalid-feedback">{fieldError('specialite')}</div>
-                                            </Col>
-                                            <Col lg={3}>
-                                                <Label className="fw-semibold">Année du diplôme {isNiveauAucun ? '' : <span className="text-danger">*</span>}</Label>
-                                                <Input type="text" className={fieldError('annee_diplome') ? 'is-invalid' : ''}
-                                                    value={beneficiaire.annee_diplome}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, annee_diplome: e.target.value.replace(/[^0-9]/g, '') }))}
-                                                    maxLength={4} readOnly={isNiveauAucun} />
-                                                <div className="invalid-feedback">{fieldError('annee_diplome')}</div>
-                                            </Col>
+                            {/* ═══ ÉTAPE 1 : IDENTIFICATION STAGIAIRE ═══ */}
+                            {currentStep === 1 && (
+                                <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
+                                    <Card className="shadow-sm border-0">
+                                        <CardHeader className="bg-danger-subtle">
+                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                                <i className="ri-user-3-line me-1" />IDENTIFICATION STAGIAIRE
+                                            </h5>
+                                        </CardHeader>
+                                        <CardBody>
+                                            <Row className="g-3">
+                                                {/* Offre fields (AEJ/PEJEDEC) */}
+                                                {showOffre && (
+                                                    <>
+                                                        <Col lg={12}>
+                                                            <Label className="fw-semibold">
+                                                                Numéro de l'offre {isAEJ && <span className="text-danger">*</span>}
+                                                            </Label>
+                                                            <Select
+                                                                options={offres
+                                                                    .filter(o => !stage.agence_id || o.agence_id === Number(stage.agence_id))
+                                                                    .map(o => ({
+                                                                        value: o.id,
+                                                                        label: `${o.numero} - ${o.intitule} (${o.entreprise?.raison_sociale})`,
+                                                                        offre: o,
+                                                                    }))}
+                                                                onChange={handleOffreChange}
+                                                                placeholder="Selectionner Numéro de l'offre du stage"
+                                                            />
+                                                        </Col>
+                                                        {showOffreDetail && (
+                                                            <>
+                                                                <Col lg={6}>
+                                                                    <Label className="fw-semibold">Intitulé de l'offre</Label>
+                                                                    <Input type="text" value={stage.intitule_offre} readOnly />
+                                                                </Col>
+                                                                <Col lg={6}>
+                                                                    <Label className="fw-semibold">Nombre de place</Label>
+                                                                    <Input type="number" value={stage.nombre_de_place} readOnly />
+                                                                </Col>
+                                                            </>
+                                                        )}
+                                                    </>
+                                                )}
 
-                                            {/* Établissement + Type enseignement */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Établissement fréquenté</Label>
-                                                <Input type="text" value={beneficiaire.etablissement_frequente}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, etablissement_frequente: e.target.value.toUpperCase() }))} />
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Type d'enseignement <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('type_enseignement_id') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.type_enseignement_id}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, type_enseignement_id: e.target.value }))}>
-                                                    <option value="">Selectionner Type Enseignement</option>
-                                                    {typesEnseignement.map(t => <option key={t.id} value={t.id}>{t.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('type_enseignement_id')}</div>
-                                            </Col>
+                                                {/* Numéro AEJ / Matricule */}
+                                                <Col lg={12}>
+                                                    <EnhancedLabel
+                                                        label={isFinancementC2d ? 'Matricule' : 'Numéro AEJ'}
+                                                        required
+                                                        tooltipId="numero-aej"
+                                                        tooltipContent="Numéro d'inscription à l'Agence pour l'Emploi des Jeunes (AEJ). Doit contenir entre 10 et 14 caractères."
+                                                    />
+                                                    <Input type="text"
+                                                        className={fieldError('numero_aej') || demandeurError ? 'is-invalid' : ''}
+                                                        value={beneficiaire.numero_aej}
+                                                        onChange={e => {
+                                                            setBeneficiaire(b => ({ ...b, numero_aej: e.target.value }));
+                                                            setDemandeurLoaded(false);
+                                                            setDemandeurError('');
+                                                        }}
+                                                        readOnly={demandeurLoaded}
+                                                        minLength={10} maxLength={14}
+                                                        placeholder="Numero AEJ/Téléphone"
+                                                        autoComplete="off" />
+                                                    <div className="invalid-feedback">{fieldError('numero_aej') || demandeurError}</div>
+                                                    <div className="mt-2">
+                                                        {!demandeurLoaded ? (
+                                                            <Button color="info" type="button" size="sm"
+                                                                disabled={demandeurLoading || beneficiaire.numero_aej.length < 10}
+                                                                onClick={handleLoadDemandeur}>
+                                                                {demandeurLoading ? <><Spinner size="sm" className="me-1" />Chargement...</> : 'Vérifier'}
+                                                            </Button>
+                                                        ) : (
+                                                            <Button color="success" type="button" size="sm" onClick={handleRestart}>
+                                                                <i className="ri-repeat-line me-1" />Réinitialiser
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </Col>
 
-                                            {/* Handicap */}
-                                            <Col lg={4}>
-                                                <Label className="fw-semibold">Handicap <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('handicap_id') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.handicap_id}
-                                                    onChange={e => setBeneficiaire(b => ({
-                                                        ...b,
-                                                        handicap_id: e.target.value,
-                                                        type_handicap_id: '',
-                                                        autre_handicap: '',
-                                                    }))}>
-                                                    <option value="">Selectionner Handicap</option>
-                                                    {HANDICAP_OPTIONS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('handicap_id')}</div>
-                                            </Col>
-                                            {beneficiaire.handicap_id === 'HANDICAP' && (
-                                                <>
-                                                    <Col lg={4}>
-                                                        <Label className="fw-semibold">Type handicap <span className="text-danger">*</span></Label>
-                                                        <select className={`form-select ${fieldError('type_handicap_id') ? 'is-invalid' : ''}`}
-                                                            value={beneficiaire.type_handicap_id}
+                                                {/* Nom / Prénoms */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Nom <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('nom') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.nom}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, nom: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))}
+                                                        readOnly={demandeurLoaded} autoComplete="off" />
+                                                    <div className="invalid-feedback">{fieldError('nom')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Prénoms <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('prenoms') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.prenoms}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, prenoms: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))}
+                                                        readOnly={demandeurLoaded} autoComplete="off" />
+                                                    <div className="invalid-feedback">{fieldError('prenoms')}</div>
+                                                </Col>
+
+                                                {/* Lieu + Date naissance */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Lieu de naissance <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('lieu_naissance') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.lieu_naissance}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, lieu_naissance: e.target.value.toUpperCase() }))} />
+                                                    <div className="invalid-feedback">{fieldError('lieu_naissance')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Date de naissance <span className="text-danger">*</span></Label>
+                                                    <Input type="date"
+                                                        className={fieldError('date_naissance') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.date_naissance}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, date_naissance: e.target.value }))}
+                                                        readOnly={demandeurLoaded} max={todayString()} />
+                                                    {age > 0 && <small className="text-muted">{age} ans</small>}
+                                                    <div className="invalid-feedback">{fieldError('date_naissance')}</div>
+                                                </Col>
+
+                                                {/* Sexe + Sous-pref nais */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Sexe <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.sexe}
+                                                        options={[{ value: 'Femme', label: 'Femme' }, { value: 'Homme', label: 'Homme' }]}
+                                                        onChange={v => setBeneficiaire(b => ({ ...b, sexe: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('sexe') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('sexe')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Sous-préfecture de naissance <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.sous_prefecture_naissance}
+                                                        options={[
+                                                            ...communes.map(c => ({ value: c.nom, label: c.nom })),
+                                                            { value: 'autre', label: 'Autre' },
+                                                        ]}
+                                                        onChange={v => setBeneficiaire(b => ({
+                                                            ...b,
+                                                            sous_prefecture_naissance: v,
+                                                            custom_sous_prefecture: '',
+                                                        }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('sous_prefecture_naissance') ? 'is-invalid' : ''}
+                                                    />
+                                                    {beneficiaire.sous_prefecture_naissance === 'autre' && (
+                                                        <Input type="text" className="mt-2" placeholder="Entrez la sous-préfecture"
+                                                            value={beneficiaire.custom_sous_prefecture}
+                                                            onChange={e => setBeneficiaire(b => ({ ...b, custom_sous_prefecture: e.target.value.toUpperCase() }))} />
+                                                    )}
+                                                    <div className="invalid-feedback">{fieldError('sous_prefecture_naissance')}</div>
+                                                </Col>
+
+                                                {/* Commune + SP résidence */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Commune de résidence <span className="text-danger">*</span></Label>
+                                                    <Input type="text"
+                                                        className={fieldError('commune_residence_text') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.commune_residence_text}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, commune_residence_text: e.target.value.toUpperCase() }))} />
+                                                    <div className="invalid-feedback">{fieldError('commune_residence_text')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">S/P de résidence <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.sous_prefecture_residence}
+                                                        options={communes.map(c => ({ value: c.nom, label: c.nom }))}
+                                                        onChange={v => setBeneficiaire(b => ({ ...b, sous_prefecture_residence: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('sous_prefecture_residence') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('sous_prefecture_residence')}</div>
+                                                </Col>
+
+                                                {/* Nature + Numéro pièce */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Nature pièce d'identité <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.nature_piece_identite}
+                                                        options={TYPE_PIECE_OPTIONS.map(p => ({ value: p.value, label: p.label }))}
+                                                        onChange={v => setBeneficiaire(b => ({
+                                                            ...b,
+                                                            nature_piece_identite: v,
+                                                            numero_piece_identite: '',
+                                                        }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('nature_piece_identite') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('nature_piece_identite')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Numéro pièce d'identité <span className="text-danger">*</span></Label>
+                                                    <div className="input-group">
+                                                        {piecePrefix && <span className="input-group-text">{piecePrefix}</span>}
+                                                        <Input type="text"
+                                                            className={fieldError('numero_piece_identite') ? 'is-invalid' : ''}
+                                                            value={pieceNumberDisplay}
+                                                            maxLength={pieceMaxLength}
                                                             onChange={e => setBeneficiaire(b => ({
                                                                 ...b,
-                                                                type_handicap_id: e.target.value,
-                                                                autre_handicap: '',
-                                                            }))}>
-                                                            <option value="">Selectionner Type Handicap</option>
-                                                            {TYPE_HANDICAP_OPTIONS.map(h => <option key={h.value} value={h.value}>{h.label}</option>)}
-                                                        </select>
-                                                        <div className="invalid-feedback">{fieldError('type_handicap_id')}</div>
+                                                                numero_piece_identite: `${piecePrefix}${e.target.value.replace(/\s/g, '').toUpperCase()}`,
+                                                            }))} />
+                                                    </div>
+                                                    <div className="invalid-feedback">{fieldError('numero_piece_identite')}</div>
+                                                </Col>
+
+                                                {/* Numéro CMU */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Numéro CMU <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('numero_cmu') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.numero_cmu}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, numero_cmu: e.target.value.toUpperCase() }))}
+                                                        maxLength={50} autoComplete="off" />
+                                                    <div className="invalid-feedback">{fieldError('numero_cmu')}</div>
+                                                </Col>
+
+                                                {/* Séparateur Contacts */}
+                                                <Col lg={12}>
+                                                    <hr className="my-3" style={{ borderTop: '2px solid #e9ecef' }} />
+                                                    <h6 className="text-muted fw-semibold mb-3">
+                                                        <i className="ri-phone-line me-2" />Coordonnées & Contact
+                                                    </h6>
+                                                </Col>
+
+                                                {/* Contacts */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Contact téléphonique 1 <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('telephone_principal') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.telephone_principal}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, telephone_principal: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
+                                                        maxLength={10} />
+                                                    <div className="invalid-feedback">{fieldError('telephone_principal')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Contact téléphonique 2</Label>
+                                                    <Input type="text"
+                                                        value={beneficiaire.telephone_secondaire}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, telephone_secondaire: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
+                                                        maxLength={10} />
+                                                </Col>
+
+                                                {/* Séparateur Urgence */}
+                                                <Col lg={12}>
+                                                    <hr className="my-3" style={{ borderTop: '2px solid #e9ecef' }} />
+                                                    <h6 className="text-muted fw-semibold mb-3">
+                                                        <i className="ri-alarm-warning-line me-2" />Contact d'urgence
+                                                    </h6>
+                                                </Col>
+
+                                                {/* Urgence */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Personne à contacter en cas d'urgence <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('personne_urgence') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.personne_urgence}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, personne_urgence: e.target.value.toUpperCase() }))} />
+                                                    <div className="invalid-feedback">{fieldError('personne_urgence')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Lien de parenté <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.lien_parente_id}
+                                                        options={liensParente.map(l => ({ value: String(l.id), label: l.nom }))}
+                                                        onChange={v => setBeneficiaire(b => ({ ...b, lien_parente_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('lien_parente_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('lien_parente_id')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Contact téléphonique 1 du parent <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('contact_urgence_1') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.contact_urgence_1}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, contact_urgence_1: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
+                                                        maxLength={10} />
+                                                    <div className="invalid-feedback">{fieldError('contact_urgence_1')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Contact téléphonique 2 du parent</Label>
+                                                    <Input type="text"
+                                                        value={beneficiaire.contact_urgence_2}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, contact_urgence_2: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
+                                                        maxLength={10} />
+                                                </Col>
+
+                                                {/* Séparateur Formation */}
+                                                <Col lg={12}>
+                                                    <hr className="my-3" style={{ borderTop: '2px solid #e9ecef' }} />
+                                                    <h6 className="text-muted fw-semibold mb-3">
+                                                        <i className="ri-graduation-cap-line me-2" />Formation & Diplôme
+                                                    </h6>
+                                                </Col>
+
+                                                {/* Formation */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Niveau d'études <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.niveau_etude_id}
+                                                        options={niveauxEtude.map(n => ({ value: String(n.id), label: n.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, niveau_etude_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('niveau_etude_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('niveau_etude_id')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Diplôme <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.diplome_id}
+                                                        options={filteredDiplomes.map(d => ({ value: String(d.id), label: d.nom }))}
+                                                        onChange={v => setBeneficiaire(b => ({ ...b, diplome_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('diplome_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('diplome_id')}</div>
+                                                </Col>
+                                                {isDiplomeAutre && (
+                                                    <Col lg={6}>
+                                                        <Label className="fw-semibold">Préciser Diplôme <span className="text-danger">*</span></Label>
+                                                        <Input type="text" className={fieldError('autre_diplome') ? 'is-invalid' : ''}
+                                                            value={beneficiaire.autre_diplome}
+                                                            onChange={e => setBeneficiaire(b => ({ ...b, autre_diplome: e.target.value }))} />
+                                                        <div className="invalid-feedback">{fieldError('autre_diplome')}</div>
                                                     </Col>
-                                                    {beneficiaire.type_handicap_id === 'AUTRE' && (
+                                                )}
+
+                                                {/* Spécialité + Année */}
+                                                <Col lg={9}>
+                                                    <Label className="fw-semibold">Spécialité <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('specialite') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.specialite}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, specialite: e.target.value.toUpperCase() }))} />
+                                                    <Alert color="info" className="mt-2 py-2" style={{ borderLeft: '4px solid #17a2b8' }}>
+                                                        <small>Ce champ doit correspondre à la spécialité du diplôme sélectionné.</small>
+                                                    </Alert>
+                                                    <div className="invalid-feedback">{fieldError('specialite')}</div>
+                                                </Col>
+                                                <Col lg={3}>
+                                                    <Label className="fw-semibold">Année du diplôme {isNiveauAucun ? '' : <span className="text-danger">*</span>}</Label>
+                                                    <Input type="text" className={fieldError('annee_diplome') ? 'is-invalid' : ''}
+                                                        value={beneficiaire.annee_diplome}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, annee_diplome: e.target.value.replace(/[^0-9]/g, '') }))}
+                                                        maxLength={4} readOnly={isNiveauAucun} />
+                                                    <div className="invalid-feedback">{fieldError('annee_diplome')}</div>
+                                                </Col>
+
+                                                {/* Établissement + Type enseignement */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Établissement fréquenté</Label>
+                                                    <Input type="text" value={beneficiaire.etablissement_frequente}
+                                                        onChange={e => setBeneficiaire(b => ({ ...b, etablissement_frequente: e.target.value.toUpperCase() }))} />
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Type d'enseignement <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.type_enseignement_id}
+                                                        options={typesEnseignement.map(t => ({ value: String(t.id), label: t.nom }))}
+                                                        onChange={v => setBeneficiaire(b => ({ ...b, type_enseignement_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('type_enseignement_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('type_enseignement_id')}</div>
+                                                </Col>
+
+                                                {/* Handicap */}
+                                                <Col lg={4}>
+                                                    <Label className="fw-semibold">Handicap <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.handicap_id}
+                                                        options={HANDICAP_OPTIONS.map(h => ({ value: h.value, label: h.label }))}
+                                                        onChange={v => setBeneficiaire(b => ({
+                                                            ...b,
+                                                            handicap_id: v,
+                                                            type_handicap_id: '',
+                                                            autre_handicap: '',
+                                                        }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('handicap_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('handicap_id')}</div>
+                                                </Col>
+                                                {beneficiaire.handicap_id === 'HANDICAP' && (
+                                                    <>
                                                         <Col lg={4}>
-                                                            <Label className="fw-semibold">Autre handicap <span className="text-danger">*</span></Label>
-                                                            <Input type="text"
-                                                                className={fieldError('autre_handicap') ? 'is-invalid' : ''}
-                                                                value={beneficiaire.autre_handicap}
-                                                                onChange={e => setBeneficiaire(b => ({ ...b, autre_handicap: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))} />
-                                                            <div className="invalid-feedback">{fieldError('autre_handicap')}</div>
+                                                            <Label className="fw-semibold">Type handicap <span className="text-danger">*</span></Label>
+                                                            <RsSelect
+                                                                value={beneficiaire.type_handicap_id}
+                                                                options={TYPE_HANDICAP_OPTIONS.map(h => ({ value: h.value, label: h.label }))}
+                                                                onChange={v => setBeneficiaire(b => ({
+                                                                    ...b,
+                                                                    type_handicap_id: v,
+                                                                    autre_handicap: '',
+                                                                }))}
+                                                                placeholder="Sélectionner"
+                                                                className={fieldError('type_handicap_id') ? 'is-invalid' : ''}
+                                                            />
+                                                            <div className="invalid-feedback">{fieldError('type_handicap_id')}</div>
                                                         </Col>
-                                                    )}
-                                                </>
-                                            )}
-                                        </Row>
-                                    </CardBody>
-                                </Card>
-                            </Col>
+                                                        {beneficiaire.type_handicap_id === 'AUTRE' && (
+                                                            <Col lg={4}>
+                                                                <Label className="fw-semibold">Autre handicap <span className="text-danger">*</span></Label>
+                                                                <Input type="text"
+                                                                    className={fieldError('autre_handicap') ? 'is-invalid' : ''}
+                                                                    value={beneficiaire.autre_handicap}
+                                                                    onChange={e => setBeneficiaire(b => ({ ...b, autre_handicap: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))} />
+                                                                <div className="invalid-feedback">{fieldError('autre_handicap')}</div>
+                                                            </Col>
+                                                        )}
+                                                    </>
+                                                )}
+                                            </Row>
+                                        </CardBody>
+                                    </Card>
+                                </Col>
+                            )}
 
-                            {/* ═══ MISE EN STAGE ═══ */}
-                            <Col lg={6}>
-                                <Card className="shadow-sm border-0">
-                                    <CardHeader className="bg-danger-subtle">
-                                        <h5 className="card-title mb-0 text-danger fw-bold">
-                                            <i className="ri-briefcase-line me-1" />MISE EN STAGE
-                                        </h5>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <Row className="g-3">
-                                            <Col lg={8}>
-                                                <Label className="fw-semibold">Nom de l'entreprise <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('entreprise_id') ? 'is-invalid' : ''}`}
-                                                    value={stage.entreprise_id}
-                                                    onChange={e => {
-                                                        const id = e.target.value;
-                                                        const opt = entrepriseOptions.find(o => String(o.value) === id);
-                                                        setStage(s => ({ ...s, entreprise_id: id }));
-                                                    }}>
-                                                    <option value="">Selectionner</option>
-                                                    {entrepriseOptions.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('entreprise_id')}</div>
-                                            </Col>
-                                            <Col lg={4}>
-                                                <Label className="fw-semibold">Sigle entreprise</Label>
-                                                <Input type="text" value={stage.sigle_entreprise} readOnly />
-                                            </Col>
+                            {/* ═══ ÉTAPE 2 : MISE EN STAGE ═══ */}
+                            {currentStep === 2 && (
+                                <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
+                                    <Card className="shadow-sm border-0">
+                                        <CardHeader className="bg-danger-subtle">
+                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                                <i className="ri-briefcase-line me-1" />MISE EN STAGE
+                                            </h5>
+                                        </CardHeader>
+                                        <CardBody>
+                                            <Row className="g-3">
+                                                <Col lg={8}>
+                                                    <Label className="fw-semibold">Nom de l'entreprise <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.entreprise_id}
+                                                        options={entrepriseOptions.map(o => ({ value: String(o.value), label: o.label }))}
+                                                        onChange={v => setStage(s => ({ ...s, entreprise_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('entreprise_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('entreprise_id')}</div>
+                                                </Col>
+                                                <Col lg={4}>
+                                                    <Label className="fw-semibold">Sigle entreprise</Label>
+                                                    <Input type="text" value={stage.sigle_entreprise} readOnly />
+                                                </Col>
 
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Service d'affectation <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('service_affectation') ? 'is-invalid' : ''}
-                                                    value={stage.service_affectation}
-                                                    onChange={e => setStage(s => ({ ...s, service_affectation: e.target.value.toUpperCase() }))} />
-                                                <div className="invalid-feedback">{fieldError('service_affectation')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Intitulé du poste de stage</Label>
-                                                <Input type="text" value={stage.intitule_poste}
-                                                    onChange={e => setStage(s => ({ ...s, intitule_poste: e.target.value.toUpperCase() }))} />
-                                            </Col>
-
-                                            <Col lg={4}>
-                                                <Label className="fw-semibold">Localité / Lieu de stage <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('localite_stage') ? 'is-invalid' : ''}
-                                                    value={stage.localite_stage}
-                                                    onChange={e => setStage(s => ({ ...s, localite_stage: e.target.value.toUpperCase() }))} />
-                                                <div className="invalid-feedback">{fieldError('localite_stage')}</div>
-                                            </Col>
-                                            <Col lg={4}>
-                                                <Label className="fw-semibold">Commune du lieu de stage <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('commune_stage') ? 'is-invalid' : ''}`}
-                                                    value={stage.commune_stage}
-                                                    onChange={e => setStage(s => ({ ...s, commune_stage: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {communes.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('commune_stage')}</div>
-                                            </Col>
-                                            <Col lg={4}>
-                                                <Label className="fw-semibold">S/P du lieu de stage <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('sous_prefecture_stage') ? 'is-invalid' : ''}`}
-                                                    value={stage.sous_prefecture_stage}
-                                                    onChange={e => setStage(s => ({ ...s, sous_prefecture_stage: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {communes.map(c => <option key={c.id} value={c.nom}>{c.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('sous_prefecture_stage')}</div>
-                                            </Col>
-
-                                            <Col lg={12}>
-                                                <Label className="fw-semibold">Nom et prénom de l'encadreur <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('nom_encadreur') ? 'is-invalid' : ''}
-                                                    value={stage.nom_encadreur}
-                                                    onChange={e => setStage(s => ({ ...s, nom_encadreur: e.target.value.toUpperCase() }))} />
-                                                <div className="invalid-feedback">{fieldError('nom_encadreur')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Fonction de l'encadreur <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('fonction_encadreur') ? 'is-invalid' : ''}
-                                                    value={stage.fonction_encadreur}
-                                                    onChange={e => setStage(s => ({ ...s, fonction_encadreur: e.target.value.toUpperCase() }))} />
-                                                <div className="invalid-feedback">{fieldError('fonction_encadreur')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Numéro de l'encadreur <span className="text-danger">*</span></Label>
-                                                <Input type="text" className={fieldError('contact_encadreur') ? 'is-invalid' : ''}
-                                                    value={stage.contact_encadreur}
-                                                    onChange={e => setStage(s => ({ ...s, contact_encadreur: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
-                                                    maxLength={10} />
-                                                <div className="invalid-feedback">{fieldError('contact_encadreur')}</div>
-                                            </Col>
-
-                                            {/* Statut + Situation */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Statut stage <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('statut_stage') ? 'is-invalid' : ''}`}
-                                                    value={stage.statut_stage}
-                                                    onChange={e => setStage(s => ({ ...s, statut_stage: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {(statutsStage || []).map(ss => <option key={ss.id} value={ss.id}>{ss.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('statut_stage')}</div>
-                                            </Col>
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Situation stage <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('situation_stage') ? 'is-invalid' : ''}`}
-                                                    value={stage.situation_stage}
-                                                    onChange={e => setStage(s => ({ ...s, situation_stage: e.target.value }))}>
-                                                    <option value="">Selectionner</option>
-                                                    {(situationsStage || []).map(ss => <option key={ss.id} value={ss.id}>{ss.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('situation_stage')}</div>
-                                            </Col>
-
-                                            {/* Dates */}
-                                            {showDateDebut && (
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Date de début de stage <span className="text-danger">*</span></Label>
+                                                    <Label className="fw-semibold">Service d'affectation <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('service_affectation') ? 'is-invalid' : ''}
+                                                        value={stage.service_affectation}
+                                                        onChange={e => setStage(s => ({ ...s, service_affectation: e.target.value.toUpperCase() }))} />
+                                                    <div className="invalid-feedback">{fieldError('service_affectation')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Intitulé du poste de stage</Label>
+                                                    <Input type="text" value={stage.intitule_poste}
+                                                        onChange={e => setStage(s => ({ ...s, intitule_poste: e.target.value.toUpperCase() }))} />
+                                                </Col>
+
+                                                <Col lg={4}>
+                                                    <Label className="fw-semibold">Localité / Lieu de stage <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('localite_stage') ? 'is-invalid' : ''}
+                                                        value={stage.localite_stage}
+                                                        onChange={e => setStage(s => ({ ...s, localite_stage: e.target.value.toUpperCase() }))} />
+                                                    <div className="invalid-feedback">{fieldError('localite_stage')}</div>
+                                                </Col>
+                                                <Col lg={4}>
+                                                    <Label className="fw-semibold">Commune du lieu de stage <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.commune_stage}
+                                                        options={communes.map(c => ({ value: c.nom, label: c.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, commune_stage: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('commune_stage') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('commune_stage')}</div>
+                                                </Col>
+                                                <Col lg={4}>
+                                                    <Label className="fw-semibold">S/P du lieu de stage <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.sous_prefecture_stage}
+                                                        options={communes.map(c => ({ value: c.nom, label: c.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, sous_prefecture_stage: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('sous_prefecture_stage') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('sous_prefecture_stage')}</div>
+                                                </Col>
+
+                                                <Col lg={12}>
+                                                    <Label className="fw-semibold">Nom et prénom de l'encadreur <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('nom_encadreur') ? 'is-invalid' : ''}
+                                                        value={stage.nom_encadreur}
+                                                        onChange={e => setStage(s => ({ ...s, nom_encadreur: e.target.value.toUpperCase() }))} />
+                                                    <div className="invalid-feedback">{fieldError('nom_encadreur')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Fonction de l'encadreur <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('fonction_encadreur') ? 'is-invalid' : ''}
+                                                        value={stage.fonction_encadreur}
+                                                        onChange={e => setStage(s => ({ ...s, fonction_encadreur: e.target.value.toUpperCase() }))} />
+                                                    <div className="invalid-feedback">{fieldError('fonction_encadreur')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Numéro de l'encadreur <span className="text-danger">*</span></Label>
+                                                    <Input type="text" className={fieldError('contact_encadreur') ? 'is-invalid' : ''}
+                                                        value={stage.contact_encadreur}
+                                                        onChange={e => setStage(s => ({ ...s, contact_encadreur: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
+                                                        maxLength={10} />
+                                                    <div className="invalid-feedback">{fieldError('contact_encadreur')}</div>
+                                                </Col>
+
+                                                {/* Statut + Situation */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Statut stage <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.statut_stage}
+                                                        options={(statutsStage || []).map(ss => ({ value: String(ss.id), label: ss.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, statut_stage: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('statut_stage') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('statut_stage')}</div>
+                                                </Col>
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Situation stage <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={stage.situation_stage}
+                                                        options={(situationsStage || []).map(ss => ({ value: String(ss.id), label: ss.nom }))}
+                                                        onChange={v => setStage(s => ({ ...s, situation_stage: v }))}
+                                                        placeholder="Sélectionner"
+                                                        className={fieldError('situation_stage') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('situation_stage')}</div>
+                                                </Col>
+
+                                                {/* Dates */}
+                                                {showDateDebut && (
+                                                    <Col lg={6}>
+                                                        <EnhancedLabel
+                                                            label="Date de début de stage"
+                                                            required
+                                                            tooltipId="date-debut"
+                                                            tooltipContent="Doit être une date de cohorte valide : 1 à 5, 10 ou 20 du mois. Ne peut pas être dans le futur ni antérieure à 5 ans."
+                                                        />
+                                                        <Input type="date"
+                                                            className={fieldError('date_debut') ? 'is-invalid' : ''}
+                                                            value={stage.date_debut}
+                                                            onChange={e => setStage(s => ({ ...s, date_debut: e.target.value }))}
+                                                            max={todayString()} />
+                                                        <div className="invalid-feedback">{fieldError('date_debut')}</div>
+                                                    </Col>
+                                                )}
+                                                {showCapitalisationPejedec && (
+                                                    <Col lg={6}>
+                                                        <EnhancedLabel
+                                                            label="Nombre de mois déjà effectués"
+                                                            required
+                                                            tooltipId="nbr-mois-capitaliser"
+                                                            tooltipContent="Nombre de mois de stage déjà effectués dans une structure antérieure. Doit être inférieur à la durée totale du stage."
+                                                        />
+                                                        <Input type="number" min={0}
+                                                            className={fieldError('nbr_mois_capitaliser') ? 'is-invalid' : ''}
+                                                            value={stage.nbr_mois_capitaliser}
+                                                            onChange={e => setStage(s => ({ ...s, nbr_mois_capitaliser: parseInt(e.target.value) || 0 }))} />
+                                                        <div className="invalid-feedback">{fieldError('nbr_mois_capitaliser')}</div>
+                                                    </Col>
+                                                )}
+                                                {showCapitalisationPejedec && (
+                                                    <Col lg={6}>
+                                                        <EnhancedLabel
+                                                            label="Date démarrage capitalisation"
+                                                            tooltipId="date-capitalisation"
+                                                            tooltipContent="Date calculée automatiquement en fonction de la date de début et du nombre de mois à capitaliser."
+                                                        />
+                                                        <Input type="date" value={stage.date_demarrage_capitalisation} readOnly
+                                                            className={fieldError('date_demarrage_capitalisation') ? 'is-invalid' : ''} />
+                                                        <div className="invalid-feedback">{fieldError('date_demarrage_capitalisation')}</div>
+                                                        <small className="text-muted">Calculée automatiquement</small>
+                                                    </Col>
+                                                )}
+                                                {showCapitalisationSansFinanciere && (
+                                                    <Col lg={6}>
+                                                        <EnhancedLabel
+                                                            label="Date démarrage capitalisation sans incidence financière"
+                                                            required
+                                                            tooltipId="date-capitalisation-sans"
+                                                            tooltipContent="Pour les stages spontanés ou DAICG : date de début de la capitalisation sans compensation financière."
+                                                        />
+                                                        <Input type="date"
+                                                            className={fieldError('date_demarrage_capitalisation_sans_financiere') ? 'is-invalid' : ''}
+                                                            value={stage.date_demarrage_capitalisation_sans_financiere}
+                                                            onChange={e => setStage(s => ({ ...s, date_demarrage_capitalisation_sans_financiere: e.target.value }))} />
+                                                        <div className="invalid-feedback">{fieldError('date_demarrage_capitalisation_sans_financiere')}</div>
+                                                    </Col>
+                                                )}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Date de fin prévisionnelle <span className="text-danger">*</span></Label>
                                                     <Input type="date"
-                                                        className={fieldError('date_debut') ? 'is-invalid' : ''}
-                                                        value={stage.date_debut}
-                                                        onChange={e => setStage(s => ({ ...s, date_debut: e.target.value }))}
-                                                        max={todayString()} />
-                                                    <div className="invalid-feedback">{fieldError('date_debut')}</div>
-                                                </Col>
-                                            )}
-                                            {showCapitalisationPejedec && (
-                                                <Col lg={6}>
-                                                    <Label className="fw-semibold">Nombre de mois déjà effectués <span className="text-danger">*</span></Label>
-                                                    <Input type="number" min={0}
-                                                        className={fieldError('nbr_mois_capitaliser') ? 'is-invalid' : ''}
-                                                        value={stage.nbr_mois_capitaliser}
-                                                        onChange={e => setStage(s => ({ ...s, nbr_mois_capitaliser: parseInt(e.target.value) || 0 }))} />
-                                                    <div className="invalid-feedback">{fieldError('nbr_mois_capitaliser')}</div>
-                                                </Col>
-                                            )}
-                                            {showCapitalisationPejedec && (
-                                                <Col lg={6}>
-                                                    <Label className="fw-semibold">Date démarrage capitalisation</Label>
-                                                    <Input type="date" value={stage.date_demarrage_capitalisation} readOnly
-                                                        className={fieldError('date_demarrage_capitalisation') ? 'is-invalid' : ''} />
-                                                    <div className="invalid-feedback">{fieldError('date_demarrage_capitalisation')}</div>
+                                                        className={fieldError('date_fin_prevue') ? 'is-invalid' : ''}
+                                                        value={stage.date_fin_prevue} readOnly />
+                                                    <div className="invalid-feedback">{fieldError('date_fin_prevue')}</div>
                                                     <small className="text-muted">Calculée automatiquement</small>
                                                 </Col>
-                                            )}
-                                            {showCapitalisationSansFinanciere && (
-                                                <Col lg={6}>
-                                                    <Label className="fw-semibold">Date démarrage capitalisation sans incidence financière <span className="text-danger">*</span></Label>
-                                                    <Input type="date"
-                                                        className={fieldError('date_demarrage_capitalisation_sans_financiere') ? 'is-invalid' : ''}
-                                                        value={stage.date_demarrage_capitalisation_sans_financiere}
-                                                        onChange={e => setStage(s => ({ ...s, date_demarrage_capitalisation_sans_financiere: e.target.value }))} />
-                                                    <div className="invalid-feedback">{fieldError('date_demarrage_capitalisation_sans_financiere')}</div>
-                                                </Col>
-                                            )}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Date de fin prévisionnelle <span className="text-danger">*</span></Label>
-                                                <Input type="date"
-                                                    className={fieldError('date_fin_prevue') ? 'is-invalid' : ''}
-                                                    value={stage.date_fin_prevue} readOnly />
-                                                <div className="invalid-feedback">{fieldError('date_fin_prevue')}</div>
-                                                <small className="text-muted">Calculée automatiquement</small>
-                                            </Col>
 
-                                            <Col lg={12}>
-                                                <Alert color="success" className="py-2" style={{ borderLeft: '4px solid #28a745' }}>
-                                                    <small className="text-success">
-                                                        <strong>Exemple :</strong> cohorte 1, les jours indiqués seront : 1, 2, 3, 4, 5 ; cohorte 2 : le 10 ; cohorte 3 : le 20
-                                                    </small>
-                                                </Alert>
-                                            </Col>
-                                        </Row>
-                                    </CardBody>
-                                </Card>
-
-                                {/* ═══ PIECES JUSTIFICATIVES ═══ */}
-                                <Card className="shadow-sm border-0">
-                                    <CardHeader className="bg-danger-subtle">
-                                        <h5 className="card-title mb-0 text-danger fw-bold">
-                                            <i className="ri-file-upload-line me-1" />PIECES JUSTIFICATIVES
-                                        </h5>
-                                    </CardHeader>
-                                    <CardBody>
-                                        <Row className="g-3">
-                                            <Col lg={12}>
-                                                <Label className="fw-semibold">Fichier CMU <span className="text-danger">*</span></Label>
-                                                <Input type="file" accept=".pdf,.jpg,.jpeg,.png"
-                                                    className={fieldError('fichier_cmu') ? 'is-invalid' : ''}
-                                                    onChange={e => setDocuments(d => ({ ...d, fichier_cmu: e.target.files?.[0] || null }))} />
-                                                <div className="invalid-feedback">{fieldError('fichier_cmu')}</div>
-                                            </Col>
-
-                                            <Col lg={12}>
-                                                <Label className="fw-semibold">Pièce d'identité <span className="text-danger">*</span></Label>
-                                                <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                    className={fieldError('piece_identite') ? 'is-invalid' : ''}
-                                                    onChange={e => setDocuments(d => ({ ...d, piece_identite: e.target.files?.[0] || null }))} />
-                                                <div className="invalid-feedback">{fieldError('piece_identite')}</div>
-                                            </Col>
-
-                                            {/* Attestation + Certificat (ECOLE) */}
-                                            {isStageEcole && (
-                                                <>
-                                                    <Col lg={12}>
-                                                        <Label className="fw-semibold">Attestation d'admissibilité <span className="text-danger">*</span></Label>
-                                                        <Input type="file" accept=".pdf,.doc,.docx"
-                                                            className={fieldError('fichier_attestation') ? 'is-invalid' : ''}
-                                                            onChange={e => setDocuments(d => ({ ...d, fichier_attestation: e.target.files?.[0] || null }))} />
-                                                        <div className="invalid-feedback">{fieldError('fichier_attestation')}</div>
-                                                    </Col>
-                                                    <Col lg={12}>
-                                                        <Label className="fw-semibold">Certificat de fréquentation <span className="text-danger">*</span></Label>
-                                                        <Input type="file" accept=".pdf,.doc,.docx"
-                                                            className={fieldError('fichier_certificat_frequentation') ? 'is-invalid' : ''}
-                                                            onChange={e => setDocuments(d => ({ ...d, fichier_certificat_frequentation: e.target.files?.[0] || null }))} />
-                                                        <div className="invalid-feedback">{fieldError('fichier_certificat_frequentation')}</div>
-                                                    </Col>
-                                                </>
-                                            )}
-
-                                            {/* Diplôme (QUALIFICATION) */}
-                                            {isStageQualification && (
                                                 <Col lg={12}>
-                                                    <Label className="fw-semibold">Diplôme <span className="text-danger">*</span></Label>
-                                                    <Input type="file" accept=".pdf,.doc,.docx"
-                                                        className={fieldError('fichier_diplome') ? 'is-invalid' : ''}
-                                                        onChange={e => setDocuments(d => ({ ...d, fichier_diplome: e.target.files?.[0] || null }))} />
-                                                    <div className="invalid-feedback">{fieldError('fichier_diplome')}</div>
+                                                    <Alert color="success" className="py-2" style={{ borderLeft: '4px solid #28a745' }}>
+                                                        <small className="text-success">
+                                                            <strong>Exemple :</strong> cohorte 1, les jours indiqués seront : 1, 2, 3, 4, 5 ; cohorte 2 : le 10 ; cohorte 3 : le 20
+                                                        </small>
+                                                    </Alert>
                                                 </Col>
-                                            )}
+                                            </Row>
+                                        </CardBody>
+                                    </Card>
+                                </Col>
+                            )}
 
-                                            {/* Type paiement + fichiers */}
-                                            <Col lg={6}>
-                                                <Label className="fw-semibold">Type de paiement <span className="text-danger">*</span></Label>
-                                                <select className={`form-select ${fieldError('type_paiement_id') ? 'is-invalid' : ''}`}
-                                                    value={beneficiaire.type_paiement_id}
-                                                    onChange={e => setBeneficiaire(b => ({ ...b, type_paiement_id: e.target.value }))}
-                                                    disabled>
-                                                    <option value="">Selectionner</option>
-                                                    {typesPaiement.map(t => <option key={t.id} value={t.id}>{t.nom}</option>)}
-                                                </select>
-                                                <div className="invalid-feedback">{fieldError('type_paiement_id')}</div>
-                                            </Col>
+                            {/* ═══ ÉTAPE 3 : PIECES JUSTIFICATIVES ═══ */}
+                            {currentStep === 3 && (
+                                <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
+                                    <Card className="shadow-sm border-0">
+                                        <CardHeader className="bg-danger-subtle">
+                                            <h5 className="card-title mb-0 text-danger fw-bold">
+                                                <i className="ri-file-upload-line me-1" />PIECES JUSTIFICATIVES
+                                            </h5>
+                                        </CardHeader>
+                                        <CardBody>
+                                            <Row className="g-3">
+                                                <Col lg={12}>
+                                                    <Label className="fw-semibold">Fichier CMU <span className="text-danger">*</span></Label>
+                                                    <Input type="file" accept=".pdf,.jpg,.jpeg,.png"
+                                                        className={fieldError('fichier_cmu') ? 'is-invalid' : ''}
+                                                        onChange={e => setDocuments(d => ({ ...d, fichier_cmu: e.target.files?.[0] || null }))} />
+                                                    <div className="invalid-feedback">{fieldError('fichier_cmu')}</div>
+                                                </Col>
 
-                                            {/* Trésor Money */}
-                                            {showTresorMoney && (
-                                                <>
-                                                    <Col lg={6}>
-                                                        <Label className="fw-semibold">Fiche Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
-                                                        <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                                                            onChange={e => setDocuments(d => ({ ...d, fiche_tresor_money: e.target.files?.[0] || null }))} />
-                                                    </Col>
-                                                    <Col lg={6}>
-                                                        <Label className="fw-semibold">Numéro Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
-                                                        <Input type="text"
-                                                            className={fieldError('numero_tresor_money') ? 'is-invalid' : ''}
-                                                            value={beneficiaire.numero_tresor_money}
-                                                            onChange={e => setBeneficiaire(b => ({ ...b, numero_tresor_money: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
-                                                            maxLength={10} />
-                                                        <div className="invalid-feedback">{fieldError('numero_tresor_money')}</div>
-                                                    </Col>
-                                                </>
-                                            )}
+                                                <Col lg={12}>
+                                                    <Label className="fw-semibold">Pièce d'identité <span className="text-danger">*</span></Label>
+                                                    <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                        className={fieldError('piece_identite') ? 'is-invalid' : ''}
+                                                        onChange={e => setDocuments(d => ({ ...d, piece_identite: e.target.files?.[0] || null }))} />
+                                                    <div className="invalid-feedback">{fieldError('piece_identite')}</div>
+                                                </Col>
 
-                                            {/* Wave */}
-                                            {showWave && (
-                                                <>
-                                                    <Col lg={6}>
-                                                        <Label className="fw-semibold">Attestation de reconnaissance de numéro Mobile Money <span className="text-danger">*</span></Label>
+                                                {/* Fiche RIB (optionnel, comme legacy) */}
+                                                <Col lg={12}>
+                                                    <Label className="fw-semibold">Fiche RIB</Label>
+                                                    <Input type="file" accept=".pdf,.jpg,.jpeg,.png"
+                                                        onChange={e => setDocuments(d => ({ ...d, fichier_rib: e.target.files?.[0] || null }))} />
+                                                </Col>
+
+                                                {/* Attestation + Certificat (ECOLE) */}
+                                                {isStageEcole && (
+                                                    <>
+                                                        <Col lg={12}>
+                                                            <Label className="fw-semibold">Attestation d'admissibilité <span className="text-danger">*</span></Label>
+                                                            <Input type="file" accept=".pdf,.doc,.docx"
+                                                                className={fieldError('fichier_attestation') ? 'is-invalid' : ''}
+                                                                onChange={e => setDocuments(d => ({ ...d, fichier_attestation: e.target.files?.[0] || null }))} />
+                                                            <div className="invalid-feedback">{fieldError('fichier_attestation')}</div>
+                                                        </Col>
+                                                        <Col lg={12}>
+                                                            <Label className="fw-semibold">Certificat de fréquentation <span className="text-danger">*</span></Label>
+                                                            <Input type="file" accept=".pdf,.doc,.docx"
+                                                                className={fieldError('fichier_certificat_frequentation') ? 'is-invalid' : ''}
+                                                                onChange={e => setDocuments(d => ({ ...d, fichier_certificat_frequentation: e.target.files?.[0] || null }))} />
+                                                            <div className="invalid-feedback">{fieldError('fichier_certificat_frequentation')}</div>
+                                                        </Col>
+                                                    </>
+                                                )}
+
+                                                {/* Diplôme (QUALIFICATION) */}
+                                                {isStageQualification && (
+                                                    <Col lg={12}>
+                                                        <Label className="fw-semibold">Diplôme <span className="text-danger">*</span></Label>
                                                         <Input type="file" accept=".pdf,.doc,.docx"
-                                                            onChange={e => setDocuments(d => ({ ...d, fiche_wave: e.target.files?.[0] || null }))} />
+                                                            className={fieldError('fichier_diplome') ? 'is-invalid' : ''}
+                                                            onChange={e => setDocuments(d => ({ ...d, fichier_diplome: e.target.files?.[0] || null }))} />
+                                                        <div className="invalid-feedback">{fieldError('fichier_diplome')}</div>
                                                     </Col>
-                                                    <Col lg={6}>
-                                                        <Label className="fw-semibold">Numéro Wave <span className="text-danger">*</span></Label>
-                                                        <Input type="text"
-                                                            className={fieldError('numero_wave') ? 'is-invalid' : ''}
-                                                            value={beneficiaire.numero_wave}
-                                                            onChange={e => setBeneficiaire(b => ({ ...b, numero_wave: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
-                                                            maxLength={10} />
-                                                        <div className="invalid-feedback">{fieldError('numero_wave')}</div>
-                                                    </Col>
-                                                </>
-                                            )}
-                                        </Row>
-                                    </CardBody>
-                                </Card>
-                            </Col>
+                                                )}
+
+                                                {/* Type paiement + fichiers */}
+                                                <Col lg={6}>
+                                                    <Label className="fw-semibold">Type de paiement <span className="text-danger">*</span></Label>
+                                                    <RsSelect
+                                                        value={beneficiaire.type_paiement_id}
+                                                        options={typesPaiement.map(t => ({ value: String(t.id), label: t.nom }))}
+                                                        onChange={v => setBeneficiaire(b => ({ ...b, type_paiement_id: v }))}
+                                                        placeholder="Sélectionner"
+                                                        isDisabled
+                                                        className={fieldError('type_paiement_id') ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{fieldError('type_paiement_id')}</div>
+                                                </Col>
+
+                                                {/* Trésor Money */}
+                                                {showTresorMoney && (
+                                                    <>
+                                                        <Col lg={6}>
+                                                            <Label className="fw-semibold">Fiche Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
+                                                            <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                                                                onChange={e => setDocuments(d => ({ ...d, fiche_tresor_money: e.target.files?.[0] || null }))} />
+                                                        </Col>
+                                                        <Col lg={6}>
+                                                            <Label className="fw-semibold">Numéro Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
+                                                            <Input type="text"
+                                                                className={fieldError('numero_tresor_money') ? 'is-invalid' : ''}
+                                                                value={beneficiaire.numero_tresor_money}
+                                                                onChange={e => setBeneficiaire(b => ({ ...b, numero_tresor_money: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
+                                                                maxLength={10} />
+                                                            <div className="invalid-feedback">{fieldError('numero_tresor_money')}</div>
+                                                        </Col>
+                                                    </>
+                                                )}
+
+                                                {/* Wave */}
+                                                {showWave && (
+                                                    <>
+                                                        <Col lg={6}>
+                                                            <Label className="fw-semibold">Attestation de reconnaissance de numéro Mobile Money <span className="text-danger">*</span></Label>
+                                                            <Input type="file" accept=".pdf,.doc,.docx"
+                                                                onChange={e => setDocuments(d => ({ ...d, fiche_wave: e.target.files?.[0] || null }))} />
+                                                        </Col>
+                                                        <Col lg={6}>
+                                                            <Label className="fw-semibold">Numéro Wave <span className="text-danger">*</span></Label>
+                                                            <Input type="text"
+                                                                className={fieldError('numero_wave') ? 'is-invalid' : ''}
+                                                                value={beneficiaire.numero_wave}
+                                                                onChange={e => setBeneficiaire(b => ({ ...b, numero_wave: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
+                                                                maxLength={10} />
+                                                            <div className="invalid-feedback">{fieldError('numero_wave')}</div>
+                                                        </Col>
+                                                    </>
+                                                )}
+                                            </Row>
+                                        </CardBody>
+                                    </Card>
+                                </Col>
+                            )}
+
+                            {/* ═══ ÉTAPE 4 : RÉCAPITULATIF ═══ */}
+                            {currentStep === 4 && (
+                                <Col lg={12} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
+                                    <RecapitulatifInscription
+                                        beneficiaire={beneficiaire}
+                                        stage={stage}
+                                        documents={documents}
+                                        refData={{
+                                            agences,
+                                            communes,
+                                            typesStage,
+                                            sourcesFinancement,
+                                            originesStagiaire,
+                                            niveauxEtude,
+                                            diplomes,
+                                            entreprises,
+                                            typesPaiement,
+                                        }}
+                                    />
+                                </Col>
+                            )}
                         </Row>
 
-                        {/* ═══ OBSERVATIONS ═══ */}
-                        <Card className="shadow-sm border-0 mt-3">
-                            <CardHeader className="bg-danger-subtle">
-                                <h5 className="card-title mb-0 text-danger fw-bold">OBSERVATIONS</h5>
-                            </CardHeader>
-                            <CardBody>
-                                <Input type="textarea" rows={3}
-                                    className={fieldError('observations') ? 'is-invalid' : ''}
-                                    value={stage.observations}
-                                    onChange={e => setStage(s => ({ ...s, observations: e.target.value.toUpperCase() }))} />
-                                <div className="invalid-feedback">{fieldError('observations')}</div>
+                        {/* ═══ OBSERVATIONS (étapes 2 et 3) ═══ */}
+                        {(currentStep === 2 || currentStep === 3) && (
+                            <Card className="shadow-sm border-0 mt-3">
+                                <CardHeader className="bg-danger-subtle">
+                                    <h5 className="card-title mb-0 text-danger fw-bold">OBSERVATIONS</h5>
+                                </CardHeader>
+                                <CardBody>
+                                    <Input type="textarea" rows={3}
+                                        className={fieldError('observations') ? 'is-invalid' : ''}
+                                        value={stage.observations}
+                                        onChange={e => setStage(s => ({ ...s, observations: e.target.value.toUpperCase() }))} />
+                                    <div className="invalid-feedback">{fieldError('observations')}</div>
+                                </CardBody>
+                            </Card>
+                        )}
+
+                        {/* ═══ NAVIGATION WIZARD ═══ */}
+                        <Card className="shadow-sm border-0 mt-4" style={{ borderTop: '3px solid #dc3545' }}>
+                            <CardBody className="p-4">
+                                <div className="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        {currentStep > 0 && (
+                                            <Button
+                                                color="light"
+                                                type="button"
+                                                onClick={handlePrev}
+                                                size="lg"
+                                                className="px-4"
+                                                style={{
+                                                    border: '2px solid #e9ecef',
+                                                    fontWeight: 600,
+                                                    transition: 'all 0.3s ease',
+                                                }}
+                                            >
+                                                <i className="ri-arrow-left-line me-2" />Précédent
+                                            </Button>
+                                        )}
+                                    </div>
+                                    <div className="d-flex gap-3">
+                                        {currentStep < STEPS.length - 1 ? (
+                                            <Button
+                                                color="danger"
+                                                type="button"
+                                                onClick={handleNext}
+                                                size="lg"
+                                                className="px-5"
+                                                style={{
+                                                    fontWeight: 600,
+                                                    boxShadow: '0 4px 12px rgba(220,53,69,0.3)',
+                                                    transition: 'all 0.3s ease',
+                                                }}
+                                            >
+                                                Suivant <i className="ri-arrow-right-line ms-2" />
+                                            </Button>
+                                        ) : canSubmit ? (
+                                            <>
+                                                <Button
+                                                    color="success"
+                                                    type="submit"
+                                                    disabled={submitting}
+                                                    size="lg"
+                                                    className="px-5"
+                                                    style={{
+                                                        fontWeight: 600,
+                                                        boxShadow: '0 4px 12px rgba(25,135,84,0.3)',
+                                                        transition: 'all 0.3s ease',
+                                                    }}
+                                                >
+                                                    {submitting ? (
+                                                        <>
+                                                            <Spinner size="sm" className="me-2" />
+                                                            Enregistrement...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <i className="ri-save-line me-2" />Enregistrer
+                                                        </>
+                                                    )}
+                                                </Button>
+                                                <Button
+                                                    color="info"
+                                                    type="submit"
+                                                    disabled={submitting}
+                                                    size="lg"
+                                                    className="px-5"
+                                                    style={{
+                                                        fontWeight: 600,
+                                                        boxShadow: '0 4px 12px rgba(13,202,240,0.3)',
+                                                        transition: 'all 0.3s ease',
+                                                    }}
+                                                >
+                                                    {submitting ? (
+                                                        <>
+                                                            <Spinner size="sm" className="me-2" />
+                                                            Enregistrement...
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <i className="ri-save-3-line me-2" />Enregistrer & Fermer
+                                                        </>
+                                                    )}
+                                                </Button>
+                                            </>
+                                        ) : null}
+                                    </div>
+                                </div>
                             </CardBody>
                         </Card>
-
-                        {/* ═══ ACTIONS ═══ */}
-                        <div className="d-flex gap-2 mb-4 mt-3">
-                            {canSubmit && (
-                                <>
-                                    <Button color="success" type="submit" disabled={submitting}
-                                        onClick={() => {/* enregistrer */ }}>
-                                        <i className="ri-save-line me-1" />Enregistrer
-                                    </Button>
-                                    <Button color="info" type="submit" disabled={submitting}>
-                                        {submitting ? <><Spinner size="sm" className="me-1" />Enregistrement...</> : <>Enregistrer & Fermer</>}
-                                    </Button>
-                                </>
-                            )}
-                        </div>
                     </Form>
                 </Container>
             </div>
