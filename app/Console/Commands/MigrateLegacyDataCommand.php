@@ -2471,46 +2471,77 @@ class MigrateLegacyDataCommand extends Command
         // ─── Étape 1 : Corriger les natures des droits de paiement ───
         $this->info('Étape 1 : Correction des natures DEMARRAGE/PRESENCE sur les droits de paiement...');
 
+        // Cache : stage_id → [date_debut, periode.code] pour éviter N+1 sur les relations
+        $stageDateDebutCache = [];
+        $periodeCodeCache = [];
+
         $droitsQuery = DroitPaiement::query()
-            ->with(['stage', 'periode'])
+            ->select('id', 'stage_id', 'periode_id', 'nature')
             ->where('nature', 'PRESENCE')
             ->whereNull('annule_le');
 
         if ($cohorte) {
-            $droitsQuery->whereHas('stage', function ($q) use ($cohorte) {
-                $year = (int) substr($cohorte, 0, 4);
-                $month = (int) substr($cohorte, 5, 2);
-                $q->whereYear('date_debut', $year)
-                    ->whereMonth('date_debut', $month);
+            $year = (int) substr($cohorte, 0, 4);
+            $month = (int) substr($cohorte, 5, 2);
+            $droitsQuery->whereHas('stage', function ($q) use ($year, $month) {
+                $q->whereYear('date_debut', $year)->whereMonth('date_debut', $month);
             });
         }
 
-        $droits = $droitsQuery->orderBy('stage_id')->orderBy('id')->get();
-
         $nbCorriges = 0;
-        $bar = $this->output->createProgressBar($droits->count());
+        $totalDroits = $droitsQuery->count();
+        $bar = $this->output->createProgressBar($totalDroits);
         $bar->start();
 
-        foreach ($droits as $droit) {
-            $natureOrigine = $this->mapper->naturePaiementPourPeriode(
-                (string) $droit->stage?->getAttribute('date_debut'),
-                (string) $droit->periode?->getAttribute('code')
-            );
+        // Chunk au lieu de get() : on ne charge que 2000 droits à la fois
+        $droitsQuery->orderBy('stage_id')->orderBy('id')->chunk(2000, function ($droits) use (
+            &$nbCorriges, $dryRun, &$stageDateDebutCache, &$periodeCodeCache, $bar
+        ): void {
+            // Précharger les stages et périodes de ce chunk en une seule requête chacune
+            $stageIds = $droits->pluck('stage_id')->unique()->values()->toArray();
+            $periodeIds = $droits->pluck('periode_id')->unique()->values()->toArray();
 
-            if ($natureOrigine === 'DEMARRAGE' && $droit->nature === 'PRESENCE') {
-                $nbCorriges++;
-
-                if (! $dryRun) {
-                    $droit->update([
-                        'nature' => 'DEMARRAGE',
-                        'motif_annulation' => null,
-                        'annule_le' => null,
-                    ]);
+            $missingStageIds = array_diff($stageIds, array_keys($stageDateDebutCache));
+            if (! empty($missingStageIds)) {
+                $stagesData = Stage::whereIn('id', $missingStageIds)->pluck('date_debut', 'id')->toArray();
+                foreach ($stagesData as $sid => $dateDebut) {
+                    $stageDateDebutCache[$sid] = $dateDebut;
                 }
             }
 
-            $bar->advance();
-        }
+            $missingPeriodeIds = array_diff($periodeIds, array_keys($periodeCodeCache));
+            if (! empty($missingPeriodeIds)) {
+                $periodesData = DB::table('periodes')->whereIn('id', $missingPeriodeIds)->pluck('code', 'id')->toArray();
+                foreach ($periodesData as $pid => $code) {
+                    $periodeCodeCache[$pid] = $code;
+                }
+            }
+
+            $toUpdate = [];
+            foreach ($droits as $droit) {
+                $dateDebut = $stageDateDebutCache[$droit->stage_id] ?? null;
+                $codePeriode = $periodeCodeCache[$droit->periode_id] ?? null;
+
+                $natureOrigine = $this->mapper->naturePaiementPourPeriode(
+                    (string) $dateDebut,
+                    (string) $codePeriode
+                );
+
+                if ($natureOrigine === 'DEMARRAGE') {
+                    $toUpdate[] = $droit->id;
+                }
+                $bar->advance();
+            }
+
+            $nbCorriges += count($toUpdate);
+            if (! $dryRun && ! empty($toUpdate)) {
+                DroitPaiement::whereIn('id', $toUpdate)->update([
+                    'nature' => 'DEMARRAGE',
+                    'motif_annulation' => null,
+                    'annule_le' => null,
+                ]);
+            }
+        });
 
         $bar->finish();
         $this->newLine();
@@ -2534,17 +2565,29 @@ class MigrateLegacyDataCommand extends Command
         $this->info("  Stages legacy candidats : {$total}");
 
         $nbCorbeilleChanges = 0;
-        $definitionsMap = [];
+        $defCode = 'STAGE_LEGACY';
+        $definition = DefinitionParcours::firstOrCreate(
+            ['code' => $defCode, 'version' => 1],
+            ['nom' => 'Parcours Legacy', 'active' => true]
+        );
+        // Cache des étapes pour éviter firstOrCreate à chaque ligne
+        $etapesCache = [];
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$nbCorbeilleChanges, &$definitionsMap, $dryRun): void {
+        $query->orderBy('id')->chunk(1000, function ($contrats) use (
+            &$nbCorbeilleChanges, $dryRun, $definition, &$etapesCache
+        ): void {
             $ancienIds = $contrats->pluck('ancien_id')->toArray();
             $stagesMap = Stage::withTrashed()->whereIn('ancien_id', $ancienIds)->pluck('id', 'ancien_id');
+            $stageIds = $stagesMap->values()->toArray();
 
-            $instances = InstanceParcours::whereIn('stage_id', $stagesMap->values()->toArray())
-                ->whereNull('terminee_le')
-                ->get()
-                ->keyBy('stage_id');
+            $instances = empty($stageIds)
+                ? collect()
+                : InstanceParcours::whereIn('stage_id', $stageIds)
+                    ->whereNull('terminee_le')
+                    ->get()
+                    ->keyBy('stage_id');
 
+            $batchUpdates = [];
             foreach ($contrats as $legacyContrat) {
                 $stageId = $stagesMap[$legacyContrat->ancien_id] ?? null;
                 if (! $stageId) {
@@ -2565,23 +2608,31 @@ class MigrateLegacyDataCommand extends Command
                 $nbCorbeilleChanges++;
 
                 if (! $dryRun) {
-                    $defCode = 'STAGE_LEGACY';
-                    if (! isset($definitionsMap[$defCode])) {
-                        $definitionsMap[$defCode] = DefinitionParcours::firstOrCreate(
-                            ['code' => $defCode, 'version' => 1],
-                            ['nom' => 'Parcours Legacy', 'active' => true]
+                    $etapeCode = strtoupper($corbeilleEnum->value);
+                    if (! isset($etapesCache[$etapeCode])) {
+                        $etapesCache[$etapeCode] = EtapeParcours::firstOrCreate(
+                            ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                            ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
                         );
                     }
+                    $etape = $etapesCache[$etapeCode];
 
-                    $etapeCode = strtoupper($corbeilleEnum->value);
-                    $etape = EtapeParcours::firstOrCreate(
-                        ['definition_parcours_id' => $definitionsMap[$defCode]->id, 'code' => $etapeCode],
-                        ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
-                    );
-
-                    $instance->update([
+                    $batchUpdates[] = [
+                        'id' => $instance->id,
                         'corbeille_actuelle' => $corbeilleEnum->value,
                         'etape_courante_id' => $etape->id,
+                        'updated_at' => now(),
+                    ];
+                }
+            }
+
+            if (! $dryRun && ! empty($batchUpdates)) {
+                // Batch update via DB::table pour éviter N requêtes UPDATE
+                $instanceIds = array_column($batchUpdates, 'id');
+                foreach ($batchUpdates as $update) {
+                    InstanceParcours::where('id', $update['id'])->update([
+                        'corbeille_actuelle' => $update['corbeille_actuelle'],
+                        'etape_courante_id' => $update['etape_courante_id'],
                     ]);
                 }
             }
@@ -2635,42 +2686,44 @@ class MigrateLegacyDataCommand extends Command
         $inspected = 0;
         $changed = 0;
         $transitions = [];
+        // Cache des étapes pour éviter un SELECT/INSERT par ligne
+        $etapesCache = [];
+
+        $corbeillesConcernees = [
+            CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
+            CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value,
+        ];
 
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
         $query->orderBy('id')->chunk(500, function ($contrats) use (
-            $definition, $dryRun, &$inspected, &$changed, &$transitions, $bar
+            $definition, $dryRun, &$inspected, &$changed, &$transitions, &$etapesCache, $corbeillesConcernees, $bar
         ) {
             $ancienIds = $contrats->pluck('id')->toArray();
 
             $stagesMap = Stage::withTrashed()->whereIn('ancien_id', $ancienIds)->pluck('id', 'ancien_id');
+            $stageIds = $stagesMap->values()->toArray();
 
-            $corbeillesConcernees = [
-                CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
-                CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value,
-            ];
+            $instancesMap = empty($stageIds)
+                ? collect()
+                : InstanceParcours::whereIn('stage_id', $stageIds)
+                    ->whereIn('corbeille_actuelle', $corbeillesConcernees)
+                    ->whereNull('terminee_le')
+                    ->get()
+                    ->keyBy('stage_id');
 
-            $instancesMap = InstanceParcours::whereIn('stage_id', $stagesMap->values()->toArray())
-                ->whereIn('corbeille_actuelle', $corbeillesConcernees)
-                ->whereNull('terminee_le')
-                ->get()
-                ->keyBy('stage_id');
-
+            $batchUpdates = [];
             foreach ($contrats as $legacyContrat) {
                 $stageId = $stagesMap[$legacyContrat->id] ?? null;
-
                 if (! $stageId) {
                     $bar->advance();
-
                     continue;
                 }
 
                 $instance = $instancesMap->get($stageId);
-
                 if (! $instance) {
                     $bar->advance();
-
                     continue;
                 }
 
@@ -2684,7 +2737,6 @@ class MigrateLegacyDataCommand extends Command
 
                 if ($nouvelleCorbeille->value === $instance->corbeille_actuelle) {
                     $bar->advance();
-
                     continue;
                 }
 
@@ -2693,19 +2745,33 @@ class MigrateLegacyDataCommand extends Command
 
                 if (! $dryRun) {
                     $etapeCode = strtoupper($nouvelleCorbeille->value);
-                    $etape = EtapeParcours::firstOrCreate(
-                        ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
-                        ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
-                    );
+                    if (! isset($etapesCache[$etapeCode])) {
+                        $etapesCache[$etapeCode] = EtapeParcours::firstOrCreate(
+                            ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                            ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
+                        );
+                    }
+                    $etape = $etapesCache[$etapeCode];
 
-                    $instance->update([
+                    $batchUpdates[] = [
+                        'id' => $instance->id,
                         'corbeille_actuelle' => $nouvelleCorbeille->value,
                         'etape_courante_id' => $etape->id,
-                    ]);
+                    ];
                 }
 
                 $changed++;
                 $bar->advance();
+            }
+
+            // Batch update des instances de workflow
+            if (! $dryRun && ! empty($batchUpdates)) {
+                foreach ($batchUpdates as $update) {
+                    InstanceParcours::where('id', $update['id'])->update([
+                        'corbeille_actuelle' => $update['corbeille_actuelle'],
+                        'etape_courante_id' => $update['etape_courante_id'],
+                    ]);
+                }
             }
         });
 
@@ -2751,47 +2817,60 @@ class MigrateLegacyDataCommand extends Command
 
         $fixedCount = 0;
 
+        // Cache : ancien_id → date_ca (préchargé par chunk, pas par ligne)
+        $legacyDateCache = [];
+
         foreach (array_chunk($pointageIds, 500) as $chunk) {
-            $pointages = Pointage::whereIn('id', $chunk)->with(['stage.contrats'])->get();
+            $pointages = Pointage::whereIn('id', $chunk)
+                ->with(['stage.contrats'])
+                ->get();
+
+            // Batch-load les dates legacy pour tout le chunk en une seule requête
+            $ancienIds = $pointages->pluck('ancien_id')->filter()->values()->toArray();
+            if (! empty($ancienIds)) {
+                $legacyDates = DB::connection('legacy')->table('pointage_models')
+                    ->whereIn('id', $ancienIds)
+                    ->pluck('date_ca', 'id')
+                    ->toArray();
+                $legacyDateCache += $legacyDates;
+            }
+
             foreach ($pointages as $pointage) {
                 try {
-                    DB::transaction(function () use ($pointage, &$fixedCount) {
-                        $stage = $pointage->stage;
-                        if (! $stage) {
-                            return;
-                        }
+                    $stage = $pointage->stage;
+                    if (! $stage) {
+                        $bar->advance();
+                        continue;
+                    }
 
-                        $contratActif = $stage->contrats()->latest()->first();
-                        $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 45000;
+                    // Utiliser le contrat eager-loadé au lieu de refaire une requête
+                    $contratActif = $stage->contrats->first();
+                    $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 45000;
 
-                        $legacyDate = DB::connection('legacy')->table('pointage_models')
-                            ->where('id', $pointage->ancien_id)
-                            ->value('date_ca');
+                    $legacyDate = $legacyDateCache[$pointage->ancien_id] ?? null;
+                    $createdAt = $legacyDate && $legacyDate !== '0000-00-00 00:00:00' ? $legacyDate : now();
 
-                        $createdAt = $legacyDate && $legacyDate !== '0000-00-00 00:00:00' ? $legacyDate : now();
+                    $droitPaiement = DroitPaiement::create([
+                        'stage_id' => $stage->id,
+                        'pointage_id' => $pointage->id,
+                        'periode_id' => $pointage->periode_id,
+                        'source_financement_id' => $stage->source_financement_id ?? 1,
+                        'nature' => 'PRESENCE',
+                        'montant' => $montantPaiement,
+                        'statut' => 'OUVERT',
+                        'created_at' => $createdAt,
+                        'updated_at' => $createdAt,
+                    ]);
 
-                        $droitPaiement = DroitPaiement::create([
-                            'stage_id' => $stage->id,
-                            'pointage_id' => $pointage->id,
-                            'periode_id' => $pointage->periode_id,
-                            'source_financement_id' => $stage->source_financement_id ?? 1,
-                            'nature' => 'PRESENCE',
-                            'montant' => $montantPaiement,
-                            'statut' => 'OUVERT',
-                            'created_at' => $createdAt,
-                            'updated_at' => $createdAt,
-                        ]);
+                    Paiement::create([
+                        'droit_paiement_id' => $droitPaiement->id,
+                        'statut' => 'A_TRAITER',
+                        'montant' => $montantPaiement,
+                        'created_at' => $createdAt,
+                        'updated_at' => $createdAt,
+                    ]);
 
-                        Paiement::create([
-                            'droit_paiement_id' => $droitPaiement->id,
-                            'statut' => 'A_TRAITER',
-                            'montant' => $montantPaiement,
-                            'created_at' => $createdAt,
-                            'updated_at' => $createdAt,
-                        ]);
-
-                        $fixedCount++;
-                    });
+                    $fixedCount++;
                 } catch (\Exception $e) {
                     $this->error("Failed to generate payment for pointage {$pointage->id}: ".$e->getMessage());
                 }
@@ -2833,34 +2912,54 @@ class MigrateLegacyDataCommand extends Command
             return;
         }
 
+        // Batch pre-fetch : tous les pointages concernés en une requête
+        $pointageIds = $instances->pluck('pointage_id')->filter()->values()->toArray();
+        $pointagesCollection = Pointage::whereIn('id', $pointageIds)->get()->keyBy('id');
+
+        // Batch pre-fetch : tous les droits de paiement concernés en une requête
+        // Construire la clause WHERE IN avec les paires (stage_id, periode_id)
+        $droitsCollection = collect();
+        if ($pointagesCollection->isNotEmpty()) {
+            $droitsQuery = DroitPaiement::query();
+            $droitsQuery->where(function ($q) use ($pointagesCollection) {
+                foreach ($pointagesCollection as $p) {
+                    $q->orWhere(fn ($sub) => $sub->where('stage_id', $p->stage_id)->where('periode_id', $p->periode_id));
+                }
+            });
+            $droitsCollection = $droitsQuery->get();
+        }
+        $droitIds = $droitsCollection->pluck('id')->toArray();
+
+        // Batch pre-fetch : tous les paiements concernés en une requête
+        $paiementsCollection = ! empty($droitIds)
+            ? Paiement::whereIn('droit_paiement_id', $droitIds)->get()
+            : collect();
+
+        $this->info('Pre-fetched '.count($pointagesCollection).' pointages, '.count($droitsCollection).' droits, '.count($paiementsCollection).' paiements.');
+
         $bar = $this->output->createProgressBar($instances->count());
         $bar->start();
 
         $deletedPaiements = 0;
         $deletedDroits = 0;
 
-        foreach ($instances as $instance) {
-            $instance->corbeille_actuelle = 'ca_validation_pointages';
-            $instance->save();
-
-            $pointage = Pointage::find($instance->pointage_id);
-            if ($pointage) {
-                $droit = DroitPaiement::where('stage_id', $pointage->stage_id)
-                    ->where('periode_id', $pointage->periode_id)
-                    ->first();
-
-                if ($droit) {
-                    $paiements = Paiement::where('droit_paiement_id', $droit->id)->get();
-                    foreach ($paiements as $p) {
-                        $p->delete();
-                        $deletedPaiements++;
-                    }
-                    $droit->delete();
-                    $deletedDroits++;
-                }
-            }
-            $bar->advance();
+        // Batch delete paiements
+        $paiementIdsToDelete = $paiementsCollection->pluck('id')->toArray();
+        if (! empty($paiementIdsToDelete)) {
+            Paiement::whereIn('id', $paiementIdsToDelete)->delete();
+            $deletedPaiements = count($paiementIdsToDelete);
         }
+
+        // Batch delete droits
+        $droitIdsToDelete = $droitsCollection->pluck('id')->toArray();
+        if (! empty($droitIdsToDelete)) {
+            DroitPaiement::whereIn('id', $droitIdsToDelete)->delete();
+            $deletedDroits = count($droitIdsToDelete);
+        }
+
+        // Batch update instances
+        $instanceIds = $instances->pluck('id')->toArray();
+        InstanceParcours::whereIn('id', $instanceIds)->update(['corbeille_actuelle' => 'ca_validation_pointages']);
 
         $bar->finish();
         $this->newLine();
@@ -2891,6 +2990,15 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         // Injecter le service de validation via le conteneur Laravel
         $validationService = app(\App\Domain\Validation\Services\ValidationChefAgenceService::class);
 
+        // Batch pre-fetch : tous les rows legacy en une seule requête
+        $ancienIds = $stages->pluck('ancien_id')->filter()->values()->toArray();
+        $legacyRowsMap = ! empty($ancienIds)
+            ? DB::connection('legacy')->table('contrats_pae')
+                ->whereIn('id', $ancienIds)
+                ->get()
+                ->keyBy('id')
+            : collect();
+
         $fixedCount = 0;
 
         $bar = $this->output->createProgressBar($stages->count());
@@ -2898,7 +3006,7 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
 
         foreach ($stages as $stage) {
             try {
-                $legacyRow = DB::connection('legacy')->table('contrats_pae')->where('id', $stage->ancien_id)->first();
+                $legacyRow = $legacyRowsMap->get($stage->ancien_id);
                 if ($legacyRow && $legacyRow->etat_chef_agence == 2) {
                     $validationService->validerDemarrage($stage->instanceParcours, $adminUser);
                     $fixedCount++;
@@ -2937,41 +3045,50 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         $this->info('Migration des référentiels manquants...');
 
         if (DB::connection('legacy')->getSchemaBuilder()->hasTable('type_paiements')) {
-            $typesPaiement = DB::connection('legacy')->table('type_paiements')->get();
-            foreach ($typesPaiement as $tp) {
-                TypePaiement::updateOrCreate(
-                    ['ancien_id' => $tp->id],
-                    [
-                        'code' => 'TP-'.str_pad($tp->id, 3, '0', STR_PAD_LEFT),
-                        'nom' => $tp->libelle,
-                    ]
-                );
+            $rows = DB::connection('legacy')->table('type_paiements')
+                ->get()
+                ->map(fn ($tp) => [
+                    'ancien_id' => $tp->id,
+                    'code' => 'TP-'.str_pad($tp->id, 3, '0', STR_PAD_LEFT),
+                    'nom' => $tp->libelle,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])
+                ->toArray();
+            if (! empty($rows)) {
+                TypePaiement::upsert($rows, ['ancien_id'], ['code', 'nom', 'updated_at']);
             }
         }
 
         if (DB::connection('legacy')->getSchemaBuilder()->hasTable('type_structures')) {
-            $typesStructure = DB::connection('legacy')->table('type_structures')->get();
-            foreach ($typesStructure as $ts) {
-                TypeStructure::updateOrCreate(
-                    ['ancien_id' => $ts->id],
-                    [
-                        'code' => 'TS-'.str_pad($ts->id, 3, '0', STR_PAD_LEFT),
-                        'nom' => $ts->libelle_type_structure ?? $ts->libelle ?? 'Structure '.$ts->id,
-                    ]
-                );
+            $rows = DB::connection('legacy')->table('type_structures')
+                ->get()
+                ->map(fn ($ts) => [
+                    'ancien_id' => $ts->id,
+                    'code' => 'TS-'.str_pad($ts->id, 3, '0', STR_PAD_LEFT),
+                    'nom' => $ts->libelle_type_structure ?? $ts->libelle ?? 'Structure '.$ts->id,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])
+                ->toArray();
+            if (! empty($rows)) {
+                TypeStructure::upsert($rows, ['ancien_id'], ['code', 'nom', 'updated_at']);
             }
         }
 
         if (DB::connection('legacy')->getSchemaBuilder()->hasTable('situation_stage')) {
-            $situations = DB::connection('legacy')->table('situation_stage')->get();
-            foreach ($situations as $s) {
-                SituationStage::updateOrCreate(
-                    ['ancien_id' => $s->id_situation_stage],
-                    [
-                        'code' => 'SS-'.str_pad($s->id_situation_stage, 3, '0', STR_PAD_LEFT),
-                        'nom' => $s->libelle_situation_stage,
-                    ]
-                );
+            $rows = DB::connection('legacy')->table('situation_stage')
+                ->get()
+                ->map(fn ($s) => [
+                    'ancien_id' => $s->id_situation_stage,
+                    'code' => 'SS-'.str_pad($s->id_situation_stage, 3, '0', STR_PAD_LEFT),
+                    'nom' => $s->libelle_situation_stage,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ])
+                ->toArray();
+            if (! empty($rows)) {
+                SituationStage::upsert($rows, ['ancien_id'], ['code', 'nom', 'updated_at']);
             }
         }
     }
@@ -2988,23 +3105,25 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         $typesPaiementMap = TypePaiement::pluck('id', 'ancien_id')->toArray();
 
         $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $typesPaiementMap) {
+            $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->numero_aej)) {
                     $bar->advance();
-
                     continue;
                 }
 
-                $type_paiement_id = $typesPaiementMap[$legacyContrat->type_paiement_id] ?? null;
-
-                DB::table('beneficiaires')
-                    ->where('numero_aej', $legacyContrat->numero_aej)
-                    ->update([
-                        'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
-                        'numero_wave' => $legacyContrat->numero_wave ?? null,
-                        'type_paiement_id' => $type_paiement_id,
-                    ]);
+                $rows[] = [
+                    'numero_aej' => $legacyContrat->numero_aej,
+                    'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
+                    'numero_wave' => $legacyContrat->numero_wave ?? null,
+                    'type_paiement_id' => $typesPaiementMap[$legacyContrat->type_paiement_id] ?? null,
+                    'updated_at' => now(),
+                ];
                 $bar->advance();
+            }
+
+            if (! empty($rows)) {
+                DB::table('beneficiaires')->upsert($rows, ['numero_aej'], ['numero_tresor_money', 'numero_wave', 'type_paiement_id', 'updated_at']);
             }
         });
 
@@ -3024,22 +3143,26 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         $typesStructureMap = TypeStructure::pluck('id', 'ancien_id')->toArray();
 
         $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $typesStructureMap) {
+            $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id_entreprise) || empty($legacyContrat->type_structure_id)) {
                     $bar->advance();
-
                     continue;
                 }
 
                 $type_structure_id = $typesStructureMap[$legacyContrat->type_structure_id] ?? null;
-
                 if ($type_structure_id) {
-                    DB::table('entreprises')
-                        ->where('ancien_id', $legacyContrat->id_entreprise)
-                        ->update(['type_structure_id' => $type_structure_id]);
+                    $rows[] = [
+                        'ancien_id' => $legacyContrat->id_entreprise,
+                        'type_structure_id' => $type_structure_id,
+                        'updated_at' => now(),
+                    ];
                 }
-
                 $bar->advance();
+            }
+
+            if (! empty($rows)) {
+                DB::table('entreprises')->upsert($rows, ['ancien_id'], ['type_structure_id', 'updated_at']);
             }
         });
 
@@ -3059,22 +3182,26 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         $situationsStageMap = SituationStage::pluck('code', 'ancien_id')->toArray();
 
         $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $situationsStageMap) {
+            $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id) || empty($legacyContrat->id_situation_stage)) {
                     $bar->advance();
-
                     continue;
                 }
 
                 $code_situation = $situationsStageMap[$legacyContrat->id_situation_stage] ?? null;
-
                 if ($code_situation) {
-                    DB::table('stages')
-                        ->where('ancien_id', $legacyContrat->id)
-                        ->update(['situation_stage' => $code_situation]);
+                    $rows[] = [
+                        'ancien_id' => $legacyContrat->id,
+                        'situation_stage' => $code_situation,
+                        'updated_at' => now(),
+                    ];
                 }
-
                 $bar->advance();
+            }
+
+            if (! empty($rows)) {
+                DB::table('stages')->upsert($rows, ['ancien_id'], ['situation_stage', 'updated_at']);
             }
         });
 
@@ -3094,22 +3221,26 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
 
         $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $sourcesMap) {
+            $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id) || empty($legacyContrat->source_financement)) {
                     $bar->advance();
-
                     continue;
                 }
 
                 $source_financement_id = $sourcesMap[$legacyContrat->source_financement] ?? null;
-
                 if ($source_financement_id) {
-                    DB::table('stages')
-                        ->where('ancien_id', $legacyContrat->id)
-                        ->update(['source_financement_id' => $source_financement_id]);
+                    $rows[] = [
+                        'ancien_id' => $legacyContrat->id,
+                        'source_financement_id' => $source_financement_id,
+                        'updated_at' => now(),
+                    ];
                 }
-
                 $bar->advance();
+            }
+
+            if (! empty($rows)) {
+                DB::table('stages')->upsert($rows, ['ancien_id'], ['source_financement_id', 'updated_at']);
             }
         });
 
