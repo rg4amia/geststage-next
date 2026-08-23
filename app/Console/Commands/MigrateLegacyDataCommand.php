@@ -1107,9 +1107,21 @@ class MigrateLegacyDataCommand extends Command
 
         $query->orderBy('id')->chunk(5000, function ($paiements) use (&$bar, &$periodesMap): void {
             $stagiaireIds = $paiements->pluck('stagiaire_id')->filter()->unique()->toArray();
+            $legacyIds = $paiements->pluck('id')->toArray();
+            
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
             $sourceFinancementParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('source_financement_id', 'ancien_id')->toArray();
             $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
+
+            $droitsParAncienId = DroitPaiement::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+            $paiementsParAncienId = Paiement::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+            
+            $stageIdsFilter = array_filter(array_values($stagesMap));
+            $droitsActifs = !empty($stageIdsFilter) ? DroitPaiement::whereIn('stage_id', $stageIdsFilter)->whereNull('annule_le')->get() : collect();
+            $droitsActifsMap = [];
+            foreach ($droitsActifs as $d) {
+                $droitsActifsMap["{$d->stage_id}_{$d->periode_id}_{$d->nature}"] = $d;
+            }
 
             foreach ($paiements as $legacyPaiement) {
                 $stage_id = $stagesMap[$legacyPaiement->stagiaire_id] ?? null;
@@ -1181,26 +1193,28 @@ class MigrateLegacyDataCommand extends Command
                 try {
                     // Chaque écriture est idempotente. Une transaction PostgreSQL par paiement
                     // ajoutait deux allers-retours BEGIN/COMMIT sur près de 200 000 lignes.
-                    (function () use ($legacyPaiement, $stage_id, $periodeId, $source_financement_id, $nature, $date): void {
-                        $droit = DroitPaiement::where('ancien_id', $legacyPaiement->id)->first();
+                    (function () use ($legacyPaiement, $stage_id, $periodeId, $source_financement_id, $nature, $date, &$droitsParAncienId, &$droitsActifsMap, &$paiementsParAncienId): void {
+                        $droit = $droitsParAncienId[$legacyPaiement->id] ?? null;
 
                         // On ne regroupe que par (stage_id, periode_id, nature).
                         // La ligne actuelle remplace toujours le droit actif précédent.
-                        $actif = DroitPaiement::where('stage_id', $stage_id)
-                            ->where('periode_id', $periodeId)
-                            ->where('nature', $nature)
-                            ->when($droit, fn ($q) => $q->whereKeyNot($droit->id))
-                            ->whereNull('annule_le')
-                            ->first();
+                        $actif = $droitsActifsMap["{$stage_id}_{$periodeId}_{$nature}"] ?? null;
+                        if ($actif && $droit && $actif->id === $droit->id) {
+                            $actif = null;
+                        }
 
                         if ($actif) {
                             $actif->update([
                                 'annule_le' => $date,
                                 'motif_annulation' => "Remplacé par le paiement legacy #{$legacyPaiement->id}",
                             ]);
+                            unset($droitsActifsMap["{$stage_id}_{$periodeId}_{$nature}"]);
                         }
 
-                        $droit ??= new DroitPaiement(['ancien_id' => $legacyPaiement->id]);
+                        if (!$droit) {
+                            $droit = new DroitPaiement(['ancien_id' => $legacyPaiement->id]);
+                        }
+                        
                         $droit->fill([
                             'stage_id' => $stage_id,
                             'periode_id' => $periodeId,
@@ -1214,8 +1228,9 @@ class MigrateLegacyDataCommand extends Command
                             $droit->statut = 'OUVERT';
                         }
                         $droit->save();
+                        $droitsActifsMap["{$stage_id}_{$periodeId}_{$nature}"] = $droit;
 
-                        $paiement = Paiement::firstOrNew(['ancien_id' => $legacyPaiement->id]);
+                        $paiement = $paiementsParAncienId[$legacyPaiement->id] ?? new Paiement(['ancien_id' => $legacyPaiement->id]);
                         $legacyStatus = $this->mapLegacyPaymentStatus($legacyPaiement);
                         $paiement->fill([
                             'droit_paiement_id' => $droit->id,
