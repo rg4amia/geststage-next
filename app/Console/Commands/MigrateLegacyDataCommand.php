@@ -379,8 +379,12 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar(count($entreprises));
         $bar->start();
 
+        $agencesMap = Agence::whereNotNull('ancien_id')->pluck('id', 'ancien_id')->toArray();
+        $legacyIds = collect($entreprises)->pluck('id')->toArray();
+        $entreprisesExistantes = Entreprise::withTrashed()->whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+
         foreach ($entreprises as $legacyEntreprise) {
-            $agence_id = Agence::where('ancien_id', $legacyEntreprise->agence_id)->value('id');
+            $agence_id = $agencesMap[$legacyEntreprise->agence_id] ?? null;
             $legacyTypeStructureId = $typeStructureParEntreprise[$legacyEntreprise->id] ?? null;
             $type_structure_id = $legacyTypeStructureId ? ($typesStructureMap[$legacyTypeStructureId] ?? null) : null;
 
@@ -412,23 +416,21 @@ class MigrateLegacyDataCommand extends Command
                 continue;
             }
 
-            $entreprise = Entreprise::withTrashed()->updateOrCreate(
-                ['ancien_id' => $legacyEntreprise->id],
-                [
-                    'raison_sociale' => $legacyEntreprise->libelle_entreprise ?? 'Inconnu',
-                    'sigle' => $legacyEntreprise->sigle,
-                    'numero_contribuable' => $numContribuable,
-                    'registre_commerce' => $registreCommerce,
-                    'telephone' => $legacyEntreprise->contact,
-                    'email' => $legacyEntreprise->mail,
-                    'adresse' => $legacyEntreprise->adresse,
-                    'agence_id' => $agence_id,
-                    'type_structure_id' => $type_structure_id,
-                    // On reporte la suppression logique de l'entreprise legacy pour ne pas
-                    // faire réapparaître dans les listes des entreprises que legacy cachait déjà.
-                    'deleted_at' => $this->mapper->normalizeLegacyDate($legacyEntreprise->deleted_at ?? null),
-                ]
-            );
+            $entreprise = $entreprisesExistantes[$legacyEntreprise->id] ?? new Entreprise(['ancien_id' => $legacyEntreprise->id]);
+            $entreprise->fill([
+                'raison_sociale' => $legacyEntreprise->libelle_entreprise ?? 'Inconnu',
+                'sigle' => $legacyEntreprise->sigle,
+                'numero_contribuable' => $numContribuable,
+                'registre_commerce' => $registreCommerce,
+                'telephone' => $legacyEntreprise->contact,
+                'email' => $legacyEntreprise->mail,
+                'adresse' => $legacyEntreprise->adresse,
+                'agence_id' => $agence_id,
+                'type_structure_id' => $type_structure_id,
+                'deleted_at' => $this->mapper->normalizeLegacyDate($legacyEntreprise->deleted_at ?? null),
+            ]);
+            $entreprise->save();
+            $entreprisesExistantes[$legacyEntreprise->id] = $entreprise;
             $this->recorder->correspondence(
                 $this->executionId,
                 'entreprises',
@@ -452,11 +454,19 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar(count($offres));
         $bar->start();
 
+        $entreprisesMap = Entreprise::whereNotNull('ancien_id')->pluck('id', 'ancien_id')->toArray();
+        $agencesMap = Agence::whereNotNull('ancien_id')->pluck('id', 'ancien_id')->toArray();
+        $typesStageMap = TypeStage::whereNotNull('ancien_id')->pluck('id', 'ancien_id')->toArray();
+        $sourcesFinancementMap = SourceFinancement::whereNotNull('ancien_id')->pluck('id', 'ancien_id')->toArray();
+
+        $legacyIds = $offres->pluck('id_offre')->toArray();
+        $offresExistantes = OffreEmploi::withTrashed()->whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+
         foreach ($offres as $legacyOffre) {
-            $entreprise_id = Entreprise::where('ancien_id', $legacyOffre->entreprise_id)->value('id');
-            $agence_id = Agence::where('ancien_id', $legacyOffre->agence_id)->value('id');
-            $type_stage_id = TypeStage::where('ancien_id', $legacyOffre->type_stage_id)->value('id');
-            $source_financement_id = SourceFinancement::where('ancien_id', $legacyOffre->source_financement_id)->value('id');
+            $entreprise_id = $entreprisesMap[$legacyOffre->entreprise_id] ?? null;
+            $agence_id = $agencesMap[$legacyOffre->agence_id] ?? null;
+            $type_stage_id = $typesStageMap[$legacyOffre->type_stage_id] ?? null;
+            $source_financement_id = $sourcesFinancementMap[$legacyOffre->source_financement_id] ?? null;
 
             if ($entreprise_id && $agence_id && $type_stage_id && $source_financement_id) {
                 $publiee_le = $legacyOffre->date_de_publication;
@@ -464,20 +474,20 @@ class MigrateLegacyDataCommand extends Command
                     $publiee_le = null;
                 }
 
-                $offre = OffreEmploi::withTrashed()->updateOrCreate(
-                    ['ancien_id' => $legacyOffre->id_offre],
-                    [
-                        'entreprise_id' => $entreprise_id,
-                        'agence_id' => $agence_id,
-                        'type_stage_id' => $type_stage_id,
-                        'source_financement_id' => $source_financement_id,
-                        'numero' => 'OFR-'.str_pad($legacyOffre->id_offre, 5, '0', STR_PAD_LEFT),
-                        'intitule' => $legacyOffre->intitule_offre ?? 'Offre non spécifiée',
-                        'nombre_places' => max(1, (int) ($legacyOffre->nombre_de_place ?? 1)),
-                        'publiee_le' => $publiee_le,
-                        'deleted_at' => $this->mapper->normalizeLegacyDate($legacyOffre->deleted_at ?? null),
-                    ]
-                );
+                $offre = $offresExistantes[$legacyOffre->id_offre] ?? new OffreEmploi(['ancien_id' => $legacyOffre->id_offre]);
+                $offre->fill([
+                    'entreprise_id' => $entreprise_id,
+                    'agence_id' => $agence_id,
+                    'type_stage_id' => $type_stage_id,
+                    'source_financement_id' => $source_financement_id,
+                    'numero' => 'OFR-'.str_pad($legacyOffre->id_offre, 5, '0', STR_PAD_LEFT),
+                    'intitule' => $legacyOffre->intitule_offre ?? 'Offre non spécifiée',
+                    'nombre_places' => max(1, (int) ($legacyOffre->nombre_de_place ?? 1)),
+                    'publiee_le' => $publiee_le,
+                    'deleted_at' => $this->mapper->normalizeLegacyDate($legacyOffre->deleted_at ?? null),
+                ]);
+                $offre->save();
+                $offresExistantes[$legacyOffre->id_offre] = $offre;
                 $this->recorder->correspondence(
                     $this->executionId,
                     'offre',
@@ -537,10 +547,13 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (
+        $query->orderBy('id')->chunk(5000, function ($contrats) use (
             &$bar, $typesPaiementMap, $handicapsMap, $typesHandicapMap,
             $liensParenteMap, $typesEnseignementMap, $communesMap, $niveauxParLibelle, $diplomesParLibelle
         ): void {
+            $chunkNumeroAej = $contrats->pluck('numero_aej')->filter()->unique()->toArray();
+            $existantsMap = Beneficiaire::whereIn('numero_aej', $chunkNumeroAej)->get()->keyBy('numero_aej');
+
             foreach ($contrats as $legacyContrat) {
                 $this->recorder->preserveContrat(
                     $this->executionId,
@@ -588,42 +601,42 @@ class MigrateLegacyDataCommand extends Command
                     $date_naissance = null;
                 }
 
-                $beneficiaire = Beneficiaire::updateOrCreate(
-                    ['numero_aej' => $legacyContrat->numero_aej],
-                    [
-                        'ancien_id' => $legacyContrat->id,
-                        'nom' => $legacyContrat->nom_stagiaire ?? 'Inconnu',
-                        'prenoms' => $legacyContrat->prenoms_stagiaire ?? '',
-                        'date_naissance' => $date_naissance,
-                        'lieu_naissance' => $legacyContrat->lieu_de_naissance,
-                        'sexe' => $legacyContrat->sexe,
-                        'telephone_principal' => $legacyContrat->contact1,
-                        'telephone_secondaire' => $legacyContrat->contact2,
-                        'nature_piece_identite' => $legacyContrat->nature_piece,
-                        'numero_piece_identite' => $legacyContrat->num_piece,
-                        'numero_cmu' => $legacyContrat->numero_cmu ?? null,
-                        'commune_residence_id' => isset($legacyContrat->id_commune_de_residence) ? ($communesMap[$legacyContrat->id_commune_de_residence] ?? null) : null,
-                        'personne_urgence' => $legacyContrat->personne_urgence ?? null,
-                        'lien_parente_id' => isset($legacyContrat->lienparente_id) ? ($liensParenteMap[$legacyContrat->lienparente_id] ?? null) : null,
-                        'contact_urgence_1' => $legacyContrat->prsurgent_tel1 ?? null,
-                        'contact_urgence_2' => $legacyContrat->prsurgent_tel2 ?? null,
-                        'niveau_etude_id' => $niveau_etude_id,
-                        'diplome_id' => $diplome_id,
-                        'autre_diplome' => $legacyContrat->autre_diplome ?? null,
-                        'specialite' => $legacyContrat->specialite ?? null,
-                        'annee_diplome' => $legacyContrat->annee_diplome ?: null,
-                        'etablissement_frequente' => $legacyContrat->etablissement_frequente ?? null,
-                        'type_enseignement_id' => isset($legacyContrat->typeenseignement_id) ? ($typesEnseignementMap[$legacyContrat->typeenseignement_id] ?? null) : null,
-                        'handicap_id' => isset($legacyContrat->handicap_id) ? ($handicapsMap[$legacyContrat->handicap_id] ?? null) : null,
-                        'type_handicap_id' => isset($legacyContrat->typehandicap_id) ? ($typesHandicapMap[$legacyContrat->typehandicap_id] ?? null) : null,
-                        'autre_handicap' => ! empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non'
-                            ? ($legacyContrat->type_handicap ?? $legacyContrat->handicap)
-                            : null,
-                        'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
-                        'numero_wave' => $legacyContrat->numero_wave ?? null,
-                        'type_paiement_id' => isset($legacyContrat->type_paiement_id) ? ($typesPaiementMap[$legacyContrat->type_paiement_id] ?? null) : null,
-                    ]
-                );
+                $beneficiaire = $existantsMap[$legacyContrat->numero_aej] ?? new Beneficiaire(['numero_aej' => $legacyContrat->numero_aej]);
+                $beneficiaire->fill([
+                    'ancien_id' => $legacyContrat->id,
+                    'nom' => $legacyContrat->nom_stagiaire ?? 'Inconnu',
+                    'prenoms' => $legacyContrat->prenoms_stagiaire ?? '',
+                    'date_naissance' => $date_naissance,
+                    'lieu_naissance' => $legacyContrat->lieu_de_naissance,
+                    'sexe' => $legacyContrat->sexe,
+                    'telephone_principal' => $legacyContrat->contact1,
+                    'telephone_secondaire' => $legacyContrat->contact2,
+                    'nature_piece_identite' => $legacyContrat->nature_piece,
+                    'numero_piece_identite' => $legacyContrat->num_piece,
+                    'numero_cmu' => $legacyContrat->numero_cmu ?? null,
+                    'commune_residence_id' => isset($legacyContrat->id_commune_de_residence) ? ($communesMap[$legacyContrat->id_commune_de_residence] ?? null) : null,
+                    'personne_urgence' => $legacyContrat->personne_urgence ?? null,
+                    'lien_parente_id' => isset($legacyContrat->lienparente_id) ? ($liensParenteMap[$legacyContrat->lienparente_id] ?? null) : null,
+                    'contact_urgence_1' => $legacyContrat->prsurgent_tel1 ?? null,
+                    'contact_urgence_2' => $legacyContrat->prsurgent_tel2 ?? null,
+                    'niveau_etude_id' => $niveau_etude_id,
+                    'diplome_id' => $diplome_id,
+                    'autre_diplome' => $legacyContrat->autre_diplome ?? null,
+                    'specialite' => $legacyContrat->specialite ?? null,
+                    'annee_diplome' => $legacyContrat->annee_diplome ?: null,
+                    'etablissement_frequente' => $legacyContrat->etablissement_frequente ?? null,
+                    'type_enseignement_id' => isset($legacyContrat->typeenseignement_id) ? ($typesEnseignementMap[$legacyContrat->typeenseignement_id] ?? null) : null,
+                    'handicap_id' => isset($legacyContrat->handicap_id) ? ($handicapsMap[$legacyContrat->handicap_id] ?? null) : null,
+                    'type_handicap_id' => isset($legacyContrat->typehandicap_id) ? ($typesHandicapMap[$legacyContrat->typehandicap_id] ?? null) : null,
+                    'autre_handicap' => ! empty($legacyContrat->handicap) && strtolower($legacyContrat->handicap) !== 'non'
+                        ? ($legacyContrat->type_handicap ?? $legacyContrat->handicap)
+                        : null,
+                    'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
+                    'numero_wave' => $legacyContrat->numero_wave ?? null,
+                    'type_paiement_id' => isset($legacyContrat->type_paiement_id) ? ($typesPaiementMap[$legacyContrat->type_paiement_id] ?? null) : null,
+                ]);
+                $beneficiaire->save();
+                $existantsMap[$legacyContrat->numero_aej] = $beneficiaire;
                 $this->recorder->preserveContrat(
                     $this->executionId,
                     $legacyContrat,
@@ -673,12 +686,22 @@ class MigrateLegacyDataCommand extends Command
         $situationsStageMap = DB::table('situations_stage')->pluck('code', 'ancien_id')->toArray();
         $statutsStageMap = DB::table('statuts_stage')->pluck('code', 'ancien_id')->toArray();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (
+        $query->orderBy('id')->chunk(5000, function ($contrats) use (
             &$bar, $agencesMap, $typesStageMap, $entreprisesMap, $sourcesFinancementMap,
             $origineStagiaireMap, $situationsStageMap, $statutsStageMap
         ): void {
             $aejNums = $contrats->pluck('numero_aej')->filter()->unique()->toArray();
             $beneficiairesMap = Beneficiaire::whereIn('numero_aej', $aejNums)->pluck('id', 'numero_aej')->toArray();
+
+            $legacyIds = $contrats->pluck('id')->toArray();
+            $stagesExistants = Stage::withTrashed()->whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+            $contratsExistants = Contrat::withTrashed()->whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+
+            $definition = DefinitionParcours::firstOrCreate(
+                ['code' => 'STAGE_LEGACY', 'version' => 1],
+                ['nom' => 'Parcours Legacy', 'active' => true]
+            );
+            $etapesMap = [];
 
             foreach ($contrats as $legacyContrat) {
                 $this->recorder->preserveContrat(
@@ -755,47 +778,47 @@ class MigrateLegacyDataCommand extends Command
                 // (sinon les dossiers supprimés logiquement en legacy réapparaissent ici).
                 $deletedAt = $this->mapper->normalizeLegacyDate($legacyContrat->deleted_at ?? null);
 
-                $stage = Stage::withTrashed()->updateOrCreate(
-                    ['ancien_id' => $legacyContrat->id],
-                    [
-                        'beneficiaire_id' => $beneficiaire_id,
-                        'entreprise_id' => $entreprise_id,
-                        'agence_id' => $agence_id,
-                        'type_stage_id' => $type_stage_id,
-                        'source_financement_id' => $source_financement_id,
-                        'conseiller_id' => null, // conseiller mapping needs conseillers table populated
-                        'origine_stagiaire_id' => $origine_stagiaire_id,
-                        'date_entree_portefeuille' => $date_entree,
+                $stage = $stagesExistants[$legacyContrat->id] ?? new Stage(['ancien_id' => $legacyContrat->id]);
+                $stage->fill([
+                    'beneficiaire_id' => $beneficiaire_id,
+                    'entreprise_id' => $entreprise_id,
+                    'agence_id' => $agence_id,
+                    'type_stage_id' => $type_stage_id,
+                    'source_financement_id' => $source_financement_id,
+                    'conseiller_id' => null, // conseiller mapping needs conseillers table populated
+                    'origine_stagiaire_id' => $origine_stagiaire_id,
+                    'date_entree_portefeuille' => $date_entree,
 
-                        'service_affectation' => $legacyContrat->service_affectation ?? null,
-                        'intitule_poste' => $legacyContrat->intitule_poste_stage ?? 'Poste non défini',
+                    'service_affectation' => $legacyContrat->service_affectation ?? null,
+                    'intitule_poste' => $legacyContrat->intitule_poste_stage ?? 'Poste non défini',
 
-                        'localite_stage' => $legacyContrat->lieu_de_stage ?? null,
+                    'localite_stage' => $legacyContrat->lieu_de_stage ?? null,
 
-                        'nom_encadreur' => $legacyContrat->nom_encadreur ?? null,
+                    'nom_encadreur' => $legacyContrat->nom_encadreur ?? null,
 
-                        'date_debut' => $date_debut,
-                        'date_fin_prevue' => $date_fin_prevue,
-                        'observations' => $legacyContrat->observation ?? null,
-                        'situation_stage' => $situation_stage,
-                        'statut_stage' => $statut_stage,
-                        'deleted_at' => $deletedAt,
-                    ]
-                );
+                    'date_debut' => $date_debut,
+                    'date_fin_prevue' => $date_fin_prevue,
+                    'observations' => $legacyContrat->observation ?? null,
+                    'situation_stage' => $situation_stage,
+                    'statut_stage' => $statut_stage,
+                    'deleted_at' => $deletedAt,
+                ]);
+                $stage->save();
+                $stagesExistants[$legacyContrat->id] = $stage;
 
                 // 2. Gérer le Contrat Financier lié
-                $contrat = Contrat::withTrashed()->updateOrCreate(
-                    ['ancien_id' => $legacyContrat->id],
-                    [
-                        'stage_id' => $stage->id,
-                        'numero' => 'CT-'.str_pad($legacyContrat->id, 5, '0', STR_PAD_LEFT),
-                        'date_debut' => $date_debut,
-                        'date_fin' => $date_fin_prevue,
-                        'prime_mensuelle' => $primeMensuelle,
-                        'statut' => 'SIGNE', // Les anciens contrats étaient signés
-                        'deleted_at' => $deletedAt,
-                    ]
-                );
+                $contrat = $contratsExistants[$legacyContrat->id] ?? new Contrat(['ancien_id' => $legacyContrat->id]);
+                $contrat->fill([
+                    'stage_id' => $stage->id,
+                    'numero' => 'CT-'.str_pad($legacyContrat->id, 5, '0', STR_PAD_LEFT),
+                    'date_debut' => $date_debut,
+                    'date_fin' => $date_fin_prevue,
+                    'prime_mensuelle' => $primeMensuelle,
+                    'statut' => 'SIGNE', // Les anciens contrats étaient signés
+                    'deleted_at' => $deletedAt,
+                ]);
+                $contrat->save();
+                $contratsExistants[$legacyContrat->id] = $contrat;
 
                 // 3. Gérer le Workflow via contrat_etape / etape_traitement
                 $statutLegacy = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
@@ -812,18 +835,15 @@ class MigrateLegacyDataCommand extends Command
                     ? ($this->mapper->normalizeLegacyDate($legacyContrat->updated_at ?? null) ?? now())
                     : null;
 
-                $definition = DefinitionParcours::firstOrCreate(
-                    ['code' => 'STAGE_LEGACY', 'version' => 1],
-                    ['nom' => 'Parcours Legacy', 'active' => true]
-                );
-
                 $etapeCode = strtoupper($corbeilleEnum->value);
-                $etapeNom = str_replace('_', ' ', $etapeCode);
-
-                $etape = EtapeParcours::firstOrCreate(
-                    ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
-                    ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
-                );
+                if (!isset($etapesMap[$etapeCode])) {
+                    $etapeNom = str_replace('_', ' ', $etapeCode);
+                    $etapesMap[$etapeCode] = EtapeParcours::firstOrCreate(
+                        ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                        ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
+                    );
+                }
+                $etape = $etapesMap[$etapeCode];
 
                 $instance = InstanceParcours::updateOrCreate(
                     ['stage_id' => $stage->id],
