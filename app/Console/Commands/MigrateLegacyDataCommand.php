@@ -865,13 +865,35 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
+        $definition = DefinitionParcours::firstOrCreate(
+            ['code' => 'POINTAGE_LEGACY', 'version' => 1],
+            ['nom' => 'Parcours Pointage Legacy', 'active' => true]
+        );
+        $etapesMap = [];
 
-        $query->orderBy('id')->chunk(5000, function ($pointages) use (&$bar, &$periodesMap) {
+        $query->orderBy('id')->chunk(5000, function ($pointages) use (&$bar, &$periodesMap, $definition, &$etapesMap) {
             $stagiaireIds = $pointages->pluck('stagiaire_id')->filter()->unique()->toArray();
+            $legacyIds = $pointages->pluck('id')->toArray();
+            
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
             $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
             $agencesParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('agence_id', 'ancien_id')->toArray();
             $etatsChefAgence = DB::connection('legacy')->table('contrats_pae')->whereIn('id', $stagiaireIds)->pluck('etat_chef_agence', 'id')->toArray();
+
+            $versionsMap = VersionPointage::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+            $stageIdsFilter = array_filter(array_values($stagesMap));
+            
+            $pointagesExistant = !empty($stageIdsFilter) ? Pointage::withTrashed()->whereIn('stage_id', $stageIdsFilter)->get() : collect();
+            $pointagesMap = [];
+            foreach ($pointagesExistant as $p) {
+                if (is_null($p->deleted_at)) {
+                    $pointagesMap["{$p->stage_id}_{$p->periode_id}_{$p->nature}"] = $p;
+                }
+                $pointagesMap["id_{$p->id}"] = $p;
+            }
+            
+            $pointageIds = $pointagesExistant->pluck('id')->toArray();
+            $maxVersions = !empty($pointageIds) ? VersionPointage::whereIn('pointage_id', $pointageIds)->select('pointage_id', DB::raw('MAX(numero_version) as max_version'))->groupBy('pointage_id')->pluck('max_version', 'pointage_id')->toArray() : [];
 
             foreach ($pointages as $legacyPointage) {
                 $stage_id = $stagesMap[$legacyPointage->stagiaire_id] ?? null;
@@ -947,17 +969,15 @@ class MigrateLegacyDataCommand extends Command
                 $deletedAt = $this->mapper->normalizeLegacyDate($legacyPointage->deleted_at ?? null);
 
                 try {
-                    $versionExistante = VersionPointage::where('ancien_id', $legacyPointage->id)->first();
+                    $versionExistante = $versionsMap[$legacyPointage->id] ?? null;
 
                     if ($versionExistante) {
-                        $pointage = Pointage::withTrashed()->findOrFail($versionExistante->pointage_id);
-                        $conflit = Pointage::query()
-                            ->where('stage_id', $stage_id)
-                            ->where('periode_id', $periodeId)
-                            ->where('nature', $naturePointage)
-                            ->whereKeyNot($pointage->id)
-                            ->whereNull('deleted_at')
-                            ->exists();
+                        $pointage = $pointagesMap["id_{$versionExistante->pointage_id}"] ?? Pointage::withTrashed()->findOrFail($versionExistante->pointage_id);
+                        $conflit = false;
+                        $cleConflit = "{$stage_id}_{$periodeId}_{$naturePointage}";
+                        if (isset($pointagesMap[$cleConflit]) && $pointagesMap[$cleConflit]->id !== $pointage->id) {
+                            $conflit = true;
+                        }
 
                         if ($conflit) {
                             $this->warn("Pointage legacy #{$legacyPointage->id} non reclassé : la cible {$codePeriode}/{$naturePointage} existe déjà.");
@@ -973,21 +993,19 @@ class MigrateLegacyDataCommand extends Command
                             'statut' => $statut,
                             'deleted_at' => $deletedAt,
                         ]);
+                        $pointagesMap["{$stage_id}_{$periodeId}_{$naturePointage}"] = $pointage;
+
                         $versionExistante->update([
                             'observation' => $legacyPointage->commentaire,
                             'saisi_le' => $date,
                         ]);
                     } else {
                         // Idempotence par (stage_id, periode_id, nature)
-                        $pointage = Pointage::withTrashed()
-                            ->where('stage_id', $stage_id)
-                            ->where('periode_id', $periodeId)
-                            ->where('nature', $naturePointage)
-                            ->whereNull('deleted_at')
-                            ->first();
+                        $pointage = $pointagesMap["{$stage_id}_{$periodeId}_{$naturePointage}"] ?? null;
 
                         if ($pointage) {
-                            $numeroVersion = (VersionPointage::where('pointage_id', $pointage->id)->max('numero_version') ?? 0) + 1;
+                            $numeroVersion = ($maxVersions[$pointage->id] ?? 0) + 1;
+                            $maxVersions[$pointage->id] = $numeroVersion;
                             $pointage->update([
                                 'statut' => $statut,
                                 'version_courante' => $numeroVersion,
@@ -1003,7 +1021,10 @@ class MigrateLegacyDataCommand extends Command
                                 'version_courante' => 1,
                                 'deleted_at' => $deletedAt,
                             ]);
+                            $pointagesMap["{$stage_id}_{$periodeId}_{$naturePointage}"] = $pointage;
+                            $pointagesMap["id_{$pointage->id}"] = $pointage;
                             $numeroVersion = 1;
+                            $maxVersions[$pointage->id] = 1;
                         }
 
                         VersionPointage::create([
@@ -1019,18 +1040,15 @@ class MigrateLegacyDataCommand extends Command
                     }
 
                     // CREATE PARCOURS FOR POINTAGE
-                    $definition = DefinitionParcours::firstOrCreate(
-                        ['code' => 'POINTAGE_LEGACY', 'version' => 1],
-                        ['nom' => 'Parcours Pointage Legacy', 'active' => true]
-                    );
-
                     $etapeCode = strtoupper($corbeilleEnum);
-                    $etapeNom = str_replace('_', ' ', $etapeCode);
-
-                    $etape = EtapeParcours::firstOrCreate(
-                        ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
-                        ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
-                    );
+                    if (!isset($etapesMap[$etapeCode])) {
+                        $etapeNom = str_replace('_', ' ', $etapeCode);
+                        $etapesMap[$etapeCode] = EtapeParcours::firstOrCreate(
+                            ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                            ['nom' => $etapeNom, 'initiale' => false, 'finale' => false]
+                        );
+                    }
+                    $etape = $etapesMap[$etapeCode];
 
                     // L'instance de workflow reflète toujours le dernier état connu du pointage,
                     // donc de sa dernière version (resoumission) traitée.
@@ -2850,25 +2868,47 @@ class MigrateLegacyDataCommand extends Command
                     $legacyDate = $legacyDateCache[$pointage->ancien_id] ?? null;
                     $createdAt = $legacyDate && $legacyDate !== '0000-00-00 00:00:00' ? $legacyDate : now();
 
-                    $droitPaiement = DroitPaiement::create([
-                        'stage_id' => $stage->id,
-                        'pointage_id' => $pointage->id,
-                        'periode_id' => $pointage->periode_id,
-                        'source_financement_id' => $stage->source_financement_id ?? 1,
-                        'nature' => 'PRESENCE',
-                        'montant' => $montantPaiement,
-                        'statut' => 'OUVERT',
-                        'created_at' => $createdAt,
-                        'updated_at' => $createdAt,
-                    ]);
+                    $droitPaiement = DroitPaiement::where('stage_id', $stage->id)
+                        ->where('periode_id', $pointage->periode_id)
+                        ->where('nature', 'PRESENCE')
+                        ->whereNull('annule_le')
+                        ->first();
 
-                    Paiement::create([
-                        'droit_paiement_id' => $droitPaiement->id,
-                        'statut' => 'A_TRAITER',
-                        'montant' => $montantPaiement,
-                        'created_at' => $createdAt,
-                        'updated_at' => $createdAt,
-                    ]);
+                    if ($droitPaiement) {
+                        if (is_null($droitPaiement->pointage_id)) {
+                            $droitPaiement->update(['pointage_id' => $pointage->id]);
+                        }
+                        
+                        $paiement = Paiement::firstOrCreate(
+                            ['droit_paiement_id' => $droitPaiement->id],
+                            [
+                                'statut' => 'A_TRAITER',
+                                'montant' => $montantPaiement,
+                                'created_at' => $createdAt,
+                                'updated_at' => $createdAt,
+                            ]
+                        );
+                    } else {
+                        $droitPaiement = DroitPaiement::create([
+                            'stage_id' => $stage->id,
+                            'pointage_id' => $pointage->id,
+                            'periode_id' => $pointage->periode_id,
+                            'source_financement_id' => $stage->source_financement_id ?? 1,
+                            'nature' => 'PRESENCE',
+                            'montant' => $montantPaiement,
+                            'statut' => 'OUVERT',
+                            'created_at' => $createdAt,
+                            'updated_at' => $createdAt,
+                        ]);
+
+                        Paiement::create([
+                            'droit_paiement_id' => $droitPaiement->id,
+                            'statut' => 'A_TRAITER',
+                            'montant' => $montantPaiement,
+                            'created_at' => $createdAt,
+                            'updated_at' => $createdAt,
+                        ]);
+                    }
 
                     $fixedCount++;
                 } catch (\Exception $e) {
