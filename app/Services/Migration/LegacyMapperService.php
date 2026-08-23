@@ -259,8 +259,11 @@ class LegacyMapperService
         return $dateDebut->format('Y-m') === $codePeriode ? 'DEMARRAGE' : 'PRESENCE';
     }
 
-    public function mapPointageToCorbeille(?int $legacyEtapeId, string $statut, string $nature): CorbeilleEnum
+    public function mapPointageToCorbeille(?int $legacyEtapeId, string $statut, string $nature, ?int $etatChefAgenceContrat = null): CorbeilleEnum
     {
+        if ($etatChefAgenceContrat === 100) {
+            return CorbeilleEnum::CA_VALIDATION_POINTAGES;
+        }
         return match ($legacyEtapeId) {
             2, 7 => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
             11 => CorbeilleEnum::CA_VALIDATION_POINTAGES,

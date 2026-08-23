@@ -77,7 +77,6 @@ class DmgService
                 $droit->whereNull('annule_le')
                     ->when($mois, fn (Builder $q) => $q->whereHas('periode', fn (Builder $p) => $p->where('code', $mois)))
                     ->whereHas('stage.contrats')
-                    ->whereHas('stage.sourceFinancement', fn ($sf) => $sf->where('code', '!=', 'PEJEDEC'))
                     ->whereHas('stage.instanceParcours', function (Builder $instance) use ($corbeille): void {
                         $instance->whereNull('terminee_le')
                             ->where(function (Builder $workflow) use ($corbeille): void {
@@ -112,6 +111,9 @@ class DmgService
                 $this->applyAttestationPresenceFilter($query, $mois);
             }
         }
+
+        // Mur Pare-feu (Doublon DESSE) : on exclut de la DMG (Démarrage et Présence) tous les stagiaires détectés comme doublons non traités.
+        app(\App\Domain\Workflow\Services\DesseDoublonService::class)->applyDuplicateExclusionFilter($query, 'droitPaiement.stage');
 
         return $query;
     }

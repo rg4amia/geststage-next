@@ -841,6 +841,7 @@ class MigrateLegacyDataCommand extends Command
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
             $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
             $agencesParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('agence_id', 'ancien_id')->toArray();
+            $etatsChefAgence = DB::connection('legacy')->table('contrats_pae')->whereIn('id', $stagiaireIds)->pluck('etat_chef_agence', 'id')->toArray();
 
             foreach ($pointages as $legacyPointage) {
                 $stage_id = $stagesMap[$legacyPointage->stagiaire_id] ?? null;
@@ -897,7 +898,8 @@ class MigrateLegacyDataCommand extends Command
                 $corbeilleEnum = $this->mapper->mapPointageToCorbeille(
                     isset($legacyPointage->etape_id) ? (int) $legacyPointage->etape_id : null,
                     $statut,
-                    $naturePointage
+                    $naturePointage,
+                    isset($etatsChefAgence[$legacyPointage->stagiaire_id]) ? (int) $etatsChefAgence[$legacyPointage->stagiaire_id] : null
                 )->value;
 
                 if (! isset($periodesMap[$codePeriode])) {
