@@ -138,11 +138,37 @@ class DmgService
 
     public function applyCohorteFilter(Builder $query, string $cohorte): Builder
     {
+        $c1 = function (Builder $d) {
+            $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
+              ->whereRaw('EXTRACT(DAY FROM s.date_debut) BETWEEN 1 AND 5')
+              ->where(function (Builder $q) {
+                  $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 11')
+                    ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+              });
+        };
+
+        $c2 = function (Builder $d) {
+            $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
+              ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 10')
+              ->where(function (Builder $q) {
+                  $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 21')
+                    ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+              });
+        };
+
+        $c3 = function (Builder $d) {
+            $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
+              ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 20')
+              ->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+        };
+
         return match (str_replace('cohorte', '', strtolower($cohorte))) {
-            '1' => $query->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereDay('date_debut', '>=', 1)->whereDay('date_debut', '<=', 5)),
-            '2' => $query->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereDay('date_debut', 10)),
-            '3' => $query->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereDay('date_debut', 20)),
-            default => $query,
+            '1' => $query->whereHas('droitPaiement', $c1),
+            '2' => $query->whereHas('droitPaiement', $c2),
+            '3' => $query->whereHas('droitPaiement', $c3),
+            default => $query->whereDoesntHave('droitPaiement', $c1)
+                             ->whereDoesntHave('droitPaiement', $c2)
+                             ->whereDoesntHave('droitPaiement', $c3),
         };
     }
 

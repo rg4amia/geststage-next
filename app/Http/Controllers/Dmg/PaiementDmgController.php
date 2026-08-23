@@ -44,9 +44,7 @@ class PaiementDmgController extends Controller
         $presence = $this->dmgService->attentePaiementPresence($filters, $mois);
         $compteurs = $this->compteurs($filters, $mois);
 
-        if ($cohorte !== 'global') {
-            $demarrage = $this->dmgService->applyCohorteFilter($demarrage, $cohorte);
-        }
+        $demarrage = $this->dmgService->applyCohorteFilter($demarrage, $cohorte);
 
         $periodeId = $periode?->id;
         $dossiers = fn (array $statuts) => DossierPaiement::query()
@@ -228,10 +226,10 @@ class PaiementDmgController extends Controller
         foreach (['global', 'cohorte1', 'cohorte2', 'cohorte3'] as $cohorte) {
             $demarrage = $this->dmgService->attentePaiementDemarrage($filters, $mois);
             $presence = $this->dmgService->attentePaiementPresence($filters, $mois);
-            if ($cohorte !== 'global') {
-                $demarrage = $this->dmgService->applyCohorteFilter($demarrage, $cohorte);
-                $presence = $this->dmgService->applyCohorteFilter($presence, $cohorte);
-            }
+            
+            $demarrage = $this->dmgService->applyCohorteFilter($demarrage, $cohorte);
+            $presence = $this->dmgService->applyCohorteFilter($presence, $cohorte);
+            
             $result[$cohorte] = ['demarrage' => $demarrage->count(), 'presence' => $presence->count()];
         }
 

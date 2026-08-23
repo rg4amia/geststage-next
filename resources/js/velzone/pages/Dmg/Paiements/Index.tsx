@@ -279,13 +279,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const currentDemarrageRows = useMemo(() => attenteDemarrage || [], [attenteDemarrage]);
     const currentPresenceRows = useMemo(() => attentePresence || [], [attentePresence]);
 
-    /* ─── Filtre cohorte côté client ─── */
-    const filteredDemarrageRows = useMemo(() => {
-        if (demarrageTab === 'global') return currentDemarrageRows;
-        const cohortNum = parseInt(demarrageTab.replace('cohorte', ''), 10);
-        return currentDemarrageRows.filter((r) => r.cohorte === cohortNum);
-    }, [currentDemarrageRows, demarrageTab]);
-
+    
     /* ─── Navigation filtres ─── */
     const applyFilters = useCallback(() => {
         const params: Record<string, string> = {};
@@ -332,6 +326,28 @@ const DmgPaiementsIndex = (props: PageProps) => {
             setActiveTab(tab);
             setSelectedDemarrageIds([]);
             setSelectedPresenceIds([]);
+            
+            const params: Record<string, string> = {};
+            const mois = getMoisForTab(tab);
+            if (mois) params.mois = mois;
+            Object.entries(selectedFilters).forEach(([key, val]) => {
+                if (val) params[key] = val;
+            });
+            params.cohorte = demarrageTab;
+            params.tab = tab;
+
+            const url = new URL(window.location.href);
+            url.search = '';
+            Object.entries(params).forEach(([key, val]) => {
+                if (val) url.searchParams.set(key, val);
+            });
+            window.history.replaceState({}, '', url);
+
+            setIsLoading(true);
+            router.get('/dmg/paiements', params, {
+                preserveState: true,
+                onFinish: () => setIsLoading(false),
+            });
         }
     };
 
@@ -339,14 +355,36 @@ const DmgPaiementsIndex = (props: PageProps) => {
         if (demarrageTab !== tab) {
             setDemarrageTab(tab);
             setSelectedDemarrageIds([]);
+            
+            const params: Record<string, string> = {};
+            const mois = getMoisForTab(activeTab);
+            if (mois) params.mois = mois;
+            Object.entries(selectedFilters).forEach(([key, val]) => {
+                if (val) params[key] = val;
+            });
+            params.cohorte = tab;
+            params.tab = activeTab;
+
+            const url = new URL(window.location.href);
+            url.search = '';
+            Object.entries(params).forEach(([key, val]) => {
+                if (val) url.searchParams.set(key, val);
+            });
+            window.history.replaceState({}, '', url);
+
+            setIsLoading(true);
+            router.get('/dmg/paiements', params, {
+                preserveState: true,
+                onFinish: () => setIsLoading(false),
+            });
         }
     };
 
     /* ─── Sélection ─── */
     const toggleSelectAllDemarrage = useCallback(() => {
-        const allIds = filteredDemarrageRows.map((r) => r.id);
+        const allIds = currentDemarrageRows.map((r) => r.id);
         setSelectedDemarrageIds((prev) => (prev.length === allIds.length ? [] : allIds));
-    }, [filteredDemarrageRows]);
+    }, [currentDemarrageRows]);
 
     const toggleSelectOneDemarrage = useCallback((id: number) => {
         setSelectedDemarrageIds((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
@@ -802,7 +840,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
         id: 'select',
         header: () => (
             <Input type="checkbox" className="form-check-input"
-                checked={filteredDemarrageRows.length > 0 && selectedDemarrageIds.length === filteredDemarrageRows.length}
+                checked={currentDemarrageRows.length > 0 && selectedDemarrageIds.length === currentDemarrageRows.length}
                 onChange={() => toggleSelectAllDemarrage()} />
         ),
         cell: (cell: any) => (
@@ -869,7 +907,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const demarrageColumns = useMemo(() => [
         selectColumnDemarrage,
         ...commonDemarrageColumns,
-    ], [selectedDemarrageIds, filteredDemarrageRows]);
+    ], [selectedDemarrageIds, currentDemarrageRows]);
 
     const dossierColumns = useMemo(() => [
         { header: '#', cell: (cell: any) => cell.row.index + 1, size: 50 },
@@ -1105,7 +1143,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                         <Button color="primary" size="sm" onClick={applyFilters} disabled={isLoading}>
                                             <i className="ri-search-line me-1"></i>Appliquer
                                         </Button>
-                                        <Badge color="primary" pill className="fs-11">{filteredDemarrageRows.length} paiement(s)</Badge>
+                                        <Badge color="primary" pill className="fs-11">{currentDemarrageRows.length} paiement(s)</Badge>
                                     </div>
                                     {/* ── Actions globales démarrage ── */}
                                     <Card className="border shadow-none mb-3">
@@ -1163,7 +1201,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         <i className="ri-check-line me-1"></i>Valider paiement <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => handleValiderPaiement(filteredDemarrageRows.map((r) => r.id), 'liste')}>Valider toute la liste</DropdownItem>
+                                                        <DropdownItem onClick={() => handleValiderPaiement(currentDemarrageRows.map((r) => r.id), 'liste')}>Valider toute la liste</DropdownItem>
                                                         <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => handleValiderPaiement(selectedDemarrageIds, 'selected')}>Valider sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
@@ -1239,7 +1277,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                     ) : (
                                         <TableContainerReactTable
                                             columns={demarrageColumns}
-                                            data={filteredDemarrageRows}
+                                            data={currentDemarrageRows}
                                             isGlobalFilter={true}
                                             customPageSize={10}
                                             divClass="table-responsive table-card mb-3"
