@@ -3,13 +3,15 @@
 namespace App\Models\Reference;
 
 use App\Domain\Audit\Traits\Auditable;
+use App\Models\Concerns\CachesReferenceData;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Agence extends Model
 {
-    use Auditable, HasFactory;
+    use Auditable, CachesReferenceData, HasFactory;
 
     /**
      * The table associated with the model.
@@ -26,13 +28,6 @@ class Agence extends Model
     protected $guarded = [];
 
     /**
-     * The accessors to append to the model's array form.
-     *
-     * @var array
-     */
-    protected $appends = ['chef_agence'];
-
-    /**
      * La région de l'agence.
      */
     public function region(): BelongsTo
@@ -41,24 +36,26 @@ class Agence extends Model
     }
 
     /**
-     * Récupère le nom complet du chef d'agence.
+     * Récupère le nom complet du chef d'agence via une jointure unique
+     * (users + perimetres_agences_utilisateurs + model_has_roles + roles).
      */
     public function getChefAgenceAttribute(): string
     {
-        // Récupérer l'utilisateur avec le rôle chef_agence pour cette agence
-        // via la table pivot perimetres_agences_utilisateurs
-        $chefAgence = \App\Models\User::whereHas('roles', function ($query) {
-            $query->where('name', 'chef_agence');
-        })
-            ->whereHas('perimetresAgences', function ($query) {
-                $query->where('agence_id', $this->id)
-                    ->where(function ($q) {
-                        $q->whereNull('valide_au')
-                            ->orWhere('valide_au', '>=', now());
-                    });
+        $nom = User::query()
+            ->join('perimetres_agences_utilisateurs', 'perimetres_agences_utilisateurs.user_id', '=', 'users.id')
+            ->join('model_has_roles', function ($join): void {
+                $join->on('model_has_roles.model_id', '=', 'users.id')
+                    ->where('model_has_roles.model_type', User::class);
             })
-            ->first();
+            ->join('roles', 'roles.id', '=', 'model_has_roles.role_id')
+            ->where('perimetres_agences_utilisateurs.agence_id', $this->id)
+            ->where(function ($query): void {
+                $query->whereNull('perimetres_agences_utilisateurs.valide_au')
+                    ->orWhere('perimetres_agences_utilisateurs.valide_au', '>=', now());
+            })
+            ->where('roles.name', 'chef_agence')
+            ->value('users.nom');
 
-        return $chefAgence ? $chefAgence->nom : 'N/A';
+        return $nom ?? 'N/A';
     }
 }

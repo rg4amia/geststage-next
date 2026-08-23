@@ -13,7 +13,7 @@ use App\Models\Reference\TypeStage;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Auth, Cache, DB};
+use Illuminate\Support\Facades\{Auth, DB};
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -69,10 +69,10 @@ class PointageChefAgenceController extends Controller
 
         // Références pour les filtres (format array d'objets pour Inertia)
         $referenceData = [
-            'agences' => Cache::remember('ref.agences_arr', 86400, fn () => Agence::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'entreprises' => Cache::remember('ref.entreprises_arr', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
-            'sourcesFinancement' => Cache::remember('ref.sources_financement_arr', 86400, fn () => SourceFinancement::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typesStage' => Cache::remember('ref.types_stage_arr', 86400, fn () => TypeStage::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'agences' => Agence::cachedOptions('nom'),
+            'entreprises' => Entreprise::cachedOptions('raison_sociale'),
+            'sourcesFinancement' => SourceFinancement::cachedOptions('nom'),
+            'typesStage' => TypeStage::cachedOptions('nom'),
         ];
 
         return Inertia::render('ChefAgence/Pointages/Index', array_merge($referenceData, [

@@ -18,7 +18,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 
 class StagiaireDesseController extends Controller
@@ -97,11 +96,11 @@ class StagiaireDesseController extends Controller
             ]),
             'corbeilleLabels' => CorbeilleEnum::labels(),
             'corbeilleActionnable' => CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER->value,
-            'agences' => Cache::remember('filter_agences_desse', 1800, fn () => Agence::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'entreprises' => Cache::remember('filter_entreprises_desse', 1800, fn () => Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
-            'sourcesFinancement' => Cache::remember('filter_sources_financement_desse', 1800, fn () => SourceFinancement::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typesStage' => Cache::remember('filter_types_stage_desse', 1800, fn () => TypeStage::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typesStructure' => Cache::remember('filter_types_structure_desse', 1800, fn () => TypeStructure::orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'agences' => Agence::cachedOptions('nom'),
+            'entreprises' => Entreprise::cachedOptions('raison_sociale'),
+            'sourcesFinancement' => SourceFinancement::cachedOptions('nom'),
+            'typesStage' => TypeStage::cachedOptions('nom'),
+            'typesStructure' => TypeStructure::cachedOptions('nom'),
         ]);
     }
 

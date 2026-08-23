@@ -16,9 +16,9 @@ use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -40,11 +40,12 @@ class PaiementDmgController extends Controller
         ]);
         $cohorte = $request->string('cohorte', 'global')->toString();
 
-        $demarrage = $this->dmgService->attentePaiementDemarrage($filters, $mois);
-        $presence = $this->dmgService->attentePaiementPresence($filters, $mois);
-        $compteurs = $this->compteurs($filters, $mois);
+        $demarrageBase = $this->dmgService->attentePaiementDemarrage($filters, $mois);
+        $presenceBase = $this->dmgService->attentePaiementPresence($filters, $mois);
+        $compteurs = $this->compteurs($demarrageBase, $presenceBase);
 
-        $demarrage = $this->dmgService->applyCohorteFilter($demarrage, $cohorte);
+        $demarrage = $this->dmgService->applyCohorteFilter(clone $demarrageBase, $cohorte);
+        $presence = clone $presenceBase;
 
         $periodeId = $periode?->id;
         $dossiers = fn (array $statuts) => DossierPaiement::query()
@@ -82,8 +83,8 @@ class PaiementDmgController extends Controller
             ->get();
 
         return Inertia::render('Dmg/Paiements/Index', [
-            'attenteDemarrage' => $this->corbeilles->paiementRows($demarrage->orderByDesc('paiements.created_at')->get()),
-            'attentePresence' => $this->corbeilles->paiementRows($presence->orderByDesc('paiements.created_at')->get()),
+            'attenteDemarrage' => $this->corbeilles->paiementRows($demarrage->orderByDesc('paiements.created_at')->limit(500)->get()),
+            'attentePresence' => $this->corbeilles->paiementRows($presence->orderByDesc('paiements.created_at')->limit(500)->get()),
             'compteurs' => $compteurs,
             'dossiers' => $this->corbeilles->dossierRows($dossiers(['BROUILLON']), 'En elaboration'),
             'dossiersTransmis' => $this->corbeilles->dossierRows($dossiers(['TRANSMIS_CB', 'VALIDE_CB', 'EN_OP']), 'Circuit CB/OP'),
@@ -99,12 +100,12 @@ class PaiementDmgController extends Controller
             'filters' => $filters,
             'cohorte' => $cohorte,
             'limiteAffichee' => 100,
-            'agences' => Cache::remember('ref.agences_arr', 86400, fn () => Agence::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'entreprises' => Cache::remember('ref.entreprises_arr', 86400, fn () => Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
-            'sourcesFinancement' => Cache::remember('ref.sources_financement_arr', 86400, fn () => SourceFinancement::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typesStage' => Cache::remember('ref.types_stage_arr', 86400, fn () => TypeStage::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typestructures' => Cache::remember('ref.typestructures_arr', 86400, fn () => TypeStructure::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'periodeOptions' => Cache::remember('ref.periodes_paiement', 3600, fn () => Periode::orderByDesc('code')->get(['id', 'code'])->toArray()),
+            'agences' => Agence::cachedOptions('nom'),
+            'entreprises' => Entreprise::cachedOptions('raison_sociale'),
+            'sourcesFinancement' => SourceFinancement::cachedOptions('nom'),
+            'typesStage' => TypeStage::cachedOptions('nom'),
+            'typestructures' => TypeStructure::cachedOptions('nom'),
+            'periodeOptions' => Periode::cachedOptions('code', descending: true),
         ]);
     }
 
@@ -219,17 +220,13 @@ class PaiementDmgController extends Controller
         ]);
     }
 
-    /** @param array<string, mixed> $filters */
-    private function compteurs(array $filters, string $mois): array
+    private function compteurs(Builder $demarrageBase, Builder $presenceBase): array
     {
         $result = [];
         foreach (['global', 'cohorte1', 'cohorte2', 'cohorte3'] as $cohorte) {
-            $demarrage = $this->dmgService->attentePaiementDemarrage($filters, $mois);
-            $presence = $this->dmgService->attentePaiementPresence($filters, $mois);
-            
-            $demarrage = $this->dmgService->applyCohorteFilter($demarrage, $cohorte);
-            $presence = $this->dmgService->applyCohorteFilter($presence, $cohorte);
-            
+            $demarrage = $this->dmgService->applyCohorteFilter(clone $demarrageBase, $cohorte);
+            $presence = $this->dmgService->applyCohorteFilter(clone $presenceBase, $cohorte);
+
             $result[$cohorte] = ['demarrage' => $demarrage->count(), 'presence' => $presence->count()];
         }
 

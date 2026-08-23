@@ -26,7 +26,7 @@ class InitialSchemaTest extends TestCase
             'instances_parcours', 'taches_parcours', 'evenements_parcours',
             'ajournements', 'exigences_ajournements', 'corrections_ajournements',
             'pointages', 'droits_paiement', 'paiements', 'dossiers_paiement',
-            'dossiers_groupes', 'ordres_paiement', 'bordereaux_paiement',
+            'dossiers_groupes', 'ordre_paiements', 'bordereau_paiements',
             'conservations_contrats_pae', 'correspondances_colonnes_contrats_pae',
             'conservations_referentiels_legacy', 'correspondances_valeurs_referentiels',
             'model_has_roles', 'model_has_permissions', 'role_has_permissions',

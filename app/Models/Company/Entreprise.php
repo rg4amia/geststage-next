@@ -4,6 +4,7 @@ namespace App\Models\Company;
 
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
+use App\Models\Concerns\CachesReferenceData;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Commune;
 use App\Models\Reference\TypeStructure;
@@ -15,7 +16,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Entreprise extends Model
 {
-    use Auditable, HasFactory, HasPublicUuid, SoftDeletes;
+    use Auditable, CachesReferenceData, HasFactory, HasPublicUuid, SoftDeletes;
 
     /**
      * The table associated with the model.

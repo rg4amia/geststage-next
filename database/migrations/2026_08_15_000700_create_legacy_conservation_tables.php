@@ -23,7 +23,7 @@ return new class extends Migration
         Schema::create('conservations_contrats_pae', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('execution_migration_id')->constrained('executions_migration')->restrictOnDelete();
-            $table->unsignedBigInteger('contrat_pae_ancien_id')->unique();
+            $table->unsignedBigInteger('contrat_pae_ancien_id');
             $table->foreignId('beneficiaire_id')->nullable()->constrained('beneficiaires')->restrictOnDelete();
             $table->foreignId('stage_id')->nullable()->constrained('stages')->restrictOnDelete();
             $table->foreignId('contrat_id')->nullable()->constrained('contrats')->restrictOnDelete();

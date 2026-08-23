@@ -11,6 +11,7 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class ReportingDashboardService
@@ -18,18 +19,25 @@ class ReportingDashboardService
     public function buildOverview(array $filters = []): array
     {
         $mois = (string) ($filters['mois'] ?? Carbon::now()->format('Y-m'));
-        $periode = $this->resolvePeriode($mois);
         $sourceFinancementId = $this->normalizeNullableInteger($filters['source_financement_id'] ?? null);
 
-        $sourcesFinancement = SourceFinancement::query()
-            ->orderBy('nom')
-            ->get(['id', 'code', 'nom'])
+        $cacheKey = sprintf('reporting.overview.%s.%s', $mois, $sourceFinancementId ?? 'all');
+
+        return Cache::remember($cacheKey, now()->addMinutes(3), fn () => $this->computeOverview($mois, $sourceFinancementId));
+    }
+
+    private function computeOverview(string $mois, ?int $sourceFinancementId): array
+    {
+        $periode = $this->resolvePeriode($mois);
+
+        $sourcesFinancement = SourceFinancement::cached()
+            ->sortBy('nom')
+            ->values()
             ->map(fn (SourceFinancement $source) => [
                 'id' => $source->id,
                 'code' => $source->code,
                 'nom' => $source->nom,
             ])
-            ->values()
             ->all();
 
         $stageQuery = Stage::query();
@@ -75,20 +83,38 @@ class ReportingDashboardService
             });
         }
 
-        $pointagesAttente = (clone $pointageQuery)->attenteValidationCA()->count();
-        $pointagesValides = (clone $pointageQuery)->valide()->count();
-        $pointagesAjournesCA = (clone $pointageQuery)->ajourneParCA()->count();
-        $pointagesAjournesDMG = (clone $pointageQuery)->ajourneParDMG()->count();
+        $pointageStatuts = (clone $pointageQuery)
+            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'AJOURNE_CA', 'AJOURNE_DMG'])
+            ->selectRaw('statut, COUNT(*) as total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
 
-        $dossiersTransmisAC = (clone $dossierQuery)->transmisAc()->count();
-        $dossiersVisesAC = (clone $dossierQuery)->viseAc()->count();
-        $dossiersAjournesDMG = (clone $dossierQuery)->ajourneDmg()->count();
+        $pointagesAttente = (int) ($pointageStatuts['SOUMIS'] ?? 0);
+        $pointagesValides = (int) ($pointageStatuts['VALIDE'] ?? 0);
+        $pointagesAjournesCA = (int) ($pointageStatuts['AJOURNE_CA'] ?? 0);
+        $pointagesAjournesDMG = (int) ($pointageStatuts['AJOURNE_DMG'] ?? 0);
 
-        $droitsOuverts = (clone $droitQuery)->where('statut', 'OUVERT')->count();
-        $montantDroitsOuverts = (clone $droitQuery)->where('statut', 'OUVERT')->sum('montant');
+        $dossierStatuts = (clone $dossierQuery)
+            ->whereIn('statut', ['TRANSMIS_AC', 'VISE_AC', 'AJOURNE_DMG'])
+            ->selectRaw('statut, COUNT(*) as total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
 
-        $paiementsATraiter = (clone $paiementQuery)->aTraiter()->count();
-        $montantPaiementsATraiter = (clone $paiementQuery)->aTraiter()->sum('montant');
+        $dossiersTransmisAC = (int) ($dossierStatuts['TRANSMIS_AC'] ?? 0);
+        $dossiersVisesAC = (int) ($dossierStatuts['VISE_AC'] ?? 0);
+        $dossiersAjournesDMG = (int) ($dossierStatuts['AJOURNE_DMG'] ?? 0);
+
+        $droitsOuvertsAgg = (clone $droitQuery)->where('statut', 'OUVERT')
+            ->selectRaw('COUNT(*) as total, COALESCE(SUM(montant), 0) as montant')
+            ->first();
+        $droitsOuverts = (int) ($droitsOuvertsAgg->total ?? 0);
+        $montantDroitsOuverts = $droitsOuvertsAgg->montant ?? 0;
+
+        $paiementsATraiterAgg = (clone $paiementQuery)->aTraiter()
+            ->selectRaw('COUNT(*) as total, COALESCE(SUM(montant), 0) as montant')
+            ->first();
+        $paiementsATraiter = (int) ($paiementsATraiterAgg->total ?? 0);
+        $montantPaiementsATraiter = $paiementsATraiterAgg->montant ?? 0;
 
         $journalActivite = JournalAudit::query()
             ->with(['user:id,name,email'])
@@ -139,7 +165,7 @@ class ReportingDashboardService
             'moisActuel' => $mois,
             'periode' => $periode,
             'sourceFinancement' => $sourceFinancementId !== null
-                ? SourceFinancement::query()->find($sourceFinancementId, ['id', 'code', 'nom'])
+                ? SourceFinancement::cached()->firstWhere('id', $sourceFinancementId)
                 : null,
             'sourcesFinancement' => $sourcesFinancement,
             'filters' => [

@@ -36,10 +36,10 @@ class CorbeilleWiringTest extends TestCase
             '/dmg/rejets' => ['Dmg/Rejets/Index', ['ajournesCB', 'rejetesAC', 'differesAC']],
             '/cb/paiements' => ['Cb/Paiements/Index', ['dossiersControle', 'etatsAjournes']],
             '/agent-comptable/paiements' => ['AgentComptable/Paiements/Index', ['bordereauxAttente', 'ordresRejetes', 'statutPaiements']],
-            '/desse/stagiaires' => ['Desse/Stagiaires/Index', ['attenteValidation', 'doublons', 'statistiques']],
+            '/desse/stagiaires' => ['Desse/Stagiaires/Index', ['data', 'counts', 'doublonCounts']],
             '/daicg/stagiaires' => ['Daicg/Stagiaires/Index', ['validesCA', 'validesDESSE', 'sansContrat']],
             '/cip/suivi' => ['Cip/Suivi/Index', ['differesAC', 'doublonsDESSE', 'renouvellements', 'suspensionsAbandons']],
-            '/cip/pointages/pejedec' => ['Cip/Pointages/Pejedec', ['attente', 'effectues', 'ajournesCA', 'ajournesDMG', 'moisManques', 'moisActuel', 'sourceFinancement']],
+            '/cip/pointages' => ['Cip/Pointages/Index', ['tab', 'counts', 'data', 'filters']],
             '/pejedec/af' => ['Pejedec/Aaf/Index', ['attenteValidation', 'paiementsAjournes', 'correctionsAValider', 'attentePaiement', 'statistiques', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],
             '/pejedec/af/attente-validation' => ['Pejedec/Aaf/AttenteValidation', ['attenteValidation', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],
             '/pejedec/af/paiements-ajournes' => ['Pejedec/Aaf/PaiementsAjournes', ['paiementsAjournes', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],
@@ -112,12 +112,15 @@ class CorbeilleWiringTest extends TestCase
             'corbeille_actuelle' => CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER->value,
         ]);
 
-        $this->post("/desse/stagiaires/doublons/{$instanceDoublon->id}/traiter")
-            ->assertRedirect();
+        $this->post("/desse/stagiaires/doublons/{$instanceDoublon->id}/traiter", [
+            'type_doublon' => 'piece_identite',
+            'decision' => 'non_avere',
+            'motif' => 'Vérification manuelle effectuée, pas de doublon réel.',
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('instances_parcours', [
             'id' => $instanceDoublon->id,
-            'corbeille_actuelle' => CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value,
+            'corbeille_actuelle' => CorbeilleEnum::DAICG_VALIDES_DESSE->value,
         ]);
     }
 

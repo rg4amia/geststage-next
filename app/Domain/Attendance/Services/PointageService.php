@@ -67,55 +67,41 @@ class PointageService
             $queryAttente->where('type_stage_id', $stageFilters['type_stage_id']);
         }
 
-        $queryAttenteNormal = clone $queryAttente;
-        $queryAttenteNormal->where('source_financement_id', '!=', 4);
+        $attenteCounts = (clone $queryAttente)
+            ->selectRaw("SUM(CASE WHEN source_financement_id = 4 THEN 1 ELSE 0 END) as pejedec, SUM(CASE WHEN source_financement_id != 4 THEN 1 ELSE 0 END) as normal")
+            ->first();
+        $counts['attente'] = (int) ($attenteCounts->normal ?? 0);
+        $counts['attente_pejedec'] = (int) ($attenteCounts->pejedec ?? 0);
 
-        $queryAttentePejedec = clone $queryAttente;
-        $queryAttentePejedec->where('source_financement_id', 4);
+        $stageFilterScope = function ($q) use ($stageFilters) {
+            if (! empty($stageFilters['agence_id'])) {
+                $q->where('agence_id', $stageFilters['agence_id']);
+            }
+            if (! empty($stageFilters['entreprise_id'])) {
+                $q->where('entreprise_id', $stageFilters['entreprise_id']);
+            }
+            if (! empty($stageFilters['source_financement_id'])) {
+                $q->where('source_financement_id', $stageFilters['source_financement_id']);
+            }
+            if (! empty($stageFilters['type_stage_id'])) {
+                $q->where('type_stage_id', $stageFilters['type_stage_id']);
+            }
+        };
 
-        $counts['attente'] = $queryAttenteNormal->count();
-        $counts['attente_pejedec'] = $queryAttentePejedec->count();
+        $pointageStatuts = Pointage::where('periode_id', $periodeId)
+            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA'])
+            ->whereHas('stage', $stageFilterScope)
+            ->selectRaw('statut, COUNT(*) as total')
+            ->groupBy('statut')
+            ->pluck('total', 'statut');
 
-        $counts['effectue'] = Pointage::where('periode_id', $periodeId)
-            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
-            ->whereHas('stage', function ($q) use ($stageFilters) {
-                if (! empty($stageFilters['agence_id'])) {
-                    $q->where('agence_id', $stageFilters['agence_id']);
-                }
-                if (! empty($stageFilters['entreprise_id'])) {
-                    $q->where('entreprise_id', $stageFilters['entreprise_id']);
-                }
-                if (! empty($stageFilters['source_financement_id'])) {
-                    $q->where('source_financement_id', $stageFilters['source_financement_id']);
-                }
-                if (! empty($stageFilters['type_stage_id'])) {
-                    $q->where('type_stage_id', $stageFilters['type_stage_id']);
-                }
-            })
-            ->count();
-
-        $counts['ajourne_ca'] = Pointage::where('periode_id', $periodeId)
-            ->where('statut', 'AJOURNE_CA')
-            ->whereHas('stage', function ($q) use ($stageFilters) {
-                if (! empty($stageFilters['agence_id'])) {
-                    $q->where('agence_id', $stageFilters['agence_id']);
-                }
-                if (! empty($stageFilters['entreprise_id'])) {
-                    $q->where('entreprise_id', $stageFilters['entreprise_id']);
-                }
-                if (! empty($stageFilters['source_financement_id'])) {
-                    $q->where('source_financement_id', $stageFilters['source_financement_id']);
-                }
-                if (! empty($stageFilters['type_stage_id'])) {
-                    $q->where('type_stage_id', $stageFilters['type_stage_id']);
-                }
-            })
-            ->count();
+        $counts['effectue'] = (int) (($pointageStatuts['SOUMIS'] ?? 0) + ($pointageStatuts['VALIDE'] ?? 0) + ($pointageStatuts['CORRIGE_CIP'] ?? 0));
+        $counts['ajourne_ca'] = (int) ($pointageStatuts['AJOURNE_CA'] ?? 0);
 
         $user = Auth::user();
 
         $counts['ajourne_dmg'] = InstanceParcours::where('corbeille_actuelle', CorbeilleEnum::CIP_AJOURNE_DMG->value)
-            ->whereHas('stage', function ($q) use ($stageFilters, $periode, $user) {
+            ->whereHas('stage', function ($q) use ($stageFilterScope, $periode, $user) {
                 $q->where('date_debut', '<=', $periode->date_fin)
                     ->where(function ($nested) use ($periode) {
                         $nested->whereNull('date_fin_prevue')
@@ -126,18 +112,7 @@ class PointageService
                     $q->where('agence_id', $user->agence_id);
                 }
 
-                if (! empty($stageFilters['agence_id'])) {
-                    $q->where('agence_id', $stageFilters['agence_id']);
-                }
-                if (! empty($stageFilters['entreprise_id'])) {
-                    $q->where('entreprise_id', $stageFilters['entreprise_id']);
-                }
-                if (! empty($stageFilters['source_financement_id'])) {
-                    $q->where('source_financement_id', $stageFilters['source_financement_id']);
-                }
-                if (! empty($stageFilters['type_stage_id'])) {
-                    $q->where('type_stage_id', $stageFilters['type_stage_id']);
-                }
+                $stageFilterScope($q);
             })
             ->count();
 

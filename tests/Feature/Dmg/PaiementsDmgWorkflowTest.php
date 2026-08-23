@@ -43,26 +43,31 @@ class PaiementsDmgWorkflowTest extends TestCase
 
     public function test_la_liste_suit_la_corbeille_du_parcours_et_non_la_nature_importee(): void
     {
-        $this->seed(RolePermissionSeeder::class);
-        $user = User::factory()->create();
-        $user->assignRole('administrateur');
-        $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+        // La classification en cohortes (DmgService::applyCohorteFilter) compare le jour de
+        // création du droit de paiement au jour de début du stage : on fige la date courante
+        // pour que ce test reste déterministe quel que soit le jour d'exécution de la suite.
+        $this->travelTo(\Carbon\Carbon::parse('2026-08-04'), function () {
+            $this->seed(RolePermissionSeeder::class);
+            $user = User::factory()->create();
+            $user->assignRole('administrateur');
+            $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
 
-        $demarrage = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'PRESENCE', '2026-08-03');
-        $this->paiement($periode, CorbeilleEnum::CA_VALIDATION_POINTAGES, 'PRESENCE', '2026-08-10');
+            $demarrage = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'PRESENCE', '2026-08-03');
+            $this->paiement($periode, CorbeilleEnum::CA_VALIDATION_POINTAGES, 'PRESENCE', '2026-08-10');
 
-        $this->actingAs($user)->get('/dmg/paiements?mois=2026-08')
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('Dmg/Paiements/Index')
-                ->where('compteurs.global.demarrage', 1)
-                ->where('compteurs.global.presence', 0)
-                ->has('attenteDemarrage', 1)
-                ->where('attenteDemarrage.0.id', $demarrage->id));
+            $this->actingAs($user)->get('/dmg/paiements?mois=2026-08')
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->component('Dmg/Paiements/Index')
+                    ->where('compteurs.global.demarrage', 1)
+                    ->where('compteurs.global.presence', 0)
+                    ->has('attenteDemarrage', 1)
+                    ->where('attenteDemarrage.0.id', $demarrage->id));
 
-        $this->get('/dmg/paiements/generer-pdf?type=etat_paiement&mois=2026-08&ids[]='.$demarrage->id)
-            ->assertOk()
-            ->assertHeader('content-type', 'application/pdf');
+            $this->get('/dmg/paiements/generer-pdf?type=etat_paiement&mois=2026-08&ids[]='.$demarrage->id)
+                ->assertOk()
+                ->assertHeader('content-type', 'application/pdf');
+        });
     }
 
     public function test_la_validation_selectionnee_cree_un_dossier_et_trace_la_decision(): void

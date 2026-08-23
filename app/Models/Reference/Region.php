@@ -3,12 +3,13 @@
 namespace App\Models\Reference;
 
 use App\Domain\Audit\Traits\Auditable;
+use App\Models\Concerns\CachesReferenceData;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Region extends Model
 {
-    use Auditable;
+    use Auditable, CachesReferenceData;
 
     /**
      * The table associated with the model.

@@ -3,13 +3,14 @@
 namespace App\Models\Reference;
 
 use App\Domain\Audit\Traits\Auditable;
+use App\Models\Concerns\CachesReferenceData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Conseiller extends Model
 {
-    use Auditable, HasFactory;
+    use Auditable, CachesReferenceData, HasFactory;
 
     /**
      * The table associated with the model.

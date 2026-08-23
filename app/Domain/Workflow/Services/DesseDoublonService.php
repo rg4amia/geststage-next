@@ -41,7 +41,9 @@ class DesseDoublonService
             'guard' => "beneficiaires.telephone_principal IS NOT NULL AND TRIM(beneficiaires.telephone_principal) != ''",
         ],
         'identite_type_stage' => [
-            'expr' => "CONCAT(UPPER(TRIM(beneficiaires.nom)), '|', UPPER(TRIM(beneficiaires.prenoms)), '|', beneficiaires.date_naissance::text, '|', stages.type_stage_id)",
+            // Pas de cast `::text` (Postgres uniquement, invalide sous SQLite) : CONCAT()
+            // convertit déjà ses arguments en texte sur les deux drivers.
+            'expr' => "CONCAT(UPPER(TRIM(beneficiaires.nom)), '|', UPPER(TRIM(beneficiaires.prenoms)), '|', beneficiaires.date_naissance, '|', stages.type_stage_id)",
             'guard' => 'beneficiaires.date_naissance IS NOT NULL',
         ],
         'diplome_type_stage' => [

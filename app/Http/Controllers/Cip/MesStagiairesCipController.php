@@ -156,19 +156,17 @@ class MesStagiairesCipController extends Controller
         $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
         // Shell Inertia — données de filtres
-        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $entreprises = Cache::remember(
-            'filter_entreprises_mes_stagiaires_'.($user->id ?? '0'),
-            1800,
-            fn () => Entreprise::when($user && $user->agence_id, function ($q) use ($user) {
-                $q->where('agence_id', $user->agence_id);
-            })->orderBy('raison_sociale')->pluck('raison_sociale', 'id')->toArray()
-        );
-        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $agences = Agence::cachedPluck('nom');
+        $entreprises = Entreprise::cached()
+            ->when($user && $user->agence_id, fn ($c) => $c->where('agence_id', $user->agence_id))
+            ->sortBy('raison_sociale')
+            ->pluck('raison_sociale', 'id')
+            ->all();
+        $typesfinancements = SourceFinancement::cachedPluck('nom');
+        $typestages = TypeStage::cachedPluck('nom');
+        $typestructures = TypeStructure::cachedPluck('nom');
         $etapes = Cache::remember('filter_etapes_mes_stagiaires', 1800, fn () => EtapeParcours::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $situationstages = Cache::remember('filter_situationstages_mes_stagiaires', 1800, fn () => SituationStage::orderBy('nom')->pluck('nom', 'code')->toArray());
+        $situationstages = SituationStage::cachedPluck('nom', 'code');
 
         return Inertia::render('Cip/MesStagiaires/Index', [
             'instances' => $instances,
@@ -248,14 +246,15 @@ class MesStagiairesCipController extends Controller
 
         $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
-        $agences = Cache::remember('filter_agences_mes_stagiaires', 1800, fn () => Agence::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $entreprises = Cache::remember('filter_entreprises_mes_stagiaires', 1800, fn () =>
-            Entreprise::when($user && $user->agence_id, fn ($q) => $q->where('agence_id', $user->agence_id))
-                ->orderBy('raison_sociale')->pluck('raison_sociale', 'id')->toArray()
-        );
-        $typesfinancements = Cache::remember('filter_typesfinancements_mes_stagiaires', 1800, fn () => SourceFinancement::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestages = Cache::remember('filter_typestages_mes_stagiaires', 1800, fn () => TypeStage::orderBy('nom')->pluck('nom', 'id')->toArray());
-        $typestructures = Cache::remember('filter_typestructures_mes_stagiaires', 1800, fn () => TypeStructure::orderBy('nom')->pluck('nom', 'id')->toArray());
+        $agences = Agence::cachedPluck('nom');
+        $entreprises = Entreprise::cached()
+            ->when($user && $user->agence_id, fn ($c) => $c->where('agence_id', $user->agence_id))
+            ->sortBy('raison_sociale')
+            ->pluck('raison_sociale', 'id')
+            ->all();
+        $typesfinancements = SourceFinancement::cachedPluck('nom');
+        $typestages = TypeStage::cachedPluck('nom');
+        $typestructures = TypeStructure::cachedPluck('nom');
 
         return Inertia::render('Cip/MesStagiaires/AjournesChefAgence', [
             'instances' => $instances,

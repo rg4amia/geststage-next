@@ -77,6 +77,7 @@ class DmgService
                 $droit->whereNull('annule_le')
                     ->when($mois, fn (Builder $q) => $q->whereHas('periode', fn (Builder $p) => $p->where('code', $mois)))
                     ->whereHas('stage.contrats')
+                    ->whereHas('stage.sourceFinancement', fn ($sf) => $sf->where('code', '!=', 'PEJEDEC'))
                     ->whereHas('stage.instanceParcours', function (Builder $instance) use ($corbeille): void {
                         $instance->whereNull('terminee_le')
                             ->where(function (Builder $workflow) use ($corbeille): void {
@@ -138,28 +139,31 @@ class DmgService
 
     public function applyCohorteFilter(Builder $query, string $cohorte): Builder
     {
-        $c1 = function (Builder $d) {
+        $day = fn (string $column) => $this->sqlDay($column);
+        $month = fn (string $column) => $this->sqlMonth($column);
+
+        $c1 = function (Builder $d) use ($day, $month) {
             $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-              ->whereRaw('EXTRACT(DAY FROM s.date_debut) BETWEEN 1 AND 5')
-              ->where(function (Builder $q) {
-                  $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 11')
-                    ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+              ->whereRaw($day('s.date_debut').' BETWEEN 1 AND 5')
+              ->where(function (Builder $q) use ($day, $month) {
+                  $q->whereRaw($month('droits_paiement.created_at').' = '.$month('s.date_debut').' AND '.$day('droits_paiement.created_at').' >= 11')
+                    ->orWhereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
               });
         };
 
-        $c2 = function (Builder $d) {
+        $c2 = function (Builder $d) use ($day, $month) {
             $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-              ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 10')
-              ->where(function (Builder $q) {
-                  $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 21')
-                    ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+              ->whereRaw($day('s.date_debut').' = 10')
+              ->where(function (Builder $q) use ($day, $month) {
+                  $q->whereRaw($month('droits_paiement.created_at').' = '.$month('s.date_debut').' AND '.$day('droits_paiement.created_at').' >= 21')
+                    ->orWhereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
               });
         };
 
-        $c3 = function (Builder $d) {
+        $c3 = function (Builder $d) use ($day, $month) {
             $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-              ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 20')
-              ->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+              ->whereRaw($day('s.date_debut').' = 20')
+              ->whereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
         };
 
         return match (str_replace('cohorte', '', strtolower($cohorte))) {
@@ -170,6 +174,24 @@ class DmgService
                              ->whereDoesntHave('droitPaiement', $c2)
                              ->whereDoesntHave('droitPaiement', $c3),
         };
+    }
+
+    /**
+     * `EXTRACT(... FROM ...)` n'existe que sous Postgres : la suite de tests tourne sous SQLite
+     * (voir phpunit.xml), qui expose les composantes de date via `strftime()`.
+     */
+    private function sqlDay(string $column): string
+    {
+        return DB::getDriverName() === 'pgsql'
+            ? "EXTRACT(DAY FROM {$column})"
+            : "CAST(strftime('%d', {$column}) AS INTEGER)";
+    }
+
+    private function sqlMonth(string $column): string
+    {
+        return DB::getDriverName() === 'pgsql'
+            ? "EXTRACT(MONTH FROM {$column})"
+            : "CAST(strftime('%m', {$column}) AS INTEGER)";
     }
 
     /** @param list<int> $paiementIds @return Collection<int, DossierPaiement> */
@@ -199,6 +221,10 @@ class DmgService
                 return "{$droit->stage->agence_id}:{$droit->source_financement_id}:{$nature}";
             });
 
+            $now = now();
+            $lignes = [];
+            $decisions = [];
+
             foreach ($groupes as $cle => $groupe) {
                 [$agenceId, $financementId, $nature] = explode(':', $cle);
                 $dossier = DossierPaiement::create([
@@ -208,12 +234,23 @@ class DmgService
                     'statut' => 'BROUILLON', 'montant_total' => $groupe->sum('montant'),
                 ]);
                 foreach ($groupe as $paiement) {
-                    LigneDossierPaiement::create(['dossier_paiement_id' => $dossier->id, 'paiement_id' => $paiement->id, 'montant' => $paiement->montant, 'ajoute_le' => now()]);
-                    $paiement->update(['statut' => 'EN_DOSSIER']);
-                    DecisionPaiement::enregistrer($paiement, $auteur, 'VALIDE_DMG', null, 'A_TRAITER', 'EN_DOSSIER');
+                    $lignes[] = [
+                        'dossier_paiement_id' => $dossier->id, 'paiement_id' => $paiement->id,
+                        'montant' => $paiement->montant, 'ajoute_le' => $now,
+                        'created_at' => $now, 'updated_at' => $now,
+                    ];
+                    $decisions[] = [
+                        'paiement_id' => $paiement->id, 'auteur_id' => $auteur->id,
+                        'decision' => 'VALIDE_DMG', 'statut_avant' => 'A_TRAITER', 'statut_apres' => 'EN_DOSSIER',
+                        'decide_le' => $now, 'created_at' => $now, 'updated_at' => $now,
+                    ];
                 }
                 $dossiers->push($dossier);
             }
+
+            DB::table('lignes_dossiers_paiement')->insert($lignes);
+            DB::table('decisions_paiements')->insert($decisions);
+            Paiement::whereIn('id', $paiements->modelKeys())->update(['statut' => 'EN_DOSSIER']);
 
             return $dossiers;
         });

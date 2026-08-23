@@ -64,13 +64,15 @@ return new class extends Migration
             $table->foreignId('pointage_id')->nullable()->unique()->constrained('pointages')->restrictOnDelete();
             $table->foreignId('paiement_id')->nullable()->unique()->constrained('paiements')->restrictOnDelete();
             $table->foreignId('dossier_paiement_id')->nullable()->unique()->constrained('dossiers_paiement')->restrictOnDelete();
-            $table->foreignId('ordre_paiement_id')->nullable()->unique()->constrained('ordres_paiement')->restrictOnDelete();
-            $table->foreignId('bordereau_paiement_id')->nullable()->unique()->constrained('bordereaux_paiement')->restrictOnDelete();
+            $table->foreignId('ordre_paiement_id')->nullable()->unique()->constrained('ordre_paiements')->restrictOnDelete();
+            $table->foreignId('bordereau_paiement_id')->nullable()->unique()->constrained('bordereau_paiements')->restrictOnDelete();
+            $table->string('corbeille_actuelle', 50)->nullable();
             $table->unsignedInteger('version_verrouillage')->default(0);
             $table->timestampTz('demarree_le')->useCurrent();
             $table->timestampTz('terminee_le')->nullable();
             $table->timestamps();
             $table->index(['etape_courante_id', 'terminee_le']);
+            $table->index('corbeille_actuelle');
         });
 
         Schema::create('taches_parcours', function (Blueprint $table): void {
@@ -110,8 +112,6 @@ return new class extends Migration
 
         Schema::create('ajournements', function (Blueprint $table): void {
             $table->id();
-            $table->uuid('uuid_public')->unique();
-            $table->unsignedBigInteger('ancien_id')->nullable()->unique();
             $table->foreignId('instance_parcours_id')->constrained('instances_parcours')->restrictOnDelete();
             $table->foreignId('periode_id')->nullable()->constrained('periodes')->restrictOnDelete();
             $table->foreignId('etape_origine_id')->constrained('etapes_parcours')->restrictOnDelete();

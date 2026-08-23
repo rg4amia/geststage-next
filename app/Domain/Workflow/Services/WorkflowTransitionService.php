@@ -8,12 +8,107 @@ use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
+use App\Models\User;
+use App\Models\Workflow\DefinitionParcours;
+use App\Models\Workflow\EtapeParcours;
+use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
+use App\Models\Workflow\TacheParcours;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Str;
+use LogicException;
 
 class WorkflowTransitionService
 {
+    /**
+     * 0. Démarre une nouvelle instance de parcours sur l'étape initiale de la définition,
+     * ouvre la première tâche pour son rôle responsable et journalise l'événement fondateur.
+     *
+     * @param  array<string, mixed>  $donneesInstance  Attributs supplémentaires de l'instance (ex. stage_id).
+     * @param  array<string, mixed>  $donneesEvenement  Données libres à journaliser dans l'événement d'initialisation.
+     */
+    public function initier(
+        DefinitionParcours $definition,
+        User $acteur,
+        array $donneesInstance = [],
+        array $donneesEvenement = []
+    ): InstanceParcours {
+        $etapeInitiale = EtapeParcours::where('definition_parcours_id', $definition->id)
+            ->where('initiale', true)
+            ->firstOrFail();
+
+        $instance = InstanceParcours::create(array_merge($donneesInstance, [
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etapeInitiale->id,
+        ]));
+
+        $this->ouvrirTache($instance, $etapeInitiale);
+
+        EvenementParcours::create([
+            'instance_parcours_id' => $instance->id,
+            'etape_cible_id' => $etapeInitiale->id,
+            'auteur_id' => $acteur->id,
+            'type' => 'INITIALISATION',
+            'cle_idempotence' => (string) Str::uuid(),
+            'donnees' => $donneesEvenement,
+        ]);
+
+        return $instance;
+    }
+
+    /**
+     * 0b. Fait transiter une instance vers une nouvelle étape : ferme sa tâche ouverte,
+     * déplace l'instance, ouvre la tâche de l'étape cible et journalise la transition.
+     *
+     * @param  array<string, mixed>  $donnees  Données libres à journaliser dans l'événement de transition.
+     */
+    public function transitionner(
+        InstanceParcours $instance,
+        EtapeParcours $etapeCible,
+        User $acteur,
+        array $donnees = []
+    ): TacheParcours {
+        $tacheOuverte = TacheParcours::where('instance_parcours_id', $instance->id)
+            ->where('statut', 'OUVERTE')
+            ->first();
+
+        if (! $tacheOuverte) {
+            throw new LogicException("Aucune tâche active trouvée pour l'instance {$instance->id} : impossible de transitionner.");
+        }
+
+        $etapeSourceId = $tacheOuverte->etape_parcours_id;
+
+        $tacheOuverte->update(['statut' => 'TERMINEE', 'fermee_le' => now()]);
+
+        $instance->update(['etape_courante_id' => $etapeCible->id]);
+
+        $nouvelleTache = $this->ouvrirTache($instance, $etapeCible);
+
+        EvenementParcours::create([
+            'instance_parcours_id' => $instance->id,
+            'etape_source_id' => $etapeSourceId,
+            'etape_cible_id' => $etapeCible->id,
+            'auteur_id' => $acteur->id,
+            'type' => 'TRANSITION',
+            'cle_idempotence' => (string) Str::uuid(),
+            'donnees' => $donnees,
+        ]);
+
+        return $nouvelleTache;
+    }
+
+    private function ouvrirTache(InstanceParcours $instance, EtapeParcours $etape): TacheParcours
+    {
+        return TacheParcours::create([
+            'instance_parcours_id' => $instance->id,
+            'etape_parcours_id' => $etape->id,
+            'role_responsable_id' => $etape->role_responsable_id,
+            'code_corbeille' => $etape->code_corbeille,
+            'statut' => 'OUVERTE',
+        ]);
+    }
+
     /**
      * 1. Le CIP soumet le stagiaire.
      * Si la date de début est le mois en cours -> Démarrage.

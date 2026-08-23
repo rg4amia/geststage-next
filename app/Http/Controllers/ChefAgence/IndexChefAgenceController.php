@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -165,15 +164,13 @@ class IndexChefAgenceController extends Controller
             ->map(fn (InstanceParcours $instance) => $this->formatRow($instance))
             ->values();
 
-        // Compteurs par onglet (pour les cartes statistiques du frontend)
-        $baseQueryCount = $this->baseQuery($request);
+        // Compteurs par onglet (pour les cartes statistiques du frontend) — dérivés
+        // directement des collections déjà chargées ci-dessus, sans relancer les
+        // mêmes requêtes COUNT à base de whereHas imbriqués.
         $counts = [
-            'demarrage' => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value)->count(),
-            'demarrageOmis' => (clone $baseQueryCount)
-                ->where('corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
-                ->tap($applyMoisFilter)
-                ->count(),
-            'retourAjournement' => (clone $baseQueryCount)->where('corbeille_actuelle', CorbeilleEnum::CA_RETOUR_AJOURNEMENT->value)->count(),
+            'demarrage' => $demarrage->count(),
+            'demarrageOmis' => $demarrageOmis->count(),
+            'retourAjournement' => $retourAjournement->count(),
         ];
 
         if ($request->wantsJson()) {
@@ -186,11 +183,11 @@ class IndexChefAgenceController extends Controller
         }
 
         return Inertia::render('ChefAgence/ValidationDemarrage/Index', [
-            'agences' => Cache::remember('ref.agences_arr', 86400, fn () => Agence::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'entreprises' => Cache::remember('ref.entreprises_arr', 86400, fn () => Entreprise::query()->orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
-            'typesfinancements' => Cache::remember('ref.typesfinancements_arr', 86400, fn () => SourceFinancement::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typestages' => Cache::remember('ref.typestages_arr', 86400, fn () => TypeStage::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typestructures' => Cache::remember('ref.typestructures_arr', 86400, fn () => TypeStructure::query()->orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'agences' => Agence::cachedOptions('nom'),
+            'entreprises' => Entreprise::cachedOptions('raison_sociale'),
+            'typesfinancements' => SourceFinancement::cachedOptions('nom'),
+            'typestages' => TypeStage::cachedOptions('nom'),
+            'typestructures' => TypeStructure::cachedOptions('nom'),
             'filters' => $filters,
         ]);
     }

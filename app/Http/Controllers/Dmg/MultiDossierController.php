@@ -19,7 +19,6 @@ use App\Models\Reference\TypeStage;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -44,11 +43,11 @@ class MultiDossierController extends Controller
         $mois = $request->string('mois', Carbon::now()->format('Y-m'))->toString();
 
         return Inertia::render('Dmg/MultiDossier/Index', [
-            'periodeOptions' => Cache::remember('ref.periodes_paiement', 3600, fn () => Periode::orderByDesc('code')->get(['id', 'code'])->toArray()),
-            'agences' => Cache::remember('ref.agences_arr', 86400, fn () => Agence::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'entreprises' => Cache::remember('ref.entreprises_arr', 86400, fn () => Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale'])->toArray()),
-            'sourcesFinancement' => Cache::remember('ref.sources_financement_arr', 86400, fn () => SourceFinancement::orderBy('nom')->get(['id', 'nom'])->toArray()),
-            'typesStage' => Cache::remember('ref.types_stage_arr', 86400, fn () => TypeStage::orderBy('nom')->get(['id', 'nom'])->toArray()),
+            'periodeOptions' => Periode::cachedOptions('code', descending: true),
+            'agences' => Agence::cachedOptions('nom'),
+            'entreprises' => Entreprise::cachedOptions('raison_sociale'),
+            'sourcesFinancement' => SourceFinancement::cachedOptions('nom'),
+            'typesStage' => TypeStage::cachedOptions('nom'),
             'moisActuel' => $mois,
         ]);
     }
@@ -231,22 +230,16 @@ class MultiDossierController extends Controller
         ]);
 
         $result = DB::transaction(function () use ($data) {
-            $dossiers = DossierPaiement::whereIn('id', $data['dossier_id'])->lockForUpdate()->get();
-            $updatedPaiementIds = [];
+            DossierPaiement::whereIn('id', $data['dossier_id'])->lockForUpdate()->get();
 
-            foreach ($dossiers as $dossier) {
-                $paiements = Paiement::where('statut', 'EN_DOSSIER')
-                    ->whereHas('dossiersPaiement', fn ($q) => $q->where('dossiers_paiement.id', $dossier->id))
-                    ->lockForUpdate()
-                    ->get();
+            $paiementIds = Paiement::where('statut', 'EN_DOSSIER')
+                ->whereHas('dossiersPaiement', fn ($q) => $q->whereIn('dossiers_paiement.id', $data['dossier_id']))
+                ->lockForUpdate()
+                ->pluck('id');
 
-                foreach ($paiements as $paiement) {
-                    $paiement->update(['statut' => 'A_TRAITER']);
-                    $updatedPaiementIds[] = $paiement->id;
-                }
-            }
+            Paiement::whereIn('id', $paiementIds)->update(['statut' => 'A_TRAITER']);
 
-            return $updatedPaiementIds;
+            return $paiementIds->all();
         });
 
         return response()->json([
@@ -267,15 +260,11 @@ class MultiDossierController extends Controller
         ]);
 
         $result = DB::transaction(function () use ($data) {
-            $paiements = Paiement::whereIn('id', $data['paiementIds'])->lockForUpdate()->get();
-            $updatedIds = [];
+            $ids = Paiement::whereIn('id', $data['paiementIds'])->lockForUpdate()->pluck('id');
 
-            foreach ($paiements as $paiement) {
-                $paiement->update(['statut' => 'A_TRAITER']);
-                $updatedIds[] = $paiement->id;
-            }
+            Paiement::whereIn('id', $ids)->update(['statut' => 'A_TRAITER']);
 
-            return $updatedIds;
+            return $ids->all();
         });
 
         return response()->json([

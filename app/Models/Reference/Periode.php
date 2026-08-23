@@ -2,12 +2,13 @@
 
 namespace App\Models\Reference;
 
+use App\Models\Concerns\CachesReferenceData;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Periode extends Model
 {
-    use HasFactory;
+    use CachesReferenceData, HasFactory;
 
     protected $table = 'periodes';
 

@@ -81,7 +81,7 @@ class InscriptionStagiaireServiceTest extends TestCase
             'prime_mensuelle' => 45000,
         ];
 
-        $instance = $this->service->inscrire($donneesBeneficiaire, $donneesStage, $donneesContrat, $cip);
+        $instance = $this->service->inscrire($donneesBeneficiaire, $donneesStage, $donneesContrat, [], $cip);
 
         $this->assertDatabaseHas('beneficiaires', ['nom' => 'Doe', 'prenoms' => 'John']);
 
