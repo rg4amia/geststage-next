@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Validation\Services\ValidationChefAgenceService;
 use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
 use App\Enums\DoublonTypeEnum;
@@ -26,6 +27,7 @@ use App\Models\Reference\Handicap;
 use App\Models\Reference\LienParente;
 use App\Models\Reference\NiveauEtude;
 use App\Models\Reference\OrigineStagiaire;
+use App\Models\Reference\SituationStage;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeEnseignement;
 use App\Models\Reference\TypeHandicap;
@@ -56,15 +58,16 @@ class MigrateLegacyDataCommand extends Command
      * @var string
      */
     protected $signature = 'migrate:legacy-data
-        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, remaining, all)}
-        {--dry-run : Exécute toutes les transformations puis annule les écritures PostgreSQL}';
+        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_presence_payments, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
+        {--dry-run : Exécute toutes les transformations puis annule les écritures PostgreSQL}
+        {--cohorte= : Filtrer par mois de démarrage (ex: 2026-08) — applicable aux étapes backfill}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Migre les données de l\'ancienne base (legacy) vers la nouvelle base PostgreSQL.';
+    protected $description = 'Migre les données de l\'ancienne base (legacy) vers la nouvelle base PostgreSQL, incluant les backfills et corrections.';
 
     private const SOURCE_VERSION = 'gestage-mysql-v2';
 
@@ -93,7 +96,10 @@ class MigrateLegacyDataCommand extends Command
         $allowedSteps = [
             'all', 'references', 'agences', 'users', 'entreprises', 'offres', 'beneficiaires',
             'stages', 'pointages', 'paiements', 'dossiers_paiement', 'dossiers_groupes',
-            'operations', 'bordereaux', 'evenements', 'desse_doublons', 'remaining',
+            'operations', 'bordereaux', 'evenements', 'desse_doublons',
+            'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_presence_payments',
+            'fix_etat_chef_agence_100', 'fix_legacy_ca_validation', 'update_missing_data',
+            'remaining',
         ];
         if (! in_array($step, $allowedSteps, true)) {
             $this->error("Phase inconnue : {$step}.");
@@ -202,6 +208,30 @@ class MigrateLegacyDataCommand extends Command
 
             if ($step === 'all' || $step === 'remaining' || $step === 'desse_doublons') {
                 $this->migrateDesseDoublonDecisions();
+            }
+
+            if ($step === 'all' || $step === 'backfill_adp_nature') {
+                $this->backfillAddAdpNature($dryRun);
+            }
+
+            if ($step === 'all' || $step === 'backfill_corbeilles_ca') {
+                $this->backfillChefAgenceCorbeilles($dryRun);
+            }
+
+            if ($step === 'all' || $step === 'backfill_presence_payments') {
+                $this->backfillPresencePayments();
+            }
+
+            if ($step === 'all' || $step === 'fix_etat_chef_agence_100') {
+                $this->fixEtatChefAgence100();
+            }
+
+            if ($step === 'all' || $step === 'fix_legacy_ca_validation') {
+                $this->fixLegacyChefAgenceValidation();
+            }
+
+            if ($step === 'all' || $step === 'update_missing_data') {
+                $this->updateLegacyMissingData();
             }
 
             $this->migrationCounters += $this->collectMigrationCounters();
@@ -2411,6 +2441,677 @@ class MigrateLegacyDataCommand extends Command
 
             $bar->advance();
         }
+
+        $bar->finish();
+        $this->newLine();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // Backfills & Corrections (anciennement commands séparées)
+    // ═══════════════════════════════════════════════════════════════════
+
+    /**
+     * Étape backfill_adp_nature : corrige la nature des droits de paiement
+     * (DEMARRAGE vs PRESENCE) et les corbeilles des instances de workflow.
+     * Anciennement : BackfillAddAdpNatureCommand
+     */
+    private function backfillAddAdpNature(bool $dryRun): void
+    {
+        $cohorte = $this->option('cohorte');
+
+        $this->info('=== Backfill nature ADD/ADP et corbeilles ===');
+        if ($dryRun) {
+            $this->warn('MODE DRY-RUN : Aucune modification ne sera appliquée.');
+        }
+        if ($cohorte) {
+            $this->info("Filtre cohorte : date_debut en {$cohorte}");
+        }
+        $this->newLine();
+
+        // ─── Étape 1 : Corriger les natures des droits de paiement ───
+        $this->info('Étape 1 : Correction des natures DEMARRAGE/PRESENCE sur les droits de paiement...');
+
+        $droitsQuery = DroitPaiement::query()
+            ->with(['stage', 'periode'])
+            ->where('nature', 'PRESENCE')
+            ->whereNull('annule_le');
+
+        if ($cohorte) {
+            $droitsQuery->whereHas('stage', function ($q) use ($cohorte) {
+                $year = (int) substr($cohorte, 0, 4);
+                $month = (int) substr($cohorte, 5, 2);
+                $q->whereYear('date_debut', $year)
+                    ->whereMonth('date_debut', $month);
+            });
+        }
+
+        $droits = $droitsQuery->orderBy('stage_id')->orderBy('id')->get();
+
+        $nbCorriges = 0;
+        $bar = $this->output->createProgressBar($droits->count());
+        $bar->start();
+
+        foreach ($droits as $droit) {
+            $natureOrigine = $this->mapper->naturePaiementPourPeriode(
+                (string) $droit->stage?->getAttribute('date_debut'),
+                (string) $droit->periode?->getAttribute('code')
+            );
+
+            if ($natureOrigine === 'DEMARRAGE' && $droit->nature === 'PRESENCE') {
+                $nbCorriges++;
+
+                if (! $dryRun) {
+                    $droit->update([
+                        'nature' => 'DEMARRAGE',
+                        'motif_annulation' => null,
+                        'annule_le' => null,
+                    ]);
+                }
+            }
+
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+        $this->info("  Droits de paiement à corriger (PRESENCE → DEMARRAGE) : {$nbCorriges}");
+
+        // ─── Étape 2 : Corriger les corbeilles des instances de workflow ───
+        $this->newLine();
+        $this->info('Étape 2 : Correction des corbeilles des instances de workflow...');
+
+        $query = DB::connection('legacy')->table('contrats_pae')
+            ->whereNull('deleted_at')
+            ->select('id as ancien_id', 'etapetraitement_id', 'etat_chef_agence', 'date_chef_agence', 'date_debut', 'agent_id', 'avis_contrat', 'file_contrat');
+
+        if ($cohorte) {
+            $year = (int) substr($cohorte, 0, 4);
+            $month = (int) substr($cohorte, 5, 2);
+            $query->whereYear('date_debut', $year)->whereMonth('date_debut', $month);
+        }
+
+        $total = $query->count();
+        $this->info("  Stages legacy candidats : {$total}");
+
+        $nbCorbeilleChanges = 0;
+        $definitionsMap = [];
+
+        $query->orderBy('id')->chunk(1000, function ($contrats) use (&$nbCorbeilleChanges, &$definitionsMap, $dryRun): void {
+            $ancienIds = $contrats->pluck('ancien_id')->toArray();
+            $stagesMap = Stage::withTrashed()->whereIn('ancien_id', $ancienIds)->pluck('id', 'ancien_id');
+
+            $instances = InstanceParcours::whereIn('stage_id', $stagesMap->values()->toArray())
+                ->whereNull('terminee_le')
+                ->get()
+                ->keyBy('stage_id');
+
+            foreach ($contrats as $legacyContrat) {
+                $stageId = $stagesMap[$legacyContrat->ancien_id] ?? null;
+                if (! $stageId) {
+                    continue;
+                }
+
+                $instance = $instances->get($stageId);
+                if (! $instance) {
+                    continue;
+                }
+
+                $corbeilleEnum = $this->mapper->mapChefAgenceCorbeille($legacyContrat);
+
+                if ($instance->corbeille_actuelle === $corbeilleEnum->value) {
+                    continue;
+                }
+
+                $nbCorbeilleChanges++;
+
+                if (! $dryRun) {
+                    $defCode = 'STAGE_LEGACY';
+                    if (! isset($definitionsMap[$defCode])) {
+                        $definitionsMap[$defCode] = DefinitionParcours::firstOrCreate(
+                            ['code' => $defCode, 'version' => 1],
+                            ['nom' => 'Parcours Legacy', 'active' => true]
+                        );
+                    }
+
+                    $etapeCode = strtoupper($corbeilleEnum->value);
+                    $etape = EtapeParcours::firstOrCreate(
+                        ['definition_parcours_id' => $definitionsMap[$defCode]->id, 'code' => $etapeCode],
+                        ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
+                    );
+
+                    $instance->update([
+                        'corbeille_actuelle' => $corbeilleEnum->value,
+                        'etape_courante_id' => $etape->id,
+                    ]);
+                }
+            }
+        });
+
+        $this->info("  Instances de workflow reclassées : {$nbCorbeilleChanges}");
+
+        $this->newLine();
+        $this->info('=== Résumé backfill_adp_nature ===');
+        $this->info("  Droits paiement corrigés (PRESENCE → DEMARRAGE) : {$nbCorriges}");
+        $this->info("  Instances workflow reclassées : {$nbCorbeilleChanges}");
+
+        if ($dryRun) {
+            $this->newLine();
+            $this->warn('Aucune modification appliquée (dry-run).');
+        }
+    }
+
+    /**
+     * Étape backfill_corbeilles_ca : recalcule corbeille_actuelle pour les dossiers
+     * mal classés en CA_ATTENTE_VALIDATION_DEMARRAGE/OMIS.
+     * Anciennement : BackfillChefAgenceCorbeillesCommand
+     */
+    private function backfillChefAgenceCorbeilles(bool $dryRun): void
+    {
+        try {
+            DB::connection('legacy')->getPdo();
+        } catch (\Throwable $e) {
+            $this->error("Impossible de se connecter à la base 'legacy' : {$e->getMessage()}");
+
+            return;
+        }
+
+        $definition = DefinitionParcours::where('code', 'STAGE_LEGACY')->where('version', 1)->first();
+        if (! $definition) {
+            $this->error("Definition de parcours 'STAGE_LEGACY' introuvable : la migration initiale a-t-elle été jouée ?");
+
+            return;
+        }
+
+        $query = DB::connection('legacy')->table('contrats_pae')
+            ->where('etat_chef_agence', 0)
+            ->where(function ($q) {
+                $q->whereNull('date_chef_agence')
+                    ->orWhere('date_chef_agence', '0000-00-00 00:00:00');
+            });
+
+        $total = $query->count();
+        $this->info("Contrats legacy candidats (etat_chef_agence=0, date_chef_agence null) : {$total}");
+
+        $inspected = 0;
+        $changed = 0;
+        $transitions = [];
+
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $query->orderBy('id')->chunk(500, function ($contrats) use (
+            $definition, $dryRun, &$inspected, &$changed, &$transitions, $bar
+        ) {
+            $ancienIds = $contrats->pluck('id')->toArray();
+
+            $stagesMap = Stage::withTrashed()->whereIn('ancien_id', $ancienIds)->pluck('id', 'ancien_id');
+
+            $corbeillesConcernees = [
+                CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
+                CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value,
+            ];
+
+            $instancesMap = InstanceParcours::whereIn('stage_id', $stagesMap->values()->toArray())
+                ->whereIn('corbeille_actuelle', $corbeillesConcernees)
+                ->whereNull('terminee_le')
+                ->get()
+                ->keyBy('stage_id');
+
+            foreach ($contrats as $legacyContrat) {
+                $stageId = $stagesMap[$legacyContrat->id] ?? null;
+
+                if (! $stageId) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $instance = $instancesMap->get($stageId);
+
+                if (! $instance) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $inspected++;
+
+                $nouvelleCorbeille = $this->mapper->mapChefAgenceCorbeille($legacyContrat);
+                if ($nouvelleCorbeille === CorbeilleEnum::CIP_MES_STAGIAIRES) {
+                    $statutLegacy = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
+                    $nouvelleCorbeille = $this->mapper->mapStatutStageToCorbeille($statutLegacy);
+                }
+
+                if ($nouvelleCorbeille->value === $instance->corbeille_actuelle) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $transitionKey = "{$instance->corbeille_actuelle} => {$nouvelleCorbeille->value}";
+                $transitions[$transitionKey] = ($transitions[$transitionKey] ?? 0) + 1;
+
+                if (! $dryRun) {
+                    $etapeCode = strtoupper($nouvelleCorbeille->value);
+                    $etape = EtapeParcours::firstOrCreate(
+                        ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                        ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
+                    );
+
+                    $instance->update([
+                        'corbeille_actuelle' => $nouvelleCorbeille->value,
+                        'etape_courante_id' => $etape->id,
+                    ]);
+                }
+
+                $changed++;
+                $bar->advance();
+            }
+        });
+
+        $bar->finish();
+        $this->newLine(2);
+
+        $this->info("Dossiers actuellement dans une corbeille CA_ATTENTE_VALIDATION_* : {$inspected}");
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Dossiers reclassés : {$changed}");
+
+        if (! empty($transitions)) {
+            $rows = collect($transitions)->map(fn ($n, $t) => [$t, $n])->values()->toArray();
+            $this->table(['Transition', 'Nombre'], $rows);
+        }
+    }
+
+    /**
+     * Étape backfill_presence_payments : génère les DroitPaiement et Paiement manquants
+     * pour les pointages bloqués dans dmg_attente_paiement_presence.
+     * Anciennement : BackfillPresencePaymentsCommand
+     */
+    private function backfillPresencePayments(): void
+    {
+        $this->info('Fetching stuck pointages...');
+
+        $pointageIds = DB::table('pointages')
+            ->join('instances_parcours', 'instances_parcours.pointage_id', '=', 'pointages.id')
+            ->where('instances_parcours.corbeille_actuelle', 'dmg_attente_paiement_presence')
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('droits_paiement')
+                    ->whereColumn('droits_paiement.pointage_id', 'pointages.id');
+            })
+            ->pluck('pointages.id')
+            ->toArray();
+
+        $this->info('Found '.count($pointageIds).' pointages missing payments.');
+        if (count($pointageIds) === 0) {
+            return;
+        }
+
+        $bar = $this->output->createProgressBar(count($pointageIds));
+        $bar->start();
+
+        $fixedCount = 0;
+
+        foreach (array_chunk($pointageIds, 500) as $chunk) {
+            $pointages = Pointage::whereIn('id', $chunk)->with(['stage.contrats'])->get();
+            foreach ($pointages as $pointage) {
+                try {
+                    DB::transaction(function () use ($pointage, &$fixedCount) {
+                        $stage = $pointage->stage;
+                        if (! $stage) {
+                            return;
+                        }
+
+                        $contratActif = $stage->contrats()->latest()->first();
+                        $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 45000;
+
+                        $legacyDate = DB::connection('legacy')->table('pointage_models')
+                            ->where('id', $pointage->ancien_id)
+                            ->value('date_ca');
+
+                        $createdAt = $legacyDate && $legacyDate !== '0000-00-00 00:00:00' ? $legacyDate : now();
+
+                        $droitPaiement = DroitPaiement::create([
+                            'stage_id' => $stage->id,
+                            'pointage_id' => $pointage->id,
+                            'periode_id' => $pointage->periode_id,
+                            'source_financement_id' => $stage->source_financement_id ?? 1,
+                            'nature' => 'PRESENCE',
+                            'montant' => $montantPaiement,
+                            'statut' => 'OUVERT',
+                            'created_at' => $createdAt,
+                            'updated_at' => $createdAt,
+                        ]);
+
+                        Paiement::create([
+                            'droit_paiement_id' => $droitPaiement->id,
+                            'statut' => 'A_TRAITER',
+                            'montant' => $montantPaiement,
+                            'created_at' => $createdAt,
+                            'updated_at' => $createdAt,
+                        ]);
+
+                        $fixedCount++;
+                    });
+                } catch (\Exception $e) {
+                    $this->error("Failed to generate payment for pointage {$pointage->id}: ".$e->getMessage());
+                }
+                $bar->advance();
+            }
+        }
+
+        $bar->finish();
+
+        $this->info("\nFixed {$fixedCount} presence pointages.");
+    }
+
+    /**
+     * Étape fix_etat_chef_agence_100 : corrige les pointages placés erronément dans
+     * les corbeilles DMG à cause de etat_chef_agence=100.
+     * Anciennement : FixEtatChefAgence100Command
+     */
+    private function fixEtatChefAgence100(): void
+    {
+        $this->info('Fetching legacy stages with etat_chef_agence = 100...');
+        $legacyIds = DB::connection('legacy')->table('contrats_pae')
+            ->where('etat_chef_agence', 100)
+            ->pluck('id')
+            ->toArray();
+
+        $this->info('Found '.count($legacyIds).' stages in legacy.');
+
+        $stages = Stage::whereIn('ancien_id', $legacyIds)->pluck('id')->toArray();
+
+        $pointagesInStage = Pointage::whereIn('stage_id', $stages)->pluck('id')->toArray();
+
+        $instances = InstanceParcours::whereIn('corbeille_actuelle', ['dmg_attente_paiement_presence', 'dmg_attente_paiement_demarrage'])
+            ->whereIn('pointage_id', $pointagesInStage)
+            ->get();
+
+        $this->info('Found '.$instances->count().' workflow instances to fix.');
+
+        if ($instances->isEmpty()) {
+            return;
+        }
+
+        $bar = $this->output->createProgressBar($instances->count());
+        $bar->start();
+
+        $deletedPaiements = 0;
+        $deletedDroits = 0;
+
+        foreach ($instances as $instance) {
+            $instance->corbeille_actuelle = 'ca_validation_pointages';
+            $instance->save();
+
+            $pointage = Pointage::find($instance->pointage_id);
+            if ($pointage) {
+                $droit = DroitPaiement::where('stage_id', $pointage->stage_id)
+                    ->where('periode_id', $pointage->periode_id)
+                    ->first();
+
+                if ($droit) {
+                    $paiements = Paiement::where('droit_paiement_id', $droit->id)->get();
+                    foreach ($paiements as $p) {
+                        $p->delete();
+                        $deletedPaiements++;
+                    }
+                    $droit->delete();
+                    $deletedDroits++;
+                }
+            }
+            $bar->advance();
+        }
+
+        $bar->finish();
+        $this->newLine();
+        $this->info("Fixed {$instances->count()} instances.");
+        $this->info("Deleted {$deletedDroits} DroitsPaiement and {$deletedPaiements} Paiements.");
+    }
+
+    /**
+     * Étape fix_legacy_ca_validation : corrige les stages legacy validés par CA mais
+n     * bloqués dans ca_attente_validation_demarrage sans paiements.
+     * Anciennement : FixLegacyChefAgenceValidationCommand
+     */
+    private function fixLegacyChefAgenceValidation(): void
+    {
+        $this->info('Fetching stuck instances...');
+
+        $stages = Stage::whereNotNull('ancien_id')
+            ->whereHas('instanceParcours', function ($q) {
+                $q->where('corbeille_actuelle', 'ca_attente_validation_demarrage');
+            })
+            ->with(['instanceParcours', 'contrats'])
+            ->get();
+
+        $this->info("Found {$stages->count()} total stages in CA corbeille.");
+
+        $adminUser = User::whereHas('roles', fn ($q) => $q->where('name', 'administrateur'))->first() ?? User::first();
+
+        // Injecter le service de validation via le conteneur Laravel
+        $validationService = app(\App\Domain\Validation\Services\ValidationChefAgenceService::class);
+
+        $fixedCount = 0;
+
+        $bar = $this->output->createProgressBar($stages->count());
+        $bar->start();
+
+        foreach ($stages as $stage) {
+            try {
+                $legacyRow = DB::connection('legacy')->table('contrats_pae')->where('id', $stage->ancien_id)->first();
+                if ($legacyRow && $legacyRow->etat_chef_agence == 2) {
+                    $validationService->validerDemarrage($stage->instanceParcours, $adminUser);
+                    $fixedCount++;
+                }
+            } catch (\Exception $e) {
+                // Ignorer les erreurs pour chaque stage
+            }
+            $bar->advance();
+        }
+
+        $bar->finish();
+
+        $this->info("\nFixed {$fixedCount} stages (Generated missing DroitPaiement and transitioned to DMG).");
+    }
+
+    /**
+     * Étape update_missing_data : met à jour les données manquantes issues de l'ancienne base
+     * (Situation Stage, Type Structure, Type Paiement, Numéros mobile).
+     * Anciennement : UpdateLegacyMissingDataCommand
+     */
+    private function updateLegacyMissingData(): void
+    {
+        $this->info('Début de la mise à jour des données manquantes...');
+
+        $this->updateMissingReferences();
+        $this->updateBeneficiaires();
+        $this->updateEntreprisesMissingData();
+        $this->updateStagesMissingData();
+        $this->updateSourcesFinancementMissing();
+
+        $this->info('Mise à jour terminée avec succès !');
+    }
+
+    private function updateMissingReferences(): void
+    {
+        $this->info('Migration des référentiels manquants...');
+
+        if (DB::connection('legacy')->getSchemaBuilder()->hasTable('type_paiements')) {
+            $typesPaiement = DB::connection('legacy')->table('type_paiements')->get();
+            foreach ($typesPaiement as $tp) {
+                TypePaiement::updateOrCreate(
+                    ['ancien_id' => $tp->id],
+                    [
+                        'code' => 'TP-'.str_pad($tp->id, 3, '0', STR_PAD_LEFT),
+                        'nom' => $tp->libelle,
+                    ]
+                );
+            }
+        }
+
+        if (DB::connection('legacy')->getSchemaBuilder()->hasTable('type_structures')) {
+            $typesStructure = DB::connection('legacy')->table('type_structures')->get();
+            foreach ($typesStructure as $ts) {
+                TypeStructure::updateOrCreate(
+                    ['ancien_id' => $ts->id],
+                    [
+                        'code' => 'TS-'.str_pad($ts->id, 3, '0', STR_PAD_LEFT),
+                        'nom' => $ts->libelle_type_structure ?? $ts->libelle ?? 'Structure '.$ts->id,
+                    ]
+                );
+            }
+        }
+
+        if (DB::connection('legacy')->getSchemaBuilder()->hasTable('situation_stage')) {
+            $situations = DB::connection('legacy')->table('situation_stage')->get();
+            foreach ($situations as $s) {
+                SituationStage::updateOrCreate(
+                    ['ancien_id' => $s->id_situation_stage],
+                    [
+                        'code' => 'SS-'.str_pad($s->id_situation_stage, 3, '0', STR_PAD_LEFT),
+                        'nom' => $s->libelle_situation_stage,
+                    ]
+                );
+            }
+        }
+    }
+
+    private function updateBeneficiaires(): void
+    {
+        $this->info('Mise à jour des bénéficiaires (Type paiement, Numéros mobile)...');
+
+        $query = DB::connection('legacy')->table('contrats_pae');
+        $total = $query->count();
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $typesPaiementMap = TypePaiement::pluck('id', 'ancien_id')->toArray();
+
+        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $typesPaiementMap) {
+            foreach ($contrats as $legacyContrat) {
+                if (empty($legacyContrat->numero_aej)) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $type_paiement_id = $typesPaiementMap[$legacyContrat->type_paiement_id] ?? null;
+
+                DB::table('beneficiaires')
+                    ->where('numero_aej', $legacyContrat->numero_aej)
+                    ->update([
+                        'numero_tresor_money' => $legacyContrat->numero_yup ?? null,
+                        'numero_wave' => $legacyContrat->numero_wave ?? null,
+                        'type_paiement_id' => $type_paiement_id,
+                    ]);
+                $bar->advance();
+            }
+        });
+
+        $bar->finish();
+        $this->newLine();
+    }
+
+    private function updateEntreprisesMissingData(): void
+    {
+        $this->info('Mise à jour des entreprises (Type de structure)...');
+
+        $query = DB::connection('legacy')->table('contrats_pae');
+        $total = $query->count();
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $typesStructureMap = TypeStructure::pluck('id', 'ancien_id')->toArray();
+
+        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $typesStructureMap) {
+            foreach ($contrats as $legacyContrat) {
+                if (empty($legacyContrat->id_entreprise) || empty($legacyContrat->type_structure_id)) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $type_structure_id = $typesStructureMap[$legacyContrat->type_structure_id] ?? null;
+
+                if ($type_structure_id) {
+                    DB::table('entreprises')
+                        ->where('ancien_id', $legacyContrat->id_entreprise)
+                        ->update(['type_structure_id' => $type_structure_id]);
+                }
+
+                $bar->advance();
+            }
+        });
+
+        $bar->finish();
+        $this->newLine();
+    }
+
+    private function updateStagesMissingData(): void
+    {
+        $this->info('Mise à jour des stages (Situation de stage)...');
+
+        $query = DB::connection('legacy')->table('contrats_pae');
+        $total = $query->count();
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $situationsStageMap = SituationStage::pluck('code', 'ancien_id')->toArray();
+
+        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $situationsStageMap) {
+            foreach ($contrats as $legacyContrat) {
+                if (empty($legacyContrat->id) || empty($legacyContrat->id_situation_stage)) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $code_situation = $situationsStageMap[$legacyContrat->id_situation_stage] ?? null;
+
+                if ($code_situation) {
+                    DB::table('stages')
+                        ->where('ancien_id', $legacyContrat->id)
+                        ->update(['situation_stage' => $code_situation]);
+                }
+
+                $bar->advance();
+            }
+        });
+
+        $bar->finish();
+        $this->newLine();
+    }
+
+    private function updateSourcesFinancementMissing(): void
+    {
+        $this->info('Mise à jour des sources de financement...');
+
+        $query = DB::connection('legacy')->table('contrats_pae');
+        $total = $query->count();
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
+
+        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $sourcesMap) {
+            foreach ($contrats as $legacyContrat) {
+                if (empty($legacyContrat->id) || empty($legacyContrat->source_financement)) {
+                    $bar->advance();
+
+                    continue;
+                }
+
+                $source_financement_id = $sourcesMap[$legacyContrat->source_financement] ?? null;
+
+                if ($source_financement_id) {
+                    DB::table('stages')
+                        ->where('ancien_id', $legacyContrat->id)
+                        ->update(['source_financement_id' => $source_financement_id]);
+                }
+
+                $bar->advance();
+            }
+        });
 
         $bar->finish();
         $this->newLine();
