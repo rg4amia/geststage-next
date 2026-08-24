@@ -93,6 +93,40 @@ class LegacyMigrationRecorder
         ]);
     }
 
+    private array $conservationsBuffer = [];
+    private array $correspondencesBuffer = [];
+    private array $anomaliesBuffer = [];
+
+    public function flush(): void
+    {
+        if (!empty($this->conservationsBuffer)) {
+            DB::table('conservations_contrats_pae')->upsert(
+                $this->conservationsBuffer,
+                ['contrat_pae_ancien_id', 'empreinte_originale'],
+                ['execution_migration_id', 'beneficiaire_id', 'stage_id', 'contrat_id', 'nombre_colonnes_source', 'donnees_originales', 'version_schema_source', 'importe_le', 'updated_at']
+            );
+            $this->conservationsBuffer = [];
+        }
+
+        if (!empty($this->correspondencesBuffer)) {
+            DB::table('correspondances_ancien_systeme')->upsert(
+                $this->correspondencesBuffer,
+                ['table_source', 'id_source', 'table_cible'],
+                ['execution_migration_id', 'id_cible', 'empreinte_source', 'updated_at']
+            );
+            $this->correspondencesBuffer = [];
+        }
+
+        if (!empty($this->anomaliesBuffer)) {
+            DB::table('anomalies_migration')->upsert(
+                $this->anomaliesBuffer,
+                ['code', 'table_source', 'id_source', 'statut'],
+                ['execution_migration_id', 'gravite', 'description', 'donnees', 'updated_at']
+            );
+            $this->anomaliesBuffer = [];
+        }
+    }
+
     public function preserveContrat(
         int $executionId,
         object $legacyContrat,
@@ -110,24 +144,24 @@ class LegacyMigrationRecorder
         $json = json_encode($data, JSON_THROW_ON_ERROR);
         $fingerprint = hash('sha256', $json);
 
-        DB::table('conservations_contrats_pae')->updateOrInsert(
-            [
-                'contrat_pae_ancien_id' => (int) $sourceId,
-                'empreinte_originale' => $fingerprint,
-            ],
-            [
-                'execution_migration_id' => $executionId,
-                'beneficiaire_id' => $beneficiaireId,
-                'stage_id' => $stageId,
-                'contrat_id' => $contratId,
-                'nombre_colonnes_source' => $sourceColumnCount,
-                'donnees_originales' => $json,
-                'version_schema_source' => "mysql-contrats_pae-{$sourceColumnCount}",
-                'importe_le' => now(),
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        );
+        $this->conservationsBuffer[] = [
+            'contrat_pae_ancien_id' => (int) $sourceId,
+            'empreinte_originale' => $fingerprint,
+            'execution_migration_id' => $executionId,
+            'beneficiaire_id' => $beneficiaireId,
+            'stage_id' => $stageId,
+            'contrat_id' => $contratId,
+            'nombre_colonnes_source' => $sourceColumnCount,
+            'donnees_originales' => $json,
+            'version_schema_source' => "mysql-contrats_pae-{$sourceColumnCount}",
+            'importe_le' => now()->toDateTimeString(),
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ];
+
+        if (count($this->conservationsBuffer) >= 1000) {
+            $this->flush();
+        }
     }
 
     /** @param array<string, mixed> $sourceData */
@@ -141,20 +175,20 @@ class LegacyMigrationRecorder
     ): void {
         $fingerprint = $sourceData === [] ? null : $this->fingerprint($sourceData);
 
-        DB::table('correspondances_ancien_systeme')->updateOrInsert(
-            [
-                'table_source' => $sourceTable,
-                'id_source' => (string) $sourceId,
-                'table_cible' => $targetTable,
-            ],
-            [
-                'execution_migration_id' => $executionId,
-                'id_cible' => $targetId,
-                'empreinte_source' => $fingerprint,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-        );
+        $this->correspondencesBuffer[] = [
+            'table_source' => $sourceTable,
+            'id_source' => (string) $sourceId,
+            'table_cible' => $targetTable,
+            'execution_migration_id' => $executionId,
+            'id_cible' => $targetId,
+            'empreinte_source' => $fingerprint,
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ];
+
+        if (count($this->correspondencesBuffer) >= 1000) {
+            $this->flush();
+        }
     }
 
     /** @param array<string, mixed> $data */
@@ -167,21 +201,22 @@ class LegacyMigrationRecorder
         array $data = [],
         string $severity = 'BLOQUANTE',
     ): void {
-        $keys = [
+        $this->anomaliesBuffer[] = [
             'code' => $code,
             'table_source' => $sourceTable,
             'id_source' => $sourceId === null ? null : (string) $sourceId,
             'statut' => 'A_RECONCILIER',
-        ];
-
-        DB::table('anomalies_migration')->updateOrInsert($keys, [
             'execution_migration_id' => $executionId,
             'gravite' => $severity,
             'description' => $description,
             'donnees' => $data === [] ? null : json_encode($data, JSON_THROW_ON_ERROR),
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+            'created_at' => now()->toDateTimeString(),
+            'updated_at' => now()->toDateTimeString(),
+        ];
+
+        if (count($this->anomaliesBuffer) >= 1000) {
+            $this->flush();
+        }
     }
 
     /** @param array<string, mixed> $data */

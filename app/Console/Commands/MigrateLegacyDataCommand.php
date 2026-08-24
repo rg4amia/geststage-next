@@ -235,6 +235,7 @@ class MigrateLegacyDataCommand extends Command
             }
 
             $this->migrationCounters += $this->collectMigrationCounters();
+            $this->recorder->flush();
             $this->recorder->complete($this->executionId, $this->migrationCounters);
             $this->line('Compteurs : '.json_encode($this->migrationCounters, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
 
@@ -246,6 +247,7 @@ class MigrateLegacyDataCommand extends Command
             if ($dryRun && DB::transactionLevel() > 0) {
                 DB::rollBack();
             } elseif (isset($this->executionId)) {
+                $this->recorder->flush();
                 $this->recorder->fail($this->executionId, $this->migrationCounters, $e->getMessage());
             }
 
