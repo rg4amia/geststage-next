@@ -557,15 +557,6 @@ class MigrateLegacyDataCommand extends Command
             $existantsMap = Beneficiaire::whereIn('numero_aej', $chunkNumeroAej)->get()->keyBy('numero_aej');
 
             foreach ($contrats as $legacyContrat) {
-                $this->recorder->preserveContrat(
-                    $this->executionId,
-                    $legacyContrat,
-                    null,
-                    null,
-                    null,
-                    $this->sourceContractColumnCount,
-                );
-
                 if (empty($legacyContrat->numero_aej)) {
                     $this->recorder->anomaly(
                         $this->executionId,
@@ -574,6 +565,14 @@ class MigrateLegacyDataCommand extends Command
                         $legacyContrat->id,
                         'Bénéficiaire non normalisable : numero_aej absent.',
                         (array) $legacyContrat,
+                    );
+                    $this->recorder->preserveContrat(
+                        $this->executionId,
+                        $legacyContrat,
+                        null,
+                        null,
+                        null,
+                        $this->sourceContractColumnCount,
                     );
                     $bar->advance();
 
@@ -710,15 +709,6 @@ class MigrateLegacyDataCommand extends Command
             $etapesMap = [];
 
             foreach ($contrats as $legacyContrat) {
-                $this->recorder->preserveContrat(
-                    $this->executionId,
-                    $legacyContrat,
-                    null,
-                    null,
-                    null,
-                    $this->sourceContractColumnCount,
-                );
-
                 $beneficiaire_id = $beneficiairesMap[$legacyContrat->numero_aej] ?? null;
                 $entreprise_id = $entreprisesMap[$legacyContrat->id_entreprise] ?? null;
                 $agence_id = $agencesMap[$legacyContrat->id_agence] ?? null;
@@ -743,6 +733,14 @@ class MigrateLegacyDataCommand extends Command
                             'source_financement' => $legacyContrat->source_financement,
                         ],
                     );
+                    $this->recorder->preserveContrat(
+                        $this->executionId,
+                        $legacyContrat,
+                        null,
+                        null,
+                        null,
+                        $this->sourceContractColumnCount,
+                    );
                     $bar->advance();
 
                     continue;
@@ -760,6 +758,14 @@ class MigrateLegacyDataCommand extends Command
                         $legacyContrat->id,
                         'Stage non normalisé : dates de début/fin absentes, invalides ou incohérentes.',
                         ['date_debut' => $legacyContrat->date_debut, 'date_fin' => $legacyContrat->date_fin],
+                    );
+                    $this->recorder->preserveContrat(
+                        $this->executionId,
+                        $legacyContrat,
+                        null,
+                        null,
+                        null,
+                        $this->sourceContractColumnCount,
                     );
                     $bar->advance();
 

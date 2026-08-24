@@ -100,8 +100,17 @@ class LegacyMigrationRecorder
     public function flush(): void
     {
         if (!empty($this->conservationsBuffer)) {
+            // Dédupliquer par (contrat_pae_ancien_id, empreinte_originale) en ne gardant
+            // que la dernière occurrence (celle avec les FK résolues).
+            $deduplicated = [];
+            foreach ($this->conservationsBuffer as $row) {
+                $key = $row['contrat_pae_ancien_id'] . '|' . $row['empreinte_originale'];
+                $deduplicated[$key] = $row;
+            }
+            $uniqueRows = array_values($deduplicated);
+
             DB::table('conservations_contrats_pae')->upsert(
-                $this->conservationsBuffer,
+                $uniqueRows,
                 ['contrat_pae_ancien_id', 'empreinte_originale'],
                 ['execution_migration_id', 'beneficiaire_id', 'stage_id', 'contrat_id', 'nombre_colonnes_source', 'donnees_originales', 'version_schema_source', 'importe_le', 'updated_at']
             );
