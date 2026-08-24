@@ -118,11 +118,24 @@ class LegacyMigrationRecorder
         }
 
         if (!empty($this->anomaliesBuffer)) {
-            DB::table('anomalies_migration')->upsert(
-                $this->anomaliesBuffer,
-                ['code', 'table_source', 'id_source', 'statut'],
-                ['execution_migration_id', 'gravite', 'description', 'donnees', 'updated_at']
-            );
+            foreach ($this->anomaliesBuffer as $anomaly) {
+                DB::table('anomalies_migration')->updateOrInsert(
+                    [
+                        'code' => $anomaly['code'],
+                        'table_source' => $anomaly['table_source'],
+                        'id_source' => $anomaly['id_source'],
+                        'statut' => $anomaly['statut'],
+                    ],
+                    [
+                        'execution_migration_id' => $anomaly['execution_migration_id'],
+                        'gravite' => $anomaly['gravite'],
+                        'description' => $anomaly['description'],
+                        'donnees' => $anomaly['donnees'],
+                        'created_at' => $anomaly['created_at'] ?? now()->toDateTimeString(),
+                        'updated_at' => $anomaly['updated_at'] ?? now()->toDateTimeString(),
+                    ]
+                );
+            }
             $this->anomaliesBuffer = [];
         }
     }
