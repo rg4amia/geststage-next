@@ -862,6 +862,7 @@ class MigrateLegacyDataCommand extends Command
                 $instancesExistantes[$stage->id] = $instance;
 
                 $preloadedTasks = $tachesExistantes[$instance->id] ?? collect();
+                $tachesExistantes[$instance->id] = $preloadedTasks;
                 $this->syncOpenTask($instance, $etape, $corbeilleEnum, $agence_id, $termineeLe !== null, $preloadedTasks);
                 $this->recorder->preserveContrat(
                     $this->executionId,
@@ -1093,6 +1094,7 @@ class MigrateLegacyDataCommand extends Command
                     $instancesExistantes[$pointage->id] = $instance;
 
                     $preloadedTasks = $tachesExistantes[$instance->id] ?? collect();
+                    $tachesExistantes[$instance->id] = $preloadedTasks;
                     $this->syncOpenTask(
                         $instance,
                         $etape,
@@ -2138,7 +2140,7 @@ class MigrateLegacyDataCommand extends Command
         bool $terminee = false,
         $preloadedTasks = null
     ): void {
-        $activeTasks = $preloadedTasks ?? TacheParcours::query()
+        $activeTasks = $preloadedTasks ? $preloadedTasks->filter(fn ($t) => in_array($t->statut, ['OUVERTE', 'REVENDIQUEE'])) : TacheParcours::query()
             ->where('instance_parcours_id', $instance->id)
             ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])
             ->orderBy('id')
@@ -2208,7 +2210,7 @@ class MigrateLegacyDataCommand extends Command
             return;
         }
 
-        TacheParcours::create([
+        $created = TacheParcours::create([
             'instance_parcours_id' => $instance->id,
             'etape_parcours_id' => $etape->id,
             'role_responsable_id' => $roleId,
@@ -2218,6 +2220,10 @@ class MigrateLegacyDataCommand extends Command
             'priorite' => 0,
             'ouverte_le' => now(),
         ]);
+
+        if ($preloadedTasks instanceof \Illuminate\Support\Collection) {
+            $preloadedTasks->push($created);
+        }
     }
 
     /** @return array<string, mixed> */
