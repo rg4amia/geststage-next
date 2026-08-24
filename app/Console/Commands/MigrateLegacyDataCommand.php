@@ -3673,21 +3673,54 @@ class MigrateLegacyDataCommand extends Command
             $columns
         );
         $setClauses = array_map(
-            static fn (string $column) => 't."'.str_replace('"', '""', $column).'" = v."'.str_replace('"', '""', $column).'"',
+            static fn (string $column) => '"'.str_replace('"', '""', $column).'" = v."'.str_replace('"', '""', $column).'"',
             $columnsToUpdate
         );
+        $typeCasts = array_map(
+            fn (string $column) => $this->postgresValueCast($table, $column),
+            $columns
+        );
+        $typedValuesSql = [];
+
+        foreach ($valuesSql as $rowIndex => $rowSql) {
+            $rowCasts = array_map(
+                static fn (string $cast, int $columnIndex) => $cast !== '' ? '?::'.$cast : '?',
+                $typeCasts,
+                array_keys($typeCasts)
+            );
+            $typedValuesSql[] = '('.implode(', ', $rowCasts).')';
+        }
 
         DB::statement(
             sprintf(
                 'update %s as t set %s from (values %s) as v(%s) where t.%s = v.%s',
                 $quotedTable,
                 implode(', ', $setClauses),
-                implode(', ', $valuesSql),
+                implode(', ', $typedValuesSql),
                 implode(', ', $quotedColumns),
                 $quotedKeyColumn,
                 $quotedKeyColumn
             ),
             $bindings
         );
+    }
+
+    private function postgresValueCast(string $table, string $column): string
+    {
+        return match ($table.'.'.$column) {
+            'beneficiaires.numero_aej',
+            'beneficiaires.numero_tresor_money',
+            'beneficiaires.numero_wave',
+            'stages.situation_stage' => 'text',
+            'entreprises.ancien_id',
+            'entreprises.type_structure_id',
+            'stages.ancien_id',
+            'stages.source_financement_id',
+            'beneficiaires.type_paiement_id' => 'bigint',
+            'beneficiaires.updated_at',
+            'entreprises.updated_at',
+            'stages.updated_at' => 'timestamptz',
+            default => '',
+        };
     }
 }
