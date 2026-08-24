@@ -696,6 +696,10 @@ class MigrateLegacyDataCommand extends Command
             $legacyIds = $contrats->pluck('id')->toArray();
             $stagesExistants = Stage::withTrashed()->whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
             $contratsExistants = Contrat::withTrashed()->whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+            $stageIds = $stagesExistants->pluck('id')->filter()->toArray();
+            $instancesExistantes = empty($stageIds) ? collect() : InstanceParcours::whereIn('stage_id', $stageIds)->get()->keyBy('stage_id');
+            $instanceIds = $instancesExistantes->pluck('id')->filter()->toArray();
+            $tachesExistantes = empty($instanceIds) ? collect() : TacheParcours::whereIn('instance_parcours_id', $instanceIds)->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])->get()->groupBy('instance_parcours_id');
 
             $definition = DefinitionParcours::firstOrCreate(
                 ['code' => 'STAGE_LEGACY', 'version' => 1],
@@ -845,17 +849,18 @@ class MigrateLegacyDataCommand extends Command
                 }
                 $etape = $etapesMap[$etapeCode];
 
-                $instance = InstanceParcours::updateOrCreate(
-                    ['stage_id' => $stage->id],
-                    [
-                        'definition_parcours_id' => $definition->id,
-                        'etape_courante_id' => $etape->id,
-                        'corbeille_actuelle' => $corbeilleEnum->value,
-                        'terminee_le' => $termineeLe,
-                    ]
-                );
+                $instance = $instancesExistantes[$stage->id] ?? new InstanceParcours(['stage_id' => $stage->id]);
+                $instance->fill([
+                    'definition_parcours_id' => $definition->id,
+                    'etape_courante_id' => $etape->id,
+                    'corbeille_actuelle' => $corbeilleEnum->value,
+                    'terminee_le' => $termineeLe,
+                ]);
+                $instance->save();
+                $instancesExistantes[$stage->id] = $instance;
 
-                $this->syncOpenTask($instance, $etape, $corbeilleEnum, $agence_id, $termineeLe !== null);
+                $preloadedTasks = $tachesExistantes[$instance->id] ?? collect();
+                $this->syncOpenTask($instance, $etape, $corbeilleEnum, $agence_id, $termineeLe !== null, $preloadedTasks);
                 $this->recorder->preserveContrat(
                     $this->executionId,
                     $legacyContrat,
@@ -914,6 +919,10 @@ class MigrateLegacyDataCommand extends Command
             
             $pointageIds = $pointagesExistant->pluck('id')->toArray();
             $maxVersions = !empty($pointageIds) ? VersionPointage::whereIn('pointage_id', $pointageIds)->select('pointage_id', DB::raw('MAX(numero_version) as max_version'))->groupBy('pointage_id')->pluck('max_version', 'pointage_id')->toArray() : [];
+            
+            $instancesExistantes = !empty($pointageIds) ? InstanceParcours::whereIn('pointage_id', $pointageIds)->get()->keyBy('pointage_id') : collect();
+            $instanceIds = $instancesExistantes->pluck('id')->filter()->toArray();
+            $tachesExistantes = empty($instanceIds) ? collect() : TacheParcours::whereIn('instance_parcours_id', $instanceIds)->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])->get()->groupBy('instance_parcours_id');
 
             foreach ($pointages as $legacyPointage) {
                 $stage_id = $stagesMap[$legacyPointage->stagiaire_id] ?? null;
@@ -1072,19 +1081,23 @@ class MigrateLegacyDataCommand extends Command
 
                     // L'instance de workflow reflète toujours le dernier état connu du pointage,
                     // donc de sa dernière version (resoumission) traitée.
-                    $instance = InstanceParcours::updateOrCreate(
-                        ['pointage_id' => $pointage->id],
-                        [
-                            'definition_parcours_id' => $definition->id,
-                            'etape_courante_id' => $etape->id,
-                            'corbeille_actuelle' => $corbeilleEnum,
-                        ]
-                    );
+                    $instance = $instancesExistantes[$pointage->id] ?? new InstanceParcours(['pointage_id' => $pointage->id]);
+                    $instance->fill([
+                        'definition_parcours_id' => $definition->id,
+                        'etape_courante_id' => $etape->id,
+                        'corbeille_actuelle' => $corbeilleEnum,
+                    ]);
+                    $instance->save();
+                    $instancesExistantes[$pointage->id] = $instance;
+
+                    $preloadedTasks = $tachesExistantes[$instance->id] ?? collect();
                     $this->syncOpenTask(
                         $instance,
                         $etape,
                         CorbeilleEnum::from($corbeilleEnum),
                         $agencesParStage[$legacyPointage->stagiaire_id] ?? null,
+                        false,
+                        $preloadedTasks
                     );
                     $this->recorder->correspondence(
                         $this->executionId,
@@ -2121,8 +2134,9 @@ class MigrateLegacyDataCommand extends Command
         CorbeilleEnum $corbeille,
         ?int $agenceId,
         bool $terminee = false,
+        $preloadedTasks = null
     ): void {
-        $activeTasks = TacheParcours::query()
+        $activeTasks = $preloadedTasks ?? TacheParcours::query()
             ->where('instance_parcours_id', $instance->id)
             ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])
             ->orderBy('id')
@@ -2147,11 +2161,14 @@ class MigrateLegacyDataCommand extends Command
             Str::startsWith($code, 'daicg_') => 'daicg',
             default => null,
         };
-        $role = $roleName === null
-            ? null
-            : Role::query()->where('name', $roleName)->where('guard_name', 'web')->first();
+        static $rolesCache = [];
+        if (empty($rolesCache)) {
+            $rolesCache = Role::where('guard_name', 'web')->pluck('id', 'name')->toArray();
+        }
+        
+        $roleId = $roleName === null ? null : ($rolesCache[$roleName] ?? null);
 
-        if ($role === null) {
+        if ($roleId === null) {
             foreach ($activeTasks as $task) {
                 $task->update(['statut' => 'ANNULEE', 'fermee_le' => now()]);
             }
@@ -2173,7 +2190,7 @@ class MigrateLegacyDataCommand extends Command
 
         $currentTask = $activeTasks->first(fn (TacheParcours $task): bool => $task->code_corbeille === $code
             && (int) $task->etape_parcours_id === (int) $etape->id
-            && (int) $task->role_responsable_id === (int) $role->id
+            && (int) $task->role_responsable_id === (int) $roleId
             && ($task->agence_id === null ? $agenceId === null : (int) $task->agence_id === $agenceId)
         );
 
@@ -2192,7 +2209,7 @@ class MigrateLegacyDataCommand extends Command
         TacheParcours::create([
             'instance_parcours_id' => $instance->id,
             'etape_parcours_id' => $etape->id,
-            'role_responsable_id' => $role->id,
+            'role_responsable_id' => $roleId,
             'agence_id' => $agenceId,
             'code_corbeille' => $code,
             'statut' => 'OUVERTE',
