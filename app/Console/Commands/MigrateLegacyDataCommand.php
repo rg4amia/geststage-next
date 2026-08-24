@@ -2905,6 +2905,18 @@ class MigrateLegacyDataCommand extends Command
                 $legacyDateCache += $legacyDates;
             }
 
+            $stageIds = $pointages->pluck('stage_id')->unique()->toArray();
+            $droitsExistants = DroitPaiement::whereIn('stage_id', $stageIds)
+                ->where('nature', 'PRESENCE')
+                ->whereNull('annule_le')
+                ->get();
+            $droitsActifsMap = [];
+            foreach ($droitsExistants as $d) {
+                $droitsActifsMap["{$d->stage_id}_{$d->periode_id}"] = $d;
+            }
+            $droitIds = $droitsExistants->pluck('id')->toArray();
+            $paiementsExistants = empty($droitIds) ? collect() : Paiement::whereIn('droit_paiement_id', $droitIds)->get()->keyBy('droit_paiement_id');
+
             foreach ($pointages as $pointage) {
                 try {
                     $stage = $pointage->stage;
@@ -2920,28 +2932,27 @@ class MigrateLegacyDataCommand extends Command
                     $legacyDate = $legacyDateCache[$pointage->ancien_id] ?? null;
                     $createdAt = $legacyDate && $legacyDate !== '0000-00-00 00:00:00' ? $legacyDate : now();
 
-                    $droitPaiement = DroitPaiement::where('stage_id', $stage->id)
-                        ->where('periode_id', $pointage->periode_id)
-                        ->where('nature', 'PRESENCE')
-                        ->whereNull('annule_le')
-                        ->first();
+                    $droitPaiement = $droitsActifsMap["{$stage->id}_{$pointage->periode_id}"] ?? null;
 
                     if ($droitPaiement) {
                         if (is_null($droitPaiement->pointage_id)) {
                             $droitPaiement->update(['pointage_id' => $pointage->id]);
                         }
                         
-                        $paiement = Paiement::firstOrCreate(
-                            ['droit_paiement_id' => $droitPaiement->id],
-                            [
+                        $paiement = $paiementsExistants[$droitPaiement->id] ?? new Paiement(['droit_paiement_id' => $droitPaiement->id]);
+                        if (!$paiement->exists) {
+                            $paiement->fill([
                                 'statut' => 'A_TRAITER',
                                 'montant' => $montantPaiement,
                                 'created_at' => $createdAt,
                                 'updated_at' => $createdAt,
-                            ]
-                        );
+                            ]);
+                            $paiement->save();
+                            $paiementsExistants[$droitPaiement->id] = $paiement;
+                        }
                     } else {
-                        $droitPaiement = DroitPaiement::create([
+                        $droitPaiement = new DroitPaiement();
+                        $droitPaiement->fill([
                             'stage_id' => $stage->id,
                             'pointage_id' => $pointage->id,
                             'periode_id' => $pointage->periode_id,
@@ -2952,8 +2963,10 @@ class MigrateLegacyDataCommand extends Command
                             'created_at' => $createdAt,
                             'updated_at' => $createdAt,
                         ]);
+                        $droitPaiement->save();
+                        $droitsActifsMap["{$stage->id}_{$pointage->periode_id}"] = $droitPaiement;
 
-                        Paiement::create([
+                        $paiement = new Paiement([
                             'droit_paiement_id' => $droitPaiement->id,
                             'statut' => 'A_TRAITER',
                             'montant' => $montantPaiement,
