@@ -93,18 +93,40 @@ class LegacyMigrationRecorder
         ]);
     }
 
+    /** @var list<array<string, mixed>> */
     private array $conservationsBuffer = [];
+
+    /** @var list<array<string, mixed>> */
     private array $correspondencesBuffer = [];
+
+    /** @var list<array<string, mixed>> */
     private array $anomaliesBuffer = [];
+
+    /** Nombre d'entrées en attente de flush dans le buffer conservations. */
+    public function conservationsBufferCount(): int
+    {
+        return count($this->conservationsBuffer);
+    }
+
+    /**
+     * Oublie les écritures de traçabilité du chunk courant après son rollback.
+     * Les chunks précédents ont déjà été flushés atomiquement avec leurs données métier.
+     */
+    public function discardPending(): void
+    {
+        $this->conservationsBuffer = [];
+        $this->correspondencesBuffer = [];
+        $this->anomaliesBuffer = [];
+    }
 
     public function flush(): void
     {
-        if (!empty($this->conservationsBuffer)) {
+        if (! empty($this->conservationsBuffer)) {
             // Dédupliquer par (contrat_pae_ancien_id, empreinte_originale) en ne gardant
             // que la dernière occurrence (celle avec les FK résolues).
             $deduplicated = [];
             foreach ($this->conservationsBuffer as $row) {
-                $key = $row['contrat_pae_ancien_id'] . '|' . $row['empreinte_originale'];
+                $key = $row['contrat_pae_ancien_id'].'|'.$row['empreinte_originale'];
                 $deduplicated[$key] = $row;
             }
             $uniqueRows = array_values($deduplicated);
@@ -117,34 +139,32 @@ class LegacyMigrationRecorder
             $this->conservationsBuffer = [];
         }
 
-        if (!empty($this->correspondencesBuffer)) {
+        if (! empty($this->correspondencesBuffer)) {
+            $deduplicated = [];
+            foreach ($this->correspondencesBuffer as $row) {
+                $key = $row['table_source'].'|'.$row['id_source'].'|'.$row['table_cible'];
+                $deduplicated[$key] = $row;
+            }
+
             DB::table('correspondances_ancien_systeme')->upsert(
-                $this->correspondencesBuffer,
+                array_values($deduplicated),
                 ['table_source', 'id_source', 'table_cible'],
                 ['execution_migration_id', 'id_cible', 'empreinte_source', 'updated_at']
             );
             $this->correspondencesBuffer = [];
         }
 
-        if (!empty($this->anomaliesBuffer)) {
-            foreach ($this->anomaliesBuffer as $anomaly) {
-                DB::table('anomalies_migration')->updateOrInsert(
-                    [
-                        'code' => $anomaly['code'],
-                        'table_source' => $anomaly['table_source'],
-                        'id_source' => $anomaly['id_source'],
-                        'statut' => $anomaly['statut'],
-                    ],
-                    [
-                        'execution_migration_id' => $anomaly['execution_migration_id'],
-                        'gravite' => $anomaly['gravite'],
-                        'description' => $anomaly['description'],
-                        'donnees' => $anomaly['donnees'],
-                        'created_at' => $anomaly['created_at'] ?? now()->toDateTimeString(),
-                        'updated_at' => $anomaly['updated_at'] ?? now()->toDateTimeString(),
-                    ]
-                );
+        if (! empty($this->anomaliesBuffer)) {
+            $deduplicated = [];
+            foreach ($this->anomaliesBuffer as $row) {
+                $deduplicated[$row['cle_idempotence']] = $row;
             }
+
+            DB::table('anomalies_migration')->upsert(
+                array_values($deduplicated),
+                ['cle_idempotence'],
+                ['execution_migration_id', 'gravite', 'description', 'donnees', 'updated_at']
+            );
             $this->anomaliesBuffer = [];
         }
     }
@@ -223,11 +243,15 @@ class LegacyMigrationRecorder
         array $data = [],
         string $severity = 'BLOQUANTE',
     ): void {
+        $status = 'A_RECONCILIER';
+        $sourceId = $sourceId === null ? null : (string) $sourceId;
+
         $this->anomaliesBuffer[] = [
+            'cle_idempotence' => hash('sha256', implode('|', [$code, $sourceTable, $sourceId ?? '<null>', $status])),
             'code' => $code,
             'table_source' => $sourceTable,
-            'id_source' => $sourceId === null ? null : (string) $sourceId,
-            'statut' => 'A_RECONCILIER',
+            'id_source' => $sourceId,
+            'statut' => $status,
             'execution_migration_id' => $executionId,
             'gravite' => $severity,
             'description' => $description,

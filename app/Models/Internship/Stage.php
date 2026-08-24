@@ -10,6 +10,7 @@ use App\Models\Company\Entreprise;
 use App\Models\Contract\Contrat;
 use App\Models\Document\Document;
 use App\Models\Reference\Agence;
+use App\Models\Reference\Conseiller;
 use App\Models\Reference\Programme;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
@@ -18,6 +19,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Stage extends Model
@@ -105,7 +107,7 @@ class Stage extends Model
      */
     public function conseiller(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Reference\Conseiller::class, 'conseiller_id');
+        return $this->belongsTo(Conseiller::class, 'conseiller_id');
     }
 
     /**
@@ -135,7 +137,7 @@ class Stage extends Model
     /**
      * L'instance de parcours (workflow) liée à ce stage.
      */
-    public function instanceParcours()
+    public function instanceParcours(): HasOne
     {
         return $this->hasOne(InstanceParcours::class);
     }

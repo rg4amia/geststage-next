@@ -2,7 +2,9 @@
 
 namespace App\Domain\Audit\Traits;
 
+use App\Domain\Audit\Support\AuditContext;
 use App\Models\Audit\JournalAudit;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 trait Auditable
@@ -28,8 +30,12 @@ trait Auditable
     /**
      * Enregistrer l'action dans le journal d'audit.
      */
-    protected static function audit(string $action, $model): void
+    protected static function audit(string $action, Model $model): void
     {
+        if (AuditContext::isSuppressed()) {
+            return;
+        }
+
         $anciennesDonnees = null;
         $nouvellesDonnees = null;
 

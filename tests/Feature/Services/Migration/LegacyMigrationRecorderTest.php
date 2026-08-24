@@ -132,4 +132,37 @@ class LegacyMigrationRecorderTest extends TestCase
 
         app(LegacyMigrationRecorder::class)->validateContratsPaeSchema();
     }
+
+    public function test_it_batches_duplicate_correspondences_and_anomalies_idempotently(): void
+    {
+        $recorder = app(LegacyMigrationRecorder::class);
+        $executionId = $recorder->start('test-batches');
+
+        $recorder->correspondence($executionId, 'legacy_rows', 10, 'targets', 100, ['id' => 10]);
+        $recorder->correspondence($executionId, 'legacy_rows', 10, 'targets', 101, ['id' => 10]);
+        $recorder->anomaly($executionId, 'ROW_INVALID', 'legacy_rows', 10, 'Première description');
+        $recorder->anomaly($executionId, 'ROW_INVALID', 'legacy_rows', 10, 'Description finale');
+        $recorder->flush();
+
+        $this->assertDatabaseCount('correspondances_ancien_systeme', 1);
+        $this->assertDatabaseHas('correspondances_ancien_systeme', [
+            'table_source' => 'legacy_rows',
+            'id_source' => '10',
+            'table_cible' => 'targets',
+            'id_cible' => 101,
+        ]);
+        $this->assertDatabaseCount('anomalies_migration', 1);
+        $this->assertDatabaseHas('anomalies_migration', [
+            'code' => 'ROW_INVALID',
+            'table_source' => 'legacy_rows',
+            'id_source' => '10',
+            'description' => 'Description finale',
+        ]);
+
+        $recorder->anomaly($executionId, 'DISCARDED', 'legacy_rows', 11, 'À annuler');
+        $recorder->discardPending();
+        $recorder->flush();
+
+        $this->assertDatabaseMissing('anomalies_migration', ['code' => 'DISCARDED']);
+    }
 }

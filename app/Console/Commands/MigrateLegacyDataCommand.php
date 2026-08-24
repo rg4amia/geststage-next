@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Audit\Support\AuditContext;
 use App\Domain\Validation\Services\ValidationChefAgenceService;
 use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
@@ -43,8 +44,13 @@ use App\Models\Workflow\TacheParcours;
 use App\Services\Migration\LegacyMapperService;
 use App\Services\Migration\LegacyMigrationRecorder;
 use Carbon\Carbon;
+use Closure;
 use Database\Seeders\ContratsPaeColumnMappingSeeder;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use Illuminate\Database\QueryException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
@@ -60,6 +66,9 @@ class MigrateLegacyDataCommand extends Command
     protected $signature = 'migrate:legacy-data
         {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_presence_payments, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
         {--dry-run : Exécute toutes les transformations puis annule les écritures PostgreSQL}
+        {--chunk=1000 : Nombre maximal de lignes chargées et validées par transaction (1 à 5000)}
+        {--with-model-audits : Conserve les journaux Eloquent ligne par ligne (beaucoup plus lent)}
+        {--resume : Reprend chaque phase au dernier chunk validé (implicite avec --step=remaining)}
         {--cohorte= : Filtrer par mois de démarrage (ex: 2026-08) — applicable aux étapes backfill}';
 
     /**
@@ -78,6 +87,15 @@ class MigrateLegacyDataCommand extends Command
     /** @var array<string, mixed> */
     private array $migrationCounters = [];
 
+    private int $chunkSize = 1000;
+
+    private bool $resume = false;
+
+    private ?string $currentPhase = null;
+
+    /** @var array<string, int> */
+    private array $phaseChunkCounts = [];
+
     public function __construct(
         private LegacyMapperService $mapper,
         private DesseDoublonService $doublonService,
@@ -93,6 +111,7 @@ class MigrateLegacyDataCommand extends Command
     {
         $step = (string) $this->option('step');
         $dryRun = (bool) $this->option('dry-run');
+        $chunkSize = filter_var($this->option('chunk'), FILTER_VALIDATE_INT);
         $allowedSteps = [
             'all', 'references', 'agences', 'users', 'entreprises', 'offres', 'beneficiaires',
             'stages', 'pointages', 'paiements', 'dossiers_paiement', 'dossiers_groupes',
@@ -106,13 +125,23 @@ class MigrateLegacyDataCommand extends Command
 
             return self::INVALID;
         }
+        if ($chunkSize === false || $chunkSize < 1 || $chunkSize > 5000) {
+            $this->error('La taille de chunk doit être comprise entre 1 et 5000.');
+
+            return self::INVALID;
+        }
 
         $this->migrationCounters = [];
+        $this->phaseChunkCounts = [];
+        $this->chunkSize = $chunkSize;
+        $this->resume = (bool) $this->option('resume') || $step === 'remaining';
         $this->sourceContractColumnCount = 0;
-        $this->info("Début de la migration des données (Étape : $step)...");
+        $this->info("Début de la migration des données (Étape : {$step}, chunk : {$this->chunkSize})...");
 
         try {
             DB::connection('legacy')->getPdo();
+            DB::connection('legacy')->disableQueryLog();
+            DB::connection()->disableQueryLog();
         } catch (\Exception $e) {
             $this->error("Impossible de se connecter à la base 'legacy'. Vérifiez votre config/database.php et .env");
             $this->error($e->getMessage());
@@ -155,86 +184,87 @@ class MigrateLegacyDataCommand extends Command
                 // elle génère des codes lisibles à partir des libellés legacy, contrairement à
                 // l'ancien code de cette commande qui fabriquait des codes ad-hoc (TS-1, SF-2, ...)
                 // incompatibles et qui écrasait ces mêmes lignes (même clé ancien_id) à chaque run.
-                $this->call('legacy:migrer-referentiels');
+                $this->runPhase('references', fn () => $this->call('legacy:migrer-referentiels'));
             }
 
             if ($step === 'all' || $step === 'users') {
-                $this->migrateUsers();
+                $this->runPhase('users', fn () => $this->migrateUsers());
             }
 
             if ($step === 'all' || $step === 'entreprises') {
-                $this->migrateEntreprises();
+                $this->runPhase('entreprises', fn () => $this->migrateEntreprises());
             }
 
             if ($step === 'all' || $step === 'offres') {
-                $this->migrateOffres();
+                $this->runPhase('offres', fn () => $this->migrateOffres());
             }
 
             if ($step === 'all' || $step === 'beneficiaires') {
-                $this->migrateBeneficiaires();
+                $this->runPhase('beneficiaires', fn () => $this->migrateBeneficiaires());
             }
 
             if ($step === 'all' || $step === 'stages') {
-                $this->migrateStages();
+                $this->runPhase('stages', fn () => $this->migrateStages());
             }
 
             if ($step === 'all' || $step === 'pointages') {
-                $this->migratePointages();
+                $this->runPhase('pointages', fn () => $this->migratePointages());
             }
 
             if ($step === 'all' || $step === 'paiements') {
-                $this->migratePaiements();
+                $this->runPhase('paiements', fn () => $this->migratePaiements());
             }
 
             if ($step === 'all' || $step === 'remaining' || $step === 'paiements' || $step === 'dossiers_paiement') {
-                $this->backfillLegacyDossiersPaiement();
+                $this->runPhase('dossiers_paiement', fn () => $this->backfillLegacyDossiersPaiement());
             }
 
             if ($step === 'all' || $step === 'remaining' || $step === 'dossiers_groupes') {
-                $this->migrateDossiersGroupes();
+                $this->runPhase('dossiers_groupes', fn () => $this->migrateDossiersGroupes());
             }
 
             if ($step === 'all' || $step === 'remaining' || $step === 'operations') {
-                $this->migrateOperations();
+                $this->runPhase('operations', fn () => $this->migrateOperations());
             }
 
             if ($step === 'all' || $step === 'remaining' || $step === 'bordereaux') {
-                $this->migrateBordereaux();
+                $this->runPhase('bordereaux', fn () => $this->migrateBordereaux());
             }
 
             if ($step === 'all' || $step === 'remaining' || $step === 'evenements') {
-                $this->migrateEvenements();
+                $this->runPhase('evenements', fn () => $this->migrateEvenements());
             }
 
             if ($step === 'all' || $step === 'remaining' || $step === 'desse_doublons') {
-                $this->migrateDesseDoublonDecisions();
+                $this->runPhase('desse_doublons', fn () => $this->migrateDesseDoublonDecisions());
             }
 
             if ($step === 'all' || $step === 'backfill_adp_nature') {
-                $this->backfillAddAdpNature($dryRun);
+                $this->runPhase('backfill_adp_nature', fn () => $this->backfillAddAdpNature($dryRun));
             }
 
             if ($step === 'all' || $step === 'backfill_corbeilles_ca') {
-                $this->backfillChefAgenceCorbeilles($dryRun);
+                $this->runPhase('backfill_corbeilles_ca', fn () => $this->backfillChefAgenceCorbeilles($dryRun));
             }
 
             if ($step === 'all' || $step === 'backfill_presence_payments') {
-                $this->backfillPresencePayments();
+                $this->runPhase('backfill_presence_payments', fn () => $this->backfillPresencePayments());
             }
 
             if ($step === 'all' || $step === 'fix_etat_chef_agence_100') {
-                $this->fixEtatChefAgence100();
+                $this->runPhase('fix_etat_chef_agence_100', fn () => $this->fixEtatChefAgence100());
             }
 
             if ($step === 'all' || $step === 'fix_legacy_ca_validation') {
-                $this->fixLegacyChefAgenceValidation();
+                $this->runPhase('fix_legacy_ca_validation', fn () => $this->fixLegacyChefAgenceValidation());
             }
 
             if ($step === 'all' || $step === 'update_missing_data') {
-                $this->updateLegacyMissingData();
+                $this->runPhase('update_missing_data', fn () => $this->updateLegacyMissingData());
             }
 
             $this->migrationCounters += $this->collectMigrationCounters();
+            $this->migrationCounters['taille_chunk'] = $this->chunkSize;
             $this->recorder->flush();
             $this->recorder->complete($this->executionId, $this->migrationCounters);
             $this->line('Compteurs : '.json_encode($this->migrationCounters, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR));
@@ -244,14 +274,22 @@ class MigrateLegacyDataCommand extends Command
                 $this->warn('Dry-run terminé : aucune écriture PostgreSQL conservée.');
             }
         } catch (Throwable $e) {
+            if ($this->currentPhase !== null) {
+                $this->migrationCounters['phase_en_echec'] = $this->currentPhase;
+            }
+            $errorMessage = $this->safeErrorMessage($e);
             if ($dryRun && DB::transactionLevel() > 0) {
                 DB::rollBack();
             } elseif (isset($this->executionId)) {
-                $this->recorder->flush();
-                $this->recorder->fail($this->executionId, $this->migrationCounters, $e->getMessage());
+                try {
+                    $this->recorder->flush();
+                    $this->recorder->fail($this->executionId, $this->migrationCounters, $errorMessage);
+                } catch (Throwable) {
+                    $this->warn('Le statut d’échec n’a pas pu être enregistré; aucune donnée SQL sensible n’est affichée.');
+                }
             }
 
-            $this->error('Migration interrompue : '.$e->getMessage());
+            $this->error('Migration interrompue : '.$errorMessage);
 
             return self::FAILURE;
         } finally {
@@ -261,6 +299,19 @@ class MigrateLegacyDataCommand extends Command
         $this->info('Migration terminée !');
 
         return self::SUCCESS;
+    }
+
+    private function safeErrorMessage(Throwable $exception): string
+    {
+        if ($exception instanceof QueryException) {
+            return sprintf(
+                'Erreur SQL dans la phase %s (code %s). La requête et ses données ne sont pas affichées.',
+                $this->currentPhase ?? 'inconnue',
+                (string) $exception->getCode(),
+            );
+        }
+
+        return $exception->getMessage();
     }
 
     private function acquireMigrationLock(): bool
@@ -279,6 +330,154 @@ class MigrateLegacyDataCommand extends Command
         if (DB::getDriverName() === 'pgsql') {
             DB::selectOne('SELECT pg_advisory_unlock(hashtext(?))', [self::SOURCE_VERSION]);
         }
+    }
+
+    private function runPhase(string $name, Closure $callback): void
+    {
+        $this->currentPhase = $name;
+        $startedAt = hrtime(true);
+        $memoryBefore = memory_get_usage(true);
+
+        try {
+            if ((bool) $this->option('with-model-audits')) {
+                $callback();
+            } else {
+                AuditContext::withoutAuditing($callback);
+            }
+            $this->recorder->flush();
+        } catch (Throwable $e) {
+            $this->migrationCounters['phases'][$name] = [
+                'statut' => 'ECHEC',
+                'duree_secondes' => round((hrtime(true) - $startedAt) / 1_000_000_000, 3),
+                'chunks' => $this->phaseChunkCounts[$name] ?? 0,
+                'memoire_fin_mo' => round(memory_get_usage(true) / 1048576, 1),
+            ];
+
+            throw $e;
+        }
+
+        $duration = round((hrtime(true) - $startedAt) / 1_000_000_000, 3);
+        $memoryAfter = memory_get_usage(true);
+        $this->migrationCounters['phases'][$name] = [
+            'statut' => 'TERMINEE',
+            'duree_secondes' => $duration,
+            'chunks' => $this->phaseChunkCounts[$name] ?? 0,
+            'memoire_avant_mo' => round($memoryBefore / 1048576, 1),
+            'memoire_fin_mo' => round($memoryAfter / 1048576, 1),
+            'memoire_pic_mo' => round(memory_get_peak_usage(true) / 1048576, 1),
+        ];
+        $this->line(sprintf(
+            '<info>Phase %s terminée</info> — %.3f s, %d chunk(s), mémoire %.1f Mo (pic %.1f Mo)',
+            $name,
+            $duration,
+            $this->phaseChunkCounts[$name] ?? 0,
+            $memoryAfter / 1048576,
+            memory_get_peak_usage(true) / 1048576,
+        ));
+        $this->currentPhase = null;
+    }
+
+    /**
+     * Parcourt une source par clé croissante et rend chaque chunk atomique côté cible.
+     * La pagination par clé évite le coût cumulatif d'OFFSET sur les tables volumineuses.
+     *
+     * @param  QueryBuilder|EloquentBuilder<*>  $query
+     */
+    private function processInChunks(
+        QueryBuilder|EloquentBuilder $query,
+        int $preferredSize,
+        Closure $callback,
+        string $column = 'id',
+        ?string $alias = null,
+        ?string $checkpointKey = null,
+    ): void {
+        $size = min($preferredSize, $this->chunkSize);
+        $phase = $this->currentPhase ?? 'inconnue';
+        $checkpointKey ??= $phase;
+        $this->phaseChunkCounts[$phase] ??= 0;
+
+        $checkpoint = DB::table('progressions_migration_legacy')
+            ->where('phase', $checkpointKey)
+            ->where('version_source', self::SOURCE_VERSION)
+            ->first();
+
+        if ($this->resume && $checkpoint !== null && $checkpoint->statut === 'TERMINEE') {
+            $this->line("Phase {$checkpointKey} déjà terminée : checkpoint conservé.");
+
+            return;
+        }
+
+        $lastSourceId = $this->resume && $checkpoint !== null
+            ? (int) $checkpoint->dernier_id_source
+            : 0;
+        DB::table('progressions_migration_legacy')->updateOrInsert(
+            ['phase' => $checkpointKey],
+            [
+                'version_source' => self::SOURCE_VERSION,
+                'dernier_id_source' => $lastSourceId,
+                'statut' => 'EN_COURS',
+                'execution_migration_id' => $this->executionId,
+                'terminee_le' => null,
+                'created_at' => $checkpoint !== null ? $checkpoint->created_at : now(),
+                'updated_at' => now(),
+            ],
+        );
+
+        if ($lastSourceId > 0) {
+            $query->where($column, '>', $lastSourceId);
+            $this->line("Reprise {$checkpointKey} après l’ID {$lastSourceId}.");
+        }
+
+        try {
+            $query->chunkById($size, function ($rows) use ($callback, $phase, $alias, $column, $checkpointKey): void {
+                $lastRow = $rows->last();
+                $lastIdAttribute = $alias ?? (
+                    str_contains($column, '.')
+                        ? substr($column, strrpos($column, '.') + 1)
+                        : $column
+                );
+                $lastId = (int) data_get($lastRow, $lastIdAttribute);
+
+                if ($lastId < 1) {
+                    throw new \RuntimeException("Impossible de déterminer le dernier ID du chunk {$checkpointKey}.");
+                }
+
+                try {
+                    DB::transaction(function () use ($callback, $rows, $checkpointKey, $lastId): void {
+                        $callback($rows);
+                        $this->recorder->flush();
+                        DB::table('progressions_migration_legacy')->where('phase', $checkpointKey)->update([
+                            'dernier_id_source' => $lastId,
+                            'statut' => 'EN_COURS',
+                            'execution_migration_id' => $this->executionId,
+                            'updated_at' => now(),
+                        ]);
+                    });
+                } catch (Throwable $e) {
+                    $this->recorder->discardPending();
+
+                    throw $e;
+                }
+
+                $this->phaseChunkCounts[$phase]++;
+                gc_collect_cycles();
+            }, $column, $alias);
+        } catch (Throwable $e) {
+            DB::table('progressions_migration_legacy')->where('phase', $checkpointKey)->update([
+                'statut' => 'ECHEC',
+                'execution_migration_id' => $this->executionId,
+                'updated_at' => now(),
+            ]);
+
+            throw $e;
+        }
+
+        DB::table('progressions_migration_legacy')->where('phase', $checkpointKey)->update([
+            'statut' => 'TERMINEE',
+            'execution_migration_id' => $this->executionId,
+            'terminee_le' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function migrateUsers(): void
@@ -549,7 +748,7 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(5000, function ($contrats) use (
+        $this->processInChunks($query, 500, function ($contrats) use (
             &$bar, $typesPaiementMap, $handicapsMap, $typesHandicapMap,
             $liensParenteMap, $typesEnseignementMap, $communesMap, $niveauxParLibelle, $diplomesParLibelle
         ): void {
@@ -656,6 +855,9 @@ class MigrateLegacyDataCommand extends Command
                 );
                 $bar->advance();
             }
+
+            // Vider le buffer à chaque chunk pour éviter un OOM sur de gros volumes.
+            $this->recorder->flush();
         });
 
         $bar->finish();
@@ -687,7 +889,7 @@ class MigrateLegacyDataCommand extends Command
         $situationsStageMap = DB::table('situations_stage')->pluck('code', 'ancien_id')->toArray();
         $statutsStageMap = DB::table('statuts_stage')->pluck('code', 'ancien_id')->toArray();
 
-        $query->orderBy('id')->chunk(5000, function ($contrats) use (
+        $this->processInChunks($query, 500, function ($contrats) use (
             &$bar, $agencesMap, $typesStageMap, $entreprisesMap, $sourcesFinancementMap,
             $origineStagiaireMap, $situationsStageMap, $statutsStageMap
         ): void {
@@ -848,7 +1050,7 @@ class MigrateLegacyDataCommand extends Command
                     : null;
 
                 $etapeCode = strtoupper($corbeilleEnum->value);
-                if (!isset($etapesMap[$etapeCode])) {
+                if (! isset($etapesMap[$etapeCode])) {
                     $etapeNom = str_replace('_', ' ', $etapeCode);
                     $etapesMap[$etapeCode] = EtapeParcours::firstOrCreate(
                         ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
@@ -883,6 +1085,9 @@ class MigrateLegacyDataCommand extends Command
 
                 $bar->advance();
             }
+
+            // Vider le buffer à chaque chunk pour éviter un OOM sur de gros volumes.
+            $this->recorder->flush();
         });
 
         $bar->finish();
@@ -905,10 +1110,10 @@ class MigrateLegacyDataCommand extends Command
         );
         $etapesMap = [];
 
-        $query->orderBy('id')->chunk(5000, function ($pointages) use (&$bar, &$periodesMap, $definition, &$etapesMap) {
+        $this->processInChunks($query, 1000, function ($pointages) use (&$bar, &$periodesMap, $definition, &$etapesMap) {
             $stagiaireIds = $pointages->pluck('stagiaire_id')->filter()->unique()->toArray();
             $legacyIds = $pointages->pluck('id')->toArray();
-            
+
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
             $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
             $agencesParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('agence_id', 'ancien_id')->toArray();
@@ -916,8 +1121,8 @@ class MigrateLegacyDataCommand extends Command
 
             $versionsMap = VersionPointage::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
             $stageIdsFilter = array_filter(array_values($stagesMap));
-            
-            $pointagesExistant = !empty($stageIdsFilter) ? Pointage::withTrashed()->whereIn('stage_id', $stageIdsFilter)->get() : collect();
+
+            $pointagesExistant = ! empty($stageIdsFilter) ? Pointage::withTrashed()->whereIn('stage_id', $stageIdsFilter)->get() : collect();
             $pointagesMap = [];
             foreach ($pointagesExistant as $p) {
                 if (is_null($p->deleted_at)) {
@@ -925,11 +1130,11 @@ class MigrateLegacyDataCommand extends Command
                 }
                 $pointagesMap["id_{$p->id}"] = $p;
             }
-            
+
             $pointageIds = $pointagesExistant->pluck('id')->toArray();
-            $maxVersions = !empty($pointageIds) ? VersionPointage::whereIn('pointage_id', $pointageIds)->select('pointage_id', DB::raw('MAX(numero_version) as max_version'))->groupBy('pointage_id')->pluck('max_version', 'pointage_id')->toArray() : [];
-            
-            $instancesExistantes = !empty($pointageIds) ? InstanceParcours::whereIn('pointage_id', $pointageIds)->get()->keyBy('pointage_id') : collect();
+            $maxVersions = ! empty($pointageIds) ? VersionPointage::whereIn('pointage_id', $pointageIds)->select('pointage_id', DB::raw('MAX(numero_version) as max_version'))->groupBy('pointage_id')->pluck('max_version', 'pointage_id')->toArray() : [];
+
+            $instancesExistantes = ! empty($pointageIds) ? InstanceParcours::whereIn('pointage_id', $pointageIds)->get()->keyBy('pointage_id') : collect();
             $instanceIds = $instancesExistantes->pluck('id')->filter()->toArray();
             $tachesExistantes = empty($instanceIds) ? collect() : TacheParcours::whereIn('instance_parcours_id', $instanceIds)->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])->get()->groupBy('instance_parcours_id');
 
@@ -1079,7 +1284,7 @@ class MigrateLegacyDataCommand extends Command
 
                     // CREATE PARCOURS FOR POINTAGE
                     $etapeCode = strtoupper($corbeilleEnum);
-                    if (!isset($etapesMap[$etapeCode])) {
+                    if (! isset($etapesMap[$etapeCode])) {
                         $etapeNom = str_replace('_', ' ', $etapeCode);
                         $etapesMap[$etapeCode] = EtapeParcours::firstOrCreate(
                             ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
@@ -1118,6 +1323,10 @@ class MigrateLegacyDataCommand extends Command
                         (array) $legacyPointage,
                     );
                 } catch (Throwable $e) {
+                    if ($e instanceof QueryException) {
+                        throw $e;
+                    }
+
                     $this->warn("Pointage legacy #{$legacyPointage->id} ignoré : {$e->getMessage()}");
                     $this->recorder->anomaly(
                         $this->executionId,
@@ -1148,19 +1357,19 @@ class MigrateLegacyDataCommand extends Command
 
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
 
-        $query->orderBy('id')->chunk(5000, function ($paiements) use (&$bar, &$periodesMap): void {
+        $this->processInChunks($query, 1000, function ($paiements) use (&$bar, &$periodesMap): void {
             $stagiaireIds = $paiements->pluck('stagiaire_id')->filter()->unique()->toArray();
             $legacyIds = $paiements->pluck('id')->toArray();
-            
+
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
             $sourceFinancementParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('source_financement_id', 'ancien_id')->toArray();
             $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
 
             $droitsParAncienId = DroitPaiement::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
             $paiementsParAncienId = Paiement::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
-            
+
             $stageIdsFilter = array_filter(array_values($stagesMap));
-            $droitsActifs = !empty($stageIdsFilter) ? DroitPaiement::whereIn('stage_id', $stageIdsFilter)->whereNull('annule_le')->get() : collect();
+            $droitsActifs = ! empty($stageIdsFilter) ? DroitPaiement::whereIn('stage_id', $stageIdsFilter)->whereNull('annule_le')->get() : collect();
             $droitsActifsMap = [];
             foreach ($droitsActifs as $d) {
                 $droitsActifsMap["{$d->stage_id}_{$d->periode_id}_{$d->nature}"] = $d;
@@ -1254,10 +1463,10 @@ class MigrateLegacyDataCommand extends Command
                             unset($droitsActifsMap["{$stage_id}_{$periodeId}_{$nature}"]);
                         }
 
-                        if (!$droit) {
+                        if (! $droit) {
                             $droit = new DroitPaiement(['ancien_id' => $legacyPaiement->id]);
                         }
-                        
+
                         $droit->fill([
                             'stage_id' => $stage_id,
                             'periode_id' => $periodeId,
@@ -1318,6 +1527,10 @@ class MigrateLegacyDataCommand extends Command
                         );
                     })();
                 } catch (Throwable $e) {
+                    if ($e instanceof QueryException) {
+                        throw $e;
+                    }
+
                     $this->warn("Paiement legacy #{$legacyPaiement->id} ignoré : {$e->getMessage()}");
                     $this->recorder->anomaly(
                         $this->executionId,
@@ -1370,7 +1583,7 @@ class MigrateLegacyDataCommand extends Command
             ->all();
         $now = now();
 
-        $query->orderBy('id')->chunk(500, function ($legacyDossiers) use (
+        $this->processInChunks($query, 500, function ($legacyDossiers) use (
             &$bar,
             &$periodesMap,
             &$targetNumeroOwners,
@@ -1594,7 +1807,7 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar($query->count());
         $bar->start();
 
-        $query->orderBy('id')->chunk(500, function ($groupes) use (&$periodesMap, $sourcesMap, &$bar): void {
+        $this->processInChunks($query, 500, function ($groupes) use (&$periodesMap, $sourcesMap, &$bar): void {
             $legacyIds = $groupes->pluck('id')->all();
             $legacyDossiers = DB::connection('legacy')->table('dossiers')
                 ->whereIn('multi_dossier_id', $legacyIds)
@@ -1712,7 +1925,7 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar($query->count());
         $bar->start();
 
-        $query->orderBy('id')->chunk(500, function ($operations) use (
+        $this->processInChunks($query, 500, function ($operations) use (
             &$periodesMap,
             &$targetNumeroOwners,
             $sourcesMap,
@@ -1846,7 +2059,7 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar($query->count());
         $bar->start();
 
-        $query->orderBy('id')->chunk(500, function ($bordereaux) use (
+        $this->processInChunks($query, 500, function ($bordereaux) use (
             &$periodesMap,
             &$targetNumeroOwners,
             $sourcesMap,
@@ -2138,13 +2351,14 @@ class MigrateLegacyDataCommand extends Command
         return 'A_RECONCILIER';
     }
 
+    /** @param Collection<int, TacheParcours>|null $preloadedTasks */
     private function syncOpenTask(
         InstanceParcours $instance,
         EtapeParcours $etape,
         CorbeilleEnum $corbeille,
         ?int $agenceId,
         bool $terminee = false,
-        $preloadedTasks = null
+        ?Collection $preloadedTasks = null
     ): void {
         $activeTasks = $preloadedTasks ? $preloadedTasks->filter(fn ($t) => in_array($t->statut, ['OUVERTE', 'REVENDIQUEE'])) : TacheParcours::query()
             ->where('instance_parcours_id', $instance->id)
@@ -2175,7 +2389,7 @@ class MigrateLegacyDataCommand extends Command
         if (empty($rolesCache)) {
             $rolesCache = Role::where('guard_name', 'web')->pluck('id', 'name')->toArray();
         }
-        
+
         $roleId = $roleName === null ? null : ($rolesCache[$roleName] ?? null);
 
         if ($roleId === null) {
@@ -2191,7 +2405,7 @@ class MigrateLegacyDataCommand extends Command
                 'TACHE_ROLE_INTROUVABLE',
                 $instance->stage_id ? 'contrats_pae' : 'instances_parcours',
                 $sourceId,
-                "Aucun rôle cible disponible pour la corbeille {$code} (rôle attendu : ".($roleName ?? 'indéterminé').').',
+                "Aucun rôle cible disponible pour la corbeille {$code} (rôle attendu : {$roleName}).",
                 ['instance_parcours_id' => $instance->id, 'corbeille' => $code],
             );
 
@@ -2227,7 +2441,7 @@ class MigrateLegacyDataCommand extends Command
             'ouverte_le' => now(),
         ]);
 
-        if ($preloadedTasks instanceof \Illuminate\Support\Collection) {
+        if ($preloadedTasks instanceof Collection) {
             $preloadedTasks->push($created);
         }
     }
@@ -2277,7 +2491,7 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(5000, function ($historique) use (&$bar, &$etapesCache, $fallbackAuthorId): void {
+        $this->processInChunks($query, 2000, function ($historique) use (&$bar, &$etapesCache, $fallbackAuthorId): void {
             $eventRows = [];
             $eventSourcesByKey = [];
             $batchNow = now();
@@ -2578,7 +2792,7 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         // Chunk au lieu de get() : on ne charge que 2000 droits à la fois
-        $droitsQuery->orderBy('stage_id')->orderBy('id')->chunk(2000, function ($droits) use (
+        $this->processInChunks($droitsQuery, 2000, function ($droits) use (
             &$nbCorriges, $dryRun, &$stageDateDebutCache, &$periodeCodeCache, $bar
         ): void {
             // Précharger les stages et périodes de ce chunk en une seule requête chacune
@@ -2625,7 +2839,7 @@ class MigrateLegacyDataCommand extends Command
                     'annule_le' => null,
                 ]);
             }
-        });
+        }, 'id', null, 'backfill_adp_nature.droits');
 
         $bar->finish();
         $this->newLine();
@@ -2657,7 +2871,7 @@ class MigrateLegacyDataCommand extends Command
         // Cache des étapes pour éviter firstOrCreate à chaque ligne
         $etapesCache = [];
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use (
+        $this->processInChunks($query, 1000, function ($contrats) use (
             &$nbCorbeilleChanges, $dryRun, $definition, &$etapesCache
         ): void {
             $ancienIds = $contrats->pluck('ancien_id')->toArray();
@@ -2720,7 +2934,7 @@ class MigrateLegacyDataCommand extends Command
                     ]);
                 }
             }
-        });
+        }, 'id', 'ancien_id', 'backfill_adp_nature.corbeilles');
 
         $this->info("  Instances de workflow reclassées : {$nbCorbeilleChanges}");
 
@@ -2744,7 +2958,7 @@ class MigrateLegacyDataCommand extends Command
     {
         try {
             DB::connection('legacy')->getPdo();
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             $this->error("Impossible de se connecter à la base 'legacy' : {$e->getMessage()}");
 
             return;
@@ -2781,7 +2995,7 @@ class MigrateLegacyDataCommand extends Command
         $bar = $this->output->createProgressBar($total);
         $bar->start();
 
-        $query->orderBy('id')->chunk(500, function ($contrats) use (
+        $this->processInChunks($query, 500, function ($contrats) use (
             $definition, $dryRun, &$inspected, &$changed, &$transitions, &$etapesCache, $corbeillesConcernees, $bar
         ) {
             $ancienIds = $contrats->pluck('id')->toArray();
@@ -2802,12 +3016,14 @@ class MigrateLegacyDataCommand extends Command
                 $stageId = $stagesMap[$legacyContrat->id] ?? null;
                 if (! $stageId) {
                     $bar->advance();
+
                     continue;
                 }
 
                 $instance = $instancesMap->get($stageId);
                 if (! $instance) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -2821,6 +3037,7 @@ class MigrateLegacyDataCommand extends Command
 
                 if ($nouvelleCorbeille->value === $instance->corbeille_actuelle) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -2936,6 +3153,7 @@ class MigrateLegacyDataCommand extends Command
                     $stage = $pointage->stage;
                     if (! $stage) {
                         $bar->advance();
+
                         continue;
                     }
 
@@ -2952,9 +3170,9 @@ class MigrateLegacyDataCommand extends Command
                         if (is_null($droitPaiement->pointage_id)) {
                             $droitPaiement->update(['pointage_id' => $pointage->id]);
                         }
-                        
+
                         $paiement = $paiementsExistants[$droitPaiement->id] ?? new Paiement(['droit_paiement_id' => $droitPaiement->id]);
-                        if (!$paiement->exists) {
+                        if (! $paiement->exists) {
                             $paiement->fill([
                                 'statut' => 'A_TRAITER',
                                 'montant' => $montantPaiement,
@@ -2965,7 +3183,7 @@ class MigrateLegacyDataCommand extends Command
                             $paiementsExistants[$droitPaiement->id] = $paiement;
                         }
                     } else {
-                        $droitPaiement = new DroitPaiement();
+                        $droitPaiement = new DroitPaiement;
                         $droitPaiement->fill([
                             'stage_id' => $stage->id,
                             'pointage_id' => $pointage->id,
@@ -2987,6 +3205,7 @@ class MigrateLegacyDataCommand extends Command
                             'created_at' => $createdAt,
                             'updated_at' => $createdAt,
                         ]);
+                        $paiement->save();
                     }
 
                     $fixedCount++;
@@ -3088,7 +3307,7 @@ class MigrateLegacyDataCommand extends Command
 
     /**
      * Étape fix_legacy_ca_validation : corrige les stages legacy validés par CA mais
-n     * bloqués dans ca_attente_validation_demarrage sans paiements.
+     * bloqués dans ca_attente_validation_demarrage sans paiements.
      * Anciennement : FixLegacyChefAgenceValidationCommand
      */
     private function fixLegacyChefAgenceValidation(): void
@@ -3107,7 +3326,7 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         $adminUser = User::whereHas('roles', fn ($q) => $q->where('name', 'administrateur'))->first() ?? User::first();
 
         // Injecter le service de validation via le conteneur Laravel
-        $validationService = app(\App\Domain\Validation\Services\ValidationChefAgenceService::class);
+        $validationService = app(ValidationChefAgenceService::class);
 
         // Batch pre-fetch : tous les rows legacy en une seule requête
         $ancienIds = $stages->pluck('ancien_id')->filter()->values()->toArray();
@@ -3126,8 +3345,9 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
         foreach ($stages as $stage) {
             try {
                 $legacyRow = $legacyRowsMap->get($stage->ancien_id);
-                if ($legacyRow && $legacyRow->etat_chef_agence == 2) {
-                    $validationService->validerDemarrage($stage->instanceParcours, $adminUser);
+                $instance = $stage->instanceParcours;
+                if ($legacyRow && $legacyRow->etat_chef_agence == 2 && $instance instanceof InstanceParcours) {
+                    $validationService->validerDemarrage($instance, $adminUser);
                     $fixedCount++;
                 }
             } catch (\Exception $e) {
@@ -3223,11 +3443,12 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
 
         $typesPaiementMap = TypePaiement::pluck('id', 'ancien_id')->toArray();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $typesPaiementMap) {
+        $this->processInChunks($query, 1000, function ($contrats) use ($bar, $typesPaiementMap) {
             $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->numero_aej)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -3242,9 +3463,14 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
             }
 
             if (! empty($rows)) {
-                DB::table('beneficiaires')->upsert($rows, ['numero_aej'], ['numero_tresor_money', 'numero_wave', 'type_paiement_id', 'updated_at']);
+                $this->updateExistingRows('beneficiaires', 'numero_aej', $rows, [
+                    'numero_tresor_money',
+                    'numero_wave',
+                    'type_paiement_id',
+                    'updated_at',
+                ]);
             }
-        });
+        }, 'id', null, 'update_missing_data.beneficiaires');
 
         $bar->finish();
         $this->newLine();
@@ -3261,11 +3487,12 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
 
         $typesStructureMap = TypeStructure::pluck('id', 'ancien_id')->toArray();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $typesStructureMap) {
+        $this->processInChunks($query, 1000, function ($contrats) use ($bar, $typesStructureMap) {
             $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id_entreprise) || empty($legacyContrat->type_structure_id)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -3281,9 +3508,12 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
             }
 
             if (! empty($rows)) {
-                DB::table('entreprises')->upsert($rows, ['ancien_id'], ['type_structure_id', 'updated_at']);
+                $this->updateExistingRows('entreprises', 'ancien_id', $rows, [
+                    'type_structure_id',
+                    'updated_at',
+                ]);
             }
-        });
+        }, 'id', null, 'update_missing_data.entreprises');
 
         $bar->finish();
         $this->newLine();
@@ -3300,11 +3530,12 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
 
         $situationsStageMap = SituationStage::pluck('code', 'ancien_id')->toArray();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $situationsStageMap) {
+        $this->processInChunks($query, 1000, function ($contrats) use ($bar, $situationsStageMap) {
             $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id) || empty($legacyContrat->id_situation_stage)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -3320,9 +3551,12 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
             }
 
             if (! empty($rows)) {
-                DB::table('stages')->upsert($rows, ['ancien_id'], ['situation_stage', 'updated_at']);
+                $this->updateExistingRows('stages', 'ancien_id', $rows, [
+                    'situation_stage',
+                    'updated_at',
+                ]);
             }
-        });
+        }, 'id', null, 'update_missing_data.stages');
 
         $bar->finish();
         $this->newLine();
@@ -3339,11 +3573,12 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
 
         $sourcesMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
 
-        $query->orderBy('id')->chunk(1000, function ($contrats) use ($bar, $sourcesMap) {
+        $this->processInChunks($query, 1000, function ($contrats) use ($bar, $sourcesMap) {
             $rows = [];
             foreach ($contrats as $legacyContrat) {
                 if (empty($legacyContrat->id) || empty($legacyContrat->source_financement)) {
                     $bar->advance();
+
                     continue;
                 }
 
@@ -3359,11 +3594,100 @@ n     * bloqués dans ca_attente_validation_demarrage sans paiements.
             }
 
             if (! empty($rows)) {
-                DB::table('stages')->upsert($rows, ['ancien_id'], ['source_financement_id', 'updated_at']);
+                $this->updateExistingRows('stages', 'ancien_id', $rows, [
+                    'source_financement_id',
+                    'updated_at',
+                ]);
             }
-        });
+        }, 'id', null, 'update_missing_data.financements');
 
         $bar->finish();
         $this->newLine();
+    }
+
+    /**
+     * Met à jour les lignes existantes sans tenter d'en créer de nouvelles.
+     * Les phases de "missing data" ne fournissent pas les colonnes obligatoires
+     * nécessaires à un insert complet, donc on force un update pur.
+     *
+     * @param  array<int, array<string, mixed>>  $rows
+     */
+    private function updateExistingRows(string $table, string $keyColumn, array $rows, array $columnsToUpdate): void
+    {
+        if ($rows === []) {
+            return;
+        }
+
+        if (DB::getDriverName() === 'pgsql') {
+            $this->updateExistingRowsForPostgres($table, $keyColumn, $rows, $columnsToUpdate);
+
+            return;
+        }
+
+        foreach ($rows as $row) {
+            if (! array_key_exists($keyColumn, $row)) {
+                continue;
+            }
+
+            $payload = [];
+            foreach ($columnsToUpdate as $column) {
+                $payload[$column] = $row[$column] ?? null;
+            }
+
+            DB::table($table)
+                ->where($keyColumn, $row[$keyColumn])
+                ->update($payload);
+        }
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $rows
+     * @param  array<int, string>  $columnsToUpdate
+     */
+    private function updateExistingRowsForPostgres(string $table, string $keyColumn, array $rows, array $columnsToUpdate): void
+    {
+        $columns = array_merge([$keyColumn], $columnsToUpdate);
+        $bindings = [];
+        $valuesSql = [];
+
+        foreach ($rows as $row) {
+            if (! array_key_exists($keyColumn, $row)) {
+                continue;
+            }
+
+            $valuesSql[] = '('.implode(', ', array_fill(0, count($columns), '?')).')';
+
+            foreach ($columns as $column) {
+                $bindings[] = $row[$column] ?? null;
+            }
+        }
+
+        if ($valuesSql === []) {
+            return;
+        }
+
+        $quotedTable = '"'.str_replace('"', '""', $table).'"';
+        $quotedKeyColumn = '"'.str_replace('"', '""', $keyColumn).'"';
+        $quotedColumns = array_map(
+            static fn (string $column) => '"'.str_replace('"', '""', $column).'"',
+            $columns
+        );
+        $setClauses = array_map(
+            static fn (string $column) => 't."'.str_replace('"', '""', $column).'" = v."'.str_replace('"', '""', $column).'"',
+            $columnsToUpdate
+        );
+
+        DB::statement(
+            sprintf(
+                'update %s as t set %s from (values %s) as v(%s) where t.%s = v.%s',
+                $quotedTable,
+                implode(', ', $setClauses),
+                implode(', ', $valuesSql),
+                implode(', ', $quotedColumns),
+                $quotedKeyColumn,
+                $quotedKeyColumn
+            ),
+            $bindings
+        );
     }
 }

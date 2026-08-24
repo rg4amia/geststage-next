@@ -4,6 +4,7 @@ namespace Tests\Feature\Console;
 
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
+use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Internship\Stage;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierGroupe;
@@ -14,6 +15,7 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypePaiement;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
@@ -49,6 +51,11 @@ class MigrateLegacyDataCommandTest extends TestCase
 
         DB::purge('legacy');
 
+        Schema::connection('legacy')->create('contrats_pae', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedTinyInteger('etat_chef_agence')->nullable();
+        });
+
         Schema::connection('legacy')->create('dossiers', function (Blueprint $table): void {
             $table->id();
             $table->string('identifiant');
@@ -75,6 +82,7 @@ class MigrateLegacyDataCommandTest extends TestCase
             $table->unsignedTinyInteger('status_dmg')->default(0);
             $table->unsignedTinyInteger('status_ca')->default(0);
             $table->unsignedBigInteger('etape_id')->nullable();
+            $table->timestamp('date_ca')->nullable();
             $table->timestamp('deleted_at')->nullable();
             $table->timestamps();
         });
@@ -452,8 +460,8 @@ class MigrateLegacyDataCommandTest extends TestCase
             ],
         ]);
 
-        $this->artisan('migrate:legacy-data', ['--step' => 'pointages'])->assertExitCode(0);
-        $this->artisan('migrate:legacy-data', ['--step' => 'pointages'])->assertExitCode(0);
+        $this->artisan('migrate:legacy-data', ['--step' => 'pointages', '--chunk' => 1])->assertExitCode(0);
+        $this->artisan('migrate:legacy-data', ['--step' => 'pointages', '--chunk' => 1])->assertExitCode(0);
 
         $pointage = Pointage::where('stage_id', $stage->id)->firstOrFail();
         $this->assertSame('DEMARRAGE', $pointage->nature);
@@ -461,6 +469,27 @@ class MigrateLegacyDataCommandTest extends TestCase
         $this->assertSame(1, Pointage::where('stage_id', $stage->id)->count());
         $this->assertSame(2, VersionPointage::where('pointage_id', $pointage->id)->count());
         $this->assertSame(2, $pointage->fresh()->version_courante);
+        $this->assertDatabaseHas('progressions_migration_legacy', [
+            'phase' => 'pointages',
+            'version_source' => 'gestage-mysql-v2',
+            'dernier_id_source' => 7002,
+            'statut' => 'TERMINEE',
+        ]);
+
+        DB::connection('legacy')->table('pointage_models')->insert([
+            'id' => 7003,
+            'stagiaire_id' => 503,
+            'mois' => '2026-08',
+            'commentaire' => 'Ajout après gel de la source',
+            'status_dmg' => 1,
+            'status_ca' => 1,
+            'etape_id' => 13,
+            'created_at' => '2026-09-03 08:00:00',
+            'updated_at' => '2026-09-03 08:00:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'pointages', '--resume' => true])->assertExitCode(0);
+        $this->assertSame(2, VersionPointage::where('pointage_id', $pointage->id)->count());
     }
 
     public function test_validated_legacy_payment_keeps_its_accounting_status_and_date(): void
@@ -491,6 +520,125 @@ class MigrateLegacyDataCommandTest extends TestCase
         $paiement = Paiement::where('ancien_id', 9003)->firstOrFail();
         $this->assertSame('VALIDE_AC', $paiement->statut);
         $this->assertSame('2026-09-05 09:30:00', $paiement->paye_le?->format('Y-m-d H:i:s'));
+    }
+
+    public function test_presence_backfill_persists_the_missing_payment_idempotently(): void
+    {
+        $agence = Agence::factory()->create(['ancien_id' => 15]);
+        $source = SourceFinancement::factory()->create(['ancien_id' => 9]);
+        $periode = Periode::create([
+            'code' => '2026-09',
+            'date_debut' => '2026-09-01',
+            'date_fin' => '2026-09-30',
+        ]);
+        $stage = Stage::factory()->create([
+            'ancien_id' => 505,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+            'date_debut' => '2026-08-10',
+        ]);
+        $pointage = Pointage::create([
+            'ancien_id' => 7100,
+            'stage_id' => $stage->id,
+            'periode_id' => $periode->id,
+            'nature' => 'PRESENCE',
+            'statut' => 'VALIDE',
+            'version_courante' => 1,
+        ]);
+        $definition = DefinitionParcours::create([
+            'code' => 'POINTAGE_BACKFILL_TEST',
+            'nom' => 'Pointage backfill test',
+            'version' => 1,
+            'active' => true,
+        ]);
+        $etape = EtapeParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'code' => 'DMG_ATTENTE_PAIEMENT_PRESENCE',
+            'nom' => 'DMG attente paiement présence',
+        ]);
+        InstanceParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etape->id,
+            'pointage_id' => $pointage->id,
+            'corbeille_actuelle' => 'dmg_attente_paiement_presence',
+        ]);
+        DB::connection('legacy')->table('pointage_models')->insert([
+            'id' => 7100,
+            'stagiaire_id' => 505,
+            'mois' => '2026-09',
+            'date_ca' => '2026-10-02 09:00:00',
+            'created_at' => '2026-09-30 08:00:00',
+            'updated_at' => '2026-10-02 09:00:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'backfill_presence_payments'])->assertExitCode(0);
+        $this->artisan('migrate:legacy-data', ['--step' => 'backfill_presence_payments'])->assertExitCode(0);
+
+        $droit = DroitPaiement::where('pointage_id', $pointage->id)->firstOrFail();
+        $this->assertSame(1, DroitPaiement::where('pointage_id', $pointage->id)->count());
+        $this->assertSame(1, Paiement::where('droit_paiement_id', $droit->id)->count());
+        $this->assertDatabaseHas('paiements', [
+            'droit_paiement_id' => $droit->id,
+            'statut' => 'A_TRAITER',
+            'montant' => 45000,
+        ]);
+    }
+
+    public function test_update_missing_data_updates_existing_beneficiaires_without_inserting_incomplete_rows(): void
+    {
+        Beneficiaire::factory()->create([
+            'numero_aej' => 'AEJ-0001',
+            'numero_tresor_money' => null,
+            'numero_wave' => null,
+            'type_paiement_id' => null,
+        ]);
+
+        Schema::connection('legacy')->create('type_paiements', function (Blueprint $table): void {
+            $table->id();
+            $table->string('libelle')->nullable();
+        });
+
+        Schema::connection('legacy')->table('contrats_pae', function (Blueprint $table): void {
+            $table->string('numero_aej')->nullable();
+            $table->string('numero_yup')->nullable();
+            $table->string('numero_wave')->nullable();
+            $table->unsignedBigInteger('type_paiement_id')->nullable();
+        });
+
+        DB::connection('legacy')->table('type_paiements')->insert([
+            'id' => 7,
+            'libelle' => 'Wave',
+        ]);
+
+        DB::connection('legacy')->table('contrats_pae')->insert([
+            'id' => 1001,
+            'numero_aej' => 'AEJ-0001',
+            'numero_yup' => '2250100100',
+            'numero_wave' => '0177001001',
+            'type_paiement_id' => 7,
+        ]);
+
+        DB::connection('legacy')->table('contrats_pae')->insert([
+            'id' => 1002,
+            'numero_aej' => 'AEJ-ABSENT',
+            'numero_yup' => '2250100200',
+            'numero_wave' => '0177001002',
+            'type_paiement_id' => 7,
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'update_missing_data'])
+            ->assertExitCode(0);
+
+        $beneficiaire = Beneficiaire::where('numero_aej', 'AEJ-0001')->firstOrFail();
+
+        $this->assertSame('2250100100', $beneficiaire->numero_tresor_money);
+        $this->assertSame('0177001001', $beneficiaire->numero_wave);
+        $this->assertNotNull($beneficiaire->type_paiement_id);
+        $this->assertSame(1, Beneficiaire::count());
+        $this->assertDatabaseHas('types_paiement', [
+            'ancien_id' => 7,
+            'nom' => 'Wave',
+        ]);
     }
 
     public function test_it_reconstructs_group_operation_and_bordereau_links_idempotently(): void

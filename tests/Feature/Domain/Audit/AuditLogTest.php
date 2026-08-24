@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Domain\Audit;
 
+use App\Domain\Audit\Support\AuditContext;
 use App\Models\Audit\JournalAudit;
 use App\Models\Company\Entreprise;
 use App\Models\Reference\Agence;
@@ -87,6 +88,31 @@ class AuditLogTest extends TestCase
 
         $this->assertDatabaseHas('journaux_audit', [
             'action' => 'deleted',
+            'modele_type' => Entreprise::class,
+            'modele_id' => $entreprise->id,
+        ]);
+    }
+
+    public function test_audit_can_be_suppressed_for_a_scoped_bulk_operation(): void
+    {
+        $region = Region::create(['code' => 'TEST', 'nom' => 'Region Test']);
+        $agence = Agence::create(['region_id' => $region->id, 'code' => 'AG1', 'nom' => 'Agence Test']);
+
+        $entreprise = AuditContext::withoutAuditing(fn () => Entreprise::create([
+            'uuid_public' => (string) Str::uuid(),
+            'agence_id' => $agence->id,
+            'raison_sociale' => 'Import Legacy',
+        ]));
+
+        $this->assertDatabaseMissing('journaux_audit', [
+            'modele_type' => Entreprise::class,
+            'modele_id' => $entreprise->id,
+        ]);
+
+        $entreprise->update(['raison_sociale' => 'Audit restauré']);
+
+        $this->assertDatabaseHas('journaux_audit', [
+            'action' => 'updated',
             'modele_type' => Entreprise::class,
             'modele_id' => $entreprise->id,
         ]);
