@@ -127,7 +127,13 @@ class PointageCipController extends Controller
             } elseif ($tab === 'ajourne_ca') {
                 $query = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions.auteur'])
                     ->where('periode_id', $periode->id)
-                    ->where('statut', 'AJOURNE_CA');
+                    // Legacy `PointageChefAgenceController::statusPointage()` pose `status_ca = 2`
+                    // à l'ajournement : c'est bien l'équivalent de `AJOURNE_CA` (cf. mapStatutPointage()).
+                    ->where('statut', 'AJOURNE_CA')
+                    // Legacy `PointageService::getPointageAjournerByChefAgence()` restreint la liste
+                    // aux stagiaires encore dans le dispositif (`contrats_pae.id_situation_stage = 1`) :
+                    // un stagiaire sorti n'a plus de pointage à corriger par le CIP.
+                    ->whereHas('stage', fn (Builder $q) => $q->where('situation_stage', SituationStage::CODE_EN_COURS));
 
                 $this->applyPointageFilters($query, $filters);
                 $data = $query->paginate(20)->withQueryString();
@@ -199,17 +205,11 @@ class PointageCipController extends Controller
             'droitPaiement.pointage.stage.sourceFinancement',
             'droitPaiement.pointage.stage.typeStage',
         ])
-            // Legacy `ajournerByDmg()` -> getPointageAjournerDmg($mois, $filters, valid=0) filtre
-            // uniquement status_dmg=0 (en attente de traitement DMG) + mois + status_ar != 1 :
-            // le nom de la page legacy est trompeur (c'est la file d'attente DMG, pas les rejets),
-            // et la condition status_ca=1 vue dans ajournerByDmg() ne sert qu'à construire la liste
-            // déroulante des mois, pas à filtrer les lignes affichées — ne pas la reprendre ici.
-            // `status_ar` (accusé de réception) n'a pas d'équivalent dans Next : gap connu, voir
-            // docs/manuel-regles-gestion-pointage-ca.md.
-            ->where('statut', 'A_TRAITER')
+            ->where('statut', 'AJOURNE_DMG')
             ->whereHas('droitPaiement', function ($query) use ($periode) {
                 $query->where('periode_id', $periode->id)
-                    ->whereNotNull('pointage_id');
+                    ->whereNotNull('pointage_id')
+                    ->whereHas('pointage', fn ($pointage) => $pointage->where('statut', 'VALIDE'));
             })
             ->whereHas('droitPaiement.pointage.stage', function ($query) use ($filters, $user) {
 
@@ -226,18 +226,17 @@ class PointageCipController extends Controller
     {
         $stage = $paiement->droitPaiement?->pointage?->stage;
         $beneficiaire = $stage?->beneficiaire;
+        $decision = $paiement->decisions
+            ->where('decision', 'AJOURNE_DMG')
+            ->sortByDesc('decide_le')
+            ->first();
 
         return [
             'id' => $paiement->id,
             'stage_id' => $stage?->id,
             'statut' => 'AJOURNE_DMG',
-            // Legacy `dmg_ajourne_date` = paiement.created_at (date de mise en attente DMG).
-            'date_ajournement' => $paiement->created_at?->toDateString(),
-            // Legacy stocke un motif libre par paiement (`paiements.observation`), non repris dans
-            // Next (colonne absente de la table `paiements`) : gap connu, voir
-            // docs/manuel-regles-gestion-pointage-ca.md. Le front retombe sur le motif de la
-            // dernière décision (ex. ajournement CA) si `decisions` en contient une.
-            'observation_dmg' => null,
+            'date_ajournement' => ($decision?->decide_le ?? $paiement->created_at)?->toDateString(),
+            'observation_dmg' => $decision?->motif ?: 'Ajourné par la DMG',
             'decisions' => $paiement->decisions->values(),
             'stage' => [
                 'id' => $stage?->id,

@@ -94,23 +94,32 @@ class PointageService
         };
 
         $pointageStatuts = Pointage::where('periode_id', $periodeId)
-            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA'])
+            ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP'])
             ->whereHas('stage', $stageFilterScope)
             ->selectRaw('statut, COUNT(*) as total')
             ->groupBy('statut')
             ->pluck('total', 'statut');
 
         $counts['effectue'] = (int) (($pointageStatuts['SOUMIS'] ?? 0) + ($pointageStatuts['VALIDE'] ?? 0) + ($pointageStatuts['CORRIGE_CIP'] ?? 0));
-        $counts['ajourne_ca'] = (int) ($pointageStatuts['AJOURNE_CA'] ?? 0);
+
+        // Legacy `PointageService::getPointageAjournerByChefAgence()` restreint aux stagiaires encore
+        // dans le dispositif (`contrats_pae.id_situation_stage = 1`) : même filtre que l'onglet
+        // correspondant dans PointageCipController, sinon le badge et la liste divergent.
+        $counts['ajourne_ca'] = Pointage::where('periode_id', $periodeId)
+            ->where('statut', 'AJOURNE_CA')
+            ->whereHas('stage', function ($q) use ($stageFilterScope) {
+                $q->where('situation_stage', SituationStage::CODE_EN_COURS);
+                $stageFilterScope($q);
+            })
+            ->count();
 
         $user = Auth::user();
 
-        // Legacy status_dmg=0 (en attente de traitement DMG), pas status_dmg=2 (réellement ajourné) :
-        // cf. commentaire dans PointageCipController::buildLegacyAjourneDmgQuery().
-        $counts['ajourne_dmg'] = Paiement::where('statut', 'A_TRAITER')
+        $counts['ajourne_dmg'] = Paiement::where('statut', 'AJOURNE_DMG')
             ->whereHas('droitPaiement', function ($q) use ($periodeId) {
                 $q->where('periode_id', $periodeId)
-                    ->whereNotNull('pointage_id');
+                    ->whereNotNull('pointage_id')
+                    ->whereHas('pointage', fn ($pointage) => $pointage->where('statut', 'VALIDE'));
             })
             ->whereHas('droitPaiement.pointage.stage', function ($q) use ($stageFilterScope, $user) {
 
