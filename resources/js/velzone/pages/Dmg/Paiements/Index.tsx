@@ -124,11 +124,15 @@ interface StagiaireRow {
     statut: string;
 }
 
+// `demarrage` / `presence` sont les totaux du mois. Le détail par cohorte ne concerne que le
+// démarrage : la présence couvre le mois entier et ignore cette notion.
 interface Compteurs {
-    global: { demarrage: number; presence: number };
-    cohorte1: { demarrage: number; presence: number };
-    cohorte2: { demarrage: number; presence: number };
-    cohorte3: { demarrage: number; presence: number };
+    demarrage: number;
+    presence: number;
+    global: { demarrage: number };
+    cohorte1: { demarrage: number };
+    cohorte2: { demarrage: number };
+    cohorte3: { demarrage: number };
 }
 
 interface Filters {
@@ -967,17 +971,16 @@ const DmgPaiementsIndex = (props: PageProps) => {
     // `undefined` = la prop différée n'est pas encore arrivée : la carte affiche un spinner
     // plutôt qu'un 0 trompeur.
     const statCards = useMemo(() => [
-        { label: 'Attente Démarrage', value: compteurs?.global?.demarrage, icon: 'ri-flag-line', color: 'primary' },
-        { label: 'Attente Présence', value: compteurs?.global?.presence, icon: 'ri-user-follow-line', color: 'info' },
+        { label: 'Attente Démarrage', value: compteurs?.demarrage, icon: 'ri-flag-line', color: 'primary' },
+        { label: 'Attente Présence', value: compteurs?.presence, icon: 'ri-user-follow-line', color: 'info' },
         { label: 'Dossiers en cours', value: props.dossiers?.length, icon: 'ri-folder-2-line', color: 'warning' },
-        { label: 'Total à traiter', value: compteurs ? (compteurs.global?.demarrage ?? 0) + (compteurs.global?.presence ?? 0) : undefined, icon: 'ri-time-line', color: 'success' },
+        { label: 'Total à traiter', value: compteurs ? (compteurs.demarrage ?? 0) + (compteurs.presence ?? 0) : undefined, icon: 'ri-time-line', color: 'success' },
     ], [compteurs, props.dossiers]);
 
-    /* ─── Cohorte badges ─── */
-    const cohortBadge = (cohorteKey: string, type: 'demarrage' | 'presence') => {
-        if (!compteurs || !compteurs[cohorteKey as keyof Compteurs]) return null;
-        const count = compteurs[cohorteKey as keyof Compteurs]?.[type] ?? 0;
-        return <Badge color="secondary" pill className="ms-1 fs-11">{count}</Badge>;
+    /* ─── Cohorte badges (démarrage uniquement) ─── */
+    const cohortBadge = (cohorteKey: 'global' | 'cohorte1' | 'cohorte2' | 'cohorte3') => {
+        if (!compteurs || !compteurs[cohorteKey]) return null;
+        return <Badge color="secondary" pill className="ms-1 fs-11">{compteurs[cohorteKey]?.demarrage ?? 0}</Badge>;
     };
 
     /* ═══════════════════════════════════════════════════════════════════
@@ -1115,13 +1118,13 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                 <NavItem>
                                     <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '1' }, 'fw-semibold py-3')} onClick={() => toggleTab('1')}>
                                         <i className="ri-flag-line me-1 align-middle"></i>
-                                        Attente Démarrage <Badge color="primary" pill className="ms-2">{compteurs?.global?.demarrage ?? attenteDemarrage.length}</Badge>
+                                        Attente Démarrage <Badge color="primary" pill className="ms-2">{compteurs?.demarrage ?? attenteDemarrage.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
                                     <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '2' }, 'fw-semibold py-3')} onClick={() => toggleTab('2')}>
                                         <i className="ri-user-follow-line me-1 align-middle"></i>
-                                        Attente Présence <Badge color="info" pill className="ms-2">{compteurs?.global?.presence ?? attentePresence.length}</Badge>
+                                        Attente Présence <Badge color="info" pill className="ms-2">{compteurs?.presence ?? attentePresence.length}</Badge>
                                     </NavLink>
                                 </NavItem>
                                 <NavItem>
@@ -1255,22 +1258,22 @@ const DmgPaiementsIndex = (props: PageProps) => {
 <Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
                                         <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'global' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('global')}>
-                                                Cohorte Global {cohortBadge('global', 'demarrage')}
+                                                Cohorte Global {cohortBadge('global')}
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte1' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte1')}>
-                                                Cohorte 1 {cohortBadge('cohorte1', 'demarrage')}
+                                                Cohorte 1 {cohortBadge('cohorte1')}
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte2' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte2')}>
-                                                Cohorte 2 {cohortBadge('cohorte2', 'demarrage')}
+                                                Cohorte 2 {cohortBadge('cohorte2')}
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
                                             <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte3' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte3')}>
-                                                Cohorte 3 {cohortBadge('cohorte3', 'demarrage')}
+                                                Cohorte 3 {cohortBadge('cohorte3')}
                                             </NavLink>
                                         </NavItem>
                                     </Nav>
@@ -1312,7 +1315,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                         <Button color="info" size="sm" onClick={applyFilters} disabled={isLoading}>
                                             <i className="ri-search-line me-1"></i>Appliquer
                                         </Button>
-                                        <Badge color="info" pill className="fs-11">{currentPresenceRows.length} paiement(s)</Badge>
+                                        <Badge color="info" pill className="fs-11">{compteurs?.presence ?? currentPresenceRows.length} paiement(s)</Badge>
                                     </div>
                                     {/* ── Actions globales présence ── */}
                                     <Card className="border shadow-none mb-3">

@@ -18,10 +18,14 @@ class AttentePaiementDmgController extends Controller
     {
         $mois = $request->string('mois', Carbon::now()->format('Y-m'))->toString();
         $filters = $request->only(['agence_id', 'entreprise_id', 'source_financement_id', 'type_stage_id', 'type_structure_id', 'date_debut', 'date_fin', 'search', 'dossier_physique']);
-        $query = $request->string('type', 'demarrage')->toString() === 'presence'
+        $presence = $request->string('type', 'demarrage')->toString() === 'presence';
+        $query = $presence
             ? $this->service->attentePaiementPresence($filters, $mois)
             : $this->service->attentePaiementDemarrage($filters, $mois);
-        $query = $this->service->applyCohorteFilter($query, $request->string('cohorte', 'global')->toString());
+        // La cohorte ne découpe que le démarrage (cf. DmgService::applyCohorteFilter()).
+        if (! $presence) {
+            $query = $this->service->applyCohorteFilter($query, $request->string('cohorte', 'global')->toString());
+        }
         $perPage = min(max($request->integer('per_page', 50), 10), 200);
         $page = $query->orderByDesc('paiements.created_at')->paginate($perPage);
 
@@ -32,9 +36,15 @@ class AttentePaiementDmgController extends Controller
         ]);
     }
 
+    /**
+     * Les actions « toute la liste » portent désormais sur le mois entier (jusqu'à
+     * DmgService::LIMITE_LISTE_ATTENTE paiements) : la règle `exists` par élément, qui coûte
+     * une requête par identifiant, est remplacée par le contrôle d'éligibilité que le service
+     * fait déjà en une passe (il refuse toute sélection contenant un paiement inconnu).
+     */
     public function ajourner(Request $request): RedirectResponse
     {
-        $data = $request->validate(['paiement_ids' => ['required', 'array', 'min:1', 'max:500'], 'paiement_ids.*' => ['integer', 'distinct', 'exists:paiements,id'], 'motif' => ['required', 'string', 'min:5', 'max:1000']]);
+        $data = $request->validate(['paiement_ids' => ['required', 'array', 'min:1', 'max:'.DmgService::LIMITE_LISTE_ATTENTE], 'paiement_ids.*' => ['integer', 'distinct'], 'motif' => ['required', 'string', 'min:5', 'max:1000']]);
         $nombre = $this->service->ajournerPaiements($data['paiement_ids'], $data['motif'], $request->user());
 
         return back()->with('success', "{$nombre} paiement(s) ajourne(s).");
@@ -42,7 +52,7 @@ class AttentePaiementDmgController extends Controller
 
     public function marquerDossierPhysique(Request $request): RedirectResponse
     {
-        $data = $request->validate(['paiement_ids' => ['required', 'array', 'min:1', 'max:500'], 'paiement_ids.*' => ['integer', 'distinct', 'exists:paiements,id'], 'statut' => ['required', 'in:EN_ATTENTE,RECU,CONFORME']]);
+        $data = $request->validate(['paiement_ids' => ['required', 'array', 'min:1', 'max:'.DmgService::LIMITE_LISTE_ATTENTE], 'paiement_ids.*' => ['integer', 'distinct'], 'statut' => ['required', 'in:EN_ATTENTE,RECU,CONFORME']]);
         $nombre = $this->service->marquerDossiersPhysiques($data['paiement_ids'], $data['statut'], $request->user());
 
         return back()->with('success', "{$nombre} dossier(s) physique(s) marque(s).");

@@ -59,13 +59,14 @@ class PaiementDmgController extends Controller
                 $this->dmgService->applyCohorteFilter(
                     $this->dmgService->attentePaiementDemarrage($filters, $mois),
                     $cohorte
-                )->orderByDesc('paiements.created_at')->limit(500)->get()
+                )->orderByDesc('paiements.created_at')->limit(DmgService::LIMITE_LISTE_ATTENTE)->get()
             ), 'demarrage'),
+            // Aucune cohorte ici : la présence couvre le mois entier (cf. applyCohorteFilter()).
             'attentePresence' => Inertia::defer(fn () => $this->corbeilles->paiementRows(
                 $this->dmgService->attentePaiementPresence($filters, $mois)
-                    ->orderByDesc('paiements.created_at')->limit(500)->get()
+                    ->orderByDesc('paiements.created_at')->limit(DmgService::LIMITE_LISTE_ATTENTE)->get()
             ), 'presence'),
-            // 8 COUNT sur la requête lourde : isolé pour ne pas retarder l'arrivée des listes.
+            // 5 COUNT sur la requête lourde : isolé pour ne pas retarder l'arrivée des listes.
             'compteurs' => Inertia::defer(fn () => $this->compteurs(
                 $this->dmgService->attentePaiementDemarrage($filters, $mois),
                 $this->dmgService->attentePaiementPresence($filters, $mois),
@@ -235,14 +236,24 @@ class PaiementDmgController extends Controller
         ]);
     }
 
+    /**
+     * Compteurs de l'écran : les totaux des deux files, puis le détail par cohorte du seul
+     * démarrage. Compter la présence par cohorte renvoyait le résidu « hors cohorte »
+     * (1 stagiaire sur 2 415 en 2026-08) là où l'onglet affiche bien le mois entier.
+     *
+     * @return array<string, int|array<string, int>>
+     */
     private function compteurs(Builder $demarrageBase, Builder $presenceBase): array
     {
-        $result = [];
-        foreach (['global', 'cohorte1', 'cohorte2', 'cohorte3'] as $cohorte) {
-            $demarrage = $this->dmgService->applyCohorteFilter(clone $demarrageBase, $cohorte);
-            $presence = $this->dmgService->applyCohorteFilter(clone $presenceBase, $cohorte);
+        $result = [
+            'demarrage' => (clone $demarrageBase)->count(),
+            'presence' => $presenceBase->count(),
+        ];
 
-            $result[$cohorte] = ['demarrage' => $demarrage->count(), 'presence' => $presence->count()];
+        foreach (['global', 'cohorte1', 'cohorte2', 'cohorte3'] as $cohorte) {
+            $result[$cohorte] = [
+                'demarrage' => $this->dmgService->applyCohorteFilter(clone $demarrageBase, $cohorte)->count(),
+            ];
         }
 
         return $result;

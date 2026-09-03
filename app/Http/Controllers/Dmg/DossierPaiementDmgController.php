@@ -22,7 +22,9 @@ class DossierPaiementDmgController extends Controller
 
     public function generer(Request $request): RedirectResponse
     {
-        $data = $request->validate(['periode_id' => ['required', 'integer', 'exists:periodes,id'], 'paiement_ids' => ['required', 'array', 'min:1', 'max:500'], 'paiement_ids.*' => ['integer', 'distinct', 'exists:paiements,id']]);
+        // Valider « toute la liste » de présence porte sur le mois entier : plafond aligné sur
+        // la liste et `exists` par élément laissé au contrôle groupé de genererDossiersPaiement().
+        $data = $request->validate(['periode_id' => ['required', 'integer', 'exists:periodes,id'], 'paiement_ids' => ['required', 'array', 'min:1', 'max:'.DmgService::LIMITE_LISTE_ATTENTE], 'paiement_ids.*' => ['integer', 'distinct']]);
         $dossiers = $this->service->genererDossiersPaiement($data['periode_id'], $data['paiement_ids'], $request->user());
 
         return back()->with('success', $dossiers->count().' dossier(s) genere(s).');
@@ -89,7 +91,7 @@ class DossierPaiementDmgController extends Controller
     {
         $groupe = $this->pdfService->genererPdfs($groupe);
 
-        return back()->with('success', 'PDFs generes pour le multi-dossier ' . $groupe->numero . '.');
+        return back()->with('success', 'PDFs generes pour le multi-dossier '.$groupe->numero.'.');
     }
 
     public function downloadAttestation(DossierGroupe $groupe): Response

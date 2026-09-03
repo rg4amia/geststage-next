@@ -18,8 +18,10 @@ class ExportPaiementDmgController extends Controller
         $data = $request->validate([
             'type' => ['required', 'in:etat_paiement,attestation_demarrage,attestation_presence,fusion_tresor'],
             'mois' => ['required', 'date_format:Y-m', 'exists:periodes,code'],
-            'ids' => ['nullable', 'array', 'max:500'],
-            'ids.*' => ['integer', 'distinct', 'exists:paiements,id'],
+            'ids' => ['nullable', 'array', 'max:'.DmgService::LIMITE_LISTE_ATTENTE],
+            // Un identifiant inconnu est de toute façon écarté par le `whereIn` ci-dessous :
+            // inutile de payer une requête `exists` par ligne sur un export de tout un mois.
+            'ids.*' => ['integer', 'distinct'],
         ]);
         $filters = $request->only(['agence_id', 'entreprise_id', 'source_financement_id', 'type_stage_id', 'type_structure_id', 'date_debut', 'date_fin', 'search', 'dossier_physique']);
         $nature = $data['type'] === 'attestation_presence' ? 'presence' : $request->string('nature', 'demarrage')->toString();
@@ -30,7 +32,9 @@ class ExportPaiementDmgController extends Controller
         if ($ids = $data['ids'] ?? []) {
             $query->whereIn('paiements.id', $ids);
         }
-        $paiements = $query->orderBy('paiements.id')->limit(500)->get();
+        // « Tous les stagiaires » doit couvrir la file entière : l'attestation de présence de
+        // 2026-08 s'arrêtait à 500 lignes pour 2 415 stagiaires attendus.
+        $paiements = $query->orderBy('paiements.id')->limit(DmgService::LIMITE_LISTE_ATTENTE)->get();
 
         abort_if($paiements->isEmpty(), 404, 'Aucun paiement eligible pour cet export.');
 

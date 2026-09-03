@@ -333,7 +333,7 @@ class StagiaireDesseController extends Controller
             ];
         }
 
-        return $this->collectionPaginate($profils, 10);
+        return $this->collectionPaginate($profils, 5);
     }
 
     /**

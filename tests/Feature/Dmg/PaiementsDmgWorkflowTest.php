@@ -65,13 +65,42 @@ class PaiementsDmgWorkflowTest extends TestCase
                     ->component('Dmg/Paiements/Index')
                     ->loadDeferredProps(['compteurs', 'demarrage'], fn (Assert $differe) => $differe
                         ->where('compteurs.global.demarrage', 1)
-                        ->where('compteurs.global.presence', 0)
+                        ->where('compteurs.presence', 0)
                         ->has('attenteDemarrage', 1)
                         ->where('attenteDemarrage.0.id', $demarrage->id)));
 
             $this->get('/dmg/paiements/generer-pdf?type=etat_paiement&mois=2026-08&ids[]='.$demarrage->id)
                 ->assertOk()
                 ->assertHeader('content-type', 'application/pdf');
+        });
+    }
+
+    public function test_la_presence_ignore_la_cohorte_selectionnee(): void
+    {
+        // La cohorte ne qualifie que l'entrée en stage. Compter ou filtrer la présence avec
+        // elle vidait l'onglet : sur 2026-08 la page annonçait 1 stagiaire (le résidu « hors
+        // cohorte ») pour 2 415 attendus par l'ancien Gestage.
+        $this->travelTo(Carbon::parse('2026-08-04'), function () {
+            $this->seed(RolePermissionSeeder::class);
+            $user = User::factory()->create();
+            $user->assignRole('administrateur');
+            $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+
+            // Stage demarre le 10 du mois precedent, droit cree ce mois-ci : cohorte 2.
+            $presence = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-07-10');
+
+            $this->actingAs($user)->get('/dmg/paiements?mois=2026-08&cohorte=cohorte1')
+                ->assertOk()
+                ->assertInertia(fn (Assert $page) => $page
+                    ->loadDeferredProps(['compteurs', 'presence'], fn (Assert $differe) => $differe
+                        ->where('compteurs.presence', 1)
+                        ->has('attentePresence', 1)
+                        ->where('attentePresence.0.id', $presence->id)));
+
+            $this->getJson('/dmg/paiements/json?mois=2026-08&type=presence&cohorte=cohorte1')
+                ->assertOk()
+                ->assertJsonPath('total', 1)
+                ->assertJsonPath('data.0.id', $presence->id);
         });
     }
 

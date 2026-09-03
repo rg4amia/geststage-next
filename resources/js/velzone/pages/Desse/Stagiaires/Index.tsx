@@ -21,10 +21,12 @@ import {
     NavLink,
     Row,
     Spinner,
+    Table,
     TabContent,
     TabPane,
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
+import ServerPagination, { normalizePagination } from '../../../Components/Common/ServerPagination';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 
 /* ─── Types ─── */
@@ -139,6 +141,9 @@ const DesseStagiairesIndex = (props: PageProps) => {
     const [currentTab, setCurrentTab] = useState(tab || 'attente');
     const [currentTypeDoublon, setCurrentTypeDoublon] = useState(typeDoublon || 'piece_identite');
     const [currentGroupeCle, setCurrentGroupeCle] = useState<string | null>(doublonCle || null);
+    const [expandedGroupKeys, setExpandedGroupKeys] = useState<string[]>(() => (
+        tab === 'doublons' && !doublonCle && data?.data?.[0]?.cle ? [data.data[0].cle] : []
+    ));
     const [selectedFilters, setSelectedFilters] = useState({
         agence_id: filters?.agence_id || '',
         entreprise_id: filters?.entreprise_id || '',
@@ -256,6 +261,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
     const toggleTab = (t: string) => {
         if (currentTab !== t) {
             setCurrentTab(t);
+            setExpandedGroupKeys([]);
             applyNav(t, currentTypeDoublon, selectedFilters);
         }
     };
@@ -264,6 +270,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
         if (currentTypeDoublon !== t) {
             setCurrentTypeDoublon(t);
             setCurrentGroupeCle(null);
+            setExpandedGroupKeys([]);
             applyNav('doublons', t, selectedFilters);
         }
     };
@@ -279,6 +286,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
     const backToGroupes = useCallback(
         () => {
             setCurrentGroupeCle(null);
+            setExpandedGroupKeys([]);
             applyNav('doublons', currentTypeDoublon, selectedFilters);
         },
         [applyNav, currentTypeDoublon, selectedFilters],
@@ -445,6 +453,25 @@ return;
         () => doublonTypes.find((d) => d.value === currentTypeDoublon)?.label || currentTypeDoublon,
         [doublonTypes, currentTypeDoublon],
     );
+
+    const duplicateGroups = useMemo(
+        () => currentTab === 'doublons' && !currentGroupeCle ? (data?.data || []) : [],
+        [currentTab, currentGroupeCle, data],
+    );
+
+    const toggleDuplicateGroup = (cle: string) => {
+        setExpandedGroupKeys((expanded) => {
+            const effectiveExpanded = expanded.length > 0
+                ? expanded
+                : duplicateGroups[0]?.cle
+                    ? [duplicateGroups[0].cle]
+                    : [];
+
+            return effectiveExpanded.includes(cle)
+                ? effectiveExpanded.filter((key) => key !== cle)
+                : [...effectiveExpanded, cle];
+        });
+    };
 
     /* Vue « profils du groupe » : une ligne par dossier partageant la même clé de doublon. */
     const columnsGroupeProfils = useMemo(
@@ -841,26 +868,146 @@ return;
                             )}
 
                             {/* ─── Tableau (partagé entre tous les onglets) ─── */}
-                            <TableContainerReactTable
-                                columns={currentColumns}
-                                data={data?.data || []}
-                                isGlobalFilter={false}
-                                customPageSize={data?.data?.length || 20}
-                                divClass="table-responsive table-card mt-1 mb-1"
-                                tableClass="align-middle table-nowrap table-hover"
-                                theadClass="table-light"
-                                SearchPlaceholder="Recherche..."
-                                isServerPagination={true}
-                                serverPagination={data}
-                                onPageChange={(page) => {
-                                    const params = buildParams(currentTab, currentTypeDoublon, selectedFilters, currentGroupeCle || undefined);
-                                    params.page = String(page);
-                                    router.get('/desse/stagiaires', params, { preserveState: true, preserveScroll: true });
-                                }}
-                            />
+                            {currentTab === 'doublons' && !currentGroupeCle ? (
+                                <div className="mt-1">
+                                    {duplicateGroups.length > 0 ? duplicateGroups.map((group: any) => {
+                                        const isExpanded = expandedGroupKeys.length === 0
+                                            ? group.cle === duplicateGroups[0]?.cle
+                                            : expandedGroupKeys.includes(group.cle);
+                                        const profiles = group.profils || [];
+                                        const remainingProfiles = Math.max(0, (group.nb_profils || 0) - profiles.length);
 
-                            {/* ─── Pagination serveur ─── */}
-                            {/* (gérée directement dans TableContainerReactTable via isServerPagination) */}
+                                        return (
+                                            <div key={group.cle} className="border rounded-3 overflow-hidden mb-3 bg-white shadow-sm">
+                                                <button
+                                                    type="button"
+                                                    className="w-100 border-0 text-start px-3 py-3 bg-transparent"
+                                                    onClick={() => toggleDuplicateGroup(group.cle)}
+                                                    aria-expanded={isExpanded}
+                                                >
+                                                    <div className="d-flex align-items-center gap-3">
+                                                        <i className={`${isExpanded ? 'ri-arrow-down-s-line' : 'ri-arrow-right-s-line'} fs-20 text-muted flex-shrink-0`} aria-hidden="true"></i>
+                                                        <div className="flex-grow-1 min-w-0">
+                                                            <div className="d-flex flex-wrap align-items-center gap-2">
+                                                                <span className="fw-bold text-dark fs-15">{group.cle}</span>
+                                                                <span
+                                                                    className="badge rounded-pill text-white"
+                                                                    style={{ backgroundColor: '#ff7a24' }}
+                                                                >
+                                                                    {doublonLabel}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-muted small mt-1">
+                                                                Clé normalisée : {String(group.cle).toLowerCase()}
+                                                            </div>
+                                                        </div>
+                                                        <span
+                                                            className="badge rounded-pill text-white flex-shrink-0"
+                                                            style={{ backgroundColor: '#ff6548' }}
+                                                        >
+                                                            <i className="ri-group-line me-1" aria-hidden="true"></i>
+                                                            {group.nb_profils} profils
+                                                        </span>
+                                                    </div>
+                                                </button>
+
+                                                {isExpanded && (
+                                                    <div className="border-top">
+                                                        <div className="table-responsive">
+                                                            <Table hover className="align-middle table-nowrap mb-0">
+                                                                <thead className="table-light">
+                                                                    <tr>
+                                                                        <th scope="col">Demandeur</th>
+                                                                        <th scope="col">Matricule AEJ</th>
+                                                                        <th scope="col">Pièce identité</th>
+                                                                        <th scope="col">Numéro CMU</th>
+                                                                        <th scope="col">Contacts</th>
+                                                                        <th scope="col">Agence</th>
+                                                                        <th scope="col">Statut</th>
+                                                                        <th scope="col" className="text-end">Action</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {profiles.map((profile: any) => {
+                                                                        const beneficiary = profile.stage?.beneficiaire;
+                                                                        const status = profile.stage?.situation_stage;
+
+                                                                        return (
+                                                                            <tr key={profile.id}>
+                                                                                <td>
+                                                                                    <div className="fw-semibold text-uppercase">
+                                                                                        {beneficiary?.nom} {beneficiary?.prenoms}
+                                                                                    </div>
+                                                                                    <small className="text-muted">
+                                                                                        Né(e) le {formatDateFr(beneficiary?.date_naissance)} · {beneficiary?.email || 'email non renseigné'}
+                                                                                    </small>
+                                                                                </td>
+                                                                                <td>{beneficiary?.numero_aej || '-'}</td>
+                                                                                <td>{beneficiary?.numero_piece_identite || '-'}</td>
+                                                                                <td>{beneficiary?.numero_cmu || '-'}</td>
+                                                                                <td>{beneficiary?.telephone_principal || beneficiary?.email || '-'}</td>
+                                                                                <td>{profile.stage?.agence?.nom || '-'}</td>
+                                                                                <td>
+                                                                                    {status ? <Badge color="success" className="text-uppercase">{status}</Badge> : '-'}
+                                                                                </td>
+                                                                                <td className="text-end">
+                                                                                    <Button color="light" size="sm" onClick={() => openDoublonModal(profile)} disabled={isProcessing}>
+                                                                                        <i className="ri-eye-line align-bottom me-1"></i> Voir
+                                                                                    </Button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                </tbody>
+                                                            </Table>
+                                                        </div>
+                                                        {remainingProfiles > 0 && (
+                                                            <div className="d-flex justify-content-center border-top p-3">
+                                                                <Button color="primary" size="sm" outline onClick={() => openGroupe(group)}>
+                                                                    Voir les {group.nb_profils} profils
+                                                                </Button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        );
+                                    }) : (
+                                        <div className="text-center py-5 text-muted border rounded-3">
+                                            <i className="ri-inbox-line fs-24 d-block mb-2"></i>
+                                            Aucun groupe de doublons trouvé.
+                                        </div>
+                                    )}
+
+                                    {data && <ServerPagination
+                                        pagination={normalizePagination(data)}
+                                        onPageChange={(page) => {
+                                            const params = buildParams(currentTab, currentTypeDoublon, selectedFilters);
+                                            params.page = String(page);
+                                            router.get('/desse/stagiaires', params, { preserveState: true, preserveScroll: true });
+                                        }}
+                                        className="mt-3"
+                                    />}
+                                </div>
+                            ) : (
+                                <TableContainerReactTable
+                                    columns={currentColumns}
+                                    data={data?.data || []}
+                                    isGlobalFilter={false}
+                                    customPageSize={data?.data?.length || 20}
+                                    divClass="table-responsive table-card mt-1 mb-1"
+                                    tableClass="align-middle table-nowrap table-hover"
+                                    theadClass="table-light"
+                                    SearchPlaceholder="Recherche..."
+                                    isServerPagination={true}
+                                    serverPagination={data}
+                                    onPageChange={(page) => {
+                                        const params = buildParams(currentTab, currentTypeDoublon, selectedFilters, currentGroupeCle || undefined);
+                                        params.page = String(page);
+                                        router.get('/desse/stagiaires', params, { preserveState: true, preserveScroll: true });
+                                    }}
+                                />
+                            )}
                         </CardBody>
                     </Card>
                 </Container>

@@ -23,6 +23,16 @@ use Illuminate\Validation\ValidationException;
 
 class DmgService
 {
+    /**
+     * Plafond des files d'attente DMG chargées d'un bloc (liste écran et export PDF).
+     *
+     * L'ancien plafond de 500 tronquait silencieusement la présence : sur 2026-08 l'ancien
+     * Gestage annonce 2 402 stagiaires là où la page n'en affichait — et n'en imprimait sur
+     * l'attestation de présence — que 500. Le mois le plus chargé de la base pèse ~2 550
+     * paiements, la marge sert de garde-fou, pas de découpage métier.
+     */
+    public const LIMITE_LISTE_ATTENTE = 5000;
+
     /** @param array<string, mixed> $filters */
     public function attentePaiementDemarrage(array $filters, ?string $mois = null): Builder
     {
@@ -247,6 +257,14 @@ class DmgService
             });
     }
 
+    /**
+     * Découpe une file d'attente en cohortes de démarrage.
+     *
+     * La cohorte se lit sur le jour de `date_debut` du stage rapproché du jour de création du
+     * droit : elle ne qualifie que l'entrée en stage. La présence, elle, couvre le mois entier
+     * et ignore cette notion — l'ancien Gestage ne la propose pas non plus sur sa liste de
+     * présence. Ne l'appliquer qu'aux files « attente démarrage ».
+     */
     public function applyCohorteFilter(Builder $query, string $cohorte): Builder
     {
         $day = fn (string $column) => $this->sqlDay($column);
