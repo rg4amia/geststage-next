@@ -51,11 +51,20 @@ class EvenementParcours extends Model
     }
 
     /**
-     * L'acteur à l'origine de l'événement.
+     * L'acteur à l'origine de l'événement (colonne auteur_id, cf. migration
+     * evenements_parcours).
      */
     public function acteur(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'acteur_id');
+        return $this->belongsTo(User::class, 'auteur_id');
+    }
+
+    /**
+     * Alias explicite (même colonne auteur_id) pour la lecture côté affichage.
+     */
+    public function auteur(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'auteur_id');
     }
 
     public function etapeSource(): BelongsTo

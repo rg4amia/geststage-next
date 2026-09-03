@@ -157,12 +157,20 @@ class CorbeilleWiringTest extends TestCase
             'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
         ]);
 
-        $this->post("/desse/stagiaires/retour-agence/{$instanceRetour->id}/valider")
-            ->assertRedirect();
+        $this->post("/desse/stagiaires/retour-agence/{$instanceRetour->id}/valider", [
+            'decision' => 'valide',
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('instances_parcours', [
             'id' => $instanceRetour->id,
             'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+        ]);
+
+        // La validation est journalisée avec la décision, l'auteur et l'étape source.
+        $this->assertDatabaseHas('evenements_parcours', [
+            'instance_parcours_id' => $instanceRetour->id,
+            'auteur_id' => $user->id,
+            'type' => 'DESSE_RETOUR_VALIDATION',
         ]);
 
         // Garde-fou : une instance hors des corbeilles de retour (déjà engagée ailleurs) ne
@@ -174,13 +182,192 @@ class CorbeilleWiringTest extends TestCase
             'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
         ]);
 
-        $this->post("/desse/stagiaires/retour-agence/{$instanceEngagee->id}/valider")
-            ->assertRedirect();
+        $this->post("/desse/stagiaires/retour-agence/{$instanceEngagee->id}/valider", [
+            'decision' => 'valide',
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('instances_parcours', [
             'id' => $instanceEngagee->id,
             'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
         ]);
+    }
+
+    public function test_traitement_retour_chef_agence_ajourne_avec_motif_et_historique(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Role::create(['name' => 'desse', 'guard_name' => 'web']);
+
+        $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
+        $etape = EtapeParcours::factory()->create([
+            'definition_parcours_id' => $definition->id,
+            'code' => 'CIP_AJOURNE_DESSE',
+            'nom' => 'Ajourné DESSE',
+            'code_corbeille' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+            'initiale' => true,
+        ]);
+
+        $instanceAjournee = InstanceParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etape->id,
+            'stage_id' => Stage::factory()->create()->id,
+            'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        ]);
+
+        // « Ajourner » sans motif : la validation échoue et le dossier ne bouge pas.
+        $this->post("/desse/stagiaires/retour-agence/{$instanceAjournee->id}/valider", [
+            'decision' => 'ajourne',
+        ])->assertRedirect()->assertSessionHasErrors('motif');
+
+        $this->assertDatabaseHas('instances_parcours', [
+            'id' => $instanceAjournee->id,
+            'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        ]);
+
+        // « Ajourner » avec motif : le dossier reste dans le circuit retour pour le CIP et le
+        // traitement est journalisé (portage du bloc etat/motif de stage.edit_validation).
+        $this->post("/desse/stagiaires/retour-agence/{$instanceAjournee->id}/valider", [
+            'decision' => 'ajourne',
+            'motif' => 'Le numéro de pièce ne correspond pas au dossier d\'origine, merci de corriger.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('instances_parcours', [
+            'id' => $instanceAjournee->id,
+            'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        ]);
+
+        $this->assertDatabaseHas('evenements_parcours', [
+            'instance_parcours_id' => $instanceAjournee->id,
+            'auteur_id' => $user->id,
+            'type' => 'DESSE_RETOUR_AJOURNEMENT',
+        ]);
+        $evenement = \App\Models\Workflow\EvenementParcours::where('instance_parcours_id', $instanceAjournee->id)
+            ->where('type', 'DESSE_RETOUR_AJOURNEMENT')
+            ->first();
+        $this->assertSame('ajourne', $evenement->donnees['decision']);
+        $this->assertStringContainsString('numéro de pièce', $evenement->donnees['motif']);
+    }
+
+    public function test_doublons_groupes_par_cle_avec_vue_profils_du_groupe(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        Role::create(['name' => 'cip', 'guard_name' => 'web']);
+
+        $def = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
+        $etape = EtapeParcours::factory()->create([
+            'definition_parcours_id' => $def->id,
+            'code' => 'EN_STAGE',
+            'nom' => 'En stage',
+            'code_corbeille' => CorbeilleEnum::EN_STAGE->value,
+            'initiale' => true,
+        ]);
+
+        // Deux bénéficiaires distincts partageant la même pièce d'identité (vrai doublon)
+        // + un troisième avec une pièce unique (ne doit pas apparaître dans les groupes).
+        $piecePartagee = 'CI-DOUBLON-123';
+        $beneficiaires = [];
+        foreach ([['AEJ-AA1', 'DOE', 'JOHN', $piecePartagee], ['AEJ-AA2', 'DOE', 'JANE', $piecePartagee], ['AEJ-AA3', 'MARTIN', 'PAUL', 'CI-SOLO-456']] as [$aej, $nom, $prenoms, $piece]) {
+            $beneficiaires[] = \App\Models\Beneficiary\Beneficiaire::create([
+                'numero_aej' => $aej,
+                'nom' => $nom,
+                'prenoms' => $prenoms,
+                'date_naissance' => '2000-05-10',
+                'sexe' => 'M',
+                'numero_piece_identite' => $piece,
+                'actif' => true,
+            ]);
+        }
+
+        foreach ($beneficiaires as $b) {
+            $stage = Stage::factory()->create(['beneficiaire_id' => $b->id]);
+            InstanceParcours::create([
+                'definition_parcours_id' => $def->id,
+                'etape_courante_id' => $etape->id,
+                'stage_id' => $stage->id,
+                'corbeille_actuelle' => CorbeilleEnum::EN_STAGE->value,
+            ]);
+        }
+
+        // Vue maître : un seul groupe (la clé partagée), nb_profils = 2, le solo est exclu.
+        $this->get('/desse/stagiaires?tab=doublons&type_doublon=piece_identite')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Desse/Stagiaires/Index')
+                ->where('doublonCle', null)
+                ->where('groupe', null)
+                ->has('data.data', 1)
+                ->where('data.data.0.cle', $piecePartagee)
+                ->where('data.data.0.nb_profils', 2)
+                ->where('data.data.0.profils.0.stage.beneficiaire.numero_aej', 'AEJ-AA1')
+            );
+
+        // Vue détail : les profils du groupe sélectionné.
+        $this->get('/desse/stagiaires?tab=doublons&type_doublon=piece_identite&doublon_cle='.rawurlencode($piecePartagee))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Desse/Stagiaires/Index')
+                ->where('doublonCle', $piecePartagee)
+                ->where('groupe.cle', $piecePartagee)
+                ->where('groupe.nb_profils', 2)
+                ->has('data.data', 2)
+            );
+    }
+
+    public function test_historique_retour_chef_agence_expose_decision_motif_auteur_et_date(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Role::create(['name' => 'desse', 'guard_name' => 'web']);
+
+        $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
+        $etape = EtapeParcours::factory()->create([
+            'definition_parcours_id' => $definition->id,
+            'code' => 'CIP_AJOURNE_DESSE',
+            'nom' => 'Ajourné DESSE',
+            'code_corbeille' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+            'initiale' => true,
+        ]);
+
+        $stage = Stage::factory()->create();
+
+        $instance = InstanceParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etape->id,
+            'stage_id' => $stage->id,
+            'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        ]);
+
+        // Un premier retour au CIP (ajournement), puis une validation : l'historique doit
+        // restituer les deux traitements dans l'ordre, avec décision, motif, auteur et date.
+        $this->post("/desse/stagiaires/retour-agence/{$instance->id}/valider", [
+            'decision' => 'ajourne',
+            'motif' => 'Le numéro de pièce ne correspond pas au dossier d\'origine, merci de corriger.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->post("/desse/stagiaires/retour-agence/{$instance->id}/valider", [
+            'decision' => 'valide',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $response = $this->getJson("/desse/stagiaires/retour-agence/{$instance->id}/historique")
+            ->assertOk()
+            ->assertJsonPath('instance_id', $instance->id)
+            ->assertJsonPath('beneficiaire.nom', $stage->beneficiaire->nom);
+
+        $evenements = $response->json('evenements');
+        $this->assertCount(2, $evenements);
+
+        // Le plus récent d'abord (validation), puis l'ajournement avec son motif.
+        $this->assertSame('DESSE_RETOUR_VALIDATION', $evenements[0]['type']);
+        $this->assertSame('valide', $evenements[0]['donnees']['decision']);
+        $this->assertSame($user->nom, $evenements[0]['auteur']);
+        $this->assertNotNull($evenements[0]['survenu_le']);
+
+        $this->assertSame('DESSE_RETOUR_AJOURNEMENT', $evenements[1]['type']);
+        $this->assertSame('ajourne', $evenements[1]['donnees']['decision']);
+        $this->assertStringContainsString('numéro de pièce', $evenements[1]['donnees']['motif']);
     }
 
     public function test_validation_retour_chef_agence_oriente_vers_la_presence_si_cycle_demarre(): void
@@ -227,8 +414,9 @@ class CorbeilleWiringTest extends TestCase
             'version_verrouillage' => 0,
         ]);
 
-        $this->post("/desse/stagiaires/retour-agence/{$instanceEnCours->id}/valider")
-            ->assertRedirect();
+        $this->post("/desse/stagiaires/retour-agence/{$instanceEnCours->id}/valider", [
+            'decision' => 'valide',
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('instances_parcours', [
             'id' => $instanceEnCours->id,
@@ -244,8 +432,9 @@ class CorbeilleWiringTest extends TestCase
             'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
         ]);
 
-        $this->post("/desse/stagiaires/retour-agence/{$instancePasDemarree->id}/valider")
-            ->assertRedirect();
+        $this->post("/desse/stagiaires/retour-agence/{$instancePasDemarree->id}/valider", [
+            'decision' => 'valide',
+        ])->assertRedirect();
 
         $this->assertDatabaseHas('instances_parcours', [
             'id' => $instancePasDemarree->id,

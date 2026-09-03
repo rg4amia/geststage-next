@@ -42,6 +42,8 @@ interface DoublonTypeOption {
 interface PageProps {
     tab: string;
     typeDoublon: string;
+    doublonCle?: string | null;
+    groupe?: { cle: string; nb_profils: number } | null;
     data: any;
     filters: Record<string, string>;
     counts: { attente: number; doublons: number; retour_chefagence: number; doublons_traites: number };
@@ -75,6 +77,42 @@ const decisionBadge = (decision: string) => {
     return <span className="badge bg-success-subtle text-success">Non avéré</span>;
 };
 
+const formatDateTimeFr = (dateStr: string | null | undefined) => {
+    if (!dateStr) {
+        return '-';
+    }
+
+    try {
+        return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })
+            + ' ' + new Date(dateStr).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+        return dateStr;
+    }
+};
+
+const corbeilleLabel = (code: string) => {
+    const map: Record<string, string> = {
+        cip_ajourne_desse: "Ajourné par la DESSE — en correction CIP",
+        desse_retour_agence: 'Retour agence (à traiter par la DESSE)',
+        dmg_attente_paiement_presence: 'DMG — attente paiement présence',
+        dmg_attente_paiement_demarrage: 'DMG — attente paiement démarrage',
+    };
+
+    return map[code] || code;
+};
+
+/* ─── Rendu de la timeline d'historique (Retour Chef d'Agence) ─── */
+const evenementStyle = (type: string) => {
+    switch (type) {
+        case 'DESSE_RETOUR_VALIDATION':
+            return { badge: 'success', libelle: 'Validé par la DESSE', icone: 'ri-check-line', pastille: { borderColor: '#10b981', color: '#10b981' } };
+        case 'DESSE_RETOUR_AJOURNEMENT':
+            return { badge: 'warning', libelle: 'Renvoyé au CIP par la DESSE', icone: 'ri-arrow-go-back-line', pastille: { borderColor: '#f59e0b', color: '#f59e0b' } };
+        default:
+            return { badge: 'secondary', libelle: 'Traitement du dossier', icone: 'ri-file-transfer-line', pastille: { borderColor: '#6c757d', color: '#6c757d' } };
+    }
+};
+
 /* ═══════════════════════════════════════════════════════════
    COMPOSANT PRINCIPAL
    ═══════════════════════════════════════════════════════════ */
@@ -82,6 +120,8 @@ const DesseStagiairesIndex = (props: PageProps) => {
     const {
         tab,
         typeDoublon,
+        doublonCle = null,
+        groupe = null,
         data,
         filters = {},
         counts = { attente: 0, doublons: 0, retour_chefagence: 0, doublons_traites: 0 },
@@ -98,6 +138,7 @@ const DesseStagiairesIndex = (props: PageProps) => {
 
     const [currentTab, setCurrentTab] = useState(tab || 'attente');
     const [currentTypeDoublon, setCurrentTypeDoublon] = useState(typeDoublon || 'piece_identite');
+    const [currentGroupeCle, setCurrentGroupeCle] = useState<string | null>(doublonCle || null);
     const [selectedFilters, setSelectedFilters] = useState({
         agence_id: filters?.agence_id || '',
         entreprise_id: filters?.entreprise_id || '',
@@ -121,6 +162,12 @@ const DesseStagiairesIndex = (props: PageProps) => {
     const [decisionDoublon, setDecisionDoublon] = useState('non_avere');
     const [motifDoublon, setMotifDoublon] = useState('');
 
+    /* ─── Modale Traitement Retour Chef d'Agence (validé/ajourné + motif) ─── */
+    const [retourModalOpen, setRetourModalOpen] = useState(false);
+    const [selectedRetour, setSelectedRetour] = useState<any>(null);
+    const [retourDecision, setRetourDecision] = useState('valide');
+    const [retourMotif, setRetourMotif] = useState('');
+
     /* ─── Modale Détails (Doublons Traités) ─── */
     const [detailModalOpen, setDetailModalOpen] = useState(false);
     const [selectedDecision, setSelectedDecision] = useState<any>(null);
@@ -130,26 +177,80 @@ const DesseStagiairesIndex = (props: PageProps) => {
         setDetailModalOpen(true);
     };
 
+    /* ─── Modale Historique (Retour Chef d'Agence) ─── */
+    const [historiqueModalOpen, setHistoriqueModalOpen] = useState(false);
+    const [historiqueLoading, setHistoriqueLoading] = useState(false);
+    const [historiqueData, setHistoriqueData] = useState<{
+        instance_id: number;
+        beneficiaire?: { nom?: string; prenoms?: string };
+        corbeille_actuelle?: string;
+        evenements: any[];
+    } | null>(null);
+
+    const openHistoriqueModal = async (row: any) => {
+        setHistoriqueModalOpen(true);
+        setHistoriqueLoading(true);
+        setHistoriqueData(null);
+
+        try {
+            const response = await fetch(`/desse/stagiaires/retour-agence/${row.id}/historique`, {
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const payload = await response.json();
+
+            if (!response.ok) {
+                throw new Error(payload.message || 'Erreur lors du chargement de l\'historique.');
+            }
+
+            setHistoriqueData(payload);
+        } catch (error) {
+            alert(error instanceof Error ? error.message : "Impossible de charger l'historique de ce dossier.");
+            setHistoriqueModalOpen(false);
+        } finally {
+            setHistoriqueLoading(false);
+        }
+    };
+
+    const closeHistoriqueModal = () => {
+        if (!historiqueLoading) {
+            setHistoriqueModalOpen(false);
+            setHistoriqueData(null);
+        }
+    };
+
     /* ─── Navigation / Filtres ─── */
-    const applyNav = useCallback(
-        (activeTab: string, activeTypeDoublon: string, currentFilters: typeof selectedFilters) => {
+    /** Paramètres d'URL communs (onglet + type de doublon + clé de groupe + filtres). */
+    const buildParams = useCallback(
+        (activeTab: string, activeTypeDoublon: string, currentFilters: typeof selectedFilters, groupeCle?: string) => {
             const params: Record<string, string> = { tab: activeTab };
 
             if (activeTab === 'doublons') {
                 params.type_doublon = activeTypeDoublon;
+
+                if (groupeCle) {
+                    params.doublon_cle = groupeCle;
+                }
             }
 
             Object.entries(currentFilters).forEach(([key, val]) => {
                 if (val) {
-params[key] = val;
-}
+                    params[key] = val;
+                }
             });
-            router.get('/desse/stagiaires', params, {
+
+            return params;
+        },
+        [],
+    );
+
+    const applyNav = useCallback(
+        (activeTab: string, activeTypeDoublon: string, currentFilters: typeof selectedFilters, groupeCle?: string) => {
+            router.get('/desse/stagiaires', buildParams(activeTab, activeTypeDoublon, currentFilters, groupeCle), {
                 preserveState: true,
                 preserveScroll: true,
             });
         },
-        [],
+        [buildParams],
     );
 
     const toggleTab = (t: string) => {
@@ -162,9 +263,26 @@ params[key] = val;
     const toggleTypeDoublon = (t: string) => {
         if (currentTypeDoublon !== t) {
             setCurrentTypeDoublon(t);
+            setCurrentGroupeCle(null);
             applyNav('doublons', t, selectedFilters);
         }
     };
+
+    const openGroupe = useCallback(
+        (groupe: any) => {
+            setCurrentGroupeCle(groupe.cle);
+            applyNav('doublons', currentTypeDoublon, selectedFilters, groupe.cle);
+        },
+        [applyNav, currentTypeDoublon, selectedFilters],
+    );
+
+    const backToGroupes = useCallback(
+        () => {
+            setCurrentGroupeCle(null);
+            applyNav('doublons', currentTypeDoublon, selectedFilters);
+        },
+        [applyNav, currentTypeDoublon, selectedFilters],
+    );
 
     const handleFilterChange = (field: string, value: string) => {
         const newFilters = { ...selectedFilters, [field]: value };
@@ -218,12 +336,40 @@ return;
     };
 
     /* ─── Actions : Retour Chef d'Agence ───
-       Portage de la validation legacy (étape 7/8 → DMG, etape_next=9) : le dossier est libéré
-       du circuit doublon et transmis à la file DMG pour vérification et paiement. */
-    const renvoyerDossier = (id: number) => {
-        if (confirm("Valider ce dossier et le transmettre à la DMG pour vérification et paiement ?")) {
-            router.post(`/desse/stagiaires/retour-agence/${id}/valider`, {}, { preserveScroll: true });
+       Portage du traitement legacy (étape 7/8, etape_next=9) : choix validé/ajourné + motif,
+       enregistrés avant la transition (dossier → file DMG ou retour CIP pour nouvelle correction). */
+    const openRetourModal = (row: any) => {
+        setSelectedRetour(row);
+        setRetourDecision('valide');
+        setRetourMotif('');
+        setRetourModalOpen(true);
+    };
+
+    const confirmRetour = () => {
+        if (!selectedRetour || isProcessing) {
+return;
+}
+
+        if (retourDecision === 'ajourne' && retourMotif.trim().length < 5) {
+            alert('Le motif est obligatoire (5 caractères minimum) pour renvoyer le dossier au CIP.');
+
+            return;
         }
+
+        setIsProcessing(true);
+        router.post(`/desse/stagiaires/retour-agence/${selectedRetour.id}/valider`, {
+            decision: retourDecision,
+            motif: retourMotif.trim(),
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                setRetourModalOpen(false);
+                setSelectedRetour(null);
+                setRetourDecision('valide');
+                setRetourMotif('');
+            },
+            onFinish: () => setIsProcessing(false),
+        });
     };
 
     /* ─── Actions : Doublons à Traiter ─── */
@@ -295,39 +441,40 @@ return;
         [isProcessing],
     );
 
-    const columnsDoublons = useMemo(
+    const doublonLabel = useMemo(
+        () => doublonTypes.find((d) => d.value === currentTypeDoublon)?.label || currentTypeDoublon,
+        [doublonTypes, currentTypeDoublon],
+    );
+
+    /* Vue « profils du groupe » : une ligne par dossier partageant la même clé de doublon. */
+    const columnsGroupeProfils = useMemo(
         () => [
             { header: '#', cell: (cell: any) => cell.row.index + 1, size: 50 },
             {
-                header: 'Bénéficiaire',
+                header: 'Demandeur',
                 cell: (cell: any) => {
                     const b = cell.row.original.stage?.beneficiaire;
 
                     return (
                         <div>
                             <h5 className="fs-14 mb-1 text-danger">{b?.nom} {b?.prenoms}</h5>
-                            <p className="text-muted mb-0">{formatDateFr(b?.date_naissance)}</p>
+                            <p className="text-muted mb-0">Né(e) le {formatDateFr(b?.date_naissance)} · {b?.email || 'email non renseigné'}</p>
                         </div>
                     );
                 },
             },
-            { header: 'N° AEJ', cell: (cell: any) => cell.row.original.stage?.beneficiaire?.numero_aej || '-' },
-            { header: "N° Pièce d'Identité", cell: (cell: any) => cell.row.original.stage?.beneficiaire?.numero_piece_identite || '-' },
-            { header: 'Téléphone', cell: (cell: any) => cell.row.original.stage?.beneficiaire?.telephone_principal || '-' },
-            {
-                header: 'Trésor Money / Wave',
-                cell: (cell: any) => {
-                    const b = cell.row.original.stage?.beneficiaire;
-
-                    return b?.numero_tresor_money || b?.numero_wave || '-';
-                },
-            },
-            { header: 'Entreprise', cell: (cell: any) => cell.row.original.stage?.entreprise?.raison_sociale || '-' },
+            { header: 'Matricule AEJ', cell: (cell: any) => cell.row.original.stage?.beneficiaire?.numero_aej || '-' },
+            { header: "Pièce d'identité", cell: (cell: any) => cell.row.original.stage?.beneficiaire?.numero_piece_identite || '-' },
+            { header: 'N° CMU', cell: (cell: any) => cell.row.original.stage?.beneficiaire?.numero_cmu || '-' },
+            { header: 'Contacts', cell: (cell: any) => cell.row.original.stage?.beneficiaire?.telephone_principal || '-' },
             { header: 'Agence', cell: (cell: any) => cell.row.original.stage?.agence?.nom || '-' },
-            { header: 'Type de stage', cell: (cell: any) => cell.row.original.stage?.type_stage?.nom || '-' },
             {
-                header: 'Statut',
-                cell: () => <Badge color="warning">Doublon Suspecté</Badge>,
+                header: 'Situation',
+                cell: (cell: any) => {
+                    const s = cell.row.original.stage?.situation_stage;
+
+                    return s ? <Badge color="success" className="text-capitalize">{s}</Badge> : '-';
+                },
             },
             {
                 header: 'Actions',
@@ -339,6 +486,59 @@ return;
             },
         ],
         [isProcessing],
+    );
+
+    /* Vue « groupes » (maître) : une ligne par clé de doublon avec ses profils en aperçu. */
+    const columnsGroupes = useMemo(
+        () => [
+            { header: '#', cell: (cell: any) => cell.row.index + 1, size: 50 },
+            {
+                header: 'Clé du doublon',
+                cell: (cell: any) => {
+                    const row = cell.row.original;
+                    const typeFound = doublonTypes.find((d) => d.value === currentTypeDoublon);
+
+                    return (
+                        <div>
+                            <span className="badge bg-warning-subtle text-warning fw-semibold fs-13">{row.cle}</span>
+                            <p className="text-muted small mb-0 mt-1">Clé normalisée : {row.cle?.toLowerCase()} · {typeFound?.label || currentTypeDoublon}</p>
+                        </div>
+                    );
+                },
+            },
+            {
+                header: 'Profils',
+                cell: (cell: any) => {
+                    const row = cell.row.original;
+
+                    return (
+                        <div className="d-flex flex-wrap gap-1">
+                            {(row.profils || []).map((p: any) => (
+                                <span key={p.id} className="badge bg-soft-dark text-dark border rounded-pill">
+                                    {p.stage?.beneficiaire?.nom} {p.stage?.beneficiaire?.prenoms}
+                                </span>
+                            ))}
+                            {row.nb_profils > (row.profils || []).length && (
+                                <span className="badge bg-light text-muted border rounded-pill">+{row.nb_profils - (row.profils || []).length}</span>
+                            )}
+                        </div>
+                    );
+                },
+            },
+            { header: 'Nb profils', cell: (cell: any) => <Badge color="info" pill>{cell.row.original.nb_profils}</Badge>, size: 90 },
+            { header: 'N° AEJ (aperçu)', cell: (cell: any) => cell.row.original.profils?.[0]?.stage?.beneficiaire?.numero_aej || '-' },
+            { header: 'Agence (aperçu)', cell: (cell: any) => cell.row.original.profils?.[0]?.stage?.agence?.nom || '-' },
+            {
+                header: 'Actions',
+                cell: (cell: any) => (
+                    <Button color="info" size="sm" outline onClick={() => openGroupe(cell.row.original)}>
+                        <i className="ri-eye-line align-bottom me-1"></i> Voir les profils
+                    </Button>
+                ),
+                size: 150,
+            },
+        ],
+        [doublonTypes, currentTypeDoublon, openGroupe],
     );
 
     const columnsRetourChefAgence = useMemo(
@@ -359,9 +559,14 @@ return;
             {
                 header: 'Actions',
                 cell: (cell: any) => (
-                    <Button color="success" size="sm" onClick={() => renvoyerDossier(cell.row.original.id)} disabled={isProcessing}>
-                        <i className="ri-send-plane-line align-bottom me-1"></i> Renvoyer / Valider
-                    </Button>
+                    <div className="d-flex gap-2">
+                        <Button color="success" size="sm" outline onClick={() => openRetourModal(cell.row.original)} disabled={isProcessing}>
+                            <i className="ri-send-plane-line align-bottom me-1"></i> Valider / Renvoyer
+                        </Button>
+                        <Button color="info" size="sm" outline onClick={() => openHistoriqueModal(cell.row.original)}>
+                            <i className="ri-history-line align-bottom me-1"></i> Détails
+                        </Button>
+                    </div>
                 ),
             },
         ],
@@ -432,12 +637,12 @@ return;
 
     const currentColumns = useMemo(() => {
         switch (currentTab) {
-            case 'doublons': return columnsDoublons;
+            case 'doublons': return currentGroupeCle ? columnsGroupeProfils : columnsGroupes;
             case 'retour_chefagence': return columnsRetourChefAgence;
             case 'doublons_traites': return columnsDoublonsTraites;
             default: return columnsAttente;
         }
-    }, [currentTab, columnsAttente, columnsDoublons, columnsRetourChefAgence, columnsDoublonsTraites]);
+    }, [currentTab, currentGroupeCle, columnsAttente, columnsGroupes, columnsGroupeProfils, columnsRetourChefAgence, columnsDoublonsTraites]);
 
     const tabs = [
         { key: 'attente', label: 'ATTENTE VALIDATION', count: counts.attente, color: 'primary', icon: 'ri-time-line' },
@@ -616,6 +821,25 @@ return;
                                 </TabPane>
                             </TabContent>
 
+                            {/* ─── Contexte de groupe (vue « profils du groupe ») ─── */}
+                            {currentTab === 'doublons' && currentGroupeCle && (
+                                <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 border rounded-3 p-3 mb-3 bg-light-subtle">
+                                    <div className="d-flex flex-wrap align-items-center gap-2">
+                                        <Button color="light" size="sm" outline onClick={backToGroupes}>
+                                            <i className="ri-arrow-left-line align-bottom me-1"></i> Groupes
+                                        </Button>
+                                        <div className="d-flex align-items-center gap-2">
+                                            <span className="badge bg-warning-subtle text-warning fw-semibold fs-14 py-2 px-3">{currentGroupeCle}</span>
+                                            <Badge color="orange" className="text-uppercase">{doublonLabel}</Badge>
+                                        </div>
+                                    </div>
+                                    <button type="button" className="btn btn-sm rounded-pill px-3" style={{ backgroundColor: '#e87853', color: '#fff' }}>
+                                        <i className="ri-group-line me-1"></i>
+                                        {groupe?.nb_profils ?? data?.total ?? 0} profils
+                                    </button>
+                                </div>
+                            )}
+
                             {/* ─── Tableau (partagé entre tous les onglets) ─── */}
                             <TableContainerReactTable
                                 columns={currentColumns}
@@ -629,17 +853,8 @@ return;
                                 isServerPagination={true}
                                 serverPagination={data}
                                 onPageChange={(page) => {
-                                    const params: Record<string, string> = { tab: currentTab, page: String(page) };
-
-                                    if (currentTab === 'doublons') {
-params.type_doublon = currentTypeDoublon;
-}
-
-                                    Object.entries(selectedFilters).forEach(([k, v]) => {
- if (v) {
-params[k] = v;
-} 
-});
+                                    const params = buildParams(currentTab, currentTypeDoublon, selectedFilters, currentGroupeCle || undefined);
+                                    params.page = String(page);
                                     router.get('/desse/stagiaires', params, { preserveState: true, preserveScroll: true });
                                 }}
                             />
@@ -671,6 +886,169 @@ params[k] = v;
                     <Button color="danger" onClick={confirmRejet} disabled={isProcessing}>
                         {isProcessing ? <><Spinner size="sm" className="me-2" />Traitement...</> : 'Confirmer le Rejet'}
                     </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ═══════════════════════════════════════════
+                MODALE — Traitement Retour Chef d'Agence
+               ═══════════════════════════════════════════ */}
+            <Modal isOpen={retourModalOpen} toggle={() => !isProcessing && setRetourModalOpen(false)} centered>
+                <ModalHeader toggle={() => !isProcessing && setRetourModalOpen(false)}>
+                    Traitement du dossier retourné par le Chef d'Agence
+                </ModalHeader>
+                <ModalBody>
+                    {selectedRetour && (
+                        <p className="fw-medium mb-3">
+                            Dossier : {selectedRetour.stage?.beneficiaire?.nom} {selectedRetour.stage?.beneficiaire?.prenoms}
+                            <span className="text-muted fw-normal"> — {selectedRetour.stage?.entreprise?.raison_sociale || 'Entreprise inconnue'}</span>
+                        </p>
+                    )}
+                    <div className="mb-3">
+                        <Label className="form-label">Décision</Label>
+                        <div className="d-flex flex-column gap-2">
+                            <div
+                                className={`border rounded-3 p-2 px-3 d-flex align-items-start gap-2 ${retourDecision === 'valide' ? 'border-success bg-success-subtle' : ''}`}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => setRetourDecision('valide')}
+                            >
+                                <Input type="radio" name="retour_decision" value="valide" checked={retourDecision === 'valide'} onChange={() => setRetourDecision('valide')} />
+                                <div>
+                                    <span className="fw-medium d-block">Valider et transmettre à la DMG</span>
+                                    <small className="text-muted">Le dossier est libéré du circuit doublon et rejoint la file DMG (présence ou démarrage selon le cycle).</small>
+                                </div>
+                            </div>
+                            <div
+                                className={`border rounded-3 p-2 px-3 d-flex align-items-start gap-2 ${retourDecision === 'ajourne' ? 'border-warning bg-warning-subtle' : ''}`}
+                                style={{ cursor: 'pointer' }}
+                                onClick={() => setRetourDecision('ajourne')}
+                            >
+                                <Input type="radio" name="retour_decision" value="ajourne" checked={retourDecision === 'ajourne'} onChange={() => setRetourDecision('ajourne')} />
+                                <div>
+                                    <span className="fw-medium d-block">Renvoyer au CIP pour nouvelle correction</span>
+                                    <small className="text-muted">Le dossier reste dans le circuit retour ; le motif ci-dessous est obligatoire.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mb-0">
+                        <Label className="form-label">Motif{retourDecision === 'ajourne' && <span className="text-danger"> *</span>}</Label>
+                        <Input
+                            type="textarea"
+                            rows={3}
+                            placeholder={retourDecision === 'ajourne' ? 'Ex : Le numéro de pièce ne correspond pas au dossier d\'origine…' : 'Motif facultatif pour l\'historique du traitement'}
+                            value={retourMotif}
+                            onChange={(e) => setRetourMotif(e.target.value)}
+                        />
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setRetourModalOpen(false)} disabled={isProcessing}>Annuler</Button>
+                    <Button
+                        color={retourDecision === 'ajourne' ? 'warning' : 'success'}
+                        onClick={confirmRetour}
+                        disabled={isProcessing || (retourDecision === 'ajourne' && retourMotif.trim().length < 5)}
+                    >
+                        {isProcessing ? <><Spinner size="sm" className="me-2" />Traitement...</> : retourDecision === 'ajourne' ? 'Renvoyer au CIP' : 'Valider et transmettre à la DMG'}
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ═══════════════════════════════════════════
+                MODALE — Historique (Retour Chef d'Agence)
+               ═══════════════════════════════════════════ */}
+            <Modal isOpen={historiqueModalOpen} toggle={closeHistoriqueModal} centered size="lg">
+                <ModalHeader toggle={closeHistoriqueModal}>
+                    <i className="ri-history-line me-2 text-info"></i>
+                    Historique du dossier retourné par le Chef d'Agence
+                </ModalHeader>
+                <ModalBody>
+                    {historiqueLoading ? (
+                        <div className="text-center py-5">
+                            <Spinner color="info" />
+                            <p className="text-muted mt-2 mb-0">Chargement de l'historique…</p>
+                        </div>
+                    ) : historiqueData ? (
+                        <React.Fragment>
+                            {/* En-tête dossier */}
+                            <div className="border rounded p-3 mb-3 bg-light-subtle">
+                                <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div>
+                                        <p className="mb-0 fw-medium">
+                                            <i className="ri-user-3-line me-1"></i>
+                                            {historiqueData.beneficiaire?.nom || '-'} {historiqueData.beneficiaire?.prenoms || ''}
+                                        </p>
+                                        <small className="text-muted">Dossier n° {historiqueData.instance_id}</small>
+                                    </div>
+                                    <div className="text-end">
+                                        <small className="text-muted d-block">Situation actuelle</small>
+                                        <Badge color="warning" className="text-capitalize">
+                                            {corbeilleLabel(historiqueData.corbeille_actuelle || '')}
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {historiqueData.evenements.length === 0 ? (
+                                <p className="text-muted text-center py-4 mb-0">
+                                    <i className="ri-information-line me-1"></i>
+                                    Aucun traitement enregistré pour ce dossier.
+                                </p>
+                            ) : (
+                                <div className="position-relative">
+                                    {/* Ligne verticale de la timeline */}
+                                    <div className="position-absolute top-0 bottom-0 start-1" style={{ width: 2, backgroundColor: '#e9ebec' }}></div>
+                                    {historiqueData.evenements.map((ev: any) => (
+                                        <div className="d-flex gap-3 mb-3 position-relative" key={ev.id}>
+                                            {/* Pastille */}
+                                            <div
+                                                className="rounded-circle d-flex align-items-center justify-content-center flex-shrink-0"
+                                                style={{ width: 26, height: 26, zIndex: 1, backgroundColor: '#fff', border: '2px solid', ...evenementStyle(ev.type).pastille }}
+                                            >
+                                                <i className={evenementStyle(ev.type).icone} style={{ fontSize: 12 }}></i>
+                                            </div>
+                                            {/* Contenu */}
+                                            <div className="flex-grow-1 border rounded-3 p-3 bg-white">
+                                                <div className="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                                                    <div>
+                                                        <Badge color={evenementStyle(ev.type).badge} className="me-2">{evenementStyle(ev.type).libelle}</Badge>
+                                                        {ev.etape_cible?.nom && ev.etape_cible?.code !== 'CIP_AJOURNE_DESSE' && (
+                                                            <span className="text-muted small">
+                                                                <i className="ri-arrow-right-line me-1"></i>{ev.etape_cible.nom}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <small className="text-muted">
+                                                        <i className="ri-time-line me-1"></i>
+                                                        {formatDateTimeFr(ev.survenu_le)} · {ev.auteur || 'Utilisateur inconnu'}
+                                                    </small>
+                                                </div>
+                                                {ev.type === 'DESSE_RETOUR_AJOURNEMENT' && (
+                                                    <p className="mb-0 mt-2 small">
+                                                        <strong className="text-warning">Motif du renvoi au CIP :</strong>{' '}
+                                                        {ev.donnees?.motif || '-'}
+                                                    </p>
+                                                )}
+                                                {ev.type === 'DESSE_RETOUR_VALIDATION' && (
+                                                    <p className="mb-0 mt-2 small">
+                                                        <strong className="text-success">Décision :</strong> dossier validé et transmis à la DMG
+                                                        {ev.donnees?.motif ? ` — ${ev.donnees.motif}` : ''}
+                                                    </p>
+                                                )}
+                                                {ev.type === 'MIGRATION_STATUT' && (ev.donnees?.commentaire || ev.donnees?.description) && (
+                                                    <p className="mb-0 mt-2 small text-muted">
+                                                        {ev.donnees?.commentaire || ev.donnees?.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </React.Fragment>
+                    ) : null}
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={closeHistoriqueModal} disabled={historiqueLoading}>Fermer</Button>
                 </ModalFooter>
             </Modal>
 

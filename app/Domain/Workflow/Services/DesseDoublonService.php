@@ -168,6 +168,40 @@ class DesseDoublonService
     }
 
     /**
+     * Clé de regroupement normalisée d'une instance éligible, pour le type donné,
+     * calculée sur ses relations chargées (stage.beneficiaire / stage.type_stage).
+     * Retourne null quand la ligne ne porte pas la clé (champ absent).
+     *
+     * Doit produire exactement la même valeur que `computeDuplicateKeys()` (UPPER + TRIM sur
+     * chaque composant, concaténés par `|`), sinon le regroupement d'affichage divergerait
+     * de la détection.
+     */
+    public function normalizedKeyFor(InstanceParcours $instance, DoublonTypeEnum $type): ?string
+    {
+        $beneficiaire = $instance->stage?->beneficiaire;
+        $typeStageId = $instance->stage?->type_stage_id;
+
+        if ($beneficiaire === null) {
+            return null;
+        }
+
+        $composants = match ($type) {
+            DoublonTypeEnum::AEJ => [$beneficiaire->numero_aej],
+            DoublonTypeEnum::PIECE_IDENTITE => [$beneficiaire->numero_piece_identite],
+            DoublonTypeEnum::CONTACT_TYPE_STAGE => [$beneficiaire->telephone_principal, $typeStageId],
+            DoublonTypeEnum::IDENTITE_TYPE_STAGE => [$beneficiaire->nom, $beneficiaire->prenoms, $beneficiaire->date_naissance, $typeStageId],
+            DoublonTypeEnum::DIPLOME_TYPE_STAGE => [$beneficiaire->diplome_id, $typeStageId, $beneficiaire->numero_piece_identite],
+            DoublonTypeEnum::COMPTE_PAIEMENT => filled($beneficiaire->numero_tresor_money)
+                ? ['TM:', $beneficiaire->numero_tresor_money]
+                : (filled($beneficiaire->numero_wave) ? ['WV:', $beneficiaire->numero_wave] : []),
+        };
+
+        $cle = implode('|', array_map(fn ($c) => mb_strtoupper(trim((string) $c)), $composants));
+
+        return $cle === '' ? null : $cle;
+    }
+
+    /**
      * Nombre de dossiers en doublon, par type, pour l'affichage des badges des sous-onglets.
      *
      * @return array<string, int>

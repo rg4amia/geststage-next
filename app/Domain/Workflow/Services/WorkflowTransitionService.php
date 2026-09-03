@@ -227,28 +227,92 @@ class WorkflowTransitionService
     }
 
     /**
-     * 10bis. La DESSE valide un dossier « retour Chef d'Agence » (doublon traité par l'agence).
-     * Portage de la validation legacy (étape 7/8 → DMG, TraitementEtapeController etape_next=9 /
-     * IndexDmgController::verification) : le dossier est libéré du circuit doublon et rejoint la
-     * file DMG (équivalent de l'étape 9 « DMG : validé après vérification » côté mapper
-     * LegacyMapperService), où le module DMG crée/reprend les droits et paiements.
+     * 10bis. La DESSE traite un dossier « retour Chef d'Agence » (doublon traité par l'agence).
+     * Portage de la validation legacy (étape 7/8, TraitementEtapeController etape_next=9 /
+     * IndexDmgController::verification), qui enregistrait la décision (etat) et le motif du
+     * traitement avant la transition.
      *
-     * La file cible dépend de l'avancement du dossier : présence si le cycle mensuel de pointage a
-     * déjà démarré (au moins un pointage validé par le Chef d'Agence), sinon démarrage. Sur les
-     * dossiers de retour migrés du legacy, 86/91 ont déjà un cycle présence en cours — les orienter
-     * vers la file « démarrage » les ferait apparaître au mauvais endroit côté DMG.
+     *  - décision « valide » : le dossier est libéré du circuit doublon et rejoint la file DMG
+     *    (équivalent de l'étape 9 « DMG : validé après vérification » côté mapper
+     *    LegacyMapperService), où le module DMG crée/reprend les droits et paiements. La file
+     *    cible dépend de l'avancement du dossier : présence si le cycle mensuel de pointage a
+     *    déjà démarré (au moins un pointage validé par le Chef d'Agence), sinon démarrage.
+     *    Sur les dossiers de retour migrés du legacy, 86/91 ont déjà un cycle présence en cours.
+     *  - décision « ajourne » : le dossier reste dans le circuit « retour agence »
+     *    (cip_ajourne_desse) pour une nouvelle correction par le CIP.
+     *
+     * Chaque traitement est journalisé dans evenements_parcours (type DESSE_RETOUR_VALIDATION /
+     * DESSE_RETOUR_AJOURNEMENT) avec la décision, le motif, l'auteur et les étapes source/cible.
      */
-    public function desseValideRetourAgence(InstanceParcours $instance): void
+    public function desseValideRetourAgence(
+        InstanceParcours $instance,
+        string $decision = 'valide',
+        ?string $motif = null,
+        ?int $auteurId = null
+    ): void {
+        $corbeilleCible = $decision === 'ajourne'
+            ? CorbeilleEnum::CIP_AJOURNE_DESSE
+            : $this->corbeilleDmgSelonCycle($instance);
+
+        $etapeSource = $instance->etape_courante_id
+            ? EtapeParcours::find($instance->etape_courante_id)
+            : null;
+        $etapeCible = $this->etapePourCorbeille($instance->definition_parcours_id, $corbeilleCible);
+
+        $instance->update(['corbeille_actuelle' => $corbeilleCible->value]);
+
+        EvenementParcours::create(array_filter([
+            'instance_parcours_id' => $instance->id,
+            'etape_source_id' => $etapeSource?->id,
+            'etape_cible_id' => $etapeCible?->id,
+            'auteur_id' => $auteurId,
+            'type' => $decision === 'ajourne'
+                ? 'DESSE_RETOUR_AJOURNEMENT'
+                : 'DESSE_RETOUR_VALIDATION',
+            'cle_idempotence' => (string) Str::uuid(),
+            'donnees' => [
+                'decision' => $decision,
+                'motif' => $motif,
+                'corbeille_cible' => $corbeilleCible->value,
+            ],
+            'survenu_le' => now(),
+        ], fn ($valeur) => $valeur !== null));
+    }
+
+    private function corbeilleDmgSelonCycle(InstanceParcours $instance): CorbeilleEnum
     {
         $cyclePresenceDemarre = $instance->stage?->pointages()
             ->where('statut', 'VALIDE')
             ->exists() ?? false;
 
-        $corbeille = $cyclePresenceDemarre
+        return $cyclePresenceDemarre
             ? CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE
             : CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE;
+    }
 
-        $instance->update(['corbeille_actuelle' => $corbeille->value]);
+    /**
+     * Étape du parcours correspondant à une corbeille cible, créée à la volée si absente
+     * (code stable = corbeille en majuscules, comme dans les backfills de migration).
+     * evenements_parcours.etape_cible_id étant NOT NULL, la cible doit toujours exister.
+     */
+    private function etapePourCorbeille(int $definitionParcoursId, CorbeilleEnum $corbeille): EtapeParcours
+    {
+        $code = strtoupper($corbeille->value);
+
+        $existante = EtapeParcours::where('definition_parcours_id', $definitionParcoursId)
+            ->where(function ($q) use ($corbeille, $code) {
+                $q->where('code_corbeille', $corbeille->value)->orWhere('code', $code);
+            })
+            ->first();
+
+        return $existante ?? EtapeParcours::create([
+            'definition_parcours_id' => $definitionParcoursId,
+            'code' => $code,
+            'nom' => $corbeille->label(),
+            'code_corbeille' => $corbeille->value,
+            'initiale' => false,
+            'finale' => false,
+        ]);
     }
 
     /**

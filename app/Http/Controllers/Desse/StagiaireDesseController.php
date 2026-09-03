@@ -13,8 +13,10 @@ use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\DesseDoublonDecision;
+use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -64,10 +66,14 @@ class StagiaireDesseController extends Controller
         $typeDoublon = DoublonTypeEnum::tryFrom((string) $request->query('type_doublon')) ?? DoublonTypeEnum::PIECE_IDENTITE;
         $filters = $request->only(self::FILTER_KEYS);
 
+        // Vue « par groupe » des doublons : sans clé, la liste maître regroupe les profils par
+        // clé de doublon (une ligne = un groupe + nb profils) ; avec `doublon_cle`, on liste
+        // les profils du groupe sélectionné (paginés), en-tête du groupe en contexte.
+        $doublonCle = $request->query('doublon_cle');
+        $groupe = null;
+
         $data = match ($tab) {
-            'doublons' => $this->paginateInstances(
-                $this->applyFilters($this->doublons->eligibleInstancesQuery($typeDoublon), $filters),
-            ),
+            'doublons' => $this->paginateGroupedDoublons($typeDoublon, $filters, $doublonCle, $groupe),
             'retour_chefagence' => $this->paginateInstances(
                 $this->applyFilters($this->corbeillesQuery(self::RETOUR_CHEFAGENCE_CORBEILLES), $filters),
             ),
@@ -82,6 +88,8 @@ class StagiaireDesseController extends Controller
         return Inertia::render('Desse/Stagiaires/Index', [
             'tab' => $tab,
             'typeDoublon' => $typeDoublon->value,
+            'doublonCle' => $doublonCle,
+            'groupe' => $groupe,
             'data' => $data,
             'filters' => $filters,
             'counts' => [
@@ -114,15 +122,26 @@ class StagiaireDesseController extends Controller
     }
 
     /**
-     * Validation finale d'un dossier « Retour Chef d'Agence » : portage de la méthode legacy
+     * Traitement d'un dossier « Retour Chef d'Agence » : portage de la méthode legacy
      * (TraitementEtapeController etape_next=9 → IndexDmgController::verification) qui faisait
-     * passer les dossiers de l'étape 7/8 vers l'étape 9 « DMG : validé après vérification ».
-     * Le dossier est libéré du circuit doublon et rejoint la file DMG (DMG_ATTENTE_PAIEMENT_DEMARRAGE)
-     * où le module DMG reprend les droits/paiements — seule une instance encore dans les corbeilles
-     * de retour (cip_ajourne_desse / desse_retour_agence) peut être traitée ici.
+     * passer les dossiers de l'étape 7/8 vers l'étape 9 « DMG : validé après vérification »,
+     * décision (etat) et motif enregistrés avant la transition.
+     *
+     *  - « valide » : le dossier est libéré du circuit doublon et rejoint la file DMG
+     *    (présence si le cycle de pointage a démarré, démarrage sinon).
+     *  - « ajourne » : le dossier reste dans le circuit retour (cip_ajourne_desse) pour une
+     *    nouvelle correction par le CIP ; le motif est alors obligatoire.
+     *
+     * Seule une instance encore dans les corbeilles de retour (cip_ajourne_desse /
+     * desse_retour_agence) peut être traitée ici.
      */
     public function validerRetourAgence(Request $request, int $id): RedirectResponse
     {
+        $validated = $request->validate([
+            'decision' => ['required', 'in:valide,ajourne'],
+            'motif' => ['nullable', 'string', 'max:1000', 'required_if:decision,ajourne'],
+        ]);
+
         $instance = InstanceParcours::with('stage')->findOrFail($id);
 
         if ($instance->terminee_le !== null
@@ -131,12 +150,64 @@ class StagiaireDesseController extends Controller
                 fn (CorbeilleEnum $c) => $c->value,
                 self::RETOUR_CHEFAGENCE_CORBEILLES
             ), true)) {
-            return back()->with('error', "Ce dossier n'est plus en attente de validation DESSE (il a déjà quitté le circuit « Retour Chef d'Agence ») et ne peut pas être validé ici.");
+            return back()->with('error', "Ce dossier n'est plus en attente de traitement DESSE (il a déjà quitté le circuit « Retour Chef d'Agence ») et ne peut pas être traité ici.");
         }
 
-        $this->workflow->desseValideRetourAgence($instance);
+        $this->workflow->desseValideRetourAgence(
+            $instance,
+            $validated['decision'],
+            $validated['motif'] ?? null,
+            Auth::id(),
+        );
 
-        return back()->with('success', 'Dossier validé par la DESSE et transmis à la DMG pour vérification et paiement.');
+        return back()->with(
+            'success',
+            $validated['decision'] === 'ajourne'
+                ? 'Dossier renvoyé au CIP pour une nouvelle correction (motif enregistré).'
+                : 'Dossier validé par la DESSE et transmis à la DMG pour vérification et paiement.'
+        );
+    }
+
+    /**
+     * Historique de traitement d'un dossier « Retour Chef d'Agence » : les événements du
+     * parcours pertinents (décisions DESSE + traçage de la migration legacy) avec l'auteur,
+     * la date, la décision et le motif, pour alimenter la modale de détail de l'onglet.
+     */
+    public function historiqueRetourAgence(int $id): JsonResponse
+    {
+        $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
+
+        $evenements = $instance->evenements()
+            ->with(['acteur', 'etapeSource', 'etapeCible'])
+            ->whereIn('type', ['DESSE_RETOUR_VALIDATION', 'DESSE_RETOUR_AJOURNEMENT', 'MIGRATION_STATUT'])
+            ->orderByDesc('survenu_le')
+            ->orderByDesc('id')
+            ->get()
+            ->map(fn (EvenementParcours $e): array => [
+                'id' => $e->id,
+                'type' => $e->type,
+                'survenu_le' => $e->survenu_le?->toISOString(),
+                'auteur' => $e->acteur ? $e->acteur->nom : null,
+                'etape_source' => $e->etapeSource ? [
+                    'code' => $e->etapeSource->code,
+                    'nom' => $e->etapeSource->nom,
+                ] : null,
+                'etape_cible' => $e->etapeCible ? [
+                    'code' => $e->etapeCible->code,
+                    'nom' => $e->etapeCible->nom,
+                ] : null,
+                'donnees' => $e->donnees,
+            ]);
+
+        return response()->json([
+            'instance_id' => $instance->id,
+            'beneficiaire' => [
+                'nom' => $instance->stage?->beneficiaire?->nom,
+                'prenoms' => $instance->stage?->beneficiaire?->prenoms,
+            ],
+            'corbeille_actuelle' => $instance->corbeille_actuelle,
+            'evenements' => $evenements,
+        ]);
     }
 
     public function ajourner(Request $request, int $id): RedirectResponse
@@ -207,6 +278,79 @@ class StagiaireDesseController extends Controller
             ->orderByDesc('created_at')
             ->paginate(20)
             ->withQueryString();
+    }
+
+    /**
+     * Liste « Doublons à traiter » regroupée par clé de doublon.
+     *
+     * - Sans `doublonCle` : vue maître — une ligne par groupe de doublons (clé normalisée,
+     *   nombre de profils, aperçu), paginée sur les groupes.
+     * - Avec `doublonCle` : vue détail — les profils du groupe sélectionné (une ligne par
+     *   dossier), paginés, avec les métadonnées du groupe (`groupe`).
+     */
+    private function paginateGroupedDoublons(
+        DoublonTypeEnum $type,
+        array $filters,
+        ?string $doublonCle,
+        ?array &$groupe
+    ) {
+        $query = $this->doublons->eligibleInstancesQuery($type)
+            ->with(self::EAGER_LOADS)
+            ->orderByDesc('instances_parcours.created_at');
+
+        $this->applyFilters($query, $filters);
+
+        $instances = $query->get();
+
+        if ($doublonCle === null) {
+            // Vue maître : un groupe = une clé de doublon partagée par plusieurs profils.
+            $groupes = $instances->groupBy(
+                fn ($i) => (string) ($this->doublons->normalizedKeyFor($i, $type) ?? '')
+            )->filter(fn ($profils, $cle) => $cle !== '');
+
+            $groupes = $groupes->map(function ($profils, $cle) {
+                $preview = $profils->values()->take(5)->map(fn ($p) => $p->toArray());
+
+                return [
+                    'cle' => $cle,
+                    'nb_profils' => $profils->count(),
+                    'profils' => $preview,
+                ];
+            })->values();
+
+            return $this->collectionPaginate($groupes, 10);
+        }
+
+        // Vue détail : profils partageant exactement la clé sélectionnée.
+        $profils = $instances->filter(
+            fn ($i) => $this->doublons->normalizedKeyFor($i, $type) === $doublonCle
+        )->values();
+
+        if ($profils->isNotEmpty()) {
+            $groupe = [
+                'cle' => $doublonCle,
+                'nb_profils' => $profils->count(),
+            ];
+        }
+
+        return $this->collectionPaginate($profils, 10);
+    }
+
+    /**
+     * Pagine une collection en conservant les paramètres d'URL de la requête courante.
+     */
+    private function collectionPaginate(\Illuminate\Support\Collection $items, int $perPage)
+    {
+        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage('page');
+        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items->forPage($page, $perPage)->values(),
+            $items->count(),
+            $perPage,
+            $page,
+            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'query' => request()->query()]
+        );
+
+        return $paginator->withQueryString();
     }
 
     private function paginateDecisions(array $filters)
