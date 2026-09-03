@@ -11,10 +11,11 @@ use App\Http\Controllers\Company\EntrepriseController;
 use App\Http\Controllers\Company\OffreEmploiController;
 use App\Http\Controllers\Daicg\StagiaireDaicgController;
 use App\Http\Controllers\Desse\StagiaireDesseController;
-use App\Http\Controllers\Dmg\OperationDmgController;
 use App\Http\Controllers\Dmg\AttentePaiementDmgController;
 use App\Http\Controllers\Dmg\DossierPaiementDmgController;
 use App\Http\Controllers\Dmg\ExportPaiementDmgController;
+use App\Http\Controllers\Dmg\MultiDossierController;
+use App\Http\Controllers\Dmg\OperationDmgController;
 use App\Http\Controllers\Dmg\OperationPaiementDmgController;
 use App\Http\Controllers\Dmg\PaiementDmgController;
 use App\Http\Controllers\Dmg\RejetDmgController;
@@ -36,7 +37,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'offres' => 'offre_emploi',
     ]);
     Route::resource('inscriptions', InscriptionController::class);
-    Route::get('/api/stagiaires/demandeur/{matricule}', [\App\Http\Controllers\Registration\InscriptionController::class, 'demandeur'])->name('inscriptions.demandeur');
+    Route::get('/api/stagiaires/demandeur/{matricule}', [InscriptionController::class, 'demandeur'])->name('inscriptions.demandeur');
 
     // Phase CIP : Mes Stagiaires et Ajournements
     Route::get('/cip/mes-stagiaires', [MesStagiairesCipController::class, 'index'])->name('cip.mes_stagiaires');
@@ -76,7 +77,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cip/pointages', [PointageCipController::class, 'stagiaireAttentePointage'])->name('cip.pointages.index');
     Route::post('/cip/pointages/soumettre-batch', [PointageCipController::class, 'soumettreBatch'])->name('cip.pointages.soumettre_batch');
     Route::get('/cip/pointages/edit-stagiaire/{id}', [PointageCipController::class, 'editStagiaire'])->name('cip.pointages.edit_stagiaire');
-    Route::put('/cip/pointages/update-stagiaire/{id}', [PointageCipController::class, 'updateStagiaire'])->name('cip.pointages.update_stagiaire');
+    // POST et non PUT : le formulaire de traitement d'un rejet DMG redépose des pièces
+    // justificatives, donc part en multipart/form-data.
+    Route::post('/cip/pointages/update-stagiaire/{id}', [PointageCipController::class, 'updateStagiaire'])->name('cip.pointages.update_stagiaire');
+    Route::post('/cip/pointages/transmettre-correction-dmg/{id}', [PointageCipController::class, 'transmettreCorrectionDmg'])->name('cip.pointages.transmettre_correction_dmg');
 
     Route::post('/cip/pointages/corriger-ajournement-dmg/{id}', [PointageCipController::class, 'corrigerAjournementDmg'])->name('cip.pointages.corriger_ajournement_dmg');
     Route::post('/cip/pointages/soumettre-individuel', [PointageCipController::class, 'soumettreIndividuel'])->name('cip.pointages.soumettre_individuel');
@@ -115,16 +119,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dmg/paiements/dossiers-cb', [PaiementDmgController::class, 'dossiersCbByMois'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.dossiers_cb');
     Route::post('/dmg/paiements/stagiaires', [PaiementDmgController::class, 'stagiairesByDossier'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.stagiaires');
     Route::get('/dmg/paiements/documents', [PaiementDmgController::class, 'documentsByStage'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.documents');
-    Route::get('/dmg/multi-dossier', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'index'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.index');
-    Route::get('/dmg/multi-dossier/dossiers', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getDossiers'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-dossiers');
-    Route::post('/dmg/multi-dossier/stagiaires', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'getStagiaires'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-stagiaires');
-    Route::post('/dmg/multi-dossier/validate', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'validateSelection'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.validate');
-    Route::post('/dmg/multi-dossier/ajourner-dossier', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'ajournerDossier'])->middleware('can:ajourner_paiement_dmg')->name('dmg.multi-dossier.ajourner-dossier');
-    Route::post('/dmg/multi-dossier/ajourner-stagiaire', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'ajournerStagiaire'])->middleware('can:ajourner_paiement_dmg')->name('dmg.multi-dossier.ajourner-stagiaire');
-    Route::post('/dmg/multi-dossier/generer-pdf-paiement', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'generatePdfPaiement'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.generate-pdf-paiement');
-    Route::post('/dmg/multi-dossier/generer-pdf-attestations', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'generatePdfAttestations'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.generate-pdf-attestations');
-    Route::get('/dmg/multi-dossier/download-attestation/{groupe}', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'downloadAttestation'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.download_attestation');
-    Route::get('/dmg/multi-dossier/download-etat-financier/{groupe}', [\App\Http\Controllers\Dmg\MultiDossierController::class, 'downloadEtatFinancier'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.download_etat_financier');
+    Route::get('/dmg/multi-dossier', [MultiDossierController::class, 'index'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.index');
+    Route::get('/dmg/multi-dossier/dossiers', [MultiDossierController::class, 'getDossiers'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-dossiers');
+    Route::post('/dmg/multi-dossier/stagiaires', [MultiDossierController::class, 'getStagiaires'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-stagiaires');
+    Route::post('/dmg/multi-dossier/validate', [MultiDossierController::class, 'validateSelection'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.validate');
+    Route::post('/dmg/multi-dossier/ajourner-dossier', [MultiDossierController::class, 'ajournerDossier'])->middleware('can:ajourner_paiement_dmg')->name('dmg.multi-dossier.ajourner-dossier');
+    Route::post('/dmg/multi-dossier/ajourner-stagiaire', [MultiDossierController::class, 'ajournerStagiaire'])->middleware('can:ajourner_paiement_dmg')->name('dmg.multi-dossier.ajourner-stagiaire');
+    Route::post('/dmg/multi-dossier/generer-pdf-paiement', [MultiDossierController::class, 'generatePdfPaiement'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.generate-pdf-paiement');
+    Route::post('/dmg/multi-dossier/generer-pdf-attestations', [MultiDossierController::class, 'generatePdfAttestations'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.generate-pdf-attestations');
+    Route::get('/dmg/multi-dossier/download-attestation/{groupe}', [MultiDossierController::class, 'downloadAttestation'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.download_attestation');
+    Route::get('/dmg/multi-dossier/download-etat-financier/{groupe}', [MultiDossierController::class, 'downloadEtatFinancier'])->middleware('can:generer_etat_financier')->name('dmg.multi-dossier.download_etat_financier');
     Route::get('/dmg/operations', [OperationDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.operations.index');
     Route::get('/dmg/rejets', [RejetDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.rejets.index');
 
@@ -161,4 +165,4 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/pejedec/af/droits-paiement/{id}/generer', [AafController::class, 'genererPaiement'])->name('pejedec.af.droits.generer_paiement');
 });
 
-require __DIR__ . '/settings.php';
+require __DIR__.'/settings.php';

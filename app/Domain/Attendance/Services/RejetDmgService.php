@@ -70,9 +70,15 @@ class RejetDmgService
      * @var array<int, string>
      */
     public const CHAMPS_STAGE = [
+        // Structure du stage (aligné sur Inscriptions/Create)
+        'agence_id', 'conseiller_id', 'origine_stagiaire_id', 'offre_emploi_id',
+        'source_financement_id', 'type_structure_id', 'date_entree_portefeuille',
+        // Entreprise & encadrement
         'entreprise_id', 'type_stage_id', 'service_affectation', 'intitule_poste', 'localite_stage',
         'commune_stage', 'sous_prefecture_stage', 'nom_encadreur', 'fonction_encadreur',
-        'contact_encadreur', 'statut_stage', 'situation_stage', 'date_debut', 'date_fin_prevue',
+        'contact_encadreur',
+        // Statut, situation, dates
+        'statut_stage', 'situation_stage', 'date_debut', 'date_fin_prevue',
         'nbr_mois_capitaliser', 'date_demarrage_capitalisation',
         'date_demarrage_capitalisation_sans_financiere', 'observations',
     ];
@@ -109,7 +115,7 @@ class RejetDmgService
     /**
      * Applique les corrections de la fiche stagiaire (bénéficiaire + stage + pièces jointes).
      *
-     * @param  array<string, mixed>  $donnees        valeurs déjà validées
+     * @param  array<string, mixed>  $donnees  valeurs déjà validées
      * @param  array<string, UploadedFile>  $fichiers  indexés par code de type de document
      */
     public function appliquerCorrections(Stage $stage, array $donnees, array $fichiers, User $auteur): void
