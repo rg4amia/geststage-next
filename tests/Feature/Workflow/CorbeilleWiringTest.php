@@ -5,12 +5,15 @@ namespace Tests\Feature\Workflow;
 use App\Enums\CorbeilleEnum;
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
+use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Reference\Periode;
+use App\Models\Reference\TypeStage;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
+use App\Models\Workflow\EvenementParcours;
 use App\Models\Workflow\InstanceParcours;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -242,7 +245,7 @@ class CorbeilleWiringTest extends TestCase
             'auteur_id' => $user->id,
             'type' => 'DESSE_RETOUR_AJOURNEMENT',
         ]);
-        $evenement = \App\Models\Workflow\EvenementParcours::where('instance_parcours_id', $instanceAjournee->id)
+        $evenement = EvenementParcours::where('instance_parcours_id', $instanceAjournee->id)
             ->where('type', 'DESSE_RETOUR_AJOURNEMENT')
             ->first();
         $this->assertSame('ajourne', $evenement->donnees['decision']);
@@ -269,7 +272,7 @@ class CorbeilleWiringTest extends TestCase
         $piecePartagee = 'CI-DOUBLON-123';
         $beneficiaires = [];
         foreach ([['AEJ-AA1', 'DOE', 'JOHN', $piecePartagee], ['AEJ-AA2', 'DOE', 'JANE', $piecePartagee], ['AEJ-AA3', 'MARTIN', 'PAUL', 'CI-SOLO-456']] as [$aej, $nom, $prenoms, $piece]) {
-            $beneficiaires[] = \App\Models\Beneficiary\Beneficiaire::create([
+            $beneficiaires[] = Beneficiaire::create([
                 'numero_aej' => $aej,
                 'nom' => $nom,
                 'prenoms' => $prenoms,
@@ -312,6 +315,66 @@ class CorbeilleWiringTest extends TestCase
                 ->where('groupe.cle', $piecePartagee)
                 ->where('groupe.nb_profils', 2)
                 ->has('data.data', 2)
+            );
+    }
+
+    public function test_doublons_cmu_et_type_stage_cmu_sont_exposes_par_la_desse(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+        Role::create(['name' => 'cip', 'guard_name' => 'web']);
+
+        $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
+        $etape = EtapeParcours::factory()->create([
+            'definition_parcours_id' => $definition->id,
+            'code' => 'EN_STAGE',
+            'nom' => 'En stage',
+            'code_corbeille' => CorbeilleEnum::EN_STAGE->value,
+            'initiale' => true,
+        ]);
+        $typeStage = TypeStage::factory()->create();
+        $numeroCmu = 'CMU-DOUBLON-123';
+
+        foreach ([['AEJ-CMU-1', 'DOE', 'JOHN'], ['AEJ-CMU-2', 'DOE', 'JANE']] as [$aej, $nom, $prenoms]) {
+            $beneficiaire = Beneficiaire::create([
+                'numero_aej' => $aej,
+                'nom' => $nom,
+                'prenoms' => $prenoms,
+                'date_naissance' => '2000-05-10',
+                'sexe' => 'M',
+                'numero_cmu' => $numeroCmu,
+                'actif' => true,
+            ]);
+            $stage = Stage::factory()->create([
+                'beneficiaire_id' => $beneficiaire->id,
+                'type_stage_id' => $typeStage->id,
+            ]);
+            InstanceParcours::create([
+                'definition_parcours_id' => $definition->id,
+                'etape_courante_id' => $etape->id,
+                'stage_id' => $stage->id,
+                'corbeille_actuelle' => CorbeilleEnum::EN_STAGE->value,
+            ]);
+        }
+
+        $this->get('/desse/stagiaires?tab=doublons&type_doublon=numero_cmu')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('typeDoublon', 'numero_cmu')
+                ->where('doublonCounts.numero_cmu', 2)
+                ->has('data.data', 1)
+                ->where('data.data.0.cle', $numeroCmu)
+                ->where('data.data.0.nb_profils', 2)
+            );
+
+        $this->get('/desse/stagiaires?tab=doublons&type_doublon=type_stage_cmu')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('typeDoublon', 'type_stage_cmu')
+                ->where('doublonCounts.type_stage_cmu', 2)
+                ->has('data.data', 1)
+                ->where('data.data.0.cle', $typeStage->id.'|'.$numeroCmu)
+                ->where('data.data.0.nb_profils', 2)
             );
     }
 

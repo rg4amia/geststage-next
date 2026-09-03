@@ -2808,7 +2808,7 @@ class MigrateLegacyDataCommand extends Command
      * disparaissent alors des files de paiement DMG. Le champ type_doublon
      * n'existe pas côté legacy : on le déduit en comparant les clés de regroupement
      * (mêmes expressions que DesseDoublonService) du dossier aux clés actuellement en
-     * doublon en base ; si aucun des 6 critères ne matche plus, on garde quand même
+     * doublon en base ; si aucun des critères ne matche plus, on garde quand même
      * une trace sous "compte_paiement" (le champ dédié le plus proche côté legacy)
      * plutôt que de perdre la décision historique.
      */

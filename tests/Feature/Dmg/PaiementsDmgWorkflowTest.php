@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Dmg;
 
+use App\Domain\Payment\Services\DmgService;
 use App\Enums\CorbeilleEnum;
+use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
 use App\Models\Payment\BordereauPaiement;
@@ -14,6 +16,7 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
@@ -166,6 +169,61 @@ class PaiementsDmgWorkflowTest extends TestCase
         $this->post("/dmg/paiements/groupes/{$groupe->id}/transmettre")->assertRedirect();
         $this->assertDatabaseHas('dossiers_groupes', ['id' => $groupe->id, 'statut' => 'TRANSMIS_CB']);
         $this->assertSame(2, DossierPaiement::whereIn('id', $dossiers->pluck('id'))->where('statut', 'TRANSMIS_CB')->count());
+    }
+
+    public function test_le_parefeu_dmg_exclut_les_doublons_cmu_et_type_stage_cmu(): void
+    {
+        $this->travelTo(Carbon::parse('2026-08-04'), function () {
+            $this->seed(RolePermissionSeeder::class);
+            $user = User::factory()->create();
+            $user->assignRole('administrateur');
+            $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+            $typeStage = TypeStage::factory()->create();
+            $definition = DefinitionParcours::factory()->create();
+            $etape = EtapeParcours::factory()->create(['definition_parcours_id' => $definition->id]);
+            $numeroCmu = 'CMU-PAREFEU-123';
+            $paiementIds = [];
+
+            foreach (range(1, 2) as $index) {
+                $beneficiaire = Beneficiaire::factory()->create(['numero_cmu' => $numeroCmu]);
+                $stage = Stage::factory()->create([
+                    'beneficiaire_id' => $beneficiaire->id,
+                    'type_stage_id' => $typeStage->id,
+                    'date_debut' => '2026-07-10',
+                    'date_fin_prevue' => '2026-09-30',
+                ]);
+                Contrat::factory()->create(['stage_id' => $stage->id]);
+                InstanceParcours::create([
+                    'uuid_public' => (string) Str::uuid(),
+                    'definition_parcours_id' => $definition->id,
+                    'etape_courante_id' => $etape->id,
+                    'stage_id' => $stage->id,
+                    'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+                    'version_verrouillage' => 0,
+                ]);
+                $droit = DroitPaiement::create([
+                    'uuid_public' => (string) Str::uuid(),
+                    'stage_id' => $stage->id,
+                    'periode_id' => $periode->id,
+                    'source_financement_id' => $stage->source_financement_id,
+                    'nature' => 'PRESENCE',
+                    'montant' => 45000,
+                    'statut' => 'OUVERT',
+                ]);
+                $paiementIds[] = Paiement::create([
+                    'uuid_public' => (string) Str::uuid(),
+                    'droit_paiement_id' => $droit->id,
+                    'montant' => 45000,
+                    'statut' => 'A_TRAITER',
+                ])->id;
+            }
+
+            $this->assertSame([], app(DmgService::class)
+                ->attentePaiementPresence([], '2026-08')
+                ->whereIn('paiements.id', $paiementIds)
+                ->pluck('paiements.id')
+                ->all());
+        });
     }
 
     private function paiement(Periode $periode, CorbeilleEnum $corbeille, string $nature, string $dateDebut): Paiement

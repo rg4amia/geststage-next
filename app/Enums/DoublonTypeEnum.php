@@ -6,6 +6,8 @@ enum DoublonTypeEnum: string
 {
     case AEJ = 'aej';
     case PIECE_IDENTITE = 'piece_identite';
+    case NUMERO_CMU = 'numero_cmu';
+    case TYPE_STAGE_CMU = 'type_stage_cmu';
     case CONTACT_TYPE_STAGE = 'contact_type_stage';
     case IDENTITE_TYPE_STAGE = 'identite_type_stage';
     case COMPTE_PAIEMENT = 'compte_paiement';
@@ -16,6 +18,8 @@ enum DoublonTypeEnum: string
         return match ($this) {
             self::AEJ => 'Numéro AEJ',
             self::PIECE_IDENTITE => "N° de Pièce d'Identité",
+            self::NUMERO_CMU => 'N° Carte CMU',
+            self::TYPE_STAGE_CMU => 'Type de Stage et CMU',
             self::CONTACT_TYPE_STAGE => 'Type de Stage & Contact',
             self::IDENTITE_TYPE_STAGE => 'Nom, Prénoms, Date de Naissance et Type de Stage',
             self::COMPTE_PAIEMENT => 'Trésor Money ou Wave',

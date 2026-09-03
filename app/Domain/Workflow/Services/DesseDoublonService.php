@@ -36,6 +36,14 @@ class DesseDoublonService
             'expr' => 'UPPER(TRIM(beneficiaires.numero_piece_identite))',
             'guard' => "beneficiaires.numero_piece_identite IS NOT NULL AND TRIM(beneficiaires.numero_piece_identite) != ''",
         ],
+        'numero_cmu' => [
+            'expr' => 'UPPER(TRIM(beneficiaires.numero_cmu))',
+            'guard' => "beneficiaires.numero_cmu IS NOT NULL AND TRIM(beneficiaires.numero_cmu) != ''",
+        ],
+        'type_stage_cmu' => [
+            'expr' => "CONCAT(stages.type_stage_id, '|', UPPER(TRIM(beneficiaires.numero_cmu)))",
+            'guard' => "stages.type_stage_id IS NOT NULL AND beneficiaires.numero_cmu IS NOT NULL AND TRIM(beneficiaires.numero_cmu) != ''",
+        ],
         'contact_type_stage' => [
             'expr' => "CONCAT(UPPER(TRIM(beneficiaires.telephone_principal)), '|', stages.type_stage_id)",
             'guard' => "beneficiaires.telephone_principal IS NOT NULL AND TRIM(beneficiaires.telephone_principal) != ''",
@@ -188,6 +196,8 @@ class DesseDoublonService
         $composants = match ($type) {
             DoublonTypeEnum::AEJ => [$beneficiaire->numero_aej],
             DoublonTypeEnum::PIECE_IDENTITE => [$beneficiaire->numero_piece_identite],
+            DoublonTypeEnum::NUMERO_CMU => [$beneficiaire->numero_cmu],
+            DoublonTypeEnum::TYPE_STAGE_CMU => [$typeStageId, $beneficiaire->numero_cmu],
             DoublonTypeEnum::CONTACT_TYPE_STAGE => [$beneficiaire->telephone_principal, $typeStageId],
             DoublonTypeEnum::IDENTITE_TYPE_STAGE => [$beneficiaire->nom, $beneficiaire->prenoms, $beneficiaire->date_naissance, $typeStageId],
             DoublonTypeEnum::DIPLOME_TYPE_STAGE => [$beneficiaire->diplome_id, $typeStageId, $beneficiaire->numero_piece_identite],
