@@ -386,14 +386,71 @@ class PointageCipController extends Controller
         return redirect()->back()->with('success', 'Pointage corrigé et renvoyé au CA.');
     }
 
-    public function editStagiaire(Request $request, $id)
+    /**
+     * Formulaire de traitement d'un pointage rejeté par la DMG.
+     *
+     * Portage de l'écran legacy `ChefAgence\AttestationPresenceController@editStagiaire`
+     * (vue `stage.chefagence.pointage.update-form`) : le CIP y reprend toute la fiche du
+     * stagiaire, pas seulement ses coordonnées de paiement.
+     */
+    public function editStagiaire(Request $request, $id, RejetDmgService $rejetDmg)
     {
-        $stage = Stage::with(['beneficiaire.typePaiement', 'agence', 'entreprise', 'typeStage', 'sourceFinancement', 'instanceParcours'])->findOrFail($id);
-        $typesPaiement = TypePaiement::orderBy('nom')->get();
+        $stage = Stage::with([
+            'beneficiaire.typePaiement',
+            'beneficiaire.communeResidence',
+            'agence',
+            'entreprise',
+            'typeStage',
+            'sourceFinancement',
+            'conseiller',
+            'instanceParcours',
+            'documents.typeDocument',
+            'documents.versions',
+        ])->findOrFail($id);
+
+        $paiement = $rejetDmg->paiementAjourne($stage);
+        $decisionDmg = $paiement?->decisions
+            ->where('decision', 'AJOURNE_DMG')
+            ->sortByDesc('decide_le')
+            ->first();
 
         return Inertia::render('Cip/Pointages/EditStagiaire', [
             'stage' => $stage,
-            'typesPaiement' => $typesPaiement,
+            'rejet' => $paiement ? [
+                'paiement_id' => $paiement->id,
+                'montant' => $paiement->montant,
+                'motif' => $decisionDmg?->motif ?: 'Ajourné par la DMG',
+                'decide_le' => ($decisionDmg?->decide_le ?? $paiement->created_at)?->toDateString(),
+                'auteur' => $decisionDmg?->auteur?->name,
+            ] : null,
+            // Sans pointage rattaché, la correction reste possible mais pas la transmission :
+            // le front masque alors les boutons « transmettre ».
+            'peutTransmettre' => $rejetDmg->pointageACorriger($stage) !== null,
+            'documents' => $stage->documents->map(fn ($document) => [
+                'code' => $document->typeDocument?->code,
+                'nom' => $document->nom,
+                'derniere_version' => $document->versions->sortByDesc('numero_version')->first()?->only([
+                    'numero_version', 'chemin', 'nom_original',
+                ]),
+            ])->values(),
+            'typesDocument' => collect(RejetDmgService::TYPES_DOCUMENT)
+                ->map(fn (string $nom, string $code) => ['code' => $code, 'nom' => $nom])
+                ->values(),
+            'references' => [
+                'typesPaiement' => TypePaiement::cachedOptions('nom'),
+                'entreprises' => Entreprise::cachedOptions('raison_sociale'),
+                'typesStage' => TypeStage::cachedOptions('nom'),
+                'communes' => Commune::cachedOptions('nom'),
+                'diplomes' => Diplome::cachedOptions('nom'),
+                'niveauxEtude' => NiveauEtude::cachedOptions('nom'),
+                'typesEnseignement' => TypeEnseignement::cachedOptions('nom'),
+                'handicaps' => Handicap::cachedOptions('nom'),
+                'typesHandicap' => TypeHandicap::cachedOptions('nom'),
+                'liensParente' => LienParente::cachedOptions('nom'),
+                'typesPieceIdentite' => DB::table('types_piece_identite')->orderBy('nom')->pluck('nom'),
+                'statutsStage' => DB::table('statuts_stage')->orderBy('nom')->get(['code', 'nom']),
+                'situationsStage' => DB::table('situations_stage')->orderBy('nom')->get(['code', 'nom']),
+            ],
             'returnTo' => [
                 'tab' => $request->query('return_tab', 'ajourne_dmg'),
                 'mois' => $request->query('mois'),
@@ -401,42 +458,153 @@ class PointageCipController extends Controller
         ]);
     }
 
-    public function updateStagiaire(Request $request, $id)
+    /**
+     * Enregistre la correction, et la transmet au Chef d'Agence si l'action le demande.
+     *
+     * Le legacy ne connaissait qu'un geste combiné ; ici `action` distingue la correction
+     * seule (le stagiaire reste dans l'onglet « Ajourné / DMG ») de la correction transmise.
+     */
+    public function updateStagiaire(Request $request, $id, RejetDmgService $rejetDmg)
     {
         $stage = Stage::with('beneficiaire')->findOrFail($id);
 
+        $validated = $request->validate($this->reglesTraitementRejetDmg($request));
+
+        $fichiers = collect(RejetDmgService::TYPES_DOCUMENT)
+            ->keys()
+            ->mapWithKeys(fn (string $code) => [$code => $request->file("documents.{$code}")])
+            ->filter()
+            ->all();
+
+        $rejetDmg->appliquerCorrections($stage, $validated, $fichiers, $request->user());
+
+        $transmettre = $validated['action'] === 'enregistrer_transmettre';
+
+        if ($transmettre) {
+            $rejetDmg->transmettreAuChefAgence($stage, $request->user(), $validated['motif'] ?? null);
+        }
+
+        return $this->retourListeRejetsDmg($validated, $transmettre
+            ? 'Fiche corrigée et transmise au Chef d\'Agence pour re-validation.'
+            : 'Correction enregistrée. Le stagiaire reste dans l\'onglet « Ajourné / DMG » jusqu\'à sa transmission.');
+    }
+
+    /**
+     * Transmet au Chef d'Agence une fiche déjà corrigée, sans repasser par le formulaire.
+     */
+    public function transmettreCorrectionDmg(Request $request, $id, RejetDmgService $rejetDmg)
+    {
+        $stage = Stage::findOrFail($id);
+
         $validated = $request->validate([
-            'telephone_principal' => 'required|string|max:20',
-            'telephone_secondaire' => 'nullable|string|max:20',
-            'type_paiement_id' => 'required|exists:type_paiements,id',
-            'numero_tresor_money' => 'nullable|string|max:50',
-            'numero_wave' => 'nullable|string|max:50',
+            'motif' => 'nullable|string|max:500',
             'return_tab' => 'nullable|string',
             'mois' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
         ]);
 
-        $typePaiement = TypePaiement::findOrFail((int) $validated['type_paiement_id']);
-        $beneficiaireUpdates = [
-            'telephone_principal' => $validated['telephone_principal'],
-            'telephone_secondaire' => $validated['telephone_secondaire'],
-            'type_paiement_id' => $validated['type_paiement_id'],
-            'numero_tresor_money' => $validated['numero_tresor_money'],
-            'numero_wave' => $validated['numero_wave'],
+        if (! $rejetDmg->pointageACorriger($stage)) {
+            return back()->with('error', "Aucun pointage ajourné par la DMG n'est rattaché à ce stagiaire.");
+        }
+
+        $rejetDmg->transmettreAuChefAgence($stage, $request->user(), $validated['motif'] ?? null);
+
+        return $this->retourListeRejetsDmg($validated, 'Fiche transmise au Chef d\'Agence pour re-validation.');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function reglesTraitementRejetDmg(Request $request): array
+    {
+        $typePaiement = TypePaiement::find($request->input('type_paiement_id'));
+
+        $regles = [
+            'action' => ['required', Rule::in(['enregistrer', 'enregistrer_transmettre'])],
+            'motif' => 'nullable|string|max:500',
+            'return_tab' => 'nullable|string',
+            'mois' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
+
+            // Bénéficiaire — identité
+            'nom' => 'required|string|max:150',
+            'prenoms' => 'required|string|max:255',
+            'sexe' => 'nullable|string|max:20',
+            'date_naissance' => 'nullable|date|before:today',
+            'lieu_naissance' => 'nullable|string|max:150',
+            'sous_prefecture_naissance' => 'nullable|string|max:150',
+            'commune_residence_id' => 'nullable|exists:communes,id',
+            'sous_prefecture_residence' => 'nullable|string|max:150',
+            'nature_piece_identite' => 'nullable|string|max:100',
+            'numero_piece_identite' => 'nullable|string|max:100',
+            'numero_cmu' => 'nullable|string|max:100',
+
+            // Bénéficiaire — contacts
+            'telephone_principal' => 'required|string|max:20',
+            'telephone_secondaire' => 'nullable|string|max:20',
+            'email' => 'nullable|email|max:255',
+            'personne_urgence' => 'nullable|string|max:255',
+            'lien_parente_id' => 'nullable|exists:liens_parente,id',
+            'contact_urgence_1' => 'nullable|string|max:20',
+            'contact_urgence_2' => 'nullable|string|max:20',
+
+            // Bénéficiaire — formation
+            'niveau_etude_id' => 'nullable|exists:niveaux_etude,id',
+            'diplome_id' => 'nullable|exists:diplomes,id',
+            'autre_diplome' => 'nullable|string|max:255',
+            'specialite' => 'nullable|string|max:255',
+            'annee_diplome' => 'nullable|integer|min:1950|max:'.(int) date('Y'),
+            'etablissement_frequente' => 'nullable|string|max:255',
+            'type_enseignement_id' => 'nullable|exists:types_enseignement,id',
+            'handicap_id' => 'nullable|exists:handicaps,id',
+            'type_handicap_id' => 'nullable|exists:types_handicap,id',
+            'autre_handicap' => 'nullable|string|max:255',
+
+            // Bénéficiaire — paiement (motif de rejet DMG le plus fréquent)
+            'type_paiement_id' => 'required|exists:types_paiement,id',
+            'numero_tresor_money' => [
+                Rule::requiredIf(fn () => (bool) $typePaiement?->estTresorMoney()),
+                'nullable', 'string', 'max:50',
+            ],
+            'numero_wave' => [
+                Rule::requiredIf(fn () => (bool) $typePaiement?->estWave()),
+                'nullable', 'string', 'max:50',
+            ],
+
+            // Stage
+            'entreprise_id' => 'required|exists:entreprises,id',
+            'type_stage_id' => 'required|exists:types_stage,id',
+            'service_affectation' => 'nullable|string|max:255',
+            'intitule_poste' => 'nullable|string|max:255',
+            'localite_stage' => 'nullable|string|max:150',
+            'commune_stage' => 'nullable|string|max:150',
+            'sous_prefecture_stage' => 'nullable|string|max:150',
+            'nom_encadreur' => 'nullable|string|max:255',
+            'fonction_encadreur' => 'nullable|string|max:255',
+            'contact_encadreur' => 'nullable|string|max:20',
+            'statut_stage' => 'nullable|exists:statuts_stage,code',
+            'situation_stage' => 'nullable|exists:situations_stage,code',
+            'date_debut' => 'required|date',
+            'date_fin_prevue' => 'required|date|after_or_equal:date_debut',
+            'nbr_mois_capitaliser' => 'nullable|integer|min:0|max:60',
+            'date_demarrage_capitalisation' => 'nullable|date',
+            'date_demarrage_capitalisation_sans_financiere' => 'nullable|date',
+            'observations' => 'nullable|string|max:2000',
         ];
 
-        if ($typePaiement->code === 'TRESOR_MONEY') {
-            $beneficiaireUpdates['numero_wave'] = null;
+        foreach (array_keys(RejetDmgService::TYPES_DOCUMENT) as $code) {
+            $regles["documents.{$code}"] = 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120';
         }
 
-        if ($typePaiement->code === 'WAVE') {
-            $beneficiaireUpdates['numero_tresor_money'] = null;
-        }
+        return $regles;
+    }
 
-        $stage->beneficiaire->update($beneficiaireUpdates);
-
+    /**
+     * @param  array<string, mixed>  $validated
+     */
+    private function retourListeRejetsDmg(array $validated, string $message)
+    {
         return redirect()->route('cip.pointages.index', array_filter([
             'tab' => $validated['return_tab'] ?? 'ajourne_dmg',
             'mois' => $validated['mois'] ?? null,
-        ]))->with('success', 'Informations du stagiaire mises à jour avec succès.');
+        ]))->with('success', $message);
     }
 }
