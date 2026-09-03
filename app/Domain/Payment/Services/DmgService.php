@@ -4,6 +4,7 @@ namespace App\Domain\Payment\Services;
 
 use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
+use App\Models\Audit\JournalAudit;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DecisionPaiement;
 use App\Models\Payment\DossierGroupe;
@@ -528,10 +529,89 @@ class DmgService
         });
     }
 
-    /** @param list<int> $dossierIds */
-    public function elaborerOp(array $dossierIds, int $periodeId): OrdrePaiement
+    /**
+     * Remet en file d'attente DMG des paiements ajournés, après correction du dossier.
+     *
+     * Deux origines d'ajournement se rejoignent ici, comme sur l'écran « Stagiaire ajourné par
+     * CB » de l'ancien Gestage : le paiement ajourné par la DMG elle-même (statut `AJOURNE_DMG`)
+     * et celui resté dans un dossier que le CB a ajourné (le dossier porte `AJOURNE_CB`, le
+     * paiement reste `EN_DOSSIER`). Dans le second cas la ligne de dossier est retirée : le
+     * paiement doit repartir d'une file d'attente, pas d'un dossier que le CB a refusé.
+     *
+     * @param  list<int>  $paiementIds
+     */
+    public function reprendrePaiementsAjournes(array $paiementIds, string $motif, User $auteur): int
     {
-        return DB::transaction(function () use ($dossierIds, $periodeId): OrdrePaiement {
+        return DB::transaction(function () use ($paiementIds, $motif, $auteur): int {
+            $ids = array_values(array_unique($paiementIds));
+            $paiements = Paiement::query()->lockForUpdate()
+                ->with(['droitPaiement.stage.instanceParcours'])
+                ->whereIn('id', $ids)
+                ->where(fn (Builder $q) => $q
+                    ->where('statut', 'AJOURNE_DMG')
+                    ->orWhere(fn (Builder $cb) => $cb
+                        ->where('statut', 'EN_DOSSIER')
+                        ->whereHas('dossiersPaiement', fn (Builder $d) => $d
+                            ->where('dossiers_paiement.statut', 'AJOURNE_CB')
+                            ->whereNull('lignes_dossiers_paiement.retire_le'))))
+                ->get();
+
+            if ($paiements->count() !== count($ids)) {
+                throw ValidationException::withMessages(['paiement_ids' => 'Selection de paiements invalide.']);
+            }
+
+            foreach ($paiements as $paiement) {
+                $statutAvant = $paiement->statut;
+                if ($statutAvant === 'EN_DOSSIER') {
+                    $this->detacherLignesDossiersAjournes($paiement, $motif);
+                }
+                $paiement->update(['statut' => 'A_TRAITER']);
+                $paiement->droitPaiement?->stage?->instanceParcours?->update([
+                    'corbeille_actuelle' => $this->corbeilleAttente($paiement)->value,
+                ]);
+                DecisionPaiement::enregistrer($paiement, $auteur, 'REPRIS_DMG', $motif, $statutAvant, 'A_TRAITER');
+            }
+
+            return $paiements->count();
+        });
+    }
+
+    /**
+     * Retire du paiement toute ligne de dossier ajourné par le CB, et décrémente le dossier
+     * d'autant : un dossier ajourné reste consultable, mais ne doit plus compter le paiement
+     * qui repart en file d'attente.
+     */
+    private function detacherLignesDossiersAjournes(Paiement $paiement, string $motif): void
+    {
+        $lignes = LigneDossierPaiement::query()->lockForUpdate()
+            ->where('paiement_id', $paiement->id)
+            ->whereNull('retire_le')
+            ->whereHas('dossierPaiement', fn (Builder $d) => $d->where('statut', 'AJOURNE_CB'))
+            ->get();
+
+        foreach ($lignes as $ligne) {
+            $ligne->update(['retire_le' => now(), 'motif_retrait' => $motif]);
+            DossierPaiement::whereKey($ligne->dossier_paiement_id)->decrement('montant_total', $ligne->montant);
+        }
+    }
+
+    /**
+     * File d'attente d'origine d'un paiement : la nature du droit tranche, elle est figée à
+     * l'ouverture du droit alors que la corbeille du parcours a été déplacée par l'ajournement.
+     */
+    private function corbeilleAttente(Paiement $paiement): CorbeilleEnum
+    {
+        return $paiement->droitPaiement?->nature === 'DEMARRAGE'
+            ? CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE
+            : CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE;
+    }
+
+    /**
+     * @param  list<int>  $dossierIds
+     */
+    public function elaborerOp(array $dossierIds, int $periodeId, ?string $libelle = null, ?float $montantEtatFinancement = null): OrdrePaiement
+    {
+        return DB::transaction(function () use ($dossierIds, $periodeId, $libelle, $montantEtatFinancement): OrdrePaiement {
             $ids = array_values(array_unique($dossierIds));
             $dossiers = DossierPaiement::query()->lockForUpdate()->whereIn('id', $ids)
                 ->where('periode_id', $periodeId)->where('statut', 'VALIDE_CB')->get();
@@ -539,12 +619,78 @@ class DmgService
                 throw ValidationException::withMessages(['dossiers' => 'Les dossiers doivent etre valides CB et partager le meme financement.']);
             }
             $op = OrdrePaiement::create(['uuid_public' => (string) Str::uuid(), 'numero' => $this->numero('OP'),
+                'libelle' => $libelle,
                 'periode_id' => $periodeId, 'source_financement_id' => $dossiers->first()->source_financement_id,
-                'montant_total' => $dossiers->sum('montant_total'), 'statut' => 'BROUILLON']);
+                'montant_total' => $dossiers->sum('montant_total'),
+                'montant_etat_financement' => $montantEtatFinancement,
+                'statut' => 'BROUILLON']);
             DossierPaiement::whereKey($ids)->update(['ordre_paiement_id' => $op->id, 'statut' => 'EN_OP']);
 
             return $op;
         });
+    }
+
+    /**
+     * Retire un dossier d'un ordre de paiement encore en brouillon : le dossier redevient
+     * élaborable (`VALIDE_CB`) et l'OP est ramené à son montant restant. Un OP vidé de tous ses
+     * dossiers est annulé plutôt que supprimé — aucune pièce comptable n'est effacée.
+     */
+    public function retirerDossierOp(OrdrePaiement $op, DossierPaiement $dossier, string $motif, User $auteur): void
+    {
+        DB::transaction(function () use ($op, $dossier, $motif, $auteur): void {
+            $op = OrdrePaiement::query()->lockForUpdate()->findOrFail($op->id);
+            if ($op->statut !== 'BROUILLON') {
+                throw ValidationException::withMessages(['op' => 'Seul un ordre de paiement en brouillon peut etre modifie.']);
+            }
+            $dossier = DossierPaiement::query()->lockForUpdate()->findOrFail($dossier->id);
+            if ($dossier->ordre_paiement_id !== $op->id) {
+                throw ValidationException::withMessages(['dossier_id' => 'Ce dossier ne fait pas partie de l ordre de paiement.']);
+            }
+            $dossier->update(['ordre_paiement_id' => null, 'statut' => 'VALIDE_CB']);
+            $reste = (float) DossierPaiement::where('ordre_paiement_id', $op->id)->sum('montant_total');
+            $op->update(['montant_total' => $reste, 'statut' => $op->dossiersPaiement()->exists() ? 'BROUILLON' : 'ANNULE']);
+            $this->tracerRetrait($auteur, $op, $dossier, $motif);
+        });
+    }
+
+    /**
+     * Retire un ordre de paiement d'un bordereau encore en brouillon. Symétrique de
+     * self::retirerDossierOp() : l'OP redevient éligible à un autre bordereau.
+     */
+    public function retirerOpBordereau(BordereauPaiement $bordereau, OrdrePaiement $op, string $motif, User $auteur): void
+    {
+        DB::transaction(function () use ($bordereau, $op, $motif, $auteur): void {
+            $bordereau = BordereauPaiement::query()->lockForUpdate()->findOrFail($bordereau->id);
+            if ($bordereau->statut !== 'BROUILLON') {
+                throw ValidationException::withMessages(['bordereau' => 'Seul un bordereau en brouillon peut etre modifie.']);
+            }
+            $op = OrdrePaiement::query()->lockForUpdate()->findOrFail($op->id);
+            if ($op->bordereau_paiement_id !== $bordereau->id) {
+                throw ValidationException::withMessages(['op_id' => 'Cet ordre de paiement ne fait pas partie du bordereau.']);
+            }
+            $op->update(['bordereau_paiement_id' => null, 'statut' => 'BROUILLON']);
+            $reste = (float) OrdrePaiement::where('bordereau_paiement_id', $bordereau->id)->sum('montant_total');
+            $bordereau->update(['montant_total' => $reste, 'statut' => $bordereau->ordresPaiement()->exists() ? 'BROUILLON' : 'ANNULE']);
+            $this->tracerRetrait($auteur, $bordereau, $op, $motif);
+        });
+    }
+
+    /**
+     * Les rattachements OP/bordereau sont de simples clés étrangères, sans ligne de liaison où
+     * inscrire un motif de retrait comme le font `lignes_dossiers_*`. Le motif est donc versé au
+     * journal d'audit, seul endroit qui conserve la trace du retrait après coup.
+     */
+    private function tracerRetrait(User $auteur, OrdrePaiement|BordereauPaiement $conteneur, DossierPaiement|OrdrePaiement $retire, string $motif): void
+    {
+        JournalAudit::create([
+            'user_id' => $auteur->id,
+            'action' => 'retrait_'.($retire instanceof DossierPaiement ? 'dossier_op' : 'op_bordereau'),
+            'modele_type' => $conteneur::class,
+            'modele_id' => $conteneur->getKey(),
+            'nouvelles_donnees' => ['retire_id' => $retire->getKey(), 'retire_numero' => $retire->numero, 'motif' => $motif],
+            'adresse_ip' => request()->ip(),
+            'user_agent' => request()->userAgent(),
+        ]);
     }
 
     /** @param list<int> $opIds */

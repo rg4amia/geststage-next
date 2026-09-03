@@ -3,6 +3,7 @@
 namespace App\Models\Payment;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\Pivot;
 
 class LigneDossierPaiement extends Pivot
@@ -25,4 +26,10 @@ class LigneDossierPaiement extends Pivot
         'retire_le' => 'datetime',
         'montant' => 'decimal:2',
     ];
+
+    /** @return BelongsTo<DossierPaiement, $this> */
+    public function dossierPaiement(): BelongsTo
+    {
+        return $this->belongsTo(DossierPaiement::class);
+    }
 }

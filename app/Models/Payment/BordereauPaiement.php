@@ -3,6 +3,7 @@
 namespace App\Models\Payment;
 
 use App\Models\Reference\Periode;
+use App\Models\Reference\SourceFinancement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -23,6 +24,12 @@ class BordereauPaiement extends Model
     public function periode(): BelongsTo
     {
         return $this->belongsTo(Periode::class);
+    }
+
+    /** @return BelongsTo<SourceFinancement, $this> */
+    public function sourceFinancement(): BelongsTo
+    {
+        return $this->belongsTo(SourceFinancement::class);
     }
 
     /** @return HasMany<OrdrePaiement, $this> */

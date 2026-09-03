@@ -31,6 +31,9 @@ import {
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 import Select from 'react-select';
+import AjournesTab from './components/AjournesTab';
+import BordereauxTab from './components/BordereauxTab';
+import OrdresPaiementTab from './components/OrdresPaiementTab';
 
 /* ─── Types ─── */
 interface RefItem {
@@ -161,7 +164,6 @@ interface PageProps {
     dossiersEligiblesOp?: DossierRow[];
     groupesDossiers?: DossierGroupeRow[];
     ops?: any[];
-    opsEligiblesBordereau?: any[];
     bordereaux?: any[];
     moisActuel: string;
     periode: PeriodeOption | null;
@@ -191,8 +193,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
         dossiersEligiblesOp = [],
         groupesDossiers = [],
         ops = [],
-        opsEligiblesBordereau = [],
-        bordereaux = [],
+            bordereaux = [],
         moisActuel,
         filters = {},
         cohorte: initialCohorte = 'global',
@@ -216,8 +217,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [selectedDemarrageIds, setSelectedDemarrageIds] = useState<number[]>([]);
     const [selectedPresenceIds, setSelectedPresenceIds] = useState<number[]>([]);
     const [selectedDossierIds, setSelectedDossierIds] = useState<number[]>([]);
-    const [selectedOpDossierIds, setSelectedOpDossierIds] = useState<number[]>([]);
-    const [selectedOpIds, setSelectedOpIds] = useState<number[]>([]);
 
     /* ─── Filtres ─── */
     const [selectedFilters, setSelectedFilters] = useState<Filters>({
@@ -268,6 +267,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [isLoadingMultiDossiers, setIsLoadingMultiDossiers] = useState(false);
     const [selectedMultiDossierIds, setSelectedMultiDossierIds] = useState<number[]>([]);
     const [multiTypeTraitement, setMultiTypeTraitement] = useState('');
+    // Agence et financement du multi-dossier : filtres locaux (le panneau global ne couvre que
+    // les onglets d'attente) initialisés sur la sélection courante de la page.
+    const [multiAgenceId, setMultiAgenceId] = useState(props.filters?.agence_id ?? '');
+    const [multiSourceId, setMultiSourceId] = useState(props.filters?.source_financement_id ?? '');
     const [stagiaires, setStagiaires] = useState<StagiaireRow[]>([]);
     const [selectedStagiaireIds, setSelectedStagiaireIds] = useState<number[]>([]);
     const [stagiaireSearch, setStagiaireSearch] = useState('');
@@ -480,10 +483,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
         router.post(`/dmg/paiements/transmettre/${id}`, {}, { preserveScroll: true });
     };
 
-    const toggleSelection = (id: number, setter: React.Dispatch<React.SetStateAction<number[]>>) => {
-        setter((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-    };
-
     const handleGrouperDossiers = () => {
         if (!props.periode || selectedDossierIds.length < 2) return;
         setProcessing(true);
@@ -522,40 +521,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
         window.open(`/dmg/paiements/groupes/${id}/download-etat-financier`, '_blank');
     };
 
-    const handleElaborerSelection = () => {
-        if (!props.periode || selectedOpDossierIds.length === 0) return;
-        router.post('/dmg/paiements/elaborer-op', {
-            dossiers: selectedOpDossierIds,
-            periode_id: props.periode.id,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => setSelectedOpDossierIds([]),
-        });
-    };
-
     const handleElaborerOp = (id: number) => {
         if (!props.periode) return;
         router.post('/dmg/paiements/elaborer-op', { dossiers: [id], periode_id: props.periode.id }, { preserveScroll: true });
-    };
-
-    const handleCreerBordereau = (id: number) => {
-        if (!props.periode) return;
-        router.post('/dmg/paiements/creer-bordereau', { ops: [id], periode_id: props.periode.id }, { preserveScroll: true });
-    };
-
-    const handleCreerBordereauSelection = () => {
-        if (!props.periode || selectedOpIds.length === 0 || selectedOpIds.length > 10) return;
-        router.post('/dmg/paiements/creer-bordereau', {
-            ops: selectedOpIds,
-            periode_id: props.periode.id,
-        }, {
-            preserveScroll: true,
-            onSuccess: () => setSelectedOpIds([]),
-        });
-    };
-
-    const handleTransmettreBordereau = (id: number) => {
-        router.post(`/dmg/paiements/transmettre-bordereau/${id}`, {}, { preserveScroll: true });
     };
 
     const handlePreviewDocs = (stagiaire: any) => {
@@ -688,8 +656,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
         setIsLoadingMultiDossiers(true);
         const params = new URLSearchParams();
         if (moisDossiers) params.set('mois', moisDossiers);
-        if (selectedFilters.agence_id) params.set('agence_id', selectedFilters.agence_id);
-        if (selectedFilters.source_financement_id) params.set('source_financement_id', selectedFilters.source_financement_id);
+        if (multiAgenceId) params.set('agence_id', multiAgenceId);
+        if (multiSourceId) params.set('source_financement_id', multiSourceId);
         if (multiTypeTraitement) params.set('typetraitement', multiTypeTraitement);
 
         fetch(`/dmg/multi-dossier/dossiers?${params.toString()}`, {
@@ -704,7 +672,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
             })
             .catch(() => setMultiDossiers([]))
             .finally(() => setIsLoadingMultiDossiers(false));
-    }, [moisDossiers, selectedFilters.agence_id, selectedFilters.source_financement_id, multiTypeTraitement]);
+    }, [moisDossiers, multiAgenceId, multiSourceId, multiTypeTraitement]);
 
     /* ═══════════════════════════════════════════════════════════════════
        MULTI-DOSSIER — Chargement stagiaires (serveur-side)
@@ -959,13 +927,14 @@ const DmgPaiementsIndex = (props: PageProps) => {
         prevMoisDossiers.current = moisDossiers;
     }, [moisDossiers, dossierTab, loadMultiDossiers]);
 
-    const prevTypeTraitement = React.useRef(multiTypeTraitement);
+    const prevFiltresMulti = React.useRef(`${multiTypeTraitement}|${multiAgenceId}|${multiSourceId}`);
     React.useEffect(() => {
-        if (dossierTab === 'multi' && prevTypeTraitement.current !== multiTypeTraitement) {
+        const cle = `${multiTypeTraitement}|${multiAgenceId}|${multiSourceId}`;
+        if (dossierTab === 'multi' && prevFiltresMulti.current !== cle) {
             loadMultiDossiers();
         }
-        prevTypeTraitement.current = multiTypeTraitement;
-    }, [multiTypeTraitement, dossierTab, loadMultiDossiers]);
+        prevFiltresMulti.current = cle;
+    }, [multiTypeTraitement, multiAgenceId, multiSourceId, dossierTab, loadMultiDossiers]);
 
     /* ─── Stats ─── */
     // `undefined` = la prop différée n'est pas encore arrivée : la carte affiche un spinner
@@ -1461,7 +1430,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                     </div>
 
 <Deferred
-                                        data={['dossiers', 'dossiersTransmis', 'dossiersAjournes', 'dossiersGroupables', 'dossiersEligiblesOp', 'groupesDossiers', 'ops', 'opsEligiblesBordereau', 'bordereaux']}
+                                        data={['dossiers', 'dossiersTransmis', 'dossiersAjournes', 'dossiersGroupables', 'dossiersEligiblesOp', 'groupesDossiers', 'ops', 'bordereaux']}
                                         fallback={<div className="d-flex justify-content-center py-5"><Spinner color="warning" /></div>}
                                     >
 <TabContent activeTab={dossierTab} className="pt-4">
@@ -1661,10 +1630,12 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                             <h5 className="fs-14 mb-1 text-success fw-bold">
                                                                 <i className="ri-check-double-line me-1"></i>Dossiers validés CB — Éligibles OP
                                                             </h5>
-                                                            <p className="text-muted mb-0 fs-12">Sélectionnez pour élaborer un Ordre de Paiement.</p>
+                                                            <p className="text-muted mb-0 fs-12">
+                                                                Élaborez l'ordre de paiement depuis l'onglet <strong>Ordres de Paiement</strong>.
+                                                            </p>
                                                         </div>
-                                                        <Button color="success" size="sm" disabled={selectedOpDossierIds.length === 0} onClick={handleElaborerSelection}>
-                                                            <i className="ri-file-list-3-line me-1"></i>Élaborer l'OP ({selectedOpDossierIds.length})
+                                                        <Button color="primary" size="sm" outline onClick={() => setDossierTab('ops')}>
+                                                            <i className="ri-file-list-3-line me-1"></i>Aller aux ordres de paiement
                                                         </Button>
                                                     </div>
                                                     <Card className="border shadow-none">
@@ -1673,7 +1644,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                 <table className="table table-striped table-hover align-middle mb-0">
                                                                     <thead className="table-light text-uppercase fs-11 fw-semibold">
                                                                         <tr>
-                                                                            <th style={{ width: 40 }}><Input type="checkbox" className="form-check-input" checked={selectedOpDossierIds.length === dossiersCbValides.length && dossiersCbValides.length > 0} onChange={() => { const all = dossiersCbValides.map((d: any) => d.id); setSelectedOpDossierIds((prev) => prev.length === all.length ? [] : all); }} /></th>
                                                                             <th>#</th>
                                                                             <th>Numéro</th>
                                                                             <th>Agence</th>
@@ -1691,7 +1661,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                             const rows = dossiersCbValides.slice(si, si + CB_DOSSIERS_PER_PAGE);
                                                                             return rows.map((d: any, idx: number) => (
                                                                                 <tr key={d.id}>
-                                                                                    <td><Input type="checkbox" className="form-check-input" checked={selectedOpDossierIds.includes(d.id)} onChange={() => toggleSelection(d.id, setSelectedOpDossierIds)} /></td>
                                                                                     <td>{si + idx + 1}</td>
                                                                                     <td className="fw-medium text-success">{d.identifiant}</td>
                                                                                     <td>{d.agence}</td>
@@ -1703,7 +1672,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                             ));
                                                                         })()}
                                                                         {dossiersCbValides.length === 0 && (
-                                                                            <tr><td colSpan={8} className="text-center py-4 text-muted">
+                                                                            <tr><td colSpan={7} className="text-center py-4 text-muted">
                                                                                 <i className="ri-inbox-line fs-24 d-block mb-2"></i>Aucun dossier validé CB.
                                                                             </td></tr>
                                                                         )}
@@ -1740,8 +1709,27 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             )}
                                         </TabPane>
                                         <TabPane tabId="ajournes">
+                                            <h5 className="fs-14 mb-1 text-danger fw-bold">
+                                                <i className="ri-folder-forbid-line me-1"></i>Dossiers ajournés
+                                            </h5>
+                                            <p className="text-muted fs-12">Dossiers renvoyés par le CB ou retirés par la DMG.</p>
                                             <TableContainerReactTable columns={dossierColumns} data={dossiersAjournes} isGlobalFilter={true} customPageSize={10}
-                                                divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                                divClass="table-responsive table-card mb-4" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                            <h5 className="fs-14 mb-1 text-danger fw-bold">
+                                                <i className="ri-user-forbid-line me-1"></i>Stagiaires ajournés
+                                            </h5>
+                                            <p className="text-muted fs-12">
+                                                Liste nominative, motif de la décision et remise en file d'attente après correction.
+                                            </p>
+                                            <AjournesTab
+                                                actif={dossierTab === 'ajournes'}
+                                                mois={moisDossiers}
+                                                agences={agences}
+                                                entreprises={entreprises}
+                                                typesStage={typesStage}
+                                                sourcesFinancement={sourcesFinancement}
+                                                onApercuDocuments={handlePreviewDocs}
+                                            />
                                         </TabPane>
                                         <TabPane tabId="multi">
                                             {/* ── Filtres + Sélection + Actions ── */}
@@ -1756,7 +1744,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         </CardHeader>
                                                         <CardBody className="py-3">
                                                             <Row className="g-3 align-items-end">
-                                                                <Col md={3}>
+                                                                <Col md={4}>
                                                                     <Label className="form-label fs-12 text-muted fw-semibold">Type Traitement</Label>
                                                                     <Input type="select" bsSize="sm" value={multiTypeTraitement}
                                                                         onChange={(e) => setMultiTypeTraitement(e.target.value)}>
@@ -1765,7 +1753,23 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                         <option value="PS">PRÉSENCE</option>
                                                                     </Input>
                                                                 </Col>
-                                                                <Col md={9}>
+                                                                <Col md={4}>
+                                                                    <Label className="form-label fs-12 text-muted fw-semibold">Agence</Label>
+                                                                    <Input type="select" bsSize="sm" value={multiAgenceId}
+                                                                        onChange={(e) => setMultiAgenceId(e.target.value)}>
+                                                                        <option value="">Toutes</option>
+                                                                        {agences.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
+                                                                    </Input>
+                                                                </Col>
+                                                                <Col md={4}>
+                                                                    <Label className="form-label fs-12 text-muted fw-semibold">Source de financement</Label>
+                                                                    <Input type="select" bsSize="sm" value={multiSourceId}
+                                                                        onChange={(e) => setMultiSourceId(e.target.value)}>
+                                                                        <option value="">Toutes</option>
+                                                                        {sourcesFinancement.map((sf) => <option key={sf.id} value={sf.id}>{sf.nom}</option>)}
+                                                                    </Input>
+                                                                </Col>
+                                                                <Col md={12}>
                                                                     <Label className="form-label fs-12 text-muted fw-semibold">
                                                                         <i className="ri-folder-2-fill me-1 text-warning"></i>Sélectionner les dossiers
                                                                         <Badge color="secondary" pill className="ms-2 fs-11">{multiDossiers.length} disponible(s)</Badge>
@@ -1979,43 +1983,20 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                 divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
                                         </TabPane>
                                         <TabPane tabId="ops">
-                                            <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                                                <div>
-                                                    <h5 className="fs-14 mb-1">OP en attente de bordereau</h5>
-                                                    <p className="text-muted mb-0 fs-12">Le legacy limite un bordereau à 10 ordres de paiement.</p>
-                                                </div>
-                                                <Button color="success" size="sm" disabled={selectedOpIds.length === 0 || selectedOpIds.length > 10} onClick={handleCreerBordereauSelection}>
-                                                    <i className="ri-file-shield-2-line me-1"></i>Créer le bordereau ({selectedOpIds.length}/10)
-                                                </Button>
-                                            </div>
-                                            {opsEligiblesBordereau.length === 0 ? (
-                                                <p className="text-muted text-center py-4"><i className="ri-inbox-line me-1"></i>Aucun ordre de paiement pour cette période.</p>
-                                            ) : (
-                                                <TableContainerReactTable
-                                                    columns={[
-                                                        { id: 'select', header: '', cell: (c: any) => <Input type="checkbox" checked={selectedOpIds.includes(c.row.original.id)} onChange={() => toggleSelection(c.row.original.id, setSelectedOpIds)} /> },
-                                                        { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
-                                                        { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
-                                                        { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)} className="fs-11">{c.row.original.statut}</Badge> },
-                                                    ]}
-                                                    data={opsEligiblesBordereau} isGlobalFilter={true} customPageSize={10}
-                                                    divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
-                                            )}
+                                            <OrdresPaiementTab
+                                                actif={dossierTab === 'ops'}
+                                                mois={moisDossiers}
+                                                periodeId={props.periode?.id ?? null}
+                                                dossiersEligibles={dossiersEligiblesOp}
+                                            />
                                         </TabPane>
                                         <TabPane tabId="bordereaux">
-                                            {bordereaux.length === 0 ? (
-                                                <p className="text-muted text-center py-4"><i className="ri-inbox-line me-1"></i>Aucun bordereau pour cette période.</p>
-                                            ) : (
-                                                <TableContainerReactTable
-                                                    columns={[
-                                                        { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
-                                                        { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
-                                                        { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)} className="fs-11">{c.row.original.statut}</Badge> },
-                                                        { header: 'Actions', cell: (c: any) => c.row.original.statut === 'BROUILLON' ? <Button color="success" size="sm" outline onClick={() => handleTransmettreBordereau(c.row.original.id)}><i className="ri-send-plane-line me-1"></i>Transmettre AC</Button> : null },
-                                                    ]}
-                                                    data={bordereaux} isGlobalFilter={true} customPageSize={10}
-                                                    divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
-                                            )}
+                                            <BordereauxTab
+                                                actif={dossierTab === 'bordereaux'}
+                                                mois={moisDossiers}
+                                                periodeId={props.periode?.id ?? null}
+                                                bordereaux={bordereaux}
+                                            />
                                         </TabPane>
                                     </TabContent>
                                     </Deferred>

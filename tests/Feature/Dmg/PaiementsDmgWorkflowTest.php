@@ -226,6 +226,151 @@ class PaiementsDmgWorkflowTest extends TestCase
         });
     }
 
+    public function test_la_reprise_d_un_ajourne_le_replace_dans_sa_corbeille_d_attente(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('administrateur');
+        $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+
+        // Deux origines d'ajournement coexistent : la DMG marque le paiement, le CB renvoie le
+        // dossier entier en laissant ses paiements en EN_DOSSIER. L'onglet doit montrer les deux.
+        $ajourneDmg = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-10');
+        $ajourneCb = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'DEMARRAGE', '2026-08-03');
+
+        $this->actingAs($user)->post('/dmg/paiements/ajourner', [
+            'paiement_ids' => [$ajourneDmg->id],
+            'motif' => 'Piece justificative manquante',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->post('/dmg/paiements/generer', ['periode_id' => $periode->id, 'paiement_ids' => [$ajourneCb->id]])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $dossier = DossierPaiement::firstOrFail();
+        $dossier->update(['statut' => 'AJOURNE_CB']);
+
+        $this->getJson('/dmg/paiements/ajournes?mois=2026-08')
+            ->assertOk()
+            ->assertJsonPath('total', 2);
+
+        $this->post('/dmg/paiements/ajournes/reprendre', [
+            'paiement_ids' => [$ajourneDmg->id, $ajourneCb->id],
+            'motif' => 'Pieces completees par l agence',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('paiements', ['id' => $ajourneDmg->id, 'statut' => 'A_TRAITER']);
+        $this->assertDatabaseHas('paiements', ['id' => $ajourneCb->id, 'statut' => 'A_TRAITER']);
+        $this->assertDatabaseHas('decisions_paiements', ['paiement_id' => $ajourneDmg->id, 'decision' => 'REPRIS_DMG']);
+        // Le paiement repris quitte le dossier ajourné, qui est allégé d'autant.
+        $this->assertDatabaseMissing('lignes_dossiers_paiement', ['paiement_id' => $ajourneCb->id, 'retire_le' => null]);
+        $this->assertSame('0.00', $dossier->fresh()->montant_total);
+        // Chaque paiement retrouve la corbeille correspondant a la nature de son droit.
+        $this->assertSame(
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+            $ajourneDmg->fresh()->droitPaiement->stage->instanceParcours->corbeille_actuelle,
+        );
+        $this->assertSame(
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+            $ajourneCb->fresh()->droitPaiement->stage->instanceParcours->corbeille_actuelle,
+        );
+
+        $this->getJson('/dmg/paiements/ajournes?mois=2026-08')->assertOk()->assertJsonPath('total', 0);
+    }
+
+    public function test_l_ordre_de_paiement_porte_son_titre_et_rend_un_dossier_retire(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('administrateur');
+        $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+        $paiement = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-10');
+
+        $this->actingAs($user)->post('/dmg/paiements/generer', ['periode_id' => $periode->id, 'paiement_ids' => [$paiement->id]])
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $dossier = DossierPaiement::firstOrFail();
+        $dossier->update(['statut' => 'VALIDE_CB']);
+
+        $this->post('/dmg/paiements/elaborer-op', [
+            'dossiers' => [$dossier->id],
+            'periode_id' => $periode->id,
+            'libelle' => 'OP paiement presence aout',
+            'montant_etat_financement' => 50000,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $op = OrdrePaiement::firstOrFail();
+        $this->assertSame('OP paiement presence aout', $op->libelle);
+        $this->assertSame('50000.00', $op->montant_etat_financement);
+
+        $this->getJson('/dmg/paiements/ops?mois=2026-08')
+            ->assertOk()
+            ->assertJsonPath('0.libelle', 'OP paiement presence aout')
+            ->assertJsonPath('0.dossiers_count', 1)
+            ->assertJsonPath('0.stagiaires_count', 1);
+
+        $this->getJson("/dmg/paiements/ops/{$op->id}/dossiers")
+            ->assertOk()
+            ->assertJsonPath('0.id', $dossier->id)
+            ->assertJsonPath('0.nombre_stagiaires', 1);
+
+        $this->post("/dmg/paiements/ops/{$op->id}/retirer-dossier", [
+            'dossier_id' => $dossier->id,
+            'motif' => 'Rattachement errone',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        // Le dossier redevient elaborable ; l'OP vide est annule et le motif reste tracable.
+        $this->assertDatabaseHas('dossiers_paiement', ['id' => $dossier->id, 'statut' => 'VALIDE_CB', 'ordre_paiement_id' => null]);
+        $this->assertDatabaseHas('ordre_paiements', ['id' => $op->id, 'statut' => 'ANNULE']);
+        $this->assertDatabaseHas('journaux_audit', ['action' => 'retrait_dossier_op', 'modele_id' => $op->id]);
+    }
+
+    public function test_le_retrait_d_un_op_libere_le_bordereau_sans_le_vider(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('administrateur');
+        $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+        $source = SourceFinancement::factory()->create();
+        $agence = Agence::factory()->create();
+
+        $ops = collect([40000, 60000])->map(function (int $montant) use ($periode, $source, $agence) {
+            $dossier = DossierPaiement::create([
+                'uuid_public' => (string) Str::uuid(),
+                'periode_id' => $periode->id,
+                'agence_id' => $agence->id,
+                'source_financement_id' => $source->id,
+                'numero' => 'PS-OP-'.Str::random(8),
+                'nature' => 'PS',
+                'statut' => 'VALIDE_CB',
+                'montant_total' => $montant,
+            ]);
+
+            return app(DmgService::class)->elaborerOp([$dossier->id], $periode->id, 'OP '.$montant);
+        });
+
+        $this->actingAs($user)->post('/dmg/paiements/creer-bordereau', [
+            'ops' => $ops->pluck('id')->all(),
+            'periode_id' => $periode->id,
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $bordereau = BordereauPaiement::firstOrFail();
+        $this->assertSame('100000.00', $bordereau->montant_total);
+
+        $this->getJson("/dmg/paiements/bordereaux/{$bordereau->id}/ops")->assertOk()->assertJsonCount(2);
+
+        $retire = $ops->first();
+        $this->post("/dmg/paiements/bordereaux/{$bordereau->id}/retirer-op", [
+            'op_id' => $retire->id,
+            'motif' => 'Montant a corriger avant transmission',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        // L'OP retire redevient selectionnable, le bordereau reste en brouillon avec le reliquat.
+        $this->assertDatabaseHas('ordre_paiements', ['id' => $retire->id, 'statut' => 'BROUILLON', 'bordereau_paiement_id' => null]);
+        $this->assertDatabaseHas('bordereau_paiements', ['id' => $bordereau->id, 'statut' => 'BROUILLON']);
+        $this->assertSame('60000.00', $bordereau->fresh()->montant_total);
+        $this->assertDatabaseHas('journaux_audit', ['action' => 'retrait_op_bordereau', 'modele_id' => $bordereau->id]);
+
+        $this->getJson('/dmg/paiements/ops?mois=2026-08&statut=BROUILLON')->assertOk()->assertJsonCount(1);
+    }
+
     private function paiement(Periode $periode, CorbeilleEnum $corbeille, string $nature, string $dateDebut): Paiement
     {
         $stage = Stage::factory()->create(['date_debut' => $dateDebut]);

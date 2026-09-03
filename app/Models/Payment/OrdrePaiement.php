@@ -3,6 +3,7 @@
 namespace App\Models\Payment;
 
 use App\Models\Reference\Periode;
+use App\Models\Reference\SourceFinancement;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -13,9 +14,11 @@ class OrdrePaiement extends Model
         'uuid_public',
         'ancien_id',
         'numero',
+        'libelle',
         'periode_id',
         'source_financement_id',
         'montant_total',
+        'montant_etat_financement',
         'statut',
         'bordereau_paiement_id',
     ];
@@ -24,6 +27,12 @@ class OrdrePaiement extends Model
     public function periode(): BelongsTo
     {
         return $this->belongsTo(Periode::class);
+    }
+
+    /** @return BelongsTo<SourceFinancement, $this> */
+    public function sourceFinancement(): BelongsTo
+    {
+        return $this->belongsTo(SourceFinancement::class);
     }
 
     /** @return BelongsTo<BordereauPaiement, $this> */

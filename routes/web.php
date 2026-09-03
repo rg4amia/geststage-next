@@ -11,6 +11,7 @@ use App\Http\Controllers\Company\EntrepriseController;
 use App\Http\Controllers\Company\OffreEmploiController;
 use App\Http\Controllers\Daicg\StagiaireDaicgController;
 use App\Http\Controllers\Desse\StagiaireDesseController;
+use App\Http\Controllers\Dmg\AjournementPaiementDmgController;
 use App\Http\Controllers\Dmg\AttentePaiementDmgController;
 use App\Http\Controllers\Dmg\DossierPaiementDmgController;
 use App\Http\Controllers\Dmg\ExportPaiementDmgController;
@@ -119,6 +120,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dmg/paiements/dossiers-cb', [PaiementDmgController::class, 'dossiersCbByMois'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.dossiers_cb');
     Route::post('/dmg/paiements/stagiaires', [PaiementDmgController::class, 'stagiairesByDossier'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.stagiaires');
     Route::get('/dmg/paiements/documents', [PaiementDmgController::class, 'documentsByStage'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.documents');
+
+    // Onglet « Ajournés » : liste nominative des stagiaires bloqués (legacy `ajournement-stagiaire`).
+    Route::get('/dmg/paiements/ajournes', [AjournementPaiementDmgController::class, 'index'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.ajournes.index');
+    Route::get('/dmg/paiements/ajournes/dossiers', [AjournementPaiementDmgController::class, 'dossiers'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.ajournes.dossiers');
+    Route::post('/dmg/paiements/ajournes/reprendre', [AjournementPaiementDmgController::class, 'reprendre'])->middleware('can:ajourner_paiement_dmg')->name('dmg.paiements.ajournes.reprendre');
+
+    // Onglets « Ordres de paiement » et « Bordereaux » (legacy `wait-op-generer` et `operations-wait-to-generate`).
+    Route::get('/dmg/paiements/ops', [OperationPaiementDmgController::class, 'ops'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.ops.index');
+    Route::get('/dmg/paiements/ops/{op}/dossiers', [OperationPaiementDmgController::class, 'dossiersOp'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.ops.dossiers');
+    Route::post('/dmg/paiements/ops/{op}/retirer-dossier', [OperationPaiementDmgController::class, 'retirerDossierOp'])->middleware('can:retirer_paiement_dossier')->name('dmg.paiements.ops.retirer_dossier');
+    Route::get('/dmg/paiements/bordereaux/{bordereau}/ops', [OperationPaiementDmgController::class, 'opsBordereau'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.bordereaux.ops');
+    Route::post('/dmg/paiements/bordereaux/{bordereau}/retirer-op', [OperationPaiementDmgController::class, 'retirerOpBordereau'])->middleware('can:retirer_paiement_dossier')->name('dmg.paiements.bordereaux.retirer_op');
     Route::get('/dmg/multi-dossier', [MultiDossierController::class, 'index'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.index');
     Route::get('/dmg/multi-dossier/dossiers', [MultiDossierController::class, 'getDossiers'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-dossiers');
     Route::post('/dmg/multi-dossier/stagiaires', [MultiDossierController::class, 'getStagiaires'])->middleware('can:generer_dossier_paiement')->name('dmg.multi-dossier.get-stagiaires');

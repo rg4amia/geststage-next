@@ -103,14 +103,11 @@ class PaiementDmgController extends Controller
                 ->limit(500)
                 ->get(), 'dossiers'),
             'ops' => Inertia::defer(fn () => OrdrePaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(), 'dossiers'),
-            'opsEligiblesBordereau' => Inertia::defer(fn () => OrdrePaiement::query()
-                ->where('periode_id', $periodeId)
-                ->where('statut', 'BROUILLON')
-                ->whereNull('bordereau_paiement_id')
+            'bordereaux' => Inertia::defer(fn () => BordereauPaiement::where('periode_id', $periodeId)
+                ->withCount('ordresPaiement')
                 ->orderByDesc('created_at')
                 ->limit(500)
                 ->get(), 'dossiers'),
-            'bordereaux' => Inertia::defer(fn () => BordereauPaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(), 'dossiers'),
             'moisActuel' => $mois,
             'periode' => $periode,
             'filters' => $filters,
