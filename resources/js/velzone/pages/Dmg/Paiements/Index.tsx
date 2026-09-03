@@ -1,4 +1,4 @@
-import { Head, router, usePage } from '@inertiajs/react';
+import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import classnames from 'classnames';
 import React, { useCallback, useMemo, useState } from 'react';
 import {
@@ -145,18 +145,20 @@ interface Filters {
 }
 
 interface PageProps {
-    attenteDemarrage: PaiementRow[];
-    attentePresence: PaiementRow[];
-    compteurs: Compteurs;
-    dossiers: DossierRow[];
-    dossiersTransmis: DossierRow[];
-    dossiersAjournes: DossierRow[];
-    dossiersGroupables: DossierRow[];
-    dossiersEligiblesOp: DossierRow[];
-    groupesDossiers: DossierGroupeRow[];
-    ops: any[];
-    opsEligiblesBordereau: any[];
-    bordereaux: any[];
+    // Props différées (Inertia::defer) : absentes de la première réponse, livrées
+    // ensuite par groupe — d'où le `?`.
+    attenteDemarrage?: PaiementRow[];
+    attentePresence?: PaiementRow[];
+    compteurs?: Compteurs;
+    dossiers?: DossierRow[];
+    dossiersTransmis?: DossierRow[];
+    dossiersAjournes?: DossierRow[];
+    dossiersGroupables?: DossierRow[];
+    dossiersEligiblesOp?: DossierRow[];
+    groupesDossiers?: DossierGroupeRow[];
+    ops?: any[];
+    opsEligiblesBordereau?: any[];
+    bordereaux?: any[];
     moisActuel: string;
     periode: PeriodeOption | null;
     filters: Filters;
@@ -962,12 +964,14 @@ const DmgPaiementsIndex = (props: PageProps) => {
     }, [multiTypeTraitement, dossierTab, loadMultiDossiers]);
 
     /* ─── Stats ─── */
+    // `undefined` = la prop différée n'est pas encore arrivée : la carte affiche un spinner
+    // plutôt qu'un 0 trompeur.
     const statCards = useMemo(() => [
-        { label: 'Attente Démarrage', value: compteurs?.global?.demarrage ?? attenteDemarrage.length, icon: 'ri-flag-line', color: 'primary' },
-        { label: 'Attente Présence', value: compteurs?.global?.presence ?? attentePresence.length, icon: 'ri-user-follow-line', color: 'info' },
-        { label: 'Dossiers en cours', value: dossiers.length, icon: 'ri-folder-2-line', color: 'warning' },
-        { label: 'Total à traiter', value: (compteurs?.global?.demarrage ?? 0) + (compteurs?.global?.presence ?? 0), icon: 'ri-time-line', color: 'success' },
-    ], [compteurs, attenteDemarrage, attentePresence, dossiers]);
+        { label: 'Attente Démarrage', value: compteurs?.global?.demarrage, icon: 'ri-flag-line', color: 'primary' },
+        { label: 'Attente Présence', value: compteurs?.global?.presence, icon: 'ri-user-follow-line', color: 'info' },
+        { label: 'Dossiers en cours', value: props.dossiers?.length, icon: 'ri-folder-2-line', color: 'warning' },
+        { label: 'Total à traiter', value: compteurs ? (compteurs.global?.demarrage ?? 0) + (compteurs.global?.presence ?? 0) : undefined, icon: 'ri-time-line', color: 'success' },
+    ], [compteurs, props.dossiers]);
 
     /* ─── Cohorte badges ─── */
     const cohortBadge = (cohorteKey: string, type: 'demarrage' | 'presence') => {
@@ -1012,7 +1016,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             </div>
                                             <div>
                                                 <p className="text-uppercase fw-medium text-muted mb-0 fs-11">{s.label}</p>
-                                                <h4 className="fs-22 fw-bold mb-0">{s.value}</h4>
+                                                <h4 className="fs-22 fw-bold mb-0">
+                                                    {s.value === undefined ? <Spinner size="sm" color={s.color} /> : s.value}
+                                                </h4>
                                             </div>
                                         </div>
                                     </CardBody>
@@ -1275,16 +1281,18 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                     {isLoading ? (
                                         <div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>
                                     ) : (
-                                        <TableContainerReactTable
-                                            columns={demarrageColumns}
-                                            data={currentDemarrageRows}
-                                            isGlobalFilter={true}
-                                            customPageSize={10}
-                                            divClass="table-responsive table-card mb-3"
-                                            tableClass="table-striped align-middle table-nowrap mb-0"
-                                            theadClass="table-light text-uppercase fw-semibold fs-11"
-                                            SearchPlaceholder="Rechercher..."
-                                        />
+                                        <Deferred data="attenteDemarrage" fallback={<div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>}>
+                                            <TableContainerReactTable
+                                                columns={demarrageColumns}
+                                                data={currentDemarrageRows}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="table-striped align-middle table-nowrap mb-0"
+                                                theadClass="table-light text-uppercase fw-semibold fs-11"
+                                                SearchPlaceholder="Rechercher..."
+                                            />
+                                        </Deferred>
                                     )}
                                         </Col>
                                     </Row>
@@ -1374,16 +1382,18 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                     {isLoading ? (
                                         <div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>
                                     ) : (
-                                        <TableContainerReactTable
-                                            columns={presenceColumns}
-                                            data={currentPresenceRows}
-                                            isGlobalFilter={true}
-                                            customPageSize={10}
-                                            divClass="table-responsive table-card mb-3"
-                                            tableClass="table-striped align-middle table-nowrap mb-0"
-                                            theadClass="table-light text-uppercase fw-semibold fs-11"
-                                            SearchPlaceholder="Rechercher..."
-                                        />
+                                        <Deferred data="attentePresence" fallback={<div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>}>
+                                            <TableContainerReactTable
+                                                columns={presenceColumns}
+                                                data={currentPresenceRows}
+                                                isGlobalFilter={true}
+                                                customPageSize={10}
+                                                divClass="table-responsive table-card mb-3"
+                                                tableClass="table-striped align-middle table-nowrap mb-0"
+                                                theadClass="table-light text-uppercase fw-semibold fs-11"
+                                                SearchPlaceholder="Rechercher..."
+                                            />
+                                        </Deferred>
                                     )}
                                 </TabPane>
 
@@ -1447,6 +1457,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                         </Button>
                                     </div>
 
+<Deferred
+                                        data={['dossiers', 'dossiersTransmis', 'dossiersAjournes', 'dossiersGroupables', 'dossiersEligiblesOp', 'groupesDossiers', 'ops', 'opsEligiblesBordereau', 'bordereaux']}
+                                        fallback={<div className="d-flex justify-content-center py-5"><Spinner color="warning" /></div>}
+                                    >
 <TabContent activeTab={dossierTab} className="pt-4">
                                         <TabPane tabId="brouillon">
                                             <TableContainerReactTable columns={dossierColumns} data={dossiers} isGlobalFilter={true} customPageSize={10}
@@ -2001,6 +2015,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             )}
                                         </TabPane>
                                     </TabContent>
+                                    </Deferred>
                                         </Col>
                                     </Row>
                                 </TabPane>

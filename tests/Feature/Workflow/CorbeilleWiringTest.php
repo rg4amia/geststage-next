@@ -31,7 +31,9 @@ class CorbeilleWiringTest extends TestCase
 
         $pages = [
             '/dmg/validation' => ['Dmg/Validation/Index', ['attenteVerification', 'valides']],
-            '/dmg/paiements' => ['Dmg/Paiements/Index', ['attenteDemarrage', 'attentePresence', 'dossiers']],
+            // Les corbeilles de cette page sont différées (Inertia::defer) : elles n'arrivent
+            // pas dans la réponse initiale mais dans la requête partielle qui suit.
+            '/dmg/paiements' => ['Dmg/Paiements/Index', ['moisActuel', 'filters'], ['attenteDemarrage', 'attentePresence', 'dossiers']],
             '/dmg/operations' => ['Dmg/Operations/Index', ['elaborationOp', 'bordereaux', 'fichierCut']],
             '/dmg/rejets' => ['Dmg/Rejets/Index', ['ajournesCB', 'rejetesAC', 'differesAC']],
             '/cb/paiements' => ['Cb/Paiements/Index', ['dossiersControle', 'etatsAjournes']],
@@ -47,14 +49,20 @@ class CorbeilleWiringTest extends TestCase
             '/pejedec/af/attente-paiement' => ['Pejedec/Aaf/AttentePaiement', ['attentePaiement', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],
         ];
 
-        foreach ($pages as $uri => [$component, $props]) {
+        foreach ($pages as $uri => $attendu) {
+            [$component, $props] = $attendu;
+            $differees = $attendu[2] ?? [];
+
             $this->actingAs($user)
                 ->get($uri)
                 ->assertOk()
-                ->assertInertia(fn (Assert $page) => $page
-                    ->component($component)
-                    ->hasAll($props)
-                );
+                ->assertInertia(function (Assert $page) use ($component, $props, $differees) {
+                    $page->component($component)->hasAll($props);
+
+                    if ($differees !== []) {
+                        $page->loadDeferredProps(fn (Assert $differe) => $differe->hasAll($differees));
+                    }
+                });
         }
     }
 

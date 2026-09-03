@@ -40,61 +40,76 @@ class PaiementDmgController extends Controller
         ]);
         $cohorte = $request->string('cohorte', 'global')->toString();
 
-        $demarrageBase = $this->dmgService->attentePaiementDemarrage($filters, $mois);
-        $presenceBase = $this->dmgService->attentePaiementPresence($filters, $mois);
-        $compteurs = $this->compteurs($demarrageBase, $presenceBase);
-
-        $demarrage = $this->dmgService->applyCohorteFilter(clone $demarrageBase, $cohorte);
-        $presence = clone $presenceBase;
-
         $periodeId = $periode?->id;
         $dossiers = fn (array $statuts) => DossierPaiement::query()
             ->with(['agence', 'sourceFinancement', 'periode'])->withCount('paiements')
             ->whereIn('statut', $statuts)->where('periode_id', $periodeId)
             ->orderByDesc('created_at')->limit(500)->get();
-        $dossiersGroupables = DossierPaiement::query()
-            ->where('periode_id', $periodeId)
-            ->where('statut', 'BROUILLON')
-            ->whereNull('ordre_paiement_id')
-            ->whereDoesntHave('groupes')
-            ->orderByDesc('created_at')
-            ->limit(500)
-            ->get();
-        $dossiersEligiblesOp = DossierPaiement::query()
-            ->where('periode_id', $periodeId)
-            ->where('statut', 'VALIDE_CB')
-            ->whereNull('ordre_paiement_id')
-            ->orderByDesc('created_at')
-            ->limit(500)
-            ->get();
-        $groupesDossiers = DossierGroupe::query()
-            ->with('sourceFinancement:id,nom')
-            ->withCount('dossiers')
-            ->where('periode_id', $periodeId)
-            ->orderByDesc('created_at')
-            ->limit(500)
-            ->get();
-        $opsEligiblesBordereau = OrdrePaiement::query()
-            ->where('periode_id', $periodeId)
-            ->where('statut', 'BROUILLON')
-            ->whereNull('bordereau_paiement_id')
-            ->orderByDesc('created_at')
-            ->limit(500)
-            ->get();
 
+        // Le squelette de la page part immédiatement ; les jeux de données lourds sont chargés
+        // ensuite par Inertia, un groupe = une requête parallèle. Sur 2026-08 le rendu synchrone
+        // coûtait ~17 s (compteurs 10,5 s + démarrage 3 s + présence 3,3 s), les onglets « dossiers »
+        // étant eux négligeables (~25 ms par requête).
+        //
+        // Les builders sont volontairement reconstruits dans chaque closure : ils sont paresseux
+        // (aucun SQL tant qu'on ne les exécute pas) et, une requête différée relançant index()
+        // en entier, les partager entre groupes ferait travailler chaque requête pour les autres.
         return Inertia::render('Dmg/Paiements/Index', [
-            'attenteDemarrage' => $this->corbeilles->paiementRows($demarrage->orderByDesc('paiements.created_at')->limit(500)->get()),
-            'attentePresence' => $this->corbeilles->paiementRows($presence->orderByDesc('paiements.created_at')->limit(500)->get()),
-            'compteurs' => $compteurs,
-            'dossiers' => $this->corbeilles->dossierRows($dossiers(['BROUILLON']), 'En elaboration'),
-            'dossiersTransmis' => $this->corbeilles->dossierRows($dossiers(['TRANSMIS_CB', 'VALIDE_CB', 'EN_OP']), 'Circuit CB/OP'),
-            'dossiersAjournes' => $this->corbeilles->dossierRows($dossiers(['AJOURNE_DMG', 'AJOURNE_CB']), 'Ajourne DMG/CB'),
-            'dossiersGroupables' => $this->corbeilles->dossierRows($dossiersGroupables, 'Eligible multi-dossier'),
-            'dossiersEligiblesOp' => $this->corbeilles->dossierRows($dossiersEligiblesOp, 'Valide CB'),
-            'groupesDossiers' => $groupesDossiers,
-            'ops' => OrdrePaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(),
-            'opsEligiblesBordereau' => $opsEligiblesBordereau,
-            'bordereaux' => BordereauPaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(),
+            'attenteDemarrage' => Inertia::defer(fn () => $this->corbeilles->paiementRows(
+                $this->dmgService->applyCohorteFilter(
+                    $this->dmgService->attentePaiementDemarrage($filters, $mois),
+                    $cohorte
+                )->orderByDesc('paiements.created_at')->limit(500)->get()
+            ), 'demarrage'),
+            'attentePresence' => Inertia::defer(fn () => $this->corbeilles->paiementRows(
+                $this->dmgService->attentePaiementPresence($filters, $mois)
+                    ->orderByDesc('paiements.created_at')->limit(500)->get()
+            ), 'presence'),
+            // 8 COUNT sur la requête lourde : isolé pour ne pas retarder l'arrivée des listes.
+            'compteurs' => Inertia::defer(fn () => $this->compteurs(
+                $this->dmgService->attentePaiementDemarrage($filters, $mois),
+                $this->dmgService->attentePaiementPresence($filters, $mois),
+            ), 'compteurs'),
+            'dossiers' => Inertia::defer(fn () => $this->corbeilles->dossierRows($dossiers(['BROUILLON']), 'En elaboration'), 'dossiers'),
+            'dossiersTransmis' => Inertia::defer(fn () => $this->corbeilles->dossierRows($dossiers(['TRANSMIS_CB', 'VALIDE_CB', 'EN_OP']), 'Circuit CB/OP'), 'dossiers'),
+            'dossiersAjournes' => Inertia::defer(fn () => $this->corbeilles->dossierRows($dossiers(['AJOURNE_DMG', 'AJOURNE_CB']), 'Ajourne DMG/CB'), 'dossiers'),
+            'dossiersGroupables' => Inertia::defer(fn () => $this->corbeilles->dossierRows(
+                DossierPaiement::query()
+                    ->where('periode_id', $periodeId)
+                    ->where('statut', 'BROUILLON')
+                    ->whereNull('ordre_paiement_id')
+                    ->whereDoesntHave('groupes')
+                    ->orderByDesc('created_at')
+                    ->limit(500)
+                    ->get(),
+                'Eligible multi-dossier'
+            ), 'dossiers'),
+            'dossiersEligiblesOp' => Inertia::defer(fn () => $this->corbeilles->dossierRows(
+                DossierPaiement::query()
+                    ->where('periode_id', $periodeId)
+                    ->where('statut', 'VALIDE_CB')
+                    ->whereNull('ordre_paiement_id')
+                    ->orderByDesc('created_at')
+                    ->limit(500)
+                    ->get(),
+                'Valide CB'
+            ), 'dossiers'),
+            'groupesDossiers' => Inertia::defer(fn () => DossierGroupe::query()
+                ->with('sourceFinancement:id,nom')
+                ->withCount('dossiers')
+                ->where('periode_id', $periodeId)
+                ->orderByDesc('created_at')
+                ->limit(500)
+                ->get(), 'dossiers'),
+            'ops' => Inertia::defer(fn () => OrdrePaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(), 'dossiers'),
+            'opsEligiblesBordereau' => Inertia::defer(fn () => OrdrePaiement::query()
+                ->where('periode_id', $periodeId)
+                ->where('statut', 'BROUILLON')
+                ->whereNull('bordereau_paiement_id')
+                ->orderByDesc('created_at')
+                ->limit(500)
+                ->get(), 'dossiers'),
+            'bordereaux' => Inertia::defer(fn () => BordereauPaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(), 'dossiers'),
             'moisActuel' => $mois,
             'periode' => $periode,
             'filters' => $filters,
@@ -127,11 +142,11 @@ class PaiementDmgController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('numero', 'like', "%{$search}%")
-                  ->orWhereHas('paiements.droitPaiement.stage.beneficiaire', function ($q2) use ($search) {
-                      $q2->where('nom', 'like', "%{$search}%")
-                         ->orWhere('prenoms', 'like', "%{$search}%")
-                         ->orWhere('numero_aej', 'like', "%{$search}%");
-                  });
+                    ->orWhereHas('paiements.droitPaiement.stage.beneficiaire', function ($q2) use ($search) {
+                        $q2->where('nom', 'like', "%{$search}%")
+                            ->orWhere('prenoms', 'like', "%{$search}%")
+                            ->orWhere('numero_aej', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -201,8 +216,8 @@ class PaiementDmgController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('beneficiaires.nom', 'LIKE', "%{$search}%")
-                  ->orWhere('beneficiaires.prenoms', 'LIKE', "%{$search}%")
-                  ->orWhere('beneficiaires.numero_aej', 'LIKE', "%{$search}%");
+                    ->orWhere('beneficiaires.prenoms', 'LIKE', "%{$search}%")
+                    ->orWhere('beneficiaires.numero_aej', 'LIKE', "%{$search}%");
             });
         }
 
@@ -232,6 +247,7 @@ class PaiementDmgController extends Controller
 
         return $result;
     }
+
     public function documentsByStage(Request $request): JsonResponse
     {
         $request->validate(['stage_id' => 'required|integer']);

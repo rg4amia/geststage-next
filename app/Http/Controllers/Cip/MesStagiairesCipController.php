@@ -10,7 +10,9 @@ use App\Models\Company\Entreprise;
 use App\Models\Document\Document;
 use App\Models\Document\VersionDocument;
 use App\Models\Internship\Stage;
+use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
+use App\Models\Reference\Periode;
 use App\Models\Reference\SituationStage;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeDocument;
@@ -24,6 +26,8 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class MesStagiairesCipController extends Controller
@@ -269,16 +273,149 @@ class MesStagiairesCipController extends Controller
 
     /**
      * Corbeille : Pointage Ajourné par DMG
+     *
+     * Liste paginée des paiements au statut AJOURNE_DMG pour une période donnée,
+     * filtrable par agence, entreprise, financement, type de stage et recherche
+     * libre (nom / prénoms / N° AEJ).
+     *
+     * Équivalent legacy : PointageService::getDmgDeferredMonths() +
+     * PointageCipController::buildLegacyAjourneDmgQuery()
      */
     public function pointageAjourneDmg(Request $request)
     {
-        $instances = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence'])
-            ->where('corbeille_actuelle', CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG)
-            ->get();
+        $user = Auth::user();
+
+        $filters = $request->only([
+            'periode_id', 'agence_id', 'entreprise_id',
+            'source_financement_id', 'type_stage_id', 'search', 'page',
+        ]);
+
+        $query = Paiement::with([
+            'decisions.auteur',
+            'droitPaiement.pointage.stage.beneficiaire.typePaiement',
+            'droitPaiement.pointage.stage.entreprise',
+            'droitPaiement.pointage.stage.agence',
+            'droitPaiement.pointage.stage.sourceFinancement',
+            'droitPaiement.pointage.stage.typeStage',
+            'droitPaiement.periode',
+        ])
+            ->where('statut', 'AJOURNE_DMG')
+            ->whereHas('droitPaiement', function ($q) {
+                $q->whereNotNull('pointage_id')
+                    ->whereHas('pointage', fn ($p) => $p->where('statut', 'VALIDE'));
+            })
+            ->whereHas('droitPaiement.pointage.stage', function ($q) use ($user) {
+                if ($user?->agence_id) {
+                    $q->where('agence_id', $user->agence_id);
+                }
+            });
+
+        // ── Filtres ──
+        if (! empty($filters['periode_id'])) {
+            $query->whereHas('droitPaiement', fn ($q) => $q->where('periode_id', $filters['periode_id']));
+        }
+        if (! empty($filters['agence_id'])) {
+            $query->whereHas('droitPaiement.pointage.stage', fn ($q) => $q->where('agence_id', $filters['agence_id']));
+        }
+        if (! empty($filters['entreprise_id'])) {
+            $query->whereHas('droitPaiement.pointage.stage', fn ($q) => $q->where('entreprise_id', $filters['entreprise_id']));
+        }
+        if (! empty($filters['source_financement_id'])) {
+            $query->whereHas('droitPaiement.pointage.stage', fn ($q) => $q->where('source_financement_id', $filters['source_financement_id']));
+        }
+        if (! empty($filters['type_stage_id'])) {
+            $query->whereHas('droitPaiement.pointage.stage', fn ($q) => $q->where('type_stage_id', $filters['type_stage_id']));
+        }
+        if (! empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->whereHas('droitPaiement.pointage.stage.beneficiaire', function ($q) use ($search) {
+                $q->where('nom', 'ilike', "%{$search}%")
+                    ->orWhere('prenoms', 'ilike', "%{$search}%")
+                    ->orWhere('numero_aej', 'ilike', "%{$search}%");
+            });
+        }
+
+        $paiements = $query->orderByDesc('created_at')
+            ->paginate(20)
+            ->withQueryString();
+
+        // Mapper en structure plate pour le frontend
+        $paiements->getCollection()->transform(fn (Paiement $paiement) => $this->mapAjourneDmgRow($paiement));
+
+        // Données de filtres
+        $periodes = Periode::orderByDesc('date_debut')->limit(24)->get(['id', 'code']);
+        $agences = Agence::orderBy('nom')->get(['id', 'nom']);
+        $entreprises = Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale']);
+        $sourcesFinancement = SourceFinancement::orderBy('nom')->get(['id', 'nom']);
+        $typesStage = TypeStage::orderBy('nom')->get(['id', 'nom']);
 
         return Inertia::render('Cip/Pointages/AjourneDmg', [
-            'instances' => $instances,
+            'paiements' => $paiements,
+            'periodes' => $periodes,
+            'agences' => $agences,
+            'entreprises' => $entreprises,
+            'sourcesFinancement' => $sourcesFinancement,
+            'typesStage' => $typesStage,
+            'filters' => $filters,
         ]);
+    }
+
+    /**
+     * Mappe un paiement DMG-ajourné en structure plate pour le frontend.
+     */
+    private function mapAjourneDmgRow(Paiement $paiement): array
+    {
+        $stage = $paiement->droitPaiement?->pointage?->stage;
+        $beneficiaire = $stage?->beneficiaire;
+        $decision = $paiement->decisions
+            ->where('decision', 'AJOURNE_DMG')
+            ->sortByDesc('decide_le')
+            ->first();
+
+        return [
+            'id' => $paiement->id,
+            'stage_id' => $stage?->id,
+            'statut' => 'AJOURNE_DMG',
+            'montant' => $paiement->montant,
+            'date_ajournement' => ($decision?->decide_le ?? $paiement->created_at)?->toDateString(),
+            'observation_dmg' => $decision?->motif ?: 'Ajourné par la DMG',
+            'decisions' => $paiement->decisions->values(),
+            'periode' => [
+                'code' => $paiement->droitPaiement?->periode?->code,
+            ],
+            'stage' => [
+                'id' => $stage?->id,
+                'date_debut' => $stage?->date_debut?->toDateString(),
+                'date_fin_prevue' => $stage?->date_fin_prevue?->toDateString(),
+                'beneficiaire' => [
+                    'numero_aej' => $beneficiaire?->numero_aej,
+                    'nom' => $beneficiaire?->nom,
+                    'prenoms' => $beneficiaire?->prenoms,
+                    'telephone_principal' => $beneficiaire?->telephone_principal,
+                    'telephone_secondaire' => $beneficiaire?->telephone_secondaire,
+                    'type_paiement_id' => $beneficiaire?->type_paiement_id,
+                    'typePaiement' => $beneficiaire?->typePaiement,
+                    'numero_tresor_money' => $beneficiaire?->numero_tresor_money,
+                    'numero_wave' => $beneficiaire?->numero_wave,
+                ],
+                'entreprise' => [
+                    'id' => $stage?->entreprise?->id,
+                    'raison_sociale' => $stage?->entreprise?->raison_sociale,
+                ],
+                'agence' => [
+                    'id' => $stage?->agence?->id,
+                    'nom' => $stage?->agence?->nom,
+                ],
+                'sourceFinancement' => [
+                    'id' => $stage?->sourceFinancement?->id,
+                    'nom' => $stage?->sourceFinancement?->nom,
+                ],
+                'typeStage' => [
+                    'id' => $stage?->typeStage?->id,
+                    'nom' => $stage?->typeStage?->nom,
+                ],
+            ],
+        ];
     }
 
     /**
@@ -331,15 +468,15 @@ class MesStagiairesCipController extends Controller
             $filename = $service->genererNomFichier($instance->stage);
 
             // Stocker temporairement dans storage/app/public/pdf-preview (30 min)
-            $tmpKey = \Illuminate\Support\Str::uuid();
+            $tmpKey = Str::uuid();
             $path = "pdf-preview/{$tmpKey}_{$filename}";
-            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $pdf->output());
+            Storage::disk('public')->put($path, $pdf->output());
 
             // Nettoyer les anciens fichiers temporaires (> 30 min)
             $this->nettoyerPdfTemporaires();
 
             return response()->json([
-                'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                'url' => Storage::disk('public')->url($path),
                 'filename' => $filename,
             ]);
         } catch (\Throwable $e) {
@@ -402,15 +539,15 @@ class MesStagiairesCipController extends Controller
             $filename = $service->genererNomFichier();
 
             // Stocker temporairement dans storage/app/public/pdf-preview (30 min)
-            $tmpKey = \Illuminate\Support\Str::uuid();
+            $tmpKey = Str::uuid();
             $path = "pdf-preview/{$tmpKey}_{$filename}";
-            \Illuminate\Support\Facades\Storage::disk('public')->put($path, $pdf->output());
+            Storage::disk('public')->put($path, $pdf->output());
 
             // Nettoyer les anciens fichiers temporaires (> 30 min)
             $this->nettoyerPdfTemporaires();
 
             return response()->json([
-                'url' => \Illuminate\Support\Facades\Storage::disk('public')->url($path),
+                'url' => Storage::disk('public')->url($path),
                 'filename' => $filename,
             ]);
         } catch (\Throwable $e) {
@@ -424,7 +561,7 @@ class MesStagiairesCipController extends Controller
     private function nettoyerPdfTemporaires(): void
     {
         try {
-            $disk = \Illuminate\Support\Facades\Storage::disk('public');
+            $disk = Storage::disk('public');
             $files = $disk->files('pdf-preview');
             $limite = now()->subMinutes(30)->timestamp;
 

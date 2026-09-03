@@ -194,9 +194,23 @@ correction), il restait deux écarts sémantiques :
    `getPointageAjournerDmg()`, `status_ca = 1` ne sert qu'à construire la liste déroulante des mois dans
    `ajournerByDmg()`, pas à filtrer les lignes affichées.
 
-**Correction** — `buildLegacyAjourneDmgQuery()` (et le comptage associé dans
-`PointageService::getCountsByTab()`) filtrent maintenant `Paiement::where('statut', 'A_TRAITER')` scopé par
-`droits_paiement.periode_id`, sans condition sur le statut du pointage.
+**Correction** — `buildLegacyAjourneDmgQuery()` interroge désormais `Paiement` via
+`droit_paiement → pointage → stage` (au lieu de la corbeille `cip_ajourne_dmg` sur `InstanceParcours`,
+jamais produite par la migration), scopé par `droits_paiement.periode_id`.
+
+**Divergence assumée sur le statut retenu** — l'onglet Next filtre `paiements.statut = 'AJOURNE_DMG'`
+(paiements réellement ajournés par la DMG), et **non** `'A_TRAITER'` qui serait l'équivalent littéral du
+`status_dmg = 0` legacy. C'est un choix produit : l'onglet CIP affiche les dossiers que la DMG a rejetés et
+que le CIP doit corriger, pas la file d'attente DMG. Verrouillé par
+`PointageServiceTest::test_dmg_deferred_count_excludes_payments_only_waiting_for_dmg`.
+
+Conséquence à connaître : les volumes ne sont pas comparables à ceux de la page legacy. Sur août 2026,
+legacy comptait 86 paiements `status_dmg = 0` là où Next a 3 113 paiements `A_TRAITER` — écart qui ne vient
+pas d'un bug de requête mais d'une différence de workflow. En legacy, la validation CA et la génération du
+droit de paiement sont deux étapes découplées (le `paiement_models` n'est créé que plus tard par
+`ValiderPaiementJob`/`ValidateSinglePaiementJob`, côté DMG) ; dans Next,
+`PointageService::validerMensuel()` crée `DroitPaiement` + `Paiement` immédiatement à la validation CA.
+Next a donc, à tout instant, des paiements `A_TRAITER` que legacy n'a pas encore matérialisés.
 
 **Gap restant (non corrigeable en l'état)** — `paiement_models.status_ar` (accusé de réception, mis à jour
 hors du flux de validation CA — cf. `ValiderPaiementJob`/`ValidateSinglePaiementJob` en legacy) n'a aucun
@@ -204,6 +218,45 @@ hors du flux de validation CA — cf. `ValiderPaiementJob`/`ValidateSinglePaieme
 afficher des lignes que la page legacy masquerait déjà (AR reçu). De même, `paiement_models.observation`
 (motif libre saisi côté agence) n'est pas repris dans `paiements` : la colonne `observation_dmg` renvoyée
 par `mapLegacyAjourneDmgRow()` est `null` faute de source de données.
+
+### Gap E — Onglet CIP « AJOURNÉ / CA » : stagiaires sortis du dispositif listés à tort
+
+**Référence legacy** — `Cip/PointageCipController::pointageAjournerByChefAgence()` →
+`PointageService::getPointageAjournerByChefAgence($mois)` :
+
+```php
+return Stagiaire::withRelations()->whereHas('mespointages', function ($q) use ($mois) {
+    $q->whereNotNull('date_ca')->where('status_ca', 0)->where('mois', $mois);
+})->when($user->type_user_id == 2, fn ($q) => $q->where('id_agence', $user->agence_id))
+  ->where('id_situation_stage', 1);
+```
+
+**Attention, le filtre `status_ca = 0` de cette méthode est un bug legacy — ne pas le reproduire.**
+L'ajournement CA pose `status_ca = 2` (`ChefAgence/PointageChefAgenceController::statusPointage()` :
+`$pointage->status_ca = $request->status == 1 ? 2 : true;`). La remise à `status_ca = 0` (re-validation du
+dossier par le CA, cron `pointage:update-status`) s'accompagne toujours de `date_ca = null`, ce qui rend la
+conjonction `status_ca = 0 AND date_ca IS NOT NULL` quasi vide : **0 ligne sur août 2026**, 136 lignes en
+tout sur l'historique complet (des résidus). La liste legacy est donc de fait morte, alors que l'intention
+métier (`status_ca = 2`) donne 8 pointages sur août 2026. La migration Next a retenu la bonne sémantique :
+`mapStatutPointage()` mappe `status_ca = 2` ⇒ `AJOURNE_CA`.
+
+**Cause du gap** — le seul écart réel est que Next ne reprenait pas le filtre
+`contrats_pae.id_situation_stage = 1` : les pointages ajournés de stagiaires sortis du dispositif
+(abandon/suspension/désistement) restaient listés au CIP alors qu'ils ne sont plus corrigeables. Même patron
+que le Gap C. Vérifié sur données migrées : **81 pointages** `AJOURNE_CA` sur 494 concernés (août 2026 :
+8 lignes affichées au lieu de 6).
+
+**Correction** — ajout de
+`whereHas('stage', fn ($q) => $q->where('situation_stage', SituationStage::CODE_EN_COURS))` sur l'onglet
+`ajourne_ca` de `PointageCipController::stagiaireAttentePointage()`. Le comptage `ajourne_ca` de
+`PointageService::getCountsByTab()` est sorti de la requête groupée `$pointageStatuts` pour porter le même
+filtre — sans quoi le badge (8) et la liste (6) divergeraient. `effectue` reste sans filtre de situation,
+conformément à `getPointageEffectue()` qui n'en pose pas.
+
+**Note sur le périmètre agence** — legacy ne restreint à l'agence que pour un Chef d'Agence
+(`type_user_id == 2`) ; côté CIP la liste est nationale. Next ne pose donc volontairement pas de filtre
+agence sur cet onglet, contrairement à l'onglet `ajourne_dmg` dont la source legacy utilise
+`Stagiaire::mine()`.
 
 ---
 

@@ -115,19 +115,37 @@ class PointageService
 
         $user = Auth::user();
 
+        // Optimisé : un seul WHERE EXISTS avec JOINs explicites au lieu de
+        // 3 sous-requêtes WHERE HAS imbriquées (paiements → droits_paiement →
+        // pointages → stages). La base peut utiliser les index sur
+        // droits_paiement.(periode_id, pointage_id), pointages.statut,
+        // stages.(agence_id, source_financement_id, type_stage_id, entreprise_id).
         $counts['ajourne_dmg'] = Paiement::where('statut', 'AJOURNE_DMG')
-            ->whereHas('droitPaiement', function ($q) use ($periodeId) {
-                $q->where('periode_id', $periodeId)
-                    ->whereNotNull('pointage_id')
-                    ->whereHas('pointage', fn ($pointage) => $pointage->where('statut', 'VALIDE'));
-            })
-            ->whereHas('droitPaiement.pointage.stage', function ($q) use ($stageFilterScope, $user) {
+            ->whereExists(function ($query) use ($periodeId, $user, $stageFilters) {
+                $query->select(DB::raw(1))
+                    ->from('droits_paiement as dp')
+                    ->join('pointages as p', 'p.id', '=', 'dp.pointage_id')
+                    ->join('stages as s', 's.id', '=', 'p.stage_id')
+                    ->whereColumn('dp.id', 'paiements.droit_paiement_id')
+                    ->where('dp.periode_id', $periodeId)
+                    ->where('p.statut', 'VALIDE')
+                    ->whereNull('p.deleted_at');
 
                 if ($user?->agence_id) {
-                    $q->where('agence_id', $user->agence_id);
+                    $query->where('s.agence_id', $user->agence_id);
                 }
-
-                $stageFilterScope($q);
+                if (! empty($stageFilters['agence_id'])) {
+                    $query->where('s.agence_id', $stageFilters['agence_id']);
+                }
+                if (! empty($stageFilters['entreprise_id'])) {
+                    $query->where('s.entreprise_id', $stageFilters['entreprise_id']);
+                }
+                if (! empty($stageFilters['source_financement_id'])) {
+                    $query->where('s.source_financement_id', $stageFilters['source_financement_id']);
+                }
+                if (! empty($stageFilters['type_stage_id'])) {
+                    $query->where('s.type_stage_id', $stageFilters['type_stage_id']);
+                }
             })
             ->count();
 

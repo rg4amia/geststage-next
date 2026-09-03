@@ -18,6 +18,7 @@ use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
+use Carbon\Carbon;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
@@ -46,7 +47,7 @@ class PaiementsDmgWorkflowTest extends TestCase
         // La classification en cohortes (DmgService::applyCohorteFilter) compare le jour de
         // création du droit de paiement au jour de début du stage : on fige la date courante
         // pour que ce test reste déterministe quel que soit le jour d'exécution de la suite.
-        $this->travelTo(\Carbon\Carbon::parse('2026-08-04'), function () {
+        $this->travelTo(Carbon::parse('2026-08-04'), function () {
             $this->seed(RolePermissionSeeder::class);
             $user = User::factory()->create();
             $user->assignRole('administrateur');
@@ -55,14 +56,18 @@ class PaiementsDmgWorkflowTest extends TestCase
             $demarrage = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'PRESENCE', '2026-08-03');
             $this->paiement($periode, CorbeilleEnum::CA_VALIDATION_POINTAGES, 'PRESENCE', '2026-08-10');
 
+            // `compteurs` et `attenteDemarrage` sont différés (Inertia::defer) : la première
+            // réponse ne porte que le squelette, les données arrivent dans les requêtes
+            // partielles suivantes — celles que `loadDeferredProps()` rejoue ici.
             $this->actingAs($user)->get('/dmg/paiements?mois=2026-08')
                 ->assertOk()
                 ->assertInertia(fn (Assert $page) => $page
                     ->component('Dmg/Paiements/Index')
-                    ->where('compteurs.global.demarrage', 1)
-                    ->where('compteurs.global.presence', 0)
-                    ->has('attenteDemarrage', 1)
-                    ->where('attenteDemarrage.0.id', $demarrage->id));
+                    ->loadDeferredProps(['compteurs', 'demarrage'], fn (Assert $differe) => $differe
+                        ->where('compteurs.global.demarrage', 1)
+                        ->where('compteurs.global.presence', 0)
+                        ->has('attenteDemarrage', 1)
+                        ->where('attenteDemarrage.0.id', $demarrage->id)));
 
             $this->get('/dmg/paiements/generer-pdf?type=etat_paiement&mois=2026-08&ids[]='.$demarrage->id)
                 ->assertOk()
