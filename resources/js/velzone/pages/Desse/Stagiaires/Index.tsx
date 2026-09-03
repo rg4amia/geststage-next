@@ -121,6 +121,15 @@ const DesseStagiairesIndex = (props: PageProps) => {
     const [decisionDoublon, setDecisionDoublon] = useState('non_avere');
     const [motifDoublon, setMotifDoublon] = useState('');
 
+    /* ─── Modale Détails (Doublons Traités) ─── */
+    const [detailModalOpen, setDetailModalOpen] = useState(false);
+    const [selectedDecision, setSelectedDecision] = useState<any>(null);
+
+    const openDetailModal = (row: any) => {
+        setSelectedDecision(row);
+        setDetailModalOpen(true);
+    };
+
     /* ─── Navigation / Filtres ─── */
     const applyNav = useCallback(
         (activeTab: string, activeTypeDoublon: string, currentFilters: typeof selectedFilters) => {
@@ -208,10 +217,12 @@ return;
         });
     };
 
-    /* ─── Actions : Retour Chef d'Agence ─── */
+    /* ─── Actions : Retour Chef d'Agence ───
+       Portage de la validation legacy (étape 7/8 → DMG, etape_next=9) : le dossier est libéré
+       du circuit doublon et transmis à la file DMG pour vérification et paiement. */
     const renvoyerDossier = (id: number) => {
-        if (confirm("Renvoyer ce dossier et le transmettre à la DAICG ?")) {
-            router.post(`/desse/stagiaires/valider/${id}`, {}, { preserveScroll: true });
+        if (confirm("Valider ce dossier et le transmettre à la DMG pour vérification et paiement ?")) {
+            router.post(`/desse/stagiaires/retour-agence/${id}/valider`, {}, { preserveScroll: true });
         }
     };
 
@@ -263,6 +274,7 @@ return;
             },
             { header: 'Entreprise', cell: (cell: any) => cell.row.original.stage?.entreprise?.raison_sociale || '-' },
             { header: 'Agence', cell: (cell: any) => cell.row.original.stage?.agence?.nom || '-' },
+            { header: 'CIP en charge', cell: (cell: any) => cell.row.original.stage?.conseiller?.nom_complet || '-' },
             { header: 'Type de stage', cell: (cell: any) => cell.row.original.stage?.type_stage?.nom || '-' },
             { header: 'Financement', cell: (cell: any) => cell.row.original.stage?.source_financement?.nom || '-' },
             { header: 'Date début', cell: (cell: any) => formatDateFr(cell.row.original.stage?.date_debut) },
@@ -364,7 +376,12 @@ return;
                 cell: (cell: any) => {
                     const b = cell.row.original.instance?.stage?.beneficiaire;
 
-                    return <span>{b?.nom} {b?.prenoms}</span>;
+                    return (
+                        <div>
+                            <h5 className="fs-14 mb-1">{b?.nom} {b?.prenoms}</h5>
+                            <p className="text-muted mb-0">{b?.numero_aej || '-'}</p>
+                        </div>
+                    );
                 },
             },
             {
@@ -375,10 +392,40 @@ return;
                     return found?.label || cell.row.original.type_doublon;
                 },
             },
+            { header: 'N° AEJ', cell: (cell: any) => cell.row.original.instance?.stage?.beneficiaire?.numero_aej || '-' },
+            { header: 'Téléphone', cell: (cell: any) => cell.row.original.instance?.stage?.beneficiaire?.telephone_principal || '-' },
+            {
+                header: 'N° Wave / Trésor Money',
+                cell: (cell: any) => {
+                    const b = cell.row.original.instance?.stage?.beneficiaire;
+
+                    return b?.numero_tresor_money || b?.numero_wave || '-';
+                },
+            },
+            { header: 'Source financement', cell: (cell: any) => cell.row.original.instance?.stage?.source_financement?.nom || '-' },
+            { header: 'Type stage', cell: (cell: any) => cell.row.original.instance?.stage?.type_stage?.nom || '-' },
+            { header: 'Agence', cell: (cell: any) => cell.row.original.instance?.stage?.agence?.nom || '-' },
+            { header: 'CIP en charge', cell: (cell: any) => cell.row.original.instance?.stage?.conseiller?.nom_complet || '-' },
+            {
+                header: 'Situation',
+                cell: (cell: any) => {
+                    const situation = cell.row.original.instance?.stage?.situation_stage;
+
+                    return situation ? <Badge color="info" className="text-capitalize">{situation}</Badge> : '-';
+                },
+            },
             { header: 'Décision', cell: (cell: any) => decisionBadge(cell.row.original.decision) },
-            { header: 'Motif', cell: (cell: any) => <span className="text-muted">{cell.row.original.motif}</span> },
+            { header: 'Motif', cell: (cell: any) => <span className="text-muted" title={cell.row.original.motif}>{(cell.row.original.motif || '').length > 60 ? (cell.row.original.motif || '').slice(0, 60) + '…' : cell.row.original.motif}</span> },
             { header: 'Traité par', cell: (cell: any) => cell.row.original.decide_par?.name || '-' },
-            { header: 'Date traitement', cell: (cell: any) => formatDateFr(cell.row.original.decide_le) },
+            { header: 'Date', cell: (cell: any) => formatDateFr(cell.row.original.decide_le) },
+            {
+                header: 'Actions',
+                cell: (cell: any) => (
+                    <Button color="info" size="sm" outline onClick={() => openDetailModal(cell.row.original)}>
+                        <i className="ri-eye-line align-bottom me-1"></i> Détails
+                    </Button>
+                ),
+            },
         ],
         [doublonTypes],
     );
@@ -676,6 +723,89 @@ params[k] = v;
                     <Button color="primary" onClick={confirmTraiterDoublon} disabled={isProcessing || motifDoublon.trim().length < 5}>
                         {isProcessing ? <><Spinner size="sm" className="me-2" />Traitement...</> : 'Confirmer la décision'}
                     </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ═══════════════════════════════════════════
+                MODALE — Détails (Doublons Traités)
+               ═══════════════════════════════════════════ */}
+            <Modal isOpen={detailModalOpen} toggle={() => setDetailModalOpen(false)} centered size="lg">
+                <ModalHeader toggle={() => setDetailModalOpen(false)}>
+                    <i className="ri-information-line me-2 text-info"></i>
+                    Détails du doublon traité
+                </ModalHeader>
+                <ModalBody>
+                    {selectedDecision && (() => {
+                        const stage = selectedDecision.instance?.stage;
+                        const b = stage?.beneficiaire;
+
+                        return (
+                            <Row className="g-4">
+                                {/* Identité */}
+                                <Col md={6}>
+                                    <div className="border-start border-3 border-primary ps-3">
+                                        <h6 className="text-primary fw-bold mb-3">
+                                            <i className="ri-user-3-line me-1" />Identité
+                                        </h6>
+                                        <p className="mb-1"><strong>Nom :</strong> {b?.nom}</p>
+                                        <p className="mb-1"><strong>Prénoms :</strong> {b?.prenoms}</p>
+                                        <p className="mb-1"><strong>N° AEJ :</strong> {b?.numero_aej || '-'}</p>
+                                        <p className="mb-1"><strong>Téléphone :</strong> {b?.telephone_principal || '-'}</p>
+                                        <p className="mb-1"><strong>N° Pièce d'identité :</strong> {b?.numero_piece_identite || '-'}</p>
+                                        <p className="mb-1"><strong>N° CMU :</strong> {b?.numero_cmu || '-'}</p>
+                                    </div>
+                                </Col>
+
+                                {/* Paiement */}
+                                <Col md={6}>
+                                    <div className="border-start border-3 border-danger ps-3">
+                                        <h6 className="text-danger fw-bold mb-3">
+                                            <i className="ri-bank-card-line me-1" />Paiement
+                                        </h6>
+                                        <p className="mb-1"><strong>Type paiement :</strong> {b?.type_paiement?.nom || '-'}</p>
+                                        <p className="mb-1">
+                                            <strong>N° Wave / Trésor Money :</strong>{' '}
+                                            {b?.numero_tresor_money || b?.numero_wave || '-'}
+                                        </p>
+                                    </div>
+                                </Col>
+
+                                {/* Stage */}
+                                <Col md={6}>
+                                    <div className="border-start border-3 border-success ps-3">
+                                        <h6 className="text-success fw-bold mb-3">
+                                            <i className="ri-briefcase-line me-1" />Stage
+                                        </h6>
+                                        <p className="mb-1"><strong>Entreprise :</strong> {stage?.entreprise?.raison_sociale || '-'}</p>
+                                        <p className="mb-1"><strong>Agence :</strong> {stage?.agence?.nom || '-'}</p>
+                                        <p className="mb-1"><strong>CIP en charge :</strong> {stage?.conseiller?.nom_complet || '-'}</p>
+                                        <p className="mb-1"><strong>Type de stage :</strong> {stage?.type_stage?.nom || '-'}</p>
+                                        <p className="mb-1"><strong>Financement :</strong> {stage?.source_financement?.nom || '-'}</p>
+                                        <p className="mb-1"><strong>Situation :</strong> {stage?.situation_stage || '-'}</p>
+                                        <p className="mb-1"><strong>Date début :</strong> {formatDateFr(stage?.date_debut)}</p>
+                                        <p className="mb-1"><strong>Date fin :</strong> {formatDateFr(stage?.date_fin_prevue)}</p>
+                                    </div>
+                                </Col>
+
+                                {/* Décision */}
+                                <Col md={6}>
+                                    <div className="border-start border-3 border-warning ps-3">
+                                        <h6 className="text-warning fw-bold mb-3">
+                                            <i className="ri-file-list-3-line me-1" />Décision
+                                        </h6>
+                                        <p className="mb-1"><strong>Type de doublon :</strong> {doublonTypes.find(d => d.value === selectedDecision.type_doublon)?.label || selectedDecision.type_doublon}</p>
+                                        <p className="mb-1"><strong>Décision :</strong> {decisionBadge(selectedDecision.decision)}</p>
+                                        <p className="mb-1"><strong>Traité par :</strong> {selectedDecision.decide_par?.name || '-'}</p>
+                                        <p className="mb-1"><strong>Date :</strong> {formatDateFr(selectedDecision.decide_le)}</p>
+                                        <p className="mb-1"><strong>Motif :</strong> {selectedDecision.motif || '-'}</p>
+                                    </div>
+                                </Col>
+                            </Row>
+                        );
+                    })()}
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setDetailModalOpen(false)}>Fermer</Button>
                 </ModalFooter>
             </Modal>
         </React.Fragment>

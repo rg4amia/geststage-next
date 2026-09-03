@@ -223,3 +223,63 @@ En revanche, plusieurs comportements legacy restent encore simplifiés ou partie
 ## Conclusion
 
 Le projet est déjà **dans la bonne famille fonctionnelle**, mais il faut encore plusieurs passes pour atteindre la fidélité métier du legacy, surtout sur la chaîne financière et les retours d’ajournement.
+
+---
+
+## Complément (2026-09-03) — Corbeilles sans lecteur UI ni transition de sortie
+
+Inventaire croisé (écrivains = transitions/mapper/backfills ; lecteurs = écrans ; sortie = transition de
+l'instance) sur les 43 corbeilles de `CorbeilleEnum`, données dev du 03/09/2026.
+
+### 🟥 A. Cul-de-sac avec données réelles — `desse_doublons_traites` (1 967 instances)
+
+L'onglet DESSE « Doublons traités » lit `DesseDoublonDecision`, **pas** les instances : aucune UI ne lit cette
+corbeille et aucune transition n'en sort. Le mapper y envoie pourtant les étapes legacy **5** (avéré) et **6**
+(non-avéré) :
+
+| Origine legacy | Stages migrés | Conséquence |
+|---|---|---|
+| Étape 6 « validé, doublon non avéré » | 1 159 | Dossier **validé** qui doit continuer vers le paiement. 4 442 droits / paiements, 1 107 stages déjà pointés (cycle présence). Les files DMG (`instanceRows(DMG_ATTENTE_PAIEMENT_DEMARRAGE/PRESENCE)`) ne les montrent jamais → **invisibles et bloqués** |
+| Étape 5 « ajourné, doublon avéré » | 627 | Dossier **bloqué** qui doit revenir à l'agence pour résolution (correction ou abandon du doublon) → jamais renvoyé |
+
+Les décisions (`DesseDoublonDecision`) existent et restent affichées dans l'historique « Doublons traités » ;
+c'est le placement des **instances** qui est fautif.
+
+**Proposition (non appliquée — décision métier requise)**
+1. Mapper : étape 6 → file DMG selon le cycle (présence si pointages existants, sinon démarrage) ;
+   étape 5 → `cip_ajourne_desse` (résolution agence, cohérent avec l'étape 7 déjà traitée).
+2. Nouveau backfill relogeant les 1 967 instances (décisions conservées, garde-fous : ne jamais ramener en
+   arrière un dossier déjà engagé ailleurs).
+
+### 🟧 B. Corbeilles jamais écrites mais lues — onglets vides à vie (flux à venir)
+
+| Corbeille | Lecteur | Écrivain |
+|---|---|---|
+| `DAICG_VALIDES_CA` | Onglet DAICG « Validé CA » | absent (workflow CA→DAICG non branché) |
+| `DAICG_SANS_CONTRAT` | Onglet DAICG « Sans contrat » | absent |
+| `CIP_AJOURNE_AAF` | Suivi CIP « Suspension/abandon » | absent |
+| `CIP_FIN_CONTRAT` | Suivi CIP « Renouvellement » | absent |
+| `CIP_DIFFERE_AC` | Suivi CIP « Différé AC » | mapper legacy 27/28 uniquement |
+
+→ Conserver l'UI ; câbler les écrivains (workflow AAF / renouvellement / DAICG).
+
+### 🟨 C. Valeurs mortes — zéro référence code hors enum, zéro donnée
+
+`CIP_POINTAGE`, `CA_STAGIAIRE_DIFFERE_AC`, `DESSE_ATTENTE_CA`, `DESSE_SUIVI_ENREGISTRES`,
+`DESSE_SUIVI_VALIDES_AR`, `DAICG_ATTENTE_DMG` (ce dernier n'apparaît que dans un compteur en dur du
+CIP et une légende JS). → suppression de l'enum, sans effet sur les données.
+
+### 🟩 D. Fausses alertes — lues ailleurs, non perdues
+
+`cb_dossier_multiple` (135 759), `cb_etat_paiement_ajourne`, `ac_bordereau_op_attente`, `dmg_elaboration_op`,
+`dmg_op_attente_bordereau`, `dmg_op_rejete_ac`, `dmg_op_differe_ac`, `ca_validation_pointages`,
+`cip_pointage_pejedec` : les écrans CB/AC/DMG/pointages lisent les entités paiement (dossiers, bordereaux,
+OP, `pointages.statut`, `paiements.corbeille_actuelle`) via `CorbeilleParcoursQueryService`. Les instances
+servent d'historique de workflow — pas de blocage métier.
+
+### 🟩 E. Déjà traité (02–03/09/2026)
+
+`desse_suivi_processus` : 0 donnée. L'étape legacy 8 (validé après retour CA) est remappée vers
+`DAICG_VALIDES_DESSE` (elle pointait sur cette corbeille orpheline) et les étapes legacy 7 sont relogées
+vers `cip_ajourne_desse` (backfill `backfill_retour_chefagence`, 91 dossiers). La corbeille reste dans
+l'enum comme source du backfill (bases migrées avec l'ancien mapping).

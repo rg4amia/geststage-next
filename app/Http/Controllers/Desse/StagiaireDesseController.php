@@ -37,6 +37,7 @@ class StagiaireDesseController extends Controller
         'stage.beneficiaire',
         'stage.entreprise.typeStructure',
         'stage.agence',
+        'stage.conseiller',
         'stage.sourceFinancement',
         'stage.typeStage',
     ];
@@ -110,6 +111,32 @@ class StagiaireDesseController extends Controller
         $this->workflow->desseValidePejedec($instance);
 
         return back()->with('success', 'Dossier validé par la DESSE et transmis à la DAICG.');
+    }
+
+    /**
+     * Validation finale d'un dossier « Retour Chef d'Agence » : portage de la méthode legacy
+     * (TraitementEtapeController etape_next=9 → IndexDmgController::verification) qui faisait
+     * passer les dossiers de l'étape 7/8 vers l'étape 9 « DMG : validé après vérification ».
+     * Le dossier est libéré du circuit doublon et rejoint la file DMG (DMG_ATTENTE_PAIEMENT_DEMARRAGE)
+     * où le module DMG reprend les droits/paiements — seule une instance encore dans les corbeilles
+     * de retour (cip_ajourne_desse / desse_retour_agence) peut être traitée ici.
+     */
+    public function validerRetourAgence(Request $request, int $id): RedirectResponse
+    {
+        $instance = InstanceParcours::with('stage')->findOrFail($id);
+
+        if ($instance->terminee_le !== null
+            || $instance->stage === null
+            || ! in_array($instance->corbeille_actuelle, array_map(
+                fn (CorbeilleEnum $c) => $c->value,
+                self::RETOUR_CHEFAGENCE_CORBEILLES
+            ), true)) {
+            return back()->with('error', "Ce dossier n'est plus en attente de validation DESSE (il a déjà quitté le circuit « Retour Chef d'Agence ») et ne peut pas être validé ici.");
+        }
+
+        $this->workflow->desseValideRetourAgence($instance);
+
+        return back()->with('success', 'Dossier validé par la DESSE et transmis à la DMG pour vérification et paiement.');
     }
 
     public function ajourner(Request $request, int $id): RedirectResponse
@@ -186,9 +213,10 @@ class StagiaireDesseController extends Controller
     {
         $query = DesseDoublonDecision::query()->with([
             'decidePar',
-            'instance.stage.beneficiaire',
+            'instance.stage.beneficiaire.typePaiement',
             'instance.stage.entreprise.typeStructure',
             'instance.stage.agence',
+            'instance.stage.conseiller',
             'instance.stage.sourceFinancement',
             'instance.stage.typeStage',
         ]);

@@ -132,6 +132,127 @@ class CorbeilleWiringTest extends TestCase
         ]);
     }
 
+    public function test_validation_retour_chef_agence_transmet_le_dossier_a_la_dmg(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Role::create(['name' => 'desse', 'guard_name' => 'web']);
+
+        $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
+        $etape = EtapeParcours::factory()->create([
+            'definition_parcours_id' => $definition->id,
+            'code' => 'CIP_AJOURNE_DESSE',
+            'nom' => 'Ajourné DESSE',
+            'code_corbeille' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+            'initiale' => true,
+        ]);
+
+        // Dossier « retour Chef d'Agence » (équivalent legacy étape 7) : la validation DESSE
+        // le libère du circuit doublon et le transmet à la DMG (équivalent legacy étape 9).
+        $instanceRetour = InstanceParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etape->id,
+            'stage_id' => Stage::factory()->create()->id,
+            'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        ]);
+
+        $this->post("/desse/stagiaires/retour-agence/{$instanceRetour->id}/valider")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('instances_parcours', [
+            'id' => $instanceRetour->id,
+            'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+        ]);
+
+        // Garde-fou : une instance hors des corbeilles de retour (déjà engagée ailleurs) ne
+        // peut pas être validée par ce traitement — sa corbeille reste inchangée.
+        $instanceEngagee = InstanceParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etape->id,
+            'stage_id' => Stage::factory()->create()->id,
+            'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+        ]);
+
+        $this->post("/desse/stagiaires/retour-agence/{$instanceEngagee->id}/valider")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('instances_parcours', [
+            'id' => $instanceEngagee->id,
+            'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+        ]);
+    }
+
+    public function test_validation_retour_chef_agence_oriente_vers_la_presence_si_cycle_demarre(): void
+    {
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        Role::create(['name' => 'desse', 'guard_name' => 'web']);
+
+        $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
+        $etape = EtapeParcours::factory()->create([
+            'definition_parcours_id' => $definition->id,
+            'code' => 'CIP_AJOURNE_DESSE',
+            'nom' => 'Ajourné DESSE',
+            'code_corbeille' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+            'initiale' => true,
+        ]);
+
+        $periode = Periode::create([
+            'code' => '2026-08',
+            'date_debut' => '2026-08-01',
+            'date_fin' => '2026-08-31',
+            'ouverte_pointage' => true,
+            'ouverte_paiement' => true,
+        ]);
+
+        // Dossier de retour dont le stage a déjà un pointage validé (cycle présence démarré,
+        // cas des 86/91 dossiers migrés) : la validation DESSE l'oriente vers la file DMG présence.
+        $stageEnCours = Stage::factory()->create();
+        $instanceEnCours = InstanceParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etape->id,
+            'stage_id' => $stageEnCours->id,
+            'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        ]);
+
+        Pointage::create([
+            'uuid_public' => (string) Str::uuid(),
+            'stage_id' => $stageEnCours->id,
+            'periode_id' => $periode->id,
+            'nature' => 'MENSUEL',
+            'statut' => 'VALIDE',
+            'version_courante' => 1,
+            'version_verrouillage' => 0,
+        ]);
+
+        $this->post("/desse/stagiaires/retour-agence/{$instanceEnCours->id}/valider")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('instances_parcours', [
+            'id' => $instanceEnCours->id,
+            'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+        ]);
+
+        // Dossier sans aucun pointage validé (stage pas encore démarré) : file démarrage.
+        $stagePasDemarre = Stage::factory()->create();
+        $instancePasDemarree = InstanceParcours::create([
+            'definition_parcours_id' => $definition->id,
+            'etape_courante_id' => $etape->id,
+            'stage_id' => $stagePasDemarre->id,
+            'corbeille_actuelle' => CorbeilleEnum::CIP_AJOURNE_DESSE->value,
+        ]);
+
+        $this->post("/desse/stagiaires/retour-agence/{$instancePasDemarree->id}/valider")
+            ->assertRedirect();
+
+        $this->assertDatabaseHas('instances_parcours', [
+            'id' => $instancePasDemarree->id,
+            'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+        ]);
+    }
+
     public function test_actions_pejedec_aaf_branchees_sur_les_transitions_metier(): void
     {
         $user = User::factory()->create();

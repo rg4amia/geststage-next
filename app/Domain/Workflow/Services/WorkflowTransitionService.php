@@ -227,6 +227,31 @@ class WorkflowTransitionService
     }
 
     /**
+     * 10bis. La DESSE valide un dossier « retour Chef d'Agence » (doublon traité par l'agence).
+     * Portage de la validation legacy (étape 7/8 → DMG, TraitementEtapeController etape_next=9 /
+     * IndexDmgController::verification) : le dossier est libéré du circuit doublon et rejoint la
+     * file DMG (équivalent de l'étape 9 « DMG : validé après vérification » côté mapper
+     * LegacyMapperService), où le module DMG crée/reprend les droits et paiements.
+     *
+     * La file cible dépend de l'avancement du dossier : présence si le cycle mensuel de pointage a
+     * déjà démarré (au moins un pointage validé par le Chef d'Agence), sinon démarrage. Sur les
+     * dossiers de retour migrés du legacy, 86/91 ont déjà un cycle présence en cours — les orienter
+     * vers la file « démarrage » les ferait apparaître au mauvais endroit côté DMG.
+     */
+    public function desseValideRetourAgence(InstanceParcours $instance): void
+    {
+        $cyclePresenceDemarre = $instance->stage?->pointages()
+            ->where('statut', 'VALIDE')
+            ->exists() ?? false;
+
+        $corbeille = $cyclePresenceDemarre
+            ? CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE
+            : CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE;
+
+        $instance->update(['corbeille_actuelle' => $corbeille->value]);
+    }
+
+    /**
      * 11. La DESSE traite un groupe de doublons.
      * "Avéré" -> les dossiers retournent à l'agence pour correction.
      * "Non avéré" -> les dossiers sont validés et transmis à la DAICG.

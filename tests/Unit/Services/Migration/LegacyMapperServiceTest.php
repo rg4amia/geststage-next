@@ -16,6 +16,71 @@ class LegacyMapperServiceTest extends TestCase
     }
 
     /**
+     * L'étape 7 legacy (doublon avéré traité par le CA, en attente de la validation finale
+     * de la DESSE — vue « Stagiaires doublon retourné / Agence ») doit alimenter la corbeille
+     * CIP_AJOURNE_DESSE et non CIP_MES_STAGIAIRES : c'est elle qui peuple l'onglet DESSE
+     * « Retour Chef d'Agence » et le suivi CIP « Doublon DESSE ». Sinon les dossiers du
+     * legacy restent invisibles pour la DESSE après migration.
+     */
+    public function test_etape_seven_doublon_retour_chef_agence_goes_to_cip_ajourne_desse(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::CIP_AJOURNE_DESSE,
+            $mapper->mapStatutStageToCorbeille(7)
+        );
+
+        // Via le contexte Chef d'Agence : que le CA ait statué ou non, l'étape 7
+        // retombe sur le mapping ci-dessus (pas d'éligibilité CA hors étapes 1/4).
+        foreach ([0, 1, 2] as $etatChefAgence) {
+            $this->assertSame(
+                CorbeilleEnum::CIP_AJOURNE_DESSE,
+                $mapper->mapChefAgenceCorbeille((object) [
+                    'etapetraitement_id' => 7,
+                    'etat_chef_agence' => $etatChefAgence,
+                    'date_debut' => '2026-08-10',
+                    'agent_id' => 3,
+                    'avis_contrat' => 1,
+                    'file_contrat' => 'contrat.pdf',
+                ])
+            );
+        }
+    }
+
+    /**
+     * L'étape 8 legacy (doublon validé par la DESSE après retour du Chef d'Agence) est un
+     * état « clos » — jamais un file actionnable : le dossier doit rejoindre la corbeille
+     * DAICG_VALIDES_DESSE (là où aboutit l'action « Renvoyer / Valider » de l'onglet DESSE
+     * « Retour Chef d'Agence »), et non DESSE_SUIVI_PROCESSUS qui n'a ni lecteur UI ni
+     * transition de sortie. Ainsi l'onglet « Retour Chef d'Agence » ne liste que des
+     * dossiers réellement en attente de validation.
+     */
+    public function test_etape_eight_doublon_valide_apres_retour_ca_goes_to_daicg_valides_desse(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::DAICG_VALIDES_DESSE,
+            $mapper->mapStatutStageToCorbeille(8)
+        );
+
+        // Via le contexte Chef d'Agence : l'étape 8 n'est jamais éligible à la corbeille
+        // de validation du CA (étapes 1/4 uniquement) et retombe sur le mapping ci-dessus.
+        $this->assertSame(
+            CorbeilleEnum::DAICG_VALIDES_DESSE,
+            $mapper->mapChefAgenceCorbeille((object) [
+                'etapetraitement_id' => 8,
+                'etat_chef_agence' => 2,
+                'date_debut' => '2026-08-10',
+                'agent_id' => 3,
+                'avis_contrat' => 1,
+                'file_contrat' => 'contrat.pdf',
+            ])
+        );
+    }
+
+    /**
      * Un dossier ajourné puis re-soumis par le CIP garde la `date_chef_agence` de la passe
      * précédente alors que `etat_chef_agence` est remis à 0. WaitCheckedChefAgenceService ne
      * lisant jamais cette date, le dossier revient dans la corbeille de validation du CA.

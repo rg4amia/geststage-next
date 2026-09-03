@@ -67,7 +67,7 @@ class MigrateLegacyDataCommand extends Command
      * @var string
      */
     protected $signature = 'migrate:legacy-data
-        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_paiements_dmg, backfill_avenants_renouvellement, fix_statut_paiements_legacy, fix_pointage_revisions, backfill_corbeilles_dmg, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
+        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_retour_chefagence, backfill_paiements_dmg, backfill_avenants_renouvellement, fix_statut_paiements_legacy, fix_pointage_revisions, backfill_corbeilles_dmg, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
         {--dry-run : Exécute toutes les transformations puis annule les écritures PostgreSQL}
         {--chunk=1000 : Nombre maximal de lignes chargées et validées par transaction (1 à 5000)}
         {--with-model-audits : Conserve les journaux Eloquent ligne par ligne (beaucoup plus lent)}
@@ -128,7 +128,7 @@ class MigrateLegacyDataCommand extends Command
             'all', 'references', 'agences', 'users', 'entreprises', 'offres', 'beneficiaires',
             'stages', 'pointages', 'paiements', 'dossiers_paiement', 'dossiers_groupes',
             'operations', 'bordereaux', 'evenements', 'desse_doublons',
-            'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_paiements_dmg', 'backfill_presence_payments',
+            'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_retour_chefagence', 'backfill_paiements_dmg', 'backfill_presence_payments',
             'backfill_situation_pointage', 'backfill_droits_pointage', 'backfill_corbeilles_dmg',
             'fix_statut_paiements_legacy', 'fix_pointage_revisions', 'backfill_avenants_renouvellement',
             'fix_etat_chef_agence_100', 'fix_legacy_ca_validation', 'update_missing_data',
@@ -259,6 +259,10 @@ class MigrateLegacyDataCommand extends Command
 
             if ($step === 'all' || $step === 'backfill_corbeilles_ca') {
                 $this->runPhase('backfill_corbeilles_ca', fn () => $this->backfillChefAgenceCorbeilles($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_retour_chefagence') {
+                $this->runPhase('backfill_retour_chefagence', fn () => $this->backfillRetourChefAgence($dryRun));
             }
 
             if ($step === 'all' || $step === 'backfill_paiements_dmg' || $step === 'backfill_presence_payments') {
@@ -3238,6 +3242,153 @@ class MigrateLegacyDataCommand extends Command
         if (! empty($transitions)) {
             $rows = collect($transitions)->map(fn ($n, $t) => [$t, $n])->values()->toArray();
             $this->table(['Transition', 'Nombre'], $rows);
+        }
+    }
+
+    /**
+     * Étape backfill_retour_chefagence : corrige le placement des dossiers legacy du circuit
+     * doublon « retour agence » (vue legacy « Stagiaires doublon retourné / Agence »,
+     * IndexDesseController@retourChefagence) qui avaient été migrés dans des corbeilles
+     * inadaptées, puis reste aligné sur le mapping corrigé (LegacyMapperService) :
+     *
+     *  - étape 7 (doublon avéré traité par le Chef d'Agence, en attente de la validation
+     *    finale de la DESSE) → CIP_AJOURNE_DESSE. Ils étaient dans CIP_MES_STAGIAIRES,
+     *    corbeille invisible pour la DESSE : l'onglet « Retour Chef d'Agence » de
+     *    Desse/Stagiaires/Index (DESSE_RETOUR_AGENCE + CIP_AJOURNE_DESSE) restait vide.
+     *    Ils réapparaissent dans l'onglet DESSE tout en restant visibles côté CIP
+     *    (Mes Stagiaires / Suivi « Doublon DESSE ») pour finir la correction du doublon.
+     *  - étape 8 (doublon déjà validé par la DESSE après retour du CA — état « clos »,
+     *    jamais produit en pratique côté legacy, 0 événement dans contrat_etape) →
+     *    DAICG_VALIDES_DESSE, la corbeille « Validé par la DESSE » où aboutit l'action
+     *    « Renvoyer / Valider » de l'onglet : l'ancienne cible DESSE_SUIVI_PROCESSUS n'a
+     *    ni lecteur UI ni transition de sortie et perdrait les dossiers.
+     */
+    private function backfillRetourChefAgence(bool $dryRun): void
+    {
+        try {
+            DB::connection('legacy')->getPdo();
+        } catch (Throwable $e) {
+            $this->error("Impossible de se connecter à la base 'legacy' : {$e->getMessage()}");
+
+            return;
+        }
+
+        $definition = DefinitionParcours::where('code', 'STAGE_LEGACY')->where('version', 1)->first();
+        if (! $definition) {
+            $this->error("Definition de parcours 'STAGE_LEGACY' introuvable : la migration initiale a-t-elle été jouée ?");
+
+            return;
+        }
+
+        // Cible par étape legacy et corbeilles sources acceptées : on ne rejoue la
+        // correction que sur les dossiers encore dans l'état où l'ancien mapping (ou une
+        // migration antérieure) les avait laissés — jamais sur un dossier qui aurait déjà
+        // poursuivi son circuit depuis.
+        $cibles = [
+            7 => [
+                'corbeille' => CorbeilleEnum::CIP_AJOURNE_DESSE,
+                'sources' => [CorbeilleEnum::CIP_MES_STAGIAIRES->value],
+                'nom_etape' => 'CIP : Ajourné par la DESSE',
+            ],
+            8 => [
+                'corbeille' => CorbeilleEnum::DAICG_VALIDES_DESSE,
+                'sources' => [
+                    CorbeilleEnum::DESSE_SUIVI_PROCESSUS->value,
+                    CorbeilleEnum::CIP_MES_STAGIAIRES->value,
+                ],
+                'nom_etape' => 'DAICG : Validés par la DESSE',
+            ],
+        ];
+
+        foreach ($cibles as $etapeLegacy => $config) {
+            $cible = $config['corbeille']->value;
+
+            $query = DB::connection('legacy')->table('contrats_pae')
+                ->whereNull('deleted_at')
+                ->where('etapetraitement_id', $etapeLegacy);
+
+            $total = $query->count();
+            $this->info("Contrats legacy en étape {$etapeLegacy} : {$total}");
+
+            $moved = 0;
+            $dejaPlace = 0;
+            $ignores = 0;
+            $etapeCache = null;
+
+            $this->processInChunks($query, 500, function ($contrats) use (
+                $definition, $dryRun, $config, $cible, &$moved, &$dejaPlace, &$ignores, &$etapeCache
+            ) {
+                $ancienIds = $contrats->pluck('id')->toArray();
+
+                $stagesMap = Stage::whereIn('ancien_id', $ancienIds)->pluck('id', 'ancien_id');
+                $stageIds = $stagesMap->values()->toArray();
+
+                $instances = empty($stageIds)
+                    ? collect()
+                    : InstanceParcours::whereIn('stage_id', $stageIds)
+                        ->where('definition_parcours_id', $definition->id)
+                        ->whereNull('terminee_le')
+                        ->get();
+
+                $batchUpdates = [];
+                foreach ($contrats as $legacyContrat) {
+                    $stageId = $stagesMap[$legacyContrat->id] ?? null;
+                    if (! $stageId) {
+                        $ignores++;
+
+                        continue;
+                    }
+
+                    $instance = $instances->firstWhere('stage_id', $stageId);
+                    if (! $instance) {
+                        $ignores++;
+
+                        continue;
+                    }
+
+                    if ($instance->corbeille_actuelle === $cible) {
+                        $dejaPlace++;
+
+                        continue;
+                    }
+
+                    if (! in_array($instance->corbeille_actuelle, $config['sources'], true)) {
+                        $this->line("  Dossier #{$legacyContrat->id} ignoré : déjà dans la corbeille « {$instance->corbeille_actuelle} ».");
+                        $ignores++;
+
+                        continue;
+                    }
+
+                    if (! $dryRun) {
+                        if ($etapeCache === null) {
+                            $etapeCache = EtapeParcours::firstOrCreate(
+                                ['definition_parcours_id' => $definition->id, 'code' => strtoupper($cible)],
+                                ['nom' => $config['nom_etape'], 'initiale' => false, 'finale' => false]
+                            );
+                        }
+
+                        $batchUpdates[] = [
+                            'id' => $instance->id,
+                            'corbeille_actuelle' => $cible,
+                            'etape_courante_id' => $etapeCache->id,
+                        ];
+                    }
+
+                    $moved++;
+                }
+
+                if (! $dryRun && ! empty($batchUpdates)) {
+                    foreach ($batchUpdates as $update) {
+                        InstanceParcours::where('id', $update['id'])->update([
+                            'corbeille_actuelle' => $update['corbeille_actuelle'],
+                            'etape_courante_id' => $update['etape_courante_id'],
+                        ]);
+                    }
+                }
+            });
+
+            $this->info(($dryRun ? '[DRY-RUN] ' : '')."Dossiers reclassés vers {$cible} : {$moved}");
+            $this->info("Dossiers déjà dans {$cible} : {$dejaPlace}, ignorés (non migrés / engagés ailleurs) : {$ignores}");
         }
     }
 

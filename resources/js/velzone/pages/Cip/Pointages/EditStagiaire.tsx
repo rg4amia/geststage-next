@@ -557,6 +557,14 @@ export default function EditStagiaire({
         }
     }, [origineId]);
 
+    /** Origine AEJ → afficher offre,stage libre | Autres → masquer offre */
+    useEffect(() => {
+        if (!isAEJ && !isPEJEDEC) {
+            setData('offre_emploi_id', '');
+            setData('entreprise_id', '');
+        }
+    }, [origineId]);
+
     /** Origine Spontané/DAICG → date_debut masquée (capitalisation) */
     useEffect(() => {
         if (isSpontaneOuDAICG) {
@@ -642,8 +650,13 @@ export default function EditStagiaire({
 
         // Structure
         req('agence_id', data.agence_id, 'Agence');
+        req('conseiller_id', data.conseiller_id, 'Conseiller');
+        req('origine_stagiaire_id', data.origine_stagiaire_id, 'Origine du stagiaire');
         req('source_financement_id', data.source_financement_id, 'Source de financement');
         req('type_stage_id', data.type_stage_id, 'Type de stage');
+        if (showOffre && isAEJ) {
+            req('offre_emploi_id', data.offre_emploi_id, "Numéro de l'offre");
+        }
 
         // Identité
         req('nom', data.nom, 'Nom');
@@ -983,6 +996,7 @@ export default function EditStagiaire({
                                                     onChange={v =>
                                                         setData('source_financement_id', v)
                                                     }
+                                                    isDisabled={isPEJEDEC}
                                                     invalid={!!errors.source_financement_id}
                                                 />
                                                 {erreur('source_financement_id')}
@@ -1020,6 +1034,58 @@ export default function EditStagiaire({
                                                             setData('type_structure_id', v)
                                                         }
                                                     />
+                                                </Col>
+                                            )}
+                                            {showOffre && (
+                                                <Col lg={12}>
+                                                    <Label className="fw-semibold">
+                                                        Numéro de l'offre{' '}
+                                                        {isAEJ && (
+                                                            <span className="text-danger">*</span>
+                                                        )}
+                                                    </Label>
+                                                    <Select
+                                                        options={offres
+                                                            .filter(
+                                                                o =>
+                                                                    !data.agence_id ||
+                                                                    o.agence_id ===
+                                                                        Number(data.agence_id),
+                                                            )
+                                                            .map(o => ({
+                                                                value: o.id,
+                                                                label: `${o.numero} - ${o.intitule} (${o.entreprise?.raison_sociale})`,
+                                                                offre: o,
+                                                            }))}
+                                                        value={
+                                                            data.offre_emploi_id
+                                                                ? {
+                                                                      value: Number(
+                                                                          data.offre_emploi_id,
+                                                                      ),
+                                                                      label: `${offres.find(o => String(o.id) === String(data.offre_emploi_id))?.numero ?? ''} - ${offres.find(o => String(o.id) === String(data.offre_emploi_id))?.intitule ?? ''}`,
+                                                                  }
+                                                                : null
+                                                        }
+                                                        onChange={opt => {
+                                                            if (!opt) {
+                                                                setData('offre_emploi_id', '');
+                                                                setData('entreprise_id', '');
+                                                                return;
+                                                            }
+                                                            const o = (opt as any).offre as OffreItem;
+                                                            setData('offre_emploi_id', String(o.id));
+                                                            setData('entreprise_id', String(o.entreprise_id));
+                                                            setData('type_stage_id', String(o.type_stage_id));
+                                                            setData('source_financement_id', String(o.source_financement_id));
+                                                            setData('intitule_poste', o.intitule);
+                                                        }}
+                                                        placeholder="Selectionner Numéro de l'offre du stage"
+                                                        isClearable
+                                                        isDisabled={!isAEJ && !isPEJEDEC}
+                                                        className={!!errors.offre_emploi_id ? 'is-invalid' : ''}
+                                                    />
+                                                    <div className="invalid-feedback">{errors.offre_emploi_id}</div>
                                                 </Col>
                                             )}
                                             <Col md={4}>
@@ -1968,7 +2034,7 @@ export default function EditStagiaire({
                                                                 }
                                                                 onChange={e => {
                                                                     const fichier = (
-                                                                        e.target as HTMLInputElement,
+                                                                        e.target as HTMLInputElement
                                                                     ).files?.[0];
                                                                     const suivant = {
                                                                         ...data.documents,
@@ -1978,7 +2044,7 @@ export default function EditStagiaire({
                                                                             fichier;
                                                                     } else {
                                                                         delete suivant[
-                                                                            type.code,
+                                                                            type.code
                                                                         ];
                                                                     }
                                                                     setData(
@@ -2046,12 +2112,12 @@ export default function EditStagiaire({
                                                                     accept=".pdf,.doc,.docx"
                                                                     invalid={
                                                                         !!errors[
-                                                                            `documents.${type.code}`,
+                                                                            `documents.${type.code}`
                                                                         ]
                                                                     }
                                                                     onChange={e => {
                                                                         const fichier = (
-                                                                            e.target as HTMLInputElement,
+                                                                             e.target as HTMLInputElement
                                                                         ).files?.[0];
                                                                         const suivant = {
                                                                             ...data.documents,
@@ -2061,7 +2127,7 @@ export default function EditStagiaire({
                                                                                 fichier;
                                                                         } else {
                                                                             delete suivant[
-                                                                                type.code,
+                                                                                type.code
                                                                             ];
                                                                         }
                                                                         setData(
@@ -2125,12 +2191,12 @@ export default function EditStagiaire({
                                                             accept=".pdf,.doc,.docx"
                                                             invalid={
                                                                 !!errors[
-                                                                    `documents.${type.code}`,
+                                                                        `documents.${type.code}`
                                                                 ]
                                                             }
                                                             onChange={e => {
                                                                 const fichier = (
-                                                                    e.target as HTMLInputElement,
+                                                                    e.target as HTMLInputElement
                                                                 ).files?.[0];
                                                                 const suivant = {
                                                                     ...data.documents,
@@ -2140,7 +2206,7 @@ export default function EditStagiaire({
                                                                         fichier;
                                                                 } else {
                                                                     delete suivant[
-                                                                        type.code,
+                                                                        type.code
                                                                     ];
                                                                 }
                                                                 setData(
@@ -2204,7 +2270,7 @@ export default function EditStagiaire({
                                                                         <i className="ri-attachment-2 me-1" />
                                                                         {
                                                                             documentsDeposes[
-                                                                                type.code,
+                                                                                type.code
                                                                             ].derniere_version!
                                                                                 .nom_original
                                                                         }
@@ -2216,7 +2282,7 @@ export default function EditStagiaire({
                                                                 accept=".pdf,.jpg,.jpeg,.png"
                                                                 onChange={e => {
                                                                     const fichier = (
-                                                                        e.target as HTMLInputElement,
+                                                                        e.target as HTMLInputElement
                                                                     ).files?.[0];
                                                                     const suivant = {
                                                                         ...data.documents,
@@ -2226,7 +2292,7 @@ export default function EditStagiaire({
                                                                             fichier;
                                                                     } else {
                                                                         delete suivant[
-                                                                            'TRESOR_MONEY',
+                                                                            'TRESOR_MONEY'
                                                                         ];
                                                                     }
                                                                     setData(
@@ -2292,7 +2358,7 @@ export default function EditStagiaire({
                                                                         <i className="ri-attachment-2 me-1" />
                                                                         {
                                                                             documentsDeposes[
-                                                                                type.code,
+                                                                                type.code
                                                                             ].derniere_version!
                                                                                 .nom_original
                                                                         }
@@ -2304,7 +2370,7 @@ export default function EditStagiaire({
                                                                 accept=".pdf,.doc,.docx"
                                                                 onChange={e => {
                                                                     const fichier = (
-                                                                        e.target as HTMLInputElement,
+                                                                        e.target as HTMLInputElement
                                                                     ).files?.[0];
                                                                     const suivant = {
                                                                         ...data.documents,
@@ -2314,7 +2380,7 @@ export default function EditStagiaire({
                                                                             fichier;
                                                                     } else {
                                                                         delete suivant[
-                                                                            'FICHE_WAVE',
+                                                                            'FICHE_WAVE'
                                                                         ];
                                                                     }
                                                                     setData(
@@ -2395,12 +2461,12 @@ export default function EditStagiaire({
                                                             accept=".pdf,.jpg,.jpeg,.png"
                                                             invalid={
                                                                 !!errors[
-                                                                    `documents.${type.code}`,
+                                                                    `documents.${type.code}`
                                                                 ]
                                                             }
                                                             onChange={e => {
                                                                 const fichier = (
-                                                                    e.target as HTMLInputElement,
+                                                                    e.target as HTMLInputElement
                                                                 ).files?.[0];
                                                                 const suivant = {
                                                                     ...data.documents,
@@ -2410,7 +2476,7 @@ export default function EditStagiaire({
                                                                         fichier;
                                                                 } else {
                                                                     delete suivant[
-                                                                        type.code,
+                                                                        type.code
                                                                     ];
                                                                 }
                                                                 setData(
@@ -2422,14 +2488,6 @@ export default function EditStagiaire({
                                                         {erreur(
                                                             `documents.${type.code}`,
                                                         )}
-                                                    </Col>
-                                                );
-                                            })}
-                                                                }
-                                                                setData('documents', suivant);
-                                                            }}
-                                                        />
-                                                        {erreur(`documents.${type.code}`)}
                                                     </Col>
                                                 );
                                             })}

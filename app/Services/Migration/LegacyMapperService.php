@@ -108,7 +108,12 @@ class LegacyMapperService
         return match ($legacyStatutId) {
             // ── CIP ──
             1 => CorbeilleEnum::CIP_MES_STAGIAIRES,
-            7 => CorbeilleEnum::CIP_MES_STAGIAIRES,    // retour après doublon avéré traité par CA
+            // 7 = doublon avéré traité par le CA, en attente de la validation finale de la
+            // DESSE : le dossier revient au CIP pour correction avant re-transmission.
+            // CIP_AJOURNE_DESSE (et non CIP_MES_STAGIAIRES) alimente l'onglet DESSE
+            // « Retour Chef d'Agence » (StagiaireDesseController) et le suivi CIP
+            // « Doublon DESSE » (MesStagiairesCipController::suivi).
+            7 => CorbeilleEnum::CIP_AJOURNE_DESSE,
             16 => CorbeilleEnum::CIP_POINTAGE_AJOURNE_DMG, // traitement de l'ajournement DMG
             28 => CorbeilleEnum::CIP_DIFFERE_AC,         // paiement après différé AC
 
@@ -128,7 +133,13 @@ class LegacyMapperService
             4 => CorbeilleEnum::DESSE_DOUBLONS_A_TRAITER,
             5 => CorbeilleEnum::DESSE_DOUBLONS_TRAITES,  // doublon avéré
             6 => CorbeilleEnum::DESSE_DOUBLONS_TRAITES,  // doublon non avéré validé
-            8 => CorbeilleEnum::DESSE_SUIVI_PROCESSUS,   // validé après retour CA
+            // 8 = doublon déjà validé par la DESSE après retour du Chef d'Agence : état
+            // « clos », jamais un file d'attente actionnable. Il rejoint la corbeille
+            // DAICG_VALIDES_DESSE, exactement là où aboutit l'action « Renvoyer / Valider »
+            // de l'onglet DESSE « Retour Chef d'Agence » (StagiaireDesseController::valider).
+            // L'ancien DESSE_SUIVI_PROCESSUS n'a ni lecteur UI ni transition de sortie :
+            // les dossiers y seraient perdus pour tous les acteurs.
+            8 => CorbeilleEnum::DAICG_VALIDES_DESSE,
 
             // ── DMG → Pointage validé → Attente paiement ──
             13 => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,  // ADD démarrage
