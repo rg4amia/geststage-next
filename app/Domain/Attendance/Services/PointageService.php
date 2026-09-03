@@ -14,7 +14,6 @@ use App\Models\Reference\Periode;
 use App\Models\Reference\SituationStage;
 use App\Models\Reference\SourceFinancement;
 use App\Models\User;
-use App\Models\Workflow\InstanceParcours;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -106,13 +105,14 @@ class PointageService
 
         $user = Auth::user();
 
-        $counts['ajourne_dmg'] = InstanceParcours::where('corbeille_actuelle', CorbeilleEnum::CIP_AJOURNE_DMG->value)
-            ->whereHas('stage', function ($q) use ($stageFilterScope, $periode, $user) {
-                $q->where('date_debut', '<=', $periode->date_fin)
-                    ->where(function ($nested) use ($periode) {
-                        $nested->whereNull('date_fin_prevue')
-                            ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
-                    });
+        // Legacy status_dmg=0 (en attente de traitement DMG), pas status_dmg=2 (réellement ajourné) :
+        // cf. commentaire dans PointageCipController::buildLegacyAjourneDmgQuery().
+        $counts['ajourne_dmg'] = Paiement::where('statut', 'A_TRAITER')
+            ->whereHas('droitPaiement', function ($q) use ($periodeId) {
+                $q->where('periode_id', $periodeId)
+                    ->whereNotNull('pointage_id');
+            })
+            ->whereHas('droitPaiement.pointage.stage', function ($q) use ($stageFilterScope, $user) {
 
                 if ($user?->agence_id) {
                     $q->where('agence_id', $user->agence_id);

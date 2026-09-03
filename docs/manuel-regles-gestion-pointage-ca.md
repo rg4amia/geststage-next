@@ -55,13 +55,21 @@ et « attente PEJEDEC », ainsi que du badge de comptage (`PointageService::getC
 
 ## 2. CA : ajourner DMG
 
-**Legacy** — `ajournerByDmg` liste les pointages dont le paiement associé (`paiement_models`) a
-`status_dmg = 0` (paiement non traité par la DMG), non supprimé, avec `status_ca = 1` (déjà validé CA) et
-`date_cip` renseignée. Délégué à `PointageChefAgenceService::getPointageAjournerDmg($mois, $filters, 0)`.
+**Legacy** — le nom de la page (« Pointage Ajourné par la DMG ») est trompeur : c'est en réalité la file
+d'attente DMG, pas les rejets. `ajournerByDmg()` délègue l'affichage à
+`PointageChefAgenceService::getPointageAjournerDmg($mois, $filters, valid=0)`, qui liste les stagiaires dont
+un paiement (`paiement_models`) a `status_dmg = 0` (en attente de traitement DMG, PAS `status_dmg = 2`
+réellement ajourné) pour le `mois` donné, avec `status_ar != 1` (accusé de réception non reçu), scopé par
+agence pour un Chef d'Agence. La condition `status_ca = 1` / `date_cip` vue dans `ajournerByDmg()` ne sert
+qu'à construire la liste déroulante des mois affichés au CA — elle ne filtre pas les lignes du tableau.
 
-**Next** — `LegacyMapperService::mapPointageToCorbeille()` route ces pointages vers `cip_pointage_ajourne_dmg`
-lorsque `legacy_etape_id` vaut 15 ou 16, ou lorsque le statut calculé est `AJOURNE_DMG`. Le statut est dérivé
-par `mapStatutPointage()` : `status_dmg = 2` ⇒ `AJOURNE_DMG`.
+**Next** — `LegacyMapperService::mapPointageToCorbeille()` route les pointages migrés vers
+`cip_pointage_ajourne_dmg` lorsque `legacy_etape_id` vaut 15 ou 16, ou lorsque le statut calculé est
+`AJOURNE_DMG` (dérivé par `mapStatutPointage()` : `status_dmg = 2` ⇒ `AJOURNE_DMG`). C'est un mapping
+différent de l'onglet CIP « AJOURNÉ / DMG » (`/cip/pointages?tab=ajourne_dmg`,
+`PointageCipController::buildLegacyAjourneDmgQuery()`), qui reproduit la page Chef d'Agence ci-dessus en
+filtrant `paiements.statut = 'A_TRAITER'` (équivalent `status_dmg = 0`) sur la période sélectionnée — voir
+Gap D ci-dessous.
 
 ---
 
@@ -168,6 +176,34 @@ Le troisième point d'écriture de `mapPointageToCorbeille()` dans la commande
 `cb_etat_paiement_ajourne` (`$corbeillesConcernees`) — et n'a donc pas besoin de cette exclusion.
 
 **Test de non-régression** — `MigrateLegacyDataCommandTest::test_pointage_for_a_stagiaire_who_left_the_program_does_not_create_a_ca_task`.
+
+### Gap D — Onglet CIP « AJOURNÉ / DMG » vide + mauvais critère de filtrage
+
+**Cause** — `PointageCipController::buildLegacyAjourneDmgQuery()` interrogeait `InstanceParcours` sur
+`corbeille_actuelle = cip_ajourne_dmg`, une valeur que le mapping de migration (`mapPointageToCorbeille()`)
+ne produit **jamais** (seule `cip_pointage_ajourne_dmg` — une corbeille distincte — est utilisée), et
+restreignait en plus par un recoupement approximatif des dates de stage au lieu du mois exact. Résultat :
+0 ligne sur toute donnée migrée, quel que soit le mois sélectionné, alors que la page legacy équivalente
+(`ChefAgence/AttestationPresenceController::ajournerByDmg`) affichait des dizaines de lignes pour la même
+période. Une fois la jointure corrigée vers `Paiement → DroitPaiement → Pointage` (déjà en place avant cette
+correction), il restait deux écarts sémantiques :
+
+1. Le filtre utilisait `paiements.statut = 'AJOURNE_DMG'` (équivalent legacy `status_dmg = 2`, réellement
+   ajourné), alors que la page legacy filtre `status_dmg = 0` (en attente de traitement DMG — cf. § 2).
+2. Un filtre `pointage.statut = 'VALIDE'` (équivalent `status_ca = 1`) avait été ajouté par erreur : dans
+   `getPointageAjournerDmg()`, `status_ca = 1` ne sert qu'à construire la liste déroulante des mois dans
+   `ajournerByDmg()`, pas à filtrer les lignes affichées.
+
+**Correction** — `buildLegacyAjourneDmgQuery()` (et le comptage associé dans
+`PointageService::getCountsByTab()`) filtrent maintenant `Paiement::where('statut', 'A_TRAITER')` scopé par
+`droits_paiement.periode_id`, sans condition sur le statut du pointage.
+
+**Gap restant (non corrigeable en l'état)** — `paiement_models.status_ar` (accusé de réception, mis à jour
+hors du flux de validation CA — cf. `ValiderPaiementJob`/`ValidateSinglePaiementJob` en legacy) n'a aucun
+équivalent dans le modèle `Paiement` de Next (colonne absente de `paiements`). La page Next peut donc
+afficher des lignes que la page legacy masquerait déjà (AR reçu). De même, `paiement_models.observation`
+(motif libre saisi côté agence) n'est pas repris dans `paiements` : la colonne `observation_dmg` renvoyée
+par `mapLegacyAjourneDmgRow()` est `null` faute de source de données.
 
 ---
 

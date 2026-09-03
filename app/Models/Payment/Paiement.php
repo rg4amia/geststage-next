@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Paiement extends Model
 {
@@ -50,6 +51,11 @@ class Paiement extends Model
             'paiement_id',
             'dossier_paiement_id'
         )->withPivot(['montant', 'ajoute_le', 'retire_le', 'motif_retrait']);
+    }
+
+    public function decisions(): HasMany
+    {
+        return $this->hasMany(DecisionPaiement::class);
     }
 
     // Scopes

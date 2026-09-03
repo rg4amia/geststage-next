@@ -16,6 +16,7 @@ use App\Models\Contract\AvenantContrat;
 use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
 use App\Models\Payment\BordereauPaiement;
+use App\Models\Payment\DecisionPaiement;
 use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\DroitPaiement;
@@ -1425,11 +1426,28 @@ class MigrateLegacyDataCommand extends Command
 
         $this->processInChunks($query, 1000, function ($paiements) use (&$bar, &$periodesMap): void {
             $stagiaireIds = $paiements->pluck('stagiaire_id')->filter()->unique()->toArray();
+            $legacyUserIds = $paiements->pluck('user_id')->filter()->unique()->toArray();
+            $legacyPointageIds = $paiements->pluck('pointage_id')->filter()->unique()->toArray();
             $legacyIds = $paiements->pluck('id')->toArray();
 
             $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
             $sourceFinancementParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('source_financement_id', 'ancien_id')->toArray();
             $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
+            $usersMap = DB::table('correspondances_ancien_systeme')
+                ->where('table_source', 'users')
+                ->where('table_cible', 'users')
+                ->whereIn('id_source', $legacyUserIds)
+                ->pluck('id_cible', 'id_source')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+            $fallbackAuthorId = User::query()->orderBy('id')->value('id');
+            $pointagesMap = Pointage::whereIn('ancien_id', $legacyPointageIds)->pluck('id', 'ancien_id')->toArray();
+            $pointagesManquants = array_values(array_diff($legacyPointageIds, array_keys($pointagesMap)));
+            if ($pointagesManquants !== []) {
+                $pointagesMap += VersionPointage::whereIn('ancien_id', $pointagesManquants)
+                    ->pluck('pointage_id', 'ancien_id')
+                    ->toArray();
+            }
 
             $droitsParAncienId = DroitPaiement::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
             $paiementsParAncienId = Paiement::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
@@ -1511,7 +1529,7 @@ class MigrateLegacyDataCommand extends Command
                 try {
                     // Chaque écriture est idempotente. Une transaction PostgreSQL par paiement
                     // ajoutait deux allers-retours BEGIN/COMMIT sur près de 200 000 lignes.
-                    (function () use ($legacyPaiement, $stage_id, $periodeId, $source_financement_id, $nature, $date, &$droitsParAncienId, &$droitsActifsMap, &$paiementsParAncienId): void {
+                    (function () use ($legacyPaiement, $stage_id, $periodeId, $source_financement_id, $nature, $date, $usersMap, $fallbackAuthorId, $pointagesMap, &$droitsParAncienId, &$droitsActifsMap, &$paiementsParAncienId): void {
                         $droit = $droitsParAncienId[$legacyPaiement->id] ?? null;
 
                         // On ne regroupe que par (stage_id, periode_id, nature).
@@ -1535,6 +1553,7 @@ class MigrateLegacyDataCommand extends Command
 
                         $droit->fill([
                             'stage_id' => $stage_id,
+                            'pointage_id' => $pointagesMap[$legacyPaiement->pointage_id ?? null] ?? null,
                             'periode_id' => $periodeId,
                             'source_financement_id' => $source_financement_id,
                             'nature' => $nature,
@@ -1557,7 +1576,8 @@ class MigrateLegacyDataCommand extends Command
                         if (! $paiement->exists) {
                             $paiement->statut = $legacyStatus;
                         } elseif (
-                            $legacyStatus === 'VALIDE_AC'
+                            ($legacyStatus === 'AJOURNE_DMG' && in_array($paiement->statut, ['A_TRAITER', 'EN_DOSSIER', 'AJOURNE_DMG'], true))
+                            || $legacyStatus === 'VALIDE_AC'
                             || $legacyStatus === 'REJETE_AC'
                             || ($legacyStatus === 'EN_OP' && in_array($paiement->statut, ['A_TRAITER', 'EN_DOSSIER'], true))
                             || ($legacyStatus === 'EN_DOSSIER' && $paiement->statut === 'A_TRAITER')
@@ -1574,6 +1594,23 @@ class MigrateLegacyDataCommand extends Command
                             $paiement->paye_le = $payeLe?->toImmutable();
                         }
                         $paiement->save();
+
+                        $auteurId = $usersMap[$legacyPaiement->user_id ?? null] ?? $fallbackAuthorId;
+                        if ($legacyStatus === 'AJOURNE_DMG' && $auteurId) {
+                            DecisionPaiement::updateOrCreate(
+                                [
+                                    'paiement_id' => $paiement->id,
+                                    'decision' => 'AJOURNE_DMG',
+                                ],
+                                [
+                                    'auteur_id' => $auteurId,
+                                    'statut_avant' => 'A_TRAITER',
+                                    'statut_apres' => 'AJOURNE_DMG',
+                                    'motif' => $legacyPaiement->observation ?? null,
+                                    'decide_le' => $this->mapper->normalizeLegacyDate($legacyPaiement->created_at ?? null) ?? $date,
+                                ],
+                            );
+                        }
 
                         $this->recorder->correspondence(
                             $this->executionId,
@@ -2334,12 +2371,25 @@ class MigrateLegacyDataCommand extends Command
         $statusAc = mb_strtolower(trim((string) ($legacyPaiement->status_ac ?? '')));
 
         return match (true) {
+            $this->estPointageAjournePourCorrectionCip($legacyPaiement) => 'AJOURNE_DMG',
             $statusAc === 'validated' => 'VALIDE_AC',
             in_array($statusAc, ['rejected', 'rejected-by-ac'], true) => 'REJETE_AC',
             $statusAc === 'processed' => 'EN_OP',
             $this->estPaiementAjourneParDmg($legacyPaiement) => 'A_TRAITER',
             default => 'EN_DOSSIER',
         };
+    }
+
+    /**
+     * Le legacy affiche dans « Pointage ajourné par la DMG » les paiements liés à un
+     * pointage avec `status_dmg = 0` et `status_ar != 1`. Dans le nouveau modèle cet
+     * état métier est porté par le statut explicite `AJOURNE_DMG` du paiement.
+     */
+    private function estPointageAjournePourCorrectionCip(object $legacyPaiement): bool
+    {
+        return ! empty($legacyPaiement->pointage_id)
+            && (int) ($legacyPaiement->status_dmg ?? 0) === 0
+            && (int) ($legacyPaiement->status_ar ?? 0) !== 1;
     }
 
     /**

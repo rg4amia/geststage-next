@@ -7,6 +7,7 @@ use App\Models\Attendance\VersionPointage;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Internship\Stage;
 use App\Models\Payment\BordereauPaiement;
+use App\Models\Payment\DecisionPaiement;
 use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\DroitPaiement;
@@ -93,10 +94,14 @@ class MigrateLegacyDataCommandTest extends TestCase
             $table->id();
             $table->unsignedBigInteger('dossier_id')->nullable();
             $table->unsignedBigInteger('stagiaire_id')->nullable();
+            $table->unsignedBigInteger('pointage_id')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->string('mois')->nullable();
             $table->decimal('montant', 15, 2)->default(0);
             $table->unsignedTinyInteger('status_dmg')->default(0);
+            $table->unsignedTinyInteger('status_ar')->default(0);
             $table->unsignedTinyInteger('status_cb')->default(0);
+            $table->string('observation')->nullable();
             $table->string('status_ac')->nullable();
             $table->unsignedBigInteger('created_by_cb')->nullable();
             $table->timestamp('date_vise_cb')->nullable();
@@ -424,6 +429,62 @@ class MigrateLegacyDataCommandTest extends TestCase
             'ancien_id' => 9002,
             'statut' => 'EN_DOSSIER',
         ]);
+    }
+
+    public function test_legacy_dmg_deferred_pointage_keeps_its_period_link_and_reason(): void
+    {
+        $agence = Agence::factory()->create(['ancien_id' => 15]);
+        $source = SourceFinancement::factory()->create(['ancien_id' => 9]);
+        $stage = Stage::factory()->create([
+            'ancien_id' => 506,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+            'date_debut' => '2026-04-01',
+        ]);
+        $auteur = User::factory()->create();
+
+        DB::connection('legacy')->table('pointage_models')->insert([
+            'id' => 9101,
+            'stagiaire_id' => 506,
+            'mois' => '2026-08',
+            'status_cip' => 1,
+            'status_ca' => 1,
+            'status_dmg' => 0,
+            'created_at' => '2026-08-25 08:00:00',
+            'updated_at' => '2026-08-25 08:00:00',
+        ]);
+        DB::connection('legacy')->table('paiement_models')->insert([
+            'id' => 9102,
+            'stagiaire_id' => 506,
+            'pointage_id' => 9101,
+            'user_id' => 353,
+            'mois' => '2026-08',
+            'montant' => 45000,
+            'status_dmg' => 0,
+            'status_ar' => 0,
+            'observation' => 'DEMARRAGE NON RECU',
+            'created_at' => '2026-08-26 09:30:00',
+            'updated_at' => '2026-08-26 09:30:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'pointages'])->assertExitCode(0);
+        $this->artisan('migrate:legacy-data', ['--step' => 'paiements'])->assertExitCode(0);
+        $this->artisan('migrate:legacy-data', ['--step' => 'paiements'])->assertExitCode(0);
+
+        $pointage = Pointage::where('ancien_id', 9101)->firstOrFail();
+        $paiement = Paiement::where('ancien_id', 9102)->firstOrFail();
+
+        $this->assertSame('2026-08', $pointage->periode->code);
+        $this->assertSame('AJOURNE_DMG', $paiement->statut);
+        $this->assertSame($pointage->id, $paiement->droitPaiement->pointage_id);
+        $this->assertDatabaseHas('decisions_paiements', [
+            'paiement_id' => $paiement->id,
+            'auteur_id' => $auteur->id,
+            'decision' => 'AJOURNE_DMG',
+            'motif' => 'DEMARRAGE NON RECU',
+        ]);
+        $this->assertSame(1, DecisionPaiement::where('paiement_id', $paiement->id)->count());
+        $this->assertSame($stage->id, $paiement->droitPaiement->pointage->stage_id);
     }
 
     public function test_pointages_from_the_same_business_month_become_versions_of_one_demarrage(): void
