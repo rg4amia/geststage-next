@@ -4,6 +4,7 @@ namespace App\Models\Workflow;
 
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
+use App\Models\Attendance\Pointage;
 use App\Models\Internship\Stage;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -48,6 +49,14 @@ class InstanceParcours extends Model
     /**
      * L'étape courante de l'instance.
      */
+    /**
+     * Le pointage porté par l'instance, quand elle est au niveau du mois et non du stage.
+     */
+    public function pointage(): BelongsTo
+    {
+        return $this->belongsTo(Pointage::class);
+    }
+
     public function etapeCourante(): BelongsTo
     {
         return $this->belongsTo(EtapeParcours::class, 'etape_courante_id');

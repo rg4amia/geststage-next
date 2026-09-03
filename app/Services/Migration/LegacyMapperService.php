@@ -167,38 +167,77 @@ class LegacyMapperService
     //  dossier est en cours de traitement CA.
     // ────────────────────────────────────────────────────────────────────
 
+    /**
+     * Statut cible d'un pointage legacy.
+     *
+     * Le legacy porte trois colonnes de décision indépendantes : `status_cip` (saisie du
+     * CIP), `status_ca` (validation du Chef d'Agence) et `status_dmg` (traitement DMG du
+     * paiement). Le nouveau modèle n'en garde qu'une : `SOUMIS` = en attente du CA
+     * (PointageChefAgenceService ne liste QUE les pointages `SOUMIS`), `VALIDE` = validé
+     * par le CA. Conditionner `VALIDE` à `status_dmg` renverrait donc dans la corbeille du
+     * Chef d'Agence les 68 651 pointages déjà validés qui n'attendent plus que le paiement.
+     */
+    public function mapStatutPointage(object $legacyPointage): string
+    {
+        $statusCip = (int) ($legacyPointage->status_cip ?? 0);
+        $statusCa = (int) ($legacyPointage->status_ca ?? 0);
+        $statusDmg = (int) ($legacyPointage->status_dmg ?? 0);
+
+        if ($statusCa === 2) {
+            return 'AJOURNE_CA';
+        }
+
+        if ($statusDmg === 2) {
+            return 'AJOURNE_DMG';
+        }
+
+        if ($statusCip === 1 && $statusCa === 1) {
+            return 'VALIDE';
+        }
+
+        return 'SOUMIS';
+    }
+
     public function mapChefAgenceCorbeille(object $legacyContrat): CorbeilleEnum
     {
+        $etape = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
         $etatChefAgence = (int) ($legacyContrat->etat_chef_agence ?? 0);
-        $dateChefAgence = $this->normalizeLegacyDate($legacyContrat->date_chef_agence ?? null);
 
-        // Le Chef d'Agence a traité le dossier mais l'a ajourné / rejeté :
-        // retour au CIP pour correction
-        if ($etatChefAgence === 0 && $dateChefAgence !== null) {
-            return CorbeilleEnum::CA_RETOUR_AJOURNEMENT;
+        // L'étape 2 signifie « en attente de validation Chef d'Agence », mais c'est
+        // `etat_chef_agence` qui dit si le CA a réellement statué : le legacy ne
+        // remonte JAMAIS l'étape 2 dans la corbeille de validation du CA
+        // (WaitCheckedChefAgenceService filtre sur les étapes 1 et 4 uniquement).
+        // Sans ce traitement, les dossiers déjà validés stagnent dans la corbeille
+        // du CA côté Gestage Next alors qu'ils l'ont quittée côté legacy.
+        if ($etape === 2) {
+            return match ($etatChefAgence) {
+                // Le CA a validé : le dossier attend le pointage mensuel du CIP.
+                2 => CorbeilleEnum::EN_STAGE,
+                // Le CA a ajourné : vue legacy « stage.chefagence.stagiaire-ajournee ».
+                1 => CorbeilleEnum::CA_RETOUR_AJOURNEMENT,
+                // Le CA n'a pas encore statué (0 ou NULL) : le dossier n'est pas
+                // éligible à sa corbeille, il reste à compléter par le CIP.
+                default => CorbeilleEnum::CIP_MES_STAGIAIRES,
+            };
         }
 
-        // Le Chef d'Agence a validé : la corbeille dépend de l'étape suivante
+        // Le Chef d'Agence a statué : la corbeille dépend de l'étape atteinte.
         if ($etatChefAgence !== 0) {
-            // Reprend la mapping standard en se basant sur l'etapetraitement_id
-            return $this->mapStatutStageToCorbeille(
-                (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1)
-            );
+            return $this->mapStatutStageToCorbeille($etape);
         }
 
-        // etat_chef_agence=0 et pas de date_chef_agence : le dossier n'est PAS
-        // encore en cours de traitement Chef d'Agence.  On ne le classe en
-        // CA_ATTENTE_VALIDATION_* que si le dossier remplit les conditions
-        // d'éligibilité EXACTES du legacy (cf. WaitCheckedChefAgenceService).
+        // etat_chef_agence=0 : le CA n'a pas (ou plus) statué.  WaitCheckedChefAgenceService
+        // ne regarde JAMAIS `date_chef_agence` : un dossier ajourné puis re-soumis par le CIP
+        // (StagiaireController remet `etat_chef_agence` à 0) réapparaît dans la corbeille de
+        // validation en gardant la date de la passe précédente.  L'éligibilité prime donc sur
+        // la date, sinon 69 dossiers disparaissent de la corbeille du CA.
         $estEligibleCA = (int) ($legacyContrat->agent_id ?? 0) === 3
             && (int) ($legacyContrat->avis_contrat ?? 0) === 1
             && ! empty($legacyContrat->file_contrat)
-            && in_array((int) ($legacyContrat->etapetraitement_id ?? 0), [1, 4], true);
+            && in_array($etape, [1, 4], true);
 
         if (! $estEligibleCA) {
-            return $this->mapStatutStageToCorbeille(
-                (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1)
-            );
+            return $this->mapStatutStageToCorbeille($etape);
         }
 
         // Le dossier est éligible CA : démarrage ou démarrage omis ?
@@ -259,11 +298,30 @@ class LegacyMapperService
         return $dateDebut->format('Y-m') === $codePeriode ? 'DEMARRAGE' : 'PRESENCE';
     }
 
-    public function mapPointageToCorbeille(?int $legacyEtapeId, string $statut, string $nature, ?int $etatChefAgenceContrat = null): CorbeilleEnum
+    /**
+     * @param  bool  $paiementRenvoyeAuDmg  le paiement du mois porte la signature « ajourné par le
+     *                                      DMG, jamais visé par le CB » (`status_dmg=2`,
+     *                                      `status_cb=0`, sans dossier ni visa). L'ancien Gestage
+     *                                      le remet alors dans la file DMG. `PaiementDmgService::
+     *                                      attentePaiementValidation()` teste uniquement cette
+     *                                      signature, sans condition d'étape : elle peut survenir
+     *                                      via l'étape 20/21 (ajournement CB) mais aussi via un
+     *                                      rejet AC (`TraitementAjournementStagiaireRejetByAcJob`,
+     *                                      étape 29) qui laisse l'étape du pointage inchangée.
+     */
+    public function mapPointageToCorbeille(?int $legacyEtapeId, string $statut, string $nature, ?int $etatChefAgenceContrat = null, bool $paiementRenvoyeAuDmg = false): CorbeilleEnum
     {
         if ($etatChefAgenceContrat === 100) {
             return CorbeilleEnum::CA_VALIDATION_POINTAGES;
         }
+
+        // Le CB n'a rien vu passer : le dossier attend une nouvelle décision du DMG, pas du CB.
+        if ($paiementRenvoyeAuDmg) {
+            return $nature === 'DEMARRAGE'
+                ? CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE
+                : CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE;
+        }
+
         return match ($legacyEtapeId) {
             2, 7 => CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
             11 => CorbeilleEnum::CA_VALIDATION_POINTAGES,

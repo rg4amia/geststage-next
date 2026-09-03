@@ -85,7 +85,7 @@ class DesseDoublonService
      * de doublons pour le type donné.
      */
     /**
-     * Exclut d'une requête (Paiement, DroitPaiement, InstanceParcours...) toutes les lignes 
+     * Exclut d'une requête (Paiement, DroitPaiement, InstanceParcours...) toutes les lignes
      * qui sont détectées comme des doublons non traités.
      * Le paramètre $stageRelation définit le chemin de la relation vers 'stage' depuis le modèle query.
      */
@@ -96,8 +96,26 @@ class DesseDoublonService
             $duplicateKeysByType[$type->value] = $this->computeDuplicateKeys($type);
         }
 
+        // Sans aucun doublon détecté, la sous-requête ci-dessous n'aurait aucune condition : le
+        // `whereDoesntHave` exclurait alors tous les dossiers au lieu d'aucun.
+        $aDesDoublons = collect($duplicateKeysByType)->contains(fn ($keys) => $keys->isNotEmpty());
+
+        if (! $aDesDoublons) {
+            return;
+        }
+
         $query->whereDoesntHave($stageRelation, function ($q) use ($duplicateKeysByType) {
             $q->join('beneficiaires', 'beneficiaires.id', '=', 'stages.beneficiaire_id')
+                // Un doublon déjà tranché par la DESSE n'est plus bloqué : s'il était avéré, le
+                // dossier a été renvoyé à l'agence ; s'il ne l'était pas, il doit poursuivre son
+                // parcours. Équivalent legacy : `doubloncheck != 0` dans
+                // DoublonDetectionService::applyDoublonFilters().
+                ->whereNotExists(function (QueryBuilder $traite): void {
+                    $traite->select(DB::raw(1))
+                        ->from('desse_doublon_decisions')
+                        ->join('instances_parcours', 'instances_parcours.id', '=', 'desse_doublon_decisions.instance_parcours_id')
+                        ->whereColumn('instances_parcours.stage_id', 'stages.id');
+                })
                 ->where(function ($sub) use ($duplicateKeysByType) {
                     foreach (self::TYPES as $typeValue => $config) {
                         $keys = $duplicateKeysByType[$typeValue] ?? collect();
@@ -109,7 +127,7 @@ class DesseDoublonService
                     $compteKeys = $duplicateKeysByType[DoublonTypeEnum::COMPTE_PAIEMENT->value] ?? collect();
                     if ($compteKeys->isNotEmpty()) {
                         $sub->orWhereIn(DB::raw("CONCAT('TM:', UPPER(TRIM(beneficiaires.numero_tresor_money)))"), $compteKeys)
-                             ->orWhereIn(DB::raw("CONCAT('WV:', UPPER(TRIM(beneficiaires.numero_wave)))"), $compteKeys);
+                            ->orWhereIn(DB::raw("CONCAT('WV:', UPPER(TRIM(beneficiaires.numero_wave)))"), $compteKeys);
                     }
                 });
         });
@@ -374,6 +392,12 @@ class DesseDoublonService
             ->join('beneficiaires', 'beneficiaires.id', '=', 'stages.beneficiaire_id')
             ->join('instances_parcours', 'instances_parcours.stage_id', '=', 'stages.id')
             ->whereNull('instances_parcours.terminee_le')
-            ->whereNull('stages.deleted_at');
+            ->whereNull('stages.deleted_at')
+            // Équivalent de `etapetraitement_id >= 2` dans DoublonDetectionService : un dossier
+            // que le Chef d'Agence n'a pas encore validé ne concourt pas à la détection. Sans
+            // cette restriction, un dossier en cours de saisie suffit à faire passer un dossier
+            // déjà en paiement pour un doublon, et le pare-feu le sort des files DMG alors que
+            // l'ancien Gestage l'y laisse.
+            ->where('instances_parcours.corbeille_actuelle', '!=', CorbeilleEnum::CIP_MES_STAGIAIRES->value);
     }
 }

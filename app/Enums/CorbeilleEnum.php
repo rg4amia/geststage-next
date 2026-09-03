@@ -123,4 +123,20 @@ enum CorbeilleEnum: string
     {
         return collect(self::cases())->mapWithKeys(fn (self $c) => [$c->value => $c->label()])->all();
     }
+
+    /**
+     * Corbeilles où le Chef d'Agence n'a pas (ou plus) validé le dossier : le stage n'est pas
+     * encore entré dans le cycle mensuel de pointage (`EN_STAGE`). Légacy : `etat_chef_agence != 2`.
+     *
+     * @return array<int, string>
+     */
+    public static function nonValideesParCa(): array
+    {
+        return [
+            self::CIP_MES_STAGIAIRES->value,
+            self::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
+            self::CA_ATTENTE_VALIDATION_OMIS->value,
+            self::CA_RETOUR_AJOURNEMENT->value,
+        ];
+    }
 }

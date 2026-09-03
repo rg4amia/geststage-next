@@ -12,6 +12,7 @@ use App\Models\Attendance\VersionPointage;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\Entreprise;
 use App\Models\Company\OffreEmploi;
+use App\Models\Contract\AvenantContrat;
 use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
 use App\Models\Payment\BordereauPaiement;
@@ -48,6 +49,7 @@ use Closure;
 use Database\Seeders\ContratsPaeColumnMappingSeeder;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Builder as EloquentBuilder;
+use Illuminate\Database\Query\Builder;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
@@ -64,7 +66,7 @@ class MigrateLegacyDataCommand extends Command
      * @var string
      */
     protected $signature = 'migrate:legacy-data
-        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_presence_payments, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
+        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_paiements_dmg, backfill_avenants_renouvellement, fix_statut_paiements_legacy, fix_pointage_revisions, backfill_corbeilles_dmg, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
         {--dry-run : Exécute toutes les transformations puis annule les écritures PostgreSQL}
         {--chunk=1000 : Nombre maximal de lignes chargées et validées par transaction (1 à 5000)}
         {--with-model-audits : Conserve les journaux Eloquent ligne par ligne (beaucoup plus lent)}
@@ -79,6 +81,15 @@ class MigrateLegacyDataCommand extends Command
     protected $description = 'Migre les données de l\'ancienne base (legacy) vers la nouvelle base PostgreSQL, incluant les backfills et corrections.';
 
     private const SOURCE_VERSION = 'gestage-mysql-v2';
+
+    /** Financement PEJEDEC : payé par un circuit distinct de la file DMG classique. */
+    private const FINANCEMENT_PEJEDEC = 5;
+
+    /** Origines de stagiaires n'ouvrant aucun droit à paiement (contrats_pae.originestagiaire_id). */
+    private const ORIGINES_SANS_DROIT_PAIEMENT = [3, 4, 19];
+
+    /** Étape de traitement que PaiementDmgService::attentePaiementValidation() écarte. */
+    private const ETAPE_TRAITEMENT_EXCLUE_DMG = 5;
 
     private int $executionId;
 
@@ -116,7 +127,9 @@ class MigrateLegacyDataCommand extends Command
             'all', 'references', 'agences', 'users', 'entreprises', 'offres', 'beneficiaires',
             'stages', 'pointages', 'paiements', 'dossiers_paiement', 'dossiers_groupes',
             'operations', 'bordereaux', 'evenements', 'desse_doublons',
-            'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_presence_payments',
+            'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_paiements_dmg', 'backfill_presence_payments',
+            'backfill_situation_pointage', 'backfill_droits_pointage', 'backfill_corbeilles_dmg',
+            'fix_statut_paiements_legacy', 'fix_pointage_revisions', 'backfill_avenants_renouvellement',
             'fix_etat_chef_agence_100', 'fix_legacy_ca_validation', 'update_missing_data',
             'remaining',
         ];
@@ -247,8 +260,32 @@ class MigrateLegacyDataCommand extends Command
                 $this->runPhase('backfill_corbeilles_ca', fn () => $this->backfillChefAgenceCorbeilles($dryRun));
             }
 
-            if ($step === 'all' || $step === 'backfill_presence_payments') {
-                $this->runPhase('backfill_presence_payments', fn () => $this->backfillPresencePayments());
+            if ($step === 'all' || $step === 'backfill_paiements_dmg' || $step === 'backfill_presence_payments') {
+                $this->runPhase('backfill_paiements_dmg', fn () => $this->backfillPaiementsDmg());
+            }
+
+            if ($step === 'all' || $step === 'backfill_avenants_renouvellement') {
+                $this->runPhase('backfill_avenants_renouvellement', fn () => $this->backfillAvenantsRenouvellement($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'fix_statut_paiements_legacy') {
+                $this->runPhase('fix_statut_paiements_legacy', fn () => $this->fixStatutPaiementsLegacy($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_situation_pointage') {
+                $this->runPhase('backfill_situation_pointage', fn () => $this->backfillSituationPointage($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_droits_pointage') {
+                $this->runPhase('backfill_droits_pointage', fn () => $this->backfillDroitsPointage($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'fix_pointage_revisions') {
+                $this->runPhase('fix_pointage_revisions', fn () => $this->fixPointageRevisions($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_corbeilles_dmg') {
+                $this->runPhase('backfill_corbeilles_dmg', fn () => $this->backfillCorbeillesDmg($dryRun));
             }
 
             if ($step === 'all' || $step === 'fix_etat_chef_agence_100') {
@@ -1037,10 +1074,10 @@ class MigrateLegacyDataCommand extends Command
                 // 3. Gérer le Workflow via contrat_etape / etape_traitement
                 $statutLegacy = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
 
+                // mapChefAgenceCorbeille() retombe déjà sur mapStatutStageToCorbeille() quand le
+                // contexte Chef d'Agence ne tranche pas : re-dériver ici écraserait les dossiers
+                // qu'il renvoie volontairement au CIP (étape 2 sans décision du CA notamment).
                 $corbeilleEnum = $this->mapper->mapChefAgenceCorbeille($legacyContrat);
-                if ($corbeilleEnum === CorbeilleEnum::CIP_MES_STAGIAIRES) {
-                    $corbeilleEnum = $this->mapper->mapStatutStageToCorbeille($statutLegacy);
-                }
 
                 // Stagiaire déjà validé de bout en bout (payé ou définitivement rejeté après
                 // paiement) : on clôt l'instance de workflow au lieu de la laisser trainer
@@ -1104,13 +1141,16 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         $periodesMap = DB::table('periodes')->pluck('id', 'code')->toArray();
+        // Situation du stage au moment du pointage (réactivation, fin de stage...) : distincte de
+        // la situation courante du stage, elle conditionne l'entrée en file DMG côté legacy.
+        $situationsStageMap = DB::table('situations_stage')->pluck('id', 'ancien_id')->toArray();
         $definition = DefinitionParcours::firstOrCreate(
             ['code' => 'POINTAGE_LEGACY', 'version' => 1],
             ['nom' => 'Parcours Pointage Legacy', 'active' => true]
         );
         $etapesMap = [];
 
-        $this->processInChunks($query, 1000, function ($pointages) use (&$bar, &$periodesMap, $definition, &$etapesMap) {
+        $this->processInChunks($query, 1000, function ($pointages) use (&$bar, &$periodesMap, $definition, &$etapesMap, $situationsStageMap) {
             $stagiaireIds = $pointages->pluck('stagiaire_id')->filter()->unique()->toArray();
             $legacyIds = $pointages->pluck('id')->toArray();
 
@@ -1118,6 +1158,7 @@ class MigrateLegacyDataCommand extends Command
             $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
             $agencesParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('agence_id', 'ancien_id')->toArray();
             $etatsChefAgence = DB::connection('legacy')->table('contrats_pae')->whereIn('id', $stagiaireIds)->pluck('etat_chef_agence', 'id')->toArray();
+            $paiementsRenvoyesAuDmg = $this->paiementsRenvoyesAuDmg($stagiaireIds);
 
             $versionsMap = VersionPointage::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
             $stageIdsFilter = array_filter(array_values($stagesMap));
@@ -1155,17 +1196,7 @@ class MigrateLegacyDataCommand extends Command
                     continue;
                 }
 
-                // Mapper le statut du pointage (conservé tel quel)
-                $statut = 'SOUMIS';
-                if ($legacyPointage->status_dmg == 2) {
-                    $statut = 'AJOURNE_DMG';
-                }
-                if ($legacyPointage->status_ca == 2) {
-                    $statut = 'AJOURNE_CA';
-                }
-                if ($legacyPointage->status_dmg == 1 && $legacyPointage->status_ca == 1) {
-                    $statut = 'VALIDE';
-                }
+                $statut = $this->mapper->mapStatutPointage($legacyPointage);
 
                 // `mois` est la période métier. `created_at` peut être postérieur
                 // au mois pointé et ne doit pas piloter ADD/ADP.
@@ -1190,12 +1221,24 @@ class MigrateLegacyDataCommand extends Command
                     $datesDebutParStage[$legacyPointage->stagiaire_id] ?? null,
                     $codePeriode
                 );
+                $situationStageId = isset($legacyPointage->situationstage_id)
+                    ? ($situationsStageMap[(int) $legacyPointage->situationstage_id] ?? null)
+                    : null;
                 $corbeilleEnum = $this->mapper->mapPointageToCorbeille(
                     isset($legacyPointage->etape_id) ? (int) $legacyPointage->etape_id : null,
                     $statut,
                     $naturePointage,
-                    isset($etatsChefAgence[$legacyPointage->stagiaire_id]) ? (int) $etatsChefAgence[$legacyPointage->stagiaire_id] : null
+                    isset($etatsChefAgence[$legacyPointage->stagiaire_id]) ? (int) $etatsChefAgence[$legacyPointage->stagiaire_id] : null,
+                    isset($paiementsRenvoyesAuDmg[$legacyPointage->stagiaire_id.'|'.$codePeriode])
                 )->value;
+
+                // PointageChefAgenceService::getPointage() (legacy) exclut du crible du CA les
+                // pointages dont `situationstage_id` vaut ABANDON(2)/SUSPENSION(3)/DESISTEMENT
+                // SANS PAIEMENT(6) : le stagiaire est sorti du dispositif, le CA ne les voit
+                // jamais. On garde la corbeille pour la traçabilité mais on ne crée pas de tâche
+                // ouverte, pour ne pas faire apparaître un dossier fantôme chez le CA.
+                $stagiaireSortiHorsCorbeilleCa = $corbeilleEnum === CorbeilleEnum::CA_VALIDATION_POINTAGES->value
+                    && in_array((int) ($legacyPointage->situationstage_id ?? 0), [2, 3, 6], true);
 
                 if (! isset($periodesMap[$codePeriode])) {
                     $periodesMap[$codePeriode] = DB::table('periodes')->insertGetId([
@@ -1233,6 +1276,7 @@ class MigrateLegacyDataCommand extends Command
                             'stage_id' => $stage_id,
                             'periode_id' => $periodeId,
                             'nature' => $naturePointage,
+                            'situation_stage_id' => $situationStageId,
                             'statut' => $statut,
                             'deleted_at' => $deletedAt,
                         ]);
@@ -1250,8 +1294,16 @@ class MigrateLegacyDataCommand extends Command
                             $numeroVersion = ($maxVersions[$pointage->id] ?? 0) + 1;
                             $maxVersions[$pointage->id] = $numeroVersion;
                             $pointage->update([
+                                // Le legacy crée une nouvelle ligne (nouvel id) à chaque
+                                // resoumission au lieu de mettre à jour en place ; comme les lignes
+                                // sont parcourues par id croissant, la dernière rencontrée pour ce
+                                // triplet (stage, période, nature) est la révision la plus récente.
+                                // Sans cette réaffectation, `ancien_id` reste bloqué sur la toute
+                                // première révision vue (parfois déjà soft-deleted côté legacy).
+                                'ancien_id' => $legacyPointage->id,
                                 'statut' => $statut,
                                 'version_courante' => $numeroVersion,
+                                'situation_stage_id' => $situationStageId,
                                 'deleted_at' => $deletedAt,
                             ]);
                         } else {
@@ -1260,6 +1312,7 @@ class MigrateLegacyDataCommand extends Command
                                 'stage_id' => $stage_id,
                                 'periode_id' => $periodeId,
                                 'nature' => $naturePointage,
+                                'situation_stage_id' => $situationStageId,
                                 'statut' => $statut,
                                 'version_courante' => 1,
                                 'deleted_at' => $deletedAt,
@@ -1311,9 +1364,22 @@ class MigrateLegacyDataCommand extends Command
                         $etape,
                         CorbeilleEnum::from($corbeilleEnum),
                         $agencesParStage[$legacyPointage->stagiaire_id] ?? null,
-                        false,
+                        $stagiaireSortiHorsCorbeilleCa,
                         $preloadedTasks
                     );
+
+                    if ($stagiaireSortiHorsCorbeilleCa) {
+                        $this->recorder->anomaly(
+                            $this->executionId,
+                            'POINTAGE_STAGIAIRE_SORTI_HORS_CORBEILLE_CA',
+                            'pointage_models',
+                            $legacyPointage->id,
+                            'Pointage exclu de la corbeille de validation CA : stagiaire abandon/suspension/désistement (situationstage_id='.$legacyPointage->situationstage_id.').',
+                            (array) $legacyPointage,
+                            'NON_BLOQUANTE',
+                        );
+                    }
+
                     $this->recorder->correspondence(
                         $this->executionId,
                         'pointage_models',
@@ -2253,6 +2319,16 @@ class MigrateLegacyDataCommand extends Command
         return 'A_RECONCILIER';
     }
 
+    /**
+     * Statut cible d'un paiement legacy.
+     *
+     * Côté legacy, une ligne `paiement_models` n'existe que si la DMG a généré le paiement
+     * (PaiementDmgService::validerPaiement) : sa seule présence sort le dossier de la file
+     * « attente de paiement ». Seul le paiement ajourné par la DMG et pas encore engagé côté
+     * CB y revient — c'est exactement la clause `orWhereHas('mespaiements', …)` de
+     * PaiementDmgService::attentePaiementValidation(). Retomber sur `A_TRAITER` par défaut
+     * remettait ~50 000 paiements déjà générés dans la corbeille DMG du nouveau projet.
+     */
     private function mapLegacyPaymentStatus(object $legacyPaiement): string
     {
         $statusAc = mb_strtolower(trim((string) ($legacyPaiement->status_ac ?? '')));
@@ -2261,10 +2337,22 @@ class MigrateLegacyDataCommand extends Command
             $statusAc === 'validated' => 'VALIDE_AC',
             in_array($statusAc, ['rejected', 'rejected-by-ac'], true) => 'REJETE_AC',
             $statusAc === 'processed' => 'EN_OP',
-            ! empty($legacyPaiement->dossier_id)
-                && (int) ($legacyPaiement->status_dmg ?? 0) === 1 => 'EN_DOSSIER',
-            default => 'A_TRAITER',
+            $this->estPaiementAjourneParDmg($legacyPaiement) => 'A_TRAITER',
+            default => 'EN_DOSSIER',
         };
+    }
+
+    /**
+     * Paiement ajourné par la DMG et non encore pris en charge par le Contrôle Budgétaire :
+     * le legacy le renvoie dans la file « attente de paiement ».
+     */
+    private function estPaiementAjourneParDmg(object $legacyPaiement): bool
+    {
+        return (int) ($legacyPaiement->status_dmg ?? 0) === 2
+            && (int) ($legacyPaiement->status_cb ?? 0) === 0
+            && empty($legacyPaiement->dossier_id)
+            && empty($legacyPaiement->created_by_cb)
+            && empty($legacyPaiement->date_vise_cb);
     }
 
     private function mapLegacyOperationStatus(object $legacyOperation): string
@@ -2657,12 +2745,13 @@ class MigrateLegacyDataCommand extends Command
     }
 
     /**
-     * Reconstitue l'historique de l'onglet "Doublons Traités" à partir des dossiers
-     * déjà décidés côté legacy (statuts 5/6 -> corbeille DESSE_DOUBLONS_TRAITES, cf.
-     * LegacyMapperService::mapStatutStageToCorbeille). Sans cette étape, ces dossiers
-     * migrent bien vers cette corbeille mais n'ont aucune ligne dans
-     * desse_doublon_decisions (table qui n'existe que depuis ce projet) : l'onglet
-     * reste vide alors que legacy affiche un historique réel. Le champ type_doublon
+     * Reconstitue l'historique des décisions de doublons à partir des dossiers déjà tranchés
+     * côté legacy, repérés par `doubloncheck != 0` (IndexDesseController pose ce drapeau au
+     * moment de la décision). Sans cette étape, ces dossiers n'ont aucune ligne dans
+     * desse_doublon_decisions (table qui n'existe que depuis ce projet) : l'onglet "Doublons
+     * Traités" reste vide alors que legacy affiche un historique réel, et surtout le pare-feu
+     * de DesseDoublonService les rebloque alors que la DESSE les a déjà libérés — ils
+     * disparaissent alors des files de paiement DMG. Le champ type_doublon
      * n'existe pas côté legacy : on le déduit en comparant les clés de regroupement
      * (mêmes expressions que DesseDoublonService) du dossier aux clés actuellement en
      * doublon en base ; si aucun des 6 critères ne matche plus, on garde quand même
@@ -2679,8 +2768,21 @@ class MigrateLegacyDataCommand extends Command
             $duplicateKeysByType[$type->value] = $this->doublonService->computeDuplicateKeys($type);
         }
 
+        // Un dossier tranché poursuit son parcours : sa corbeille n'est plus forcément
+        // DESSE_DOUBLONS_TRAITES (elle suit son étape courante, paiement compris).
+        $ancienIdsTranches = DB::connection('legacy')->table('contrats_pae')
+            ->whereNull('deleted_at')
+            ->where('doubloncheck', '!=', 0)
+            ->pluck('id')
+            ->all();
+
+        $stageIdsTranches = Stage::whereIn('ancien_id', $ancienIdsTranches)->pluck('id');
+
         $instances = InstanceParcours::query()
-            ->where('corbeille_actuelle', CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value)
+            ->where(fn ($q) => $q
+                ->where('corbeille_actuelle', CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value)
+                ->orWhereIn('stage_id', $stageIdsTranches))
+            ->whereNotNull('stage_id')
             ->with('stage.beneficiaire')
             ->get();
 
@@ -2950,8 +3052,10 @@ class MigrateLegacyDataCommand extends Command
     }
 
     /**
-     * Étape backfill_corbeilles_ca : recalcule corbeille_actuelle pour les dossiers
-     * mal classés en CA_ATTENTE_VALIDATION_DEMARRAGE/OMIS.
+     * Étape backfill_corbeilles_ca : resynchronise corbeille_actuelle pour les dossiers
+     * posés dans une corbeille Chef d'Agence (attente démarrage, démarrage omis, retour
+     * d'ajournement) avec la règle courante de LegacyMapperService::mapChefAgenceCorbeille().
+     * À rejouer après toute évolution de cette règle, sans relancer la phase `stages`.
      * Anciennement : BackfillChefAgenceCorbeillesCommand
      */
     private function backfillChefAgenceCorbeilles(bool $dryRun): void
@@ -2971,15 +3075,14 @@ class MigrateLegacyDataCommand extends Command
             return;
         }
 
-        $query = DB::connection('legacy')->table('contrats_pae')
-            ->where('etat_chef_agence', 0)
-            ->where(function ($q) {
-                $q->whereNull('date_chef_agence')
-                    ->orWhere('date_chef_agence', '0000-00-00 00:00:00');
-            });
+        // On balaie tous les contrats vivants, pas seulement ceux en attente du CA :
+        // un dossier déjà validé (etat_chef_agence=2) peut lui aussi stagner à tort
+        // dans une corbeille CA. Le périmètre réel est borné côté cible par
+        // $corbeillesConcernees, qui ne retient que les instances à resynchroniser.
+        $query = DB::connection('legacy')->table('contrats_pae')->whereNull('deleted_at');
 
         $total = $query->count();
-        $this->info("Contrats legacy candidats (etat_chef_agence=0, date_chef_agence null) : {$total}");
+        $this->info("Contrats legacy vivants à confronter aux corbeilles CA : {$total}");
 
         $inspected = 0;
         $changed = 0;
@@ -2990,6 +3093,7 @@ class MigrateLegacyDataCommand extends Command
         $corbeillesConcernees = [
             CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value,
             CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value,
+            CorbeilleEnum::CA_RETOUR_AJOURNEMENT->value,
         ];
 
         $bar = $this->output->createProgressBar($total);
@@ -3029,11 +3133,10 @@ class MigrateLegacyDataCommand extends Command
 
                 $inspected++;
 
+                // mapChefAgenceCorbeille() retombe déjà sur mapStatutStageToCorbeille()
+                // quand le contexte CA ne tranche pas : la re-dériver ici écraserait
+                // les cas que le mapper renvoie volontairement au CIP.
                 $nouvelleCorbeille = $this->mapper->mapChefAgenceCorbeille($legacyContrat);
-                if ($nouvelleCorbeille === CorbeilleEnum::CIP_MES_STAGIAIRES) {
-                    $statutLegacy = (int) ($legacyContrat->etapetraitement_id ?? $legacyContrat->id_statut_stage ?? 1);
-                    $nouvelleCorbeille = $this->mapper->mapStatutStageToCorbeille($statutLegacy);
-                }
 
                 if ($nouvelleCorbeille->value === $instance->corbeille_actuelle) {
                     $bar->advance();
@@ -3079,7 +3182,7 @@ class MigrateLegacyDataCommand extends Command
         $bar->finish();
         $this->newLine(2);
 
-        $this->info("Dossiers actuellement dans une corbeille CA_ATTENTE_VALIDATION_* : {$inspected}");
+        $this->info("Dossiers actuellement dans une corbeille Chef d'Agence : {$inspected}");
         $this->info(($dryRun ? '[DRY-RUN] ' : '')."Dossiers reclassés : {$changed}");
 
         if (! empty($transitions)) {
@@ -3093,13 +3196,31 @@ class MigrateLegacyDataCommand extends Command
      * pour les pointages bloqués dans dmg_attente_paiement_presence.
      * Anciennement : BackfillPresencePaymentsCommand
      */
-    private function backfillPresencePayments(): void
+    /**
+     * Étape backfill_paiements_dmg : les droits de paiement sont migrés depuis
+     * `paiement_models`, qui ne contient QUE les paiements déjà émis. Un pointage validé
+     * par le CA mais pas encore payé n'y figure donc pas et arriverait sans droit dans la
+     * corbeille DMG, qui se lit via `droits_paiement`/`paiements`. On matérialise le droit
+     * en attente pour les deux natures — sans quoi la corbeille « démarrage » reste vide
+     * face aux 422 dossiers du legacy.
+     */
+    private function backfillPaiementsDmg(): void
     {
-        $this->info('Fetching stuck pointages...');
+        foreach ([
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value => 'DEMARRAGE',
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value => 'PRESENCE',
+        ] as $corbeille => $nature) {
+            $this->backfillPaiementsDmgPourNature($corbeille, $nature);
+        }
+    }
+
+    private function backfillPaiementsDmgPourNature(string $corbeille, string $nature): void
+    {
+        $this->info("Recherche des pointages {$nature} sans droit de paiement...");
 
         $pointageIds = DB::table('pointages')
             ->join('instances_parcours', 'instances_parcours.pointage_id', '=', 'pointages.id')
-            ->where('instances_parcours.corbeille_actuelle', 'dmg_attente_paiement_presence')
+            ->where('instances_parcours.corbeille_actuelle', $corbeille)
             ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('droits_paiement')
@@ -3108,7 +3229,7 @@ class MigrateLegacyDataCommand extends Command
             ->pluck('pointages.id')
             ->toArray();
 
-        $this->info('Found '.count($pointageIds).' pointages missing payments.');
+        $this->info('Pointages '.$nature.' sans droit de paiement : '.count($pointageIds));
         if (count($pointageIds) === 0) {
             return;
         }
@@ -3138,7 +3259,7 @@ class MigrateLegacyDataCommand extends Command
 
             $stageIds = $pointages->pluck('stage_id')->unique()->toArray();
             $droitsExistants = DroitPaiement::whereIn('stage_id', $stageIds)
-                ->where('nature', 'PRESENCE')
+                ->where('nature', $nature)
                 ->whereNull('annule_le')
                 ->get();
             $droitsActifsMap = [];
@@ -3189,7 +3310,7 @@ class MigrateLegacyDataCommand extends Command
                             'pointage_id' => $pointage->id,
                             'periode_id' => $pointage->periode_id,
                             'source_financement_id' => $stage->source_financement_id ?? 1,
-                            'nature' => 'PRESENCE',
+                            'nature' => $nature,
                             'montant' => $montantPaiement,
                             'statut' => 'OUVERT',
                             'created_at' => $createdAt,
@@ -3218,7 +3339,945 @@ class MigrateLegacyDataCommand extends Command
 
         $bar->finish();
 
-        $this->info("\nFixed {$fixedCount} presence pointages.");
+        $this->info("\nDroits de paiement {$nature} générés : {$fixedCount}");
+    }
+
+    /**
+     * Étape backfill_corbeilles_dmg : aligne la corbeille du stage sur celle de son pointage
+     * en attente de paiement.
+     *
+     * Le legacy construit sa file DMG à partir du pointage (PaiementDmgService::attentePaiementValidation()
+     * ne regarde jamais `etapetraitement_id`), alors que DmgService::attentePaiement() la lit sur
+     * l'instance de parcours du STAGE. Un dossier validé par le CA mais resté à l'étape 2 garde donc
+     * une instance stage en `en_stage` et disparaît de la corbeille DMG : 419 des 449 dossiers
+     * « démarrage » attendus pour un mois donné étaient dans ce cas.
+     *
+     * On ne promeut que les instances en `en_stage` : cette corbeille ne porte aucune décision
+     * métier concurrente, contrairement aux corbeilles CA/CB/DESSE qu'il ne faut pas écraser.
+     * L'index unique `parcours_une_tache_ouverte` impose une seule corbeille ouverte par instance :
+     * quand un stage a plusieurs pointages impayés, la période la plus récente l'emporte.
+     */
+    /**
+     * Étape backfill_situation_pointage : rattache à chaque pointage déjà migré la situation du
+     * stage à ce moment-là (réactivation, fin de stage...), portée par `pointage_models.situationstage_id`
+     * et absente de la première migration de `pointages`.
+     *
+     * Sans elle, DmgService::attentePaiement() ne peut pas reproduire l'exigence legacy
+     * `situationstage_id = 1` : des pointages en réactivation ou fin de stage, pourtant validés
+     * par le CIP et le Chef d'Agence, apparaissaient dans la file DMG alors que l'ancien Gestage
+     * ne les affiche pas ce mois-là (PaiementDmgService::attentePaiementValidation()).
+     */
+    private function backfillSituationPointage(bool $dryRun): void
+    {
+        $situationsStageMap = DB::table('situations_stage')->pluck('id', 'ancien_id')->toArray();
+
+        $aTraiter = DB::table('pointages')->whereNotNull('ancien_id')->whereNull('situation_stage_id')->count();
+
+        if ($dryRun) {
+            $this->info("[DRY-RUN] Pointages à rattacher à leur situation de stage : {$aTraiter}");
+
+            return;
+        }
+
+        $miseAJour = 0;
+
+        DB::table('pointages')
+            ->whereNotNull('ancien_id')
+            ->whereNull('situation_stage_id')
+            ->orderBy('id')
+            ->select('id', 'ancien_id')
+            ->chunkById(1000, function ($pointages) use ($situationsStageMap, &$miseAJour): void {
+                $anciensIds = $pointages->pluck('ancien_id')->all();
+
+                $situationsLegacy = DB::connection('legacy')->table('pointage_models')
+                    ->whereIn('id', $anciensIds)
+                    ->pluck('situationstage_id', 'id');
+
+                foreach ($pointages as $pointage) {
+                    $situationLegacyId = $situationsLegacy[$pointage->ancien_id] ?? null;
+                    $situationStageId = $situationLegacyId !== null ? ($situationsStageMap[(int) $situationLegacyId] ?? null) : null;
+
+                    if ($situationStageId === null) {
+                        continue;
+                    }
+
+                    DB::table('pointages')->where('id', $pointage->id)->update([
+                        'situation_stage_id' => $situationStageId,
+                        'updated_at' => now(),
+                    ]);
+                    $miseAJour++;
+                }
+            });
+
+        $this->info("Pointages rattachés à leur situation de stage : {$miseAJour}");
+    }
+
+    /**
+     * Étape fix_pointage_revisions : recale `pointages.ancien_id` sur la révision legacy la plus
+     * récente pour chaque (stagiaire, mois).
+     *
+     * Le legacy ne met jamais une ligne `pointage_models` à jour : chaque resoumission (ex. après
+     * ajournement CA/CB) crée une nouvelle ligne (nouvel id) et soft-delete l'ancienne. Avant la
+     * correction apportée à migratePointages(), une resoumission arrivant après le premier passage
+     * de migration (donc dans un chunk déjà traité, ou lors d'un run antérieur au correctif)
+     * laissait `ancien_id` bloqué sur la toute première révision vue — parfois déjà soft-deleted
+     * côté legacy — alors que `statut`/`situation_stage_id`/`deleted_at` restaient corrects. Cette
+     * étape retrouve, pour chaque pointage déjà migré, la ligne legacy de plus grand id partageant
+     * son (stagiaire, mois) et réaligne `ancien_id`, la corbeille et la tâche ouverte dessus.
+     *
+     * Rejouable : un pointage déjà aligné sur la dernière révision n'est pas compté.
+     */
+    private function fixPointageRevisions(bool $dryRun): int
+    {
+        $definition = DefinitionParcours::firstOrCreate(
+            ['code' => 'POINTAGE_LEGACY', 'version' => 1],
+            ['nom' => 'Parcours Pointage Legacy', 'active' => true]
+        );
+        $etapesMap = [];
+        $situationsStageMap = DB::table('situations_stage')->pluck('id', 'ancien_id')->toArray();
+
+        $fixed = 0;
+
+        Pointage::withTrashed()
+            ->whereNotNull('ancien_id')
+            ->with(['stage', 'periode'])
+            ->orderBy('id')
+            ->chunk(500, function ($pointages) use ($situationsStageMap, $definition, &$etapesMap, $dryRun, &$fixed): void {
+                $stageAnciensIds = $pointages->pluck('stage.ancien_id')->filter()->unique()->values()->all();
+
+                if ($stageAnciensIds === []) {
+                    return;
+                }
+
+                $legacyParStagiaireEtMois = DB::connection('legacy')->table('pointage_models')
+                    ->whereIn('stagiaire_id', $stageAnciensIds)
+                    ->select(
+                        'id', 'stagiaire_id', 'etape_id', 'situationstage_id', 'deleted_at',
+                        'mois', 'date_pointage', 'created_at', 'status_cip', 'status_ca', 'status_dmg'
+                    )
+                    ->get()
+                    ->map(function ($ligne) {
+                        // Même résolution que migratePointages() : `mois` fait foi, sinon repli
+                        // sur les dates de traitement, pour rester dans le même groupe (stagiaire,
+                        // mois) que la migration initiale. `statut` n'est pas une colonne : il est
+                        // dérivé des status_cip/status_ca/status_dmg, comme mapStatutPointage().
+                        $ligne->periode_resolue = $this->mapper->resolveLegacyPeriodDate($ligne);
+                        $ligne->statut = $this->mapper->mapStatutPointage($ligne);
+
+                        return $ligne;
+                    })
+                    ->filter(fn ($ligne) => $ligne->periode_resolue !== null)
+                    ->groupBy(fn ($ligne) => $ligne->stagiaire_id.'|'.$ligne->periode_resolue->format('Y-m'));
+
+                $etatsChefAgence = DB::connection('legacy')->table('contrats_pae')
+                    ->whereIn('id', $stageAnciensIds)
+                    ->pluck('etat_chef_agence', 'id');
+                $paiementsRenvoyesAuDmg = $this->paiementsRenvoyesAuDmg($stageAnciensIds);
+
+                $pointageIds = $pointages->pluck('id')->all();
+                $instancesExistantes = InstanceParcours::whereIn('pointage_id', $pointageIds)->get()->keyBy('pointage_id');
+                $instanceIds = $instancesExistantes->pluck('id')->filter()->all();
+                $tachesExistantes = $instanceIds === [] ? collect() : TacheParcours::whereIn('instance_parcours_id', $instanceIds)
+                    ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])
+                    ->get()
+                    ->groupBy('instance_parcours_id');
+
+                foreach ($pointages as $pointage) {
+                    $stagiaireId = $pointage->stage->ancien_id ?? null;
+                    $moisCode = $pointage->periode->code ?? null;
+
+                    if ($stagiaireId === null || $moisCode === null) {
+                        continue;
+                    }
+
+                    $candidats = $legacyParStagiaireEtMois->get($stagiaireId.'|'.$moisCode);
+
+                    if ($candidats === null || $candidats->isEmpty()) {
+                        continue;
+                    }
+
+                    $dernier = $candidats->sortByDesc('id')->first();
+
+                    if ((int) $dernier->id === (int) $pointage->ancien_id) {
+                        continue;
+                    }
+
+                    // `ancien_id` est unique : si la révision la plus récente est déjà portée par
+                    // un autre pointage, ce n'est pas une simple obsolescence mais un doublon de
+                    // pointage pour le même (stage, période, nature) — cf. migratePointages(), qui
+                    // n'indexe pas les pointages déjà soft-deleted dans sa carte d'idempotence et
+                    // peut donc en recréer un second sur une exécution ultérieure. Un tel doublon
+                    // se règle par une fusion dédiée, pas par cette étape ; on le signale et on
+                    // passe au suivant plutôt que de laisser la contrainte SQL interrompre le lot.
+                    $dejaPris = Pointage::withTrashed()
+                        ->where('ancien_id', $dernier->id)
+                        ->where('id', '!=', $pointage->id)
+                        ->first();
+
+                    if ($dejaPris !== null) {
+                        if (! $dryRun) {
+                            $this->recorder->anomaly(
+                                $this->executionId,
+                                'POINTAGE_DOUBLON_REVISION',
+                                'pointage_models',
+                                $dernier->id,
+                                "Révision la plus récente déjà rattachée au pointage #{$dejaPris->id} ; pointage #{$pointage->id} (même stage/période/nature) est un doublon probable à fusionner.",
+                                ['pointage_id' => $pointage->id, 'pointage_conflit_id' => $dejaPris->id, 'ancien_id_dernier' => $dernier->id],
+                            );
+                        }
+
+                        continue;
+                    }
+
+                    $situationStageId = $dernier->situationstage_id !== null
+                        ? ($situationsStageMap[(int) $dernier->situationstage_id] ?? null)
+                        : null;
+                    $deletedAt = $this->mapper->normalizeLegacyDate($dernier->deleted_at);
+
+                    // Second cas de doublon : `pointage_unique_periode_nature` n'est unique que
+                    // parmi les pointages non supprimés. Si la révision la plus récente est active
+                    // côté legacy, cette mise à jour ressusciterait #{$pointage->id} — mais un autre
+                    // pointage non supprimé porte peut-être déjà ce (stage, période, nature), auquel
+                    // cas #{$pointage->id} lui-même est le doublon obsolète à ne pas ressusciter.
+                    if ($deletedAt === null) {
+                        $doublonActif = Pointage::where('stage_id', $pointage->stage_id)
+                            ->where('periode_id', $pointage->periode_id)
+                            ->where('nature', $pointage->nature)
+                            ->where('id', '!=', $pointage->id)
+                            ->whereNull('deleted_at')
+                            ->first();
+
+                        if ($doublonActif !== null) {
+                            if (! $dryRun) {
+                                $this->recorder->anomaly(
+                                    $this->executionId,
+                                    'POINTAGE_DOUBLON_REVISION',
+                                    'pointage_models',
+                                    $dernier->id,
+                                    "Pointage #{$pointage->id} redeviendrait actif (stage/période/nature) déjà porté par le pointage actif #{$doublonActif->id} ; doublon probable à fusionner.",
+                                    ['pointage_id' => $pointage->id, 'pointage_actif_id' => $doublonActif->id, 'ancien_id_dernier' => $dernier->id],
+                                );
+                            }
+
+                            continue;
+                        }
+                    }
+
+                    $renvoye = isset($paiementsRenvoyesAuDmg[$stagiaireId.'|'.$moisCode]);
+
+                    $corbeilleEnum = $this->mapper->mapPointageToCorbeille(
+                        $dernier->etape_id !== null ? (int) $dernier->etape_id : null,
+                        $dernier->statut,
+                        $pointage->nature,
+                        isset($etatsChefAgence[$stagiaireId]) ? (int) $etatsChefAgence[$stagiaireId] : null,
+                        $renvoye
+                    )->value;
+
+                    // Même exclusion que migratePointages() : cf. POINTAGE_STAGIAIRE_SORTI_HORS_CORBEILLE_CA.
+                    $stagiaireSortiHorsCorbeilleCa = $corbeilleEnum === CorbeilleEnum::CA_VALIDATION_POINTAGES->value
+                        && in_array((int) ($dernier->situationstage_id ?? 0), [2, 3, 6], true);
+
+                    $fixed++;
+
+                    if ($dryRun) {
+                        continue;
+                    }
+
+                    $pointage->update([
+                        'ancien_id' => $dernier->id,
+                        'statut' => $dernier->statut,
+                        'situation_stage_id' => $situationStageId,
+                        'deleted_at' => $deletedAt,
+                    ]);
+
+                    $etapeCode = strtoupper($corbeilleEnum);
+                    if (! isset($etapesMap[$etapeCode])) {
+                        $etapesMap[$etapeCode] = EtapeParcours::firstOrCreate(
+                            ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                            ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
+                        );
+                    }
+                    $etape = $etapesMap[$etapeCode];
+
+                    $instance = $instancesExistantes[$pointage->id] ?? new InstanceParcours(['pointage_id' => $pointage->id]);
+                    $instance->fill([
+                        'definition_parcours_id' => $definition->id,
+                        'etape_courante_id' => $etape->id,
+                        'corbeille_actuelle' => $corbeilleEnum,
+                    ]);
+                    $instance->save();
+                    $instancesExistantes[$pointage->id] = $instance;
+
+                    $this->syncOpenTask(
+                        $instance,
+                        $etape,
+                        CorbeilleEnum::from($corbeilleEnum),
+                        $pointage->stage->agence_id ?? null,
+                        $stagiaireSortiHorsCorbeilleCa,
+                        $tachesExistantes[$instance->id] ?? collect()
+                    );
+
+                    if ($stagiaireSortiHorsCorbeilleCa) {
+                        $this->recorder->anomaly(
+                            $this->executionId,
+                            'POINTAGE_STAGIAIRE_SORTI_HORS_CORBEILLE_CA',
+                            'pointage_models',
+                            $dernier->id,
+                            'Pointage exclu de la corbeille de validation CA : stagiaire abandon/suspension/désistement (situationstage_id='.$dernier->situationstage_id.').',
+                            (array) $dernier,
+                            'NON_BLOQUANTE',
+                        );
+                    }
+                }
+            });
+
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Pointages recalés sur leur dernière révision legacy : {$fixed}");
+
+        return $fixed;
+    }
+
+    /**
+     * Étape backfill_droits_pointage : rattache au pointage du mois les droits de paiement qui
+     * n'en portent aucun.
+     *
+     * L'ancien Gestage raccroche le paiement au pointage (`paiement_models.stagiaire_id` + `mois`,
+     * cf. PaiementDmgService::validerPaiement). Sans ce lien, la file DMG ne peut pas lire la
+     * corbeille du pointage et se rabat sur celle du stage, qui ignore le détail du mois : des
+     * dossiers que l'ancien Gestage affiche disparaissent alors de la file.
+     *
+     * Le triplet (stage, période, nature) est unique côté pointages, le rattachement est donc
+     * sans ambiguïté ; l'étape ne touche que les droits encore orphelins, elle est rejouable.
+     */
+    private function backfillDroitsPointage(bool $dryRun): void
+    {
+        $aRattacher = DB::table('droits_paiement as d')
+            ->join('pointages as p', function ($jointure): void {
+                $jointure->on('p.stage_id', '=', 'd.stage_id')
+                    ->on('p.periode_id', '=', 'd.periode_id')
+                    ->on('p.nature', '=', 'd.nature');
+            })
+            ->whereNull('d.pointage_id')
+            ->whereNull('p.deleted_at')
+            ->count();
+
+        if ($dryRun) {
+            $this->info("[DRY-RUN] Droits de paiement à rattacher à leur pointage : {$aRattacher}");
+
+            return;
+        }
+
+        DB::statement(<<<'SQL'
+            UPDATE droits_paiement AS d
+            SET pointage_id = p.id, updated_at = NOW()
+            FROM pointages AS p
+            WHERE p.stage_id = d.stage_id
+              AND p.periode_id = d.periode_id
+              AND p.nature = d.nature
+              AND p.deleted_at IS NULL
+              AND d.pointage_id IS NULL
+        SQL);
+
+        $this->info("Droits de paiement rattachés à leur pointage : {$aRattacher}");
+    }
+
+    /**
+     * Paiements que l'ancien Gestage laisse dans la file DMG bien qu'ils existent : le DMG les a
+     * ajournés (`status_dmg=2`) et le CB ne les a jamais visés. C'est l'exception au filtre
+     * d'absence de paiement de PaiementDmgService::attentePaiementValidation() — qui exige aussi,
+     * en amont, un pointage du mois recevable (`mespointagesConditions` :
+     * situationstage_id=1, status_cip=1, status_ca=1, date_ca renseignée) : sans ce second
+     * filtre, un paiement ajourné rattaché à un pointage non recevable (abandon, réactivation,
+     * pas encore validé par le CIP/CA) se retrouverait promu à tort côté cible.
+     *
+     * @param  array<int, int>  $stagiaireIds  `contrats_pae.id` ; tous si vide
+     * @return array<string, true> indexé par « stagiaire_id|Y-m »
+     */
+    private function paiementsRenvoyesAuDmg(array $stagiaireIds = []): array
+    {
+        $requete = DB::connection('legacy')->table('paiement_models')
+            ->whereNull('deleted_at')
+            ->where('status_dmg', 2)
+            ->where('status_cb', 0)
+            ->whereNull('dossier_id')
+            ->whereNull('created_by_cb')
+            ->whereNull('date_vise_cb')
+            ->whereExists(function ($pointage): void {
+                $pointage->selectRaw('1')
+                    ->from('pointage_models')
+                    ->whereColumn('pointage_models.stagiaire_id', 'paiement_models.stagiaire_id')
+                    ->whereColumn('pointage_models.mois', 'paiement_models.mois')
+                    ->where('pointage_models.situationstage_id', 1)
+                    ->where('pointage_models.status_cip', 1)
+                    ->where('pointage_models.status_ca', 1)
+                    ->whereNotNull('pointage_models.date_ca')
+                    ->whereNull('pointage_models.deleted_at');
+            })
+            ->select('stagiaire_id', 'mois');
+
+        if ($stagiaireIds !== []) {
+            $requete->whereIn('stagiaire_id', $stagiaireIds);
+        }
+
+        $cles = [];
+        foreach ($requete->cursor() as $paiement) {
+            $mois = $this->mapper->normalizeLegacyDate($paiement->mois);
+
+            if ($mois === null) {
+                continue;
+            }
+
+            $cles[$paiement->stagiaire_id.'|'.$mois->format('Y-m')] = true;
+        }
+
+        return $cles;
+    }
+
+    /**
+     * Remet dans la file DMG les pointages dont le paiement porte la signature « ajourné DMG,
+     * jamais visé CB » — l'ancien Gestage continue de les afficher au DMG. `PaiementDmgService::
+     * attentePaiementValidation()` ne teste que cette signature, sans condition d'étape : elle
+     * peut survenir via l'ajournement CB classique (étapes legacy 20/21,
+     * `AjournementDossierStagiaireController`/`MultiDossierController`) mais aussi via un rejet AC
+     * (étape 29, `TraitementAjournementStagiaireRejetByAcJob`) qui, lui, ne touche jamais l'étape
+     * du pointage — le restreindre à 20/21 laissait ces dossiers hors file DMG côté cible.
+     *
+     * Le rattrapage est symétrique : dès qu'un paiement quitte cette signature, son pointage
+     * reprend la corbeille que son étape legacy lui donnerait normalement (`mapPointageToCorbeille`
+     * fait foi dans les deux sens), ce qui rend l'étape rejouable.
+     *
+     * @param  array<int, string>  $stagesExclus  contrats hors file DMG, à ne pas promouvoir :
+     *                                            sortirCorbeillesDmgHorsPerimetre() les ressortirait
+     *                                            aussitôt et l'étape oscillerait d'un passage à l'autre.
+     */
+    private function reclasserPointagesAjournesAvantCb(bool $dryRun, array $stagesExclus): int
+    {
+        $renvoyes = $this->paiementsRenvoyesAuDmg();
+
+        $corbeillesConcernees = [
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+            CorbeilleEnum::CB_ETAT_PAIEMENT_AJOURNE->value,
+        ];
+
+        // Candidats : les pointages des contrats renvoyés au DMG (promotion, quelle que soit leur
+        // étape legacy), plus tout pointage déjà dans une de ces trois corbeilles (réversion si son
+        // paiement a quitté la signature depuis le dernier passage).
+        $stagiairesRenvoyes = array_values(array_unique(array_map(
+            static fn (string $cle): int => (int) explode('|', $cle)[0],
+            array_keys($renvoyes)
+        )));
+
+        $candidats = DB::table('instances_parcours as ip')
+            ->join('pointages as p', 'p.id', '=', 'ip.pointage_id')
+            ->join('stages as s', 's.id', '=', 'p.stage_id')
+            ->join('periodes as pe', 'pe.id', '=', 'p.periode_id')
+            ->whereNull('ip.terminee_le')
+            ->whereNull('p.deleted_at')
+            ->whereNotNull('p.ancien_id')
+            ->where(function (Builder $q) use ($stagiairesRenvoyes, $corbeillesConcernees): void {
+                $q->whereIn('ip.corbeille_actuelle', $corbeillesConcernees);
+
+                if ($stagiairesRenvoyes !== []) {
+                    $q->orWhereIn('s.ancien_id', $stagiairesRenvoyes);
+                }
+            });
+
+        $changed = 0;
+
+        $definition = DefinitionParcours::firstOrCreate(
+            ['code' => 'POINTAGE_LEGACY', 'version' => 1],
+            ['nom' => 'Parcours Pointage Legacy', 'active' => true]
+        );
+        $etapesMap = [];
+
+        $candidats
+            ->select('ip.id', 'ip.corbeille_actuelle', 'p.ancien_id', 'p.statut', 's.ancien_id as stage_ancien_id', 's.agence_id', 's.date_debut', 'pe.code')
+            ->orderBy('ip.id')
+            ->chunk(500, function ($instances) use ($renvoyes, $stagesExclus, $corbeillesConcernees, $dryRun, $definition, &$etapesMap, &$changed): void {
+                $anciensIds = $instances->pluck('ancien_id')->filter()->all();
+                $etapesLegacy = $anciensIds === [] ? collect() : DB::connection('legacy')->table('pointage_models')
+                    ->whereIn('id', $anciensIds)
+                    ->pluck('etape_id', 'id');
+
+                $instanceIds = $instances->pluck('id')->all();
+                $instancesEloquent = InstanceParcours::whereIn('id', $instanceIds)->get()->keyBy('id');
+                $tachesExistantes = TacheParcours::whereIn('instance_parcours_id', $instanceIds)
+                    ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])
+                    ->get()
+                    ->groupBy('instance_parcours_id');
+
+                foreach ($instances as $instance) {
+                    if (isset($stagesExclus[(int) $instance->stage_ancien_id])) {
+                        continue;
+                    }
+
+                    $legacyEtapeId = isset($etapesLegacy[$instance->ancien_id])
+                        ? (int) $etapesLegacy[$instance->ancien_id]
+                        : null;
+                    $renvoye = isset($renvoyes[$instance->stage_ancien_id.'|'.$instance->code]);
+                    $nature = $this->mapper->naturePaiementPourPeriode($instance->date_debut, $instance->code);
+
+                    $attendue = $this->mapper->mapPointageToCorbeille($legacyEtapeId, $instance->statut, $nature, null, $renvoye)->value;
+
+                    // Cette étape n'arbitre que l'axe DMG / CB-ajourné : un résultat hors de ce
+                    // périmètre (ex. étape sans lien avec 20/21/29) signifie que la corbeille
+                    // actuelle relève d'une autre étape de migration, pas de celle-ci.
+                    if (! in_array($attendue, $corbeillesConcernees, true)) {
+                        continue;
+                    }
+
+                    if ($instance->corbeille_actuelle === $attendue) {
+                        continue;
+                    }
+
+                    if (! $dryRun) {
+                        $etapeCode = strtoupper($attendue);
+                        if (! isset($etapesMap[$etapeCode])) {
+                            $etapesMap[$etapeCode] = EtapeParcours::firstOrCreate(
+                                ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                                ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
+                            );
+                        }
+                        $etape = $etapesMap[$etapeCode];
+
+                        $instanceEloquent = $instancesEloquent[$instance->id];
+                        $instanceEloquent->fill([
+                            'etape_courante_id' => $etape->id,
+                            'corbeille_actuelle' => $attendue,
+                        ]);
+                        $instanceEloquent->save();
+
+                        // Une simple réécriture de `corbeille_actuelle` ne suffit pas :
+                        // DmgService::filtreCorbeille() donne priorité à une tâche OUVERTE, quelle
+                        // que soit sa corbeille. Sans resynchronisation ici, une tâche restée
+                        // ouverte dans l'ancienne corbeille masquerait ce reclassement (l'instance
+                        // ne matcherait ni la tâche cible, ni le repli faute de tâche ouverte).
+                        $this->syncOpenTask(
+                            $instanceEloquent,
+                            $etape,
+                            CorbeilleEnum::from($attendue),
+                            $instance->agence_id,
+                            false,
+                            $tachesExistantes[$instance->id] ?? collect()
+                        );
+                    }
+
+                    $changed++;
+                }
+            });
+
+        return $changed;
+    }
+
+    private function backfillCorbeillesDmg(bool $dryRun): void
+    {
+        $corbeillesDmg = [
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value,
+        ];
+
+        $stagesExclus = $this->contratsHorsFileDmg();
+
+        $this->info('Contrats legacy hors file DMG classique : '.count($stagesExclus));
+
+        $reclasses = $this->reclasserPointagesAjournesAvantCb($dryRun, $stagesExclus);
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Pointages ajournés avant visa CB reclassés : {$reclasses}");
+
+        // On sort d'abord les dossiers hors périmètre : la promotion ci-dessous lit les
+        // corbeilles des pointages, elle ne doit plus y trouver ces dossiers.
+        $sorties = $this->sortirCorbeillesDmgHorsPerimetre($corbeillesDmg, $stagesExclus, $dryRun);
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Instances sorties de la file DMG (hors périmètre) : {$sorties}");
+
+        // Corbeille DMG du pointage impayé le plus récent, par stage.
+        $source = DB::table('instances_parcours as ip')
+            ->join('pointages as p', 'p.id', '=', 'ip.pointage_id')
+            ->join('droits_paiement as d', 'd.pointage_id', '=', 'p.id')
+            ->join('paiements as pa', 'pa.droit_paiement_id', '=', 'd.id')
+            ->join('periodes as pe', 'pe.id', '=', 'd.periode_id')
+            ->whereNull('ip.terminee_le')
+            ->whereNull('d.annule_le')
+            ->where('pa.statut', 'A_TRAITER')
+            ->whereIn('ip.corbeille_actuelle', $corbeillesDmg)
+            ->select('p.stage_id', 'ip.corbeille_actuelle', 'pe.date_debut')
+            ->orderBy('p.stage_id')
+            ->orderByDesc('pe.date_debut');
+
+        $ancienIdParStage = Stage::whereNotNull('ancien_id')->pluck('ancien_id', 'id')->all();
+
+        $corbeilleParStage = [];
+        foreach ($source->cursor() as $ligne) {
+            if (isset($stagesExclus[(int) ($ancienIdParStage[$ligne->stage_id] ?? 0)])) {
+                continue;
+            }
+
+            $corbeilleParStage[$ligne->stage_id] ??= $ligne->corbeille_actuelle;
+        }
+
+        $this->info('Stages avec un pointage validé en attente de paiement : '.count($corbeilleParStage));
+
+        // L'étape legacy peut à elle seule placer le dossier en attente de paiement DMG
+        // (`etapetraitement_id` 13/14) : cette corbeille-là ne dépend pas des pointages impayés.
+        // Les dossiers hors périmètre ne sont pas concernés : leur exclusion prime sur l'étape.
+        $dmgParEtape = [];
+        foreach ($this->contratsLegacyPourRoutage() as $contrat) {
+            $corbeille = $this->mapper->mapChefAgenceCorbeille($contrat)->value;
+
+            if (in_array($corbeille, $corbeillesDmg, true) && ! isset($stagesExclus[(int) $contrat->id])) {
+                $dmgParEtape[(int) $contrat->id] = $corbeille;
+            }
+        }
+
+        // Corbeille attendue pour chaque instance de stage, en une seule table de vérité :
+        // l'étape legacy fait foi ; le pointage impayé le plus récent ne sert qu'à rattraper les
+        // dossiers qu'elle laisse en `en_stage`, sinon on repart au stage.
+        // L'étape doit être rejouable dans les deux sens, sans quoi un stage promu lors d'un
+        // passage précédent resterait en corbeille DMG après correction de son paiement.
+        $changed = 0;
+        $transitions = [];
+        $modifiables = array_merge([CorbeilleEnum::EN_STAGE->value], $corbeillesDmg);
+
+        $definition = DefinitionParcours::firstOrCreate(
+            ['code' => 'POINTAGE_LEGACY', 'version' => 1],
+            ['nom' => 'Parcours Pointage Legacy', 'active' => true]
+        );
+        $etapesMap = [];
+
+        InstanceParcours::whereIn('corbeille_actuelle', $modifiables)
+            ->whereNotNull('stage_id')
+            ->whereNull('terminee_le')
+            ->chunkById(500, function ($instances) use ($corbeilleParStage, $dmgParEtape, $ancienIdParStage, $dryRun, $definition, &$etapesMap, &$changed, &$transitions): void {
+                $stageIds = $instances->pluck('stage_id')->filter()->all();
+                $agencesParStageId = $stageIds === [] ? collect() : Stage::whereIn('id', $stageIds)->pluck('agence_id', 'id');
+                $instanceIds = $instances->pluck('id')->all();
+                $tachesExistantes = TacheParcours::whereIn('instance_parcours_id', $instanceIds)
+                    ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])
+                    ->get()
+                    ->groupBy('instance_parcours_id');
+
+                foreach ($instances as $instance) {
+                    $ancienId = (int) ($ancienIdParStage[$instance->stage_id] ?? 0);
+                    $cible = $dmgParEtape[$ancienId]
+                        ?? $corbeilleParStage[$instance->stage_id]
+                        ?? CorbeilleEnum::EN_STAGE->value;
+
+                    if ($cible === $instance->corbeille_actuelle) {
+                        continue;
+                    }
+
+                    $cle = $instance->corbeille_actuelle.' → '.$cible;
+                    $transitions[$cle] = ($transitions[$cle] ?? 0) + 1;
+                    $changed++;
+
+                    if (! $dryRun) {
+                        $etapeCode = strtoupper($cible);
+                        if (! isset($etapesMap[$etapeCode])) {
+                            $etapesMap[$etapeCode] = EtapeParcours::firstOrCreate(
+                                ['definition_parcours_id' => $definition->id, 'code' => $etapeCode],
+                                ['nom' => str_replace('_', ' ', $etapeCode), 'initiale' => false, 'finale' => false]
+                            );
+                        }
+                        $etape = $etapesMap[$etapeCode];
+
+                        $instance->fill([
+                            'etape_courante_id' => $etape->id,
+                            'corbeille_actuelle' => $cible,
+                        ]);
+                        $instance->save();
+
+                        // Cf. reclasserPointagesAjournesAvantCb() : une tâche restée ouverte dans
+                        // l'ancienne corbeille primerait sur ce `corbeille_actuelle` réécrit.
+                        $this->syncOpenTask(
+                            $instance,
+                            $etape,
+                            CorbeilleEnum::from($cible),
+                            $agencesParStageId[$instance->stage_id] ?? null,
+                            false,
+                            $tachesExistantes[$instance->id] ?? collect()
+                        );
+                    }
+                }
+            });
+
+        ksort($transitions);
+
+        foreach ($transitions as $transition => $nombre) {
+            $this->line("  {$transition} : {$nombre}");
+        }
+
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Instances de stage réalignées : {$changed}");
+    }
+
+    /**
+     * Les contrats legacy actifs, avec les colonnes dont dépend `mapChefAgenceCorbeille()`.
+     *
+     * @return \Generator<int, object>
+     */
+    private function contratsLegacyPourRoutage(): \Generator
+    {
+        yield from DB::connection('legacy')->table('contrats_pae')
+            ->whereNull('deleted_at')
+            ->select('id', 'etapetraitement_id', 'id_statut_stage', 'etat_chef_agence')
+            ->cursor();
+    }
+
+    /**
+     * Contrats que l'ancien Gestage exclut de la file DMG classique, et corbeille de repli.
+     *
+     * Reprend les clauses de PaiementDmgService::attentePaiementValidation() :
+     * - financement PEJEDEC : circuit de pointage et de paiement distinct
+     *   (Cip\PointagePejedecController, AdmBcpe\PaiementPejedecController) ;
+     * - origines 3/4/19 : n'ouvrent aucun droit à paiement (scopeSansPaiement) ;
+     * - étape de traitement 5 et contrats non validés par le chef d'agence.
+     *
+     * @return array<int, string> corbeille de repli du pointage, indexée par `contrats_pae.id`
+     *                            (l'instance du stage, elle, repart toujours en `en_stage`)
+     */
+    private function contratsHorsFileDmg(): array
+    {
+        $exclus = [];
+
+        $base = fn () => DB::connection('legacy')->table('contrats_pae')->whereNull('deleted_at')->select('id');
+
+        // Les autres motifs ne correspondent à aucune file : le dossier repart au stage.
+        $horsDroit = $base()
+            ->where(fn ($q) => $q
+                ->whereIn('originestagiaire_id', self::ORIGINES_SANS_DROIT_PAIEMENT)
+                ->orWhere('etapetraitement_id', self::ETAPE_TRAITEMENT_EXCLUE_DMG)
+                ->orWhere('etat_chef_agence', '!=', 2)
+                ->orWhere('avis_contrat', '!=', 1)
+                ->orWhere('active_chef_agence', '!=', 1));
+
+        foreach ($horsDroit->cursor() as $contrat) {
+            $exclus[(int) $contrat->id] = CorbeilleEnum::EN_STAGE->value;
+        }
+
+        // PEJEDEC prime : ces pointages ont une corbeille dédiée.
+        foreach ($base()->where('source_financement', self::FINANCEMENT_PEJEDEC)->cursor() as $contrat) {
+            $exclus[(int) $contrat->id] = CorbeilleEnum::CIP_POINTAGE_PEJEDEC->value;
+        }
+
+        return $exclus;
+    }
+
+    /**
+     * Sort de la file DMG les instances des dossiers que le legacy en exclut : leur paiement
+     * relève d'un autre circuit (PEJEDEC) ou d'aucun.
+     *
+     * La correction porte sur les deux niveaux d'instance, car la file se lit d'abord sur celle
+     * du pointage : ne traiter que le stage laissait entrer les mois antérieurs.
+     *
+     * @param  array<int, string>  $corbeillesDmg
+     * @param  array<int, string>  $stagesExclus  corbeille de repli du pointage, par `contrats_pae.id`
+     */
+    private function sortirCorbeillesDmgHorsPerimetre(array $corbeillesDmg, array $stagesExclus, bool $dryRun): int
+    {
+        if ($stagesExclus === []) {
+            return 0;
+        }
+
+        $sorties = 0;
+
+        foreach (array_chunk($stagesExclus, 500, true) as $chunk) {
+            $repliParStage = [];
+
+            foreach (Stage::whereIn('ancien_id', array_keys($chunk))->select('id', 'ancien_id')->get() as $stage) {
+                $repliParStage[$stage->id] = $chunk[(int) $stage->ancien_id];
+            }
+
+            if ($repliParStage === []) {
+                continue;
+            }
+
+            $stageIds = array_keys($repliParStage);
+
+            $instances = InstanceParcours::whereIn('corbeille_actuelle', $corbeillesDmg)
+                ->whereNull('terminee_le')
+                ->where(fn ($q) => $q
+                    ->whereIn('stage_id', $stageIds)
+                    ->orWhereIn('pointage_id', fn ($sq) => $sq
+                        ->select('id')->from('pointages')->whereIn('stage_id', $stageIds)))
+                ->with('pointage:id,stage_id')
+                ->get();
+
+            foreach ($instances as $instance) {
+                $stageId = $instance->stage_id ?? $instance->pointage?->stage_id;
+                $repli = $repliParStage[$stageId] ?? null;
+
+                if ($repli === null) {
+                    continue;
+                }
+
+                // La corbeille PEJEDEC est une file de pointage : l'instance du stage, elle,
+                // n'a pas d'autre place que le stage lui-même.
+                if ($instance->stage_id !== null) {
+                    $repli = CorbeilleEnum::EN_STAGE->value;
+                }
+
+                $sorties++;
+
+                if (! $dryRun) {
+                    $instance->update(['corbeille_actuelle' => $repli]);
+                }
+            }
+        }
+
+        return $sorties;
+    }
+
+    /**
+     * Étape backfill_avenants_renouvellement : reprend les renouvellements legacy.
+     *
+     * `contrats_pae.etatrenouvellement_id = 1` (8 220 dossiers, tous avec `date_debut_renouv`
+     * et `date_fin_renouv` renseignées) n'était repris nulle part. Or ce drapeau arbitre le
+     * partage des corbeilles de paiement DMG : ContratsPae::scopeAttestationDemarrage() est
+     * doublé d'un `etatrenouvellement_id != 1`, et scopeAttestationPresence() ne réintègre le
+     * mois de démarrage que pour les renouvellements. Sans lui, un stage renouvelé qui démarre
+     * dans le mois tombe dans la mauvaise file.
+     *
+     * Le schéma cible modélise déjà cela avec `avenants_contrats` : on y matérialise la période
+     * de renouvellement plutôt que d'ajouter une colonne technique au contrat.
+     */
+    private function backfillAvenantsRenouvellement(bool $dryRun): void
+    {
+        $query = DB::connection('legacy')->table('contrats_pae')
+            ->whereNull('deleted_at')
+            ->where('etatrenouvellement_id', 1)
+            ->select(['id', 'date_debut_renouv', 'date_fin_renouv']);
+
+        $total = $query->count();
+        $this->info("Contrats legacy renouvelés à reprendre : {$total}");
+
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $crees = 0;
+        $sansContrat = 0;
+        $sansDate = 0;
+
+        $this->processInChunks($query, 500, function ($contrats) use (&$crees, &$sansContrat, &$sansDate, $dryRun, $bar) {
+            $ancienIds = collect($contrats)->pluck('id')->all();
+
+            $stagesMap = Stage::whereIn('ancien_id', $ancienIds)->pluck('id', 'ancien_id');
+            $contratsMap = Contrat::whereIn('stage_id', $stagesMap->values()->all())
+                ->get()
+                ->keyBy('stage_id');
+
+            $dejaCrees = AvenantContrat::whereIn('contrat_id', $contratsMap->pluck('id')->all())
+                ->pluck('contrat_id')
+                ->flip();
+
+            foreach ($contrats as $legacyContrat) {
+                $bar->advance();
+
+                $stageId = $stagesMap[$legacyContrat->id] ?? null;
+                $contrat = $stageId ? ($contratsMap[$stageId] ?? null) : null;
+
+                if (! $contrat) {
+                    $sansContrat++;
+
+                    continue;
+                }
+
+                if ($dejaCrees->has($contrat->id)) {
+                    continue;
+                }
+
+                $dateEffet = $this->mapper->normalizeLegacyDate($legacyContrat->date_debut_renouv ?? null);
+
+                if (! $dateEffet) {
+                    $sansDate++;
+
+                    continue;
+                }
+
+                $crees++;
+
+                if ($dryRun) {
+                    continue;
+                }
+
+                AvenantContrat::create([
+                    'contrat_id' => $contrat->id,
+                    'numero' => $contrat->numero.'-R1',
+                    'date_effet' => $dateEffet,
+                    'nouvelle_date_fin' => $this->mapper->normalizeLegacyDate($legacyContrat->date_fin_renouv ?? null),
+                    'motif' => 'Renouvellement repris du legacy',
+                ]);
+            }
+        });
+
+        $bar->finish();
+        $this->newLine();
+
+        if ($sansContrat > 0) {
+            $this->warn("Renouvellements sans contrat cible : {$sansContrat}");
+        }
+
+        if ($sansDate > 0) {
+            $this->warn("Renouvellements sans date de début exploitable : {$sansDate}");
+        }
+
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Avenants de renouvellement créés : {$crees}");
+    }
+
+    /**
+     * Étape fix_statut_paiements_legacy : réaligne le statut des paiements déjà migrés sur
+     * mapLegacyPaymentStatus().
+     *
+     * La phase `paiements` n'écrase le statut que « vers l'avant » lors d'une reprise, pour ne
+     * pas défaire une décision prise côté cible. Cette étape est donc nécessaire pour propager
+     * la correction aux lignes déjà en base sans rejouer toute la migration.
+     */
+    private function fixStatutPaiementsLegacy(bool $dryRun): void
+    {
+        $query = DB::connection('legacy')->table('paiement_models')
+            ->select(['id', 'status_ac', 'status_dmg', 'status_cb', 'dossier_id', 'created_by_cb', 'date_vise_cb']);
+
+        $total = $query->count();
+        $this->info("Paiements legacy à réévaluer : {$total}");
+
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $corriges = 0;
+        $transitions = [];
+
+        $this->processInChunks($query, 2000, function ($legacyPaiements) use (&$corriges, &$transitions, $dryRun, $bar) {
+            $attendus = [];
+            foreach ($legacyPaiements as $legacyPaiement) {
+                $attendus[(int) $legacyPaiement->id] = $this->mapLegacyPaymentStatus($legacyPaiement);
+            }
+
+            $paiements = Paiement::whereIn('ancien_id', array_keys($attendus))->get();
+
+            foreach ($paiements as $paiement) {
+                $attendu = $attendus[(int) $paiement->ancien_id] ?? null;
+
+                if ($attendu === null || $paiement->statut === $attendu) {
+                    continue;
+                }
+
+                $cle = "{$paiement->statut} → {$attendu}";
+                $transitions[$cle] = ($transitions[$cle] ?? 0) + 1;
+                $corriges++;
+
+                if (! $dryRun) {
+                    $paiement->update(['statut' => $attendu]);
+                }
+            }
+
+            $bar->advance(count($legacyPaiements));
+        });
+
+        $bar->finish();
+        $this->newLine();
+
+        ksort($transitions);
+        foreach ($transitions as $transition => $nombre) {
+            $this->line("  {$transition} : {$nombre}");
+        }
+
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Statuts de paiement corrigés : {$corriges}");
     }
 
     /**

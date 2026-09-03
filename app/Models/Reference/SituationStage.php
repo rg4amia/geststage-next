@@ -12,6 +12,12 @@ class SituationStage extends Model
     use Auditable, CachesReferenceData, HasFactory;
 
     /**
+     * Code de la situation « EN COURS » (SS-001), seule situation qui laisse un pointage
+     * entrer dans la file DMG côté legacy (`pointage_models.situationstage_id = 1`).
+     */
+    public const CODE_EN_COURS = 'SS-001';
+
+    /**
      * The table associated with the model.
      *
      * @var string

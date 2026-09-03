@@ -11,9 +11,10 @@ use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SituationStage;
 use App\Models\Reference\SourceFinancement;
-use App\Models\Workflow\InstanceParcours;
 use App\Models\User;
+use App\Models\Workflow\InstanceParcours;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -42,7 +43,7 @@ class PointageService
             return $counts;
         }
 
-        $queryAttente = Stage::where('situation_stage', 'EN_COURS')
+        $queryAttente = Stage::where('situation_stage', SituationStage::CODE_EN_COURS)
             ->where('date_debut', '<=', $periode->date_fin)
             ->where(function ($q) use ($periode) {
                 $q->whereNull('date_fin_prevue')
@@ -51,6 +52,11 @@ class PointageService
             ->whereDoesntHave('pointages', function ($q) use ($periodeId) {
                 $q->where('periode_id', $periodeId)
                     ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
+            })
+            // Le CA doit avoir validé le dossier avant que le CIP ne pointe un mois :
+            // légacy `etat_chef_agence = 2` (WaitCheckedChefAgenceService).
+            ->whereDoesntHave('instanceParcours', function ($q) {
+                $q->whereIn('corbeille_actuelle', CorbeilleEnum::nonValideesParCa());
             });
 
         // Appliquer les filtres de stage si présents
@@ -68,7 +74,7 @@ class PointageService
         }
 
         $attenteCounts = (clone $queryAttente)
-            ->selectRaw("SUM(CASE WHEN source_financement_id = 4 THEN 1 ELSE 0 END) as pejedec, SUM(CASE WHEN source_financement_id != 4 THEN 1 ELSE 0 END) as normal")
+            ->selectRaw('SUM(CASE WHEN source_financement_id = 4 THEN 1 ELSE 0 END) as pejedec, SUM(CASE WHEN source_financement_id != 4 THEN 1 ELSE 0 END) as normal')
             ->first();
         $counts['attente'] = (int) ($attenteCounts->normal ?? 0);
         $counts['attente_pejedec'] = (int) ($attenteCounts->pejedec ?? 0);
@@ -148,34 +154,6 @@ class PointageService
             $situationStageCode,
             $justificatifPath
         );
-    }
-
-    /**
-     * Retourne la liste des stages actifs (validés CA) n'ayant pas encore de pointage pour ce mois.
-     */
-    public function getStagiairesSansPointage(string $mois)
-    {
-        // En Eloquent moderne, on cherche les stages dont la date couvre le mois
-        // et qui n'ont pas de pointage "VALIDE" ou "SOUMIS" pour ce mois
-        // Note: C'est une implémentation simplifiée par rapport au legacy,
-        // mais elle respecte le même principe "whereDoesntHave".
-
-        $periode = Periode::where('code', $mois)->first();
-        if (! $periode) {
-            return collect();
-        }
-
-        return Stage::with(['beneficiaire', 'entreprise', 'agence'])
-            // Le stage doit être actif
-            ->whereHas('instanceParcours', function ($q) {
-                // On peut vérifier l'état du workflow
-            })
-            // Il ne doit pas y avoir de pointage pour cette période
-            ->whereDoesntHave('pointages', function ($query) use ($periode) {
-                $query->where('periode_id', $periode->id)
-                    ->whereIn('statut', ['SOUMIS', 'VALIDE']);
-            })
-            ->get();
     }
 
     /**

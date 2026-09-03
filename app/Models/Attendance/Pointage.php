@@ -6,6 +6,8 @@ use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SituationStage;
+use App\Models\Workflow\InstanceParcours;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -35,6 +37,27 @@ class Pointage extends Model
     public function periode(): BelongsTo
     {
         return $this->belongsTo(Periode::class);
+    }
+
+    /**
+     * L'instance de parcours (workflow) propre à ce pointage.
+     *
+     * C'est elle qui porte la corbeille de paiement du mois : le legacy raccroche le paiement
+     * au pointage (PaiementDmgService::validerPaiement enregistre un `pointage_id`), et un
+     * stage peut avoir plusieurs mois impayés de natures différentes.
+     */
+    public function instanceParcours(): HasOne
+    {
+        return $this->hasOne(InstanceParcours::class);
+    }
+
+    /**
+     * Situation du stage au moment de ce pointage mensuel (réactivation, fin de stage...),
+     * distincte de la situation courante portée par `stage.situation_stage`.
+     */
+    public function situationStage(): BelongsTo
+    {
+        return $this->belongsTo(SituationStage::class);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Domain\Payment\Services;
 
+use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DecisionPaiement;
@@ -11,13 +12,14 @@ use App\Models\Payment\LigneDossierPaiement;
 use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SituationStage;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
-use Carbon\Carbon;
 
 class DmgService
 {
@@ -35,7 +37,10 @@ class DmgService
 
     /**
      * Applique le filtre "attestation demarrage" : le stage doit commencer dans le mois selectionne.
-     * Equivalent legacy : ContratsPae::scopeAttestationDemarrage()
+     *
+     * Equivalent legacy : ContratsPae::scopeAttestationDemarrage(), doublé du
+     * `where('etatrenouvellement_id', '!=', 1)` que PaiementDmgController applique juste après.
+     * Un stage renouvelé qui redémarre dans le mois relève de la présence, pas du démarrage.
      */
     private function applyAttestationDemarrageFilter(Builder $query, string $mois): Builder
     {
@@ -43,66 +48,138 @@ class DmgService
 
         return $query->whereHas('droitPaiement.stage', function (Builder $s) use ($date): void {
             $s->whereYear('date_debut', $date->year)
-              ->whereMonth('date_debut', $date->month);
+                ->whereMonth('date_debut', $date->month)
+                ->whereDoesntHave('contrats.avenants');
         });
     }
 
     /**
      * Applique le filtre "attestation presence" : le stage doit etre actif pendant le mois selectionne.
-     * Equivalent legacy : ContratsPae::scopeAttestationPresence()
+     *
+     * Equivalent legacy : ContratsPae::scopeAttestationPresence(). Le mois de démarrage est
+     * exclu de la présence, sauf pour un stage renouvelé (`etatrenouvellement_id = 1`, repris
+     * ici sous forme d'avenant) : son redémarrage est déjà couvert par le contrat initial.
      */
     private function applyAttestationPresenceFilter(Builder $query, string $mois): Builder
     {
-        $startDate = Carbon::parse($mois)->startOfMonth()->toDateString();
-        $endDate = Carbon::parse($mois)->endOfMonth()->toDateString();
+        $date = Carbon::parse($mois);
+        $startDate = $date->copy()->startOfMonth()->toDateString();
+        $endDate = $date->copy()->endOfMonth()->toDateString();
 
-        return $query->whereHas('droitPaiement.stage', function (Builder $s) use ($startDate, $endDate): void {
+        return $query->whereHas('droitPaiement.stage', function (Builder $s) use ($date, $startDate, $endDate): void {
             $s->where('date_debut', '<=', $endDate)
-              ->where('date_fin_prevue', '>=', $startDate);
+                ->where('date_fin_prevue', '>=', $startDate)
+                ->where(function (Builder $renouvellement) use ($date): void {
+                    $renouvellement->whereHas('contrats.avenants')
+                        ->orWhere(function (Builder $horsRenouvellement) use ($date): void {
+                            $horsRenouvellement->whereYear('date_debut', '!=', $date->year)
+                                ->orWhereMonth('date_debut', '!=', $date->month);
+                        });
+                });
         });
+    }
+
+    /**
+     * Origines de stagiaires qui n'ouvrent aucun droit à paiement, en identifiants de l'ancien
+     * Gestage. Equivalent legacy : ContratsPae::scopeSansPaiement().
+     */
+    private const ORIGINES_SANS_DROIT_PAIEMENT_LEGACY = [3, 4, 19];
+
+    /**
+     * Financement PEJEDEC (identifiant legacy) : payé par un circuit distinct de la file DMG.
+     */
+    private const FINANCEMENT_PEJEDEC_LEGACY = 5;
+
+    /** @var array<string, array<int, int>> correspondances `ancien_id` → id cible, par table */
+    private array $correspondancesLegacy = [];
+
+    /**
+     * Traduit des identifiants de l'ancien Gestage en identifiants de la base cible.
+     *
+     * Les tables de référence ont été renumérotées à la migration (PEJEDEC vaut 5 côté legacy
+     * mais 4 ici) : comparer directement les identifiants legacy laissait entrer dans la file
+     * DMG des dossiers que l'ancien Gestage en excluait.
+     *
+     * @param  array<int, int>  $anciensIds
+     * @return array<int, int>
+     */
+    private function idsCibles(string $table, array $anciensIds): array
+    {
+        $cle = $table.':'.implode(',', $anciensIds);
+
+        return $this->correspondancesLegacy[$cle] ??= DB::table($table)
+            ->whereIn('ancien_id', $anciensIds)
+            ->pluck('id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
     }
 
     /** @param array<string, mixed> $filters */
     private function attentePaiement(CorbeilleEnum $corbeille, array $filters, ?string $mois): Builder
     {
+        // Quand un mois est demandé, le partage démarrage / présence est tranché par les dates du
+        // stage (scopeAttestationDemarrage / scopeAttestationPresence), comme dans l'ancien
+        // Gestage : la corbeille du parcours dit seulement que le dossier attend un paiement.
+        // La nature importée sur le pointage, elle, peut contredire les dates du contrat.
+        $corbeillesEligibles = $mois === null ? [$corbeille] : [
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+        ];
+
+        $originesExclues = $this->idsCibles('origines_stagiaire', self::ORIGINES_SANS_DROIT_PAIEMENT_LEGACY);
+        $financementsExclus = $this->idsCibles('sources_financement', [self::FINANCEMENT_PEJEDEC_LEGACY]);
+
         $query = Paiement::query()
             ->with([
                 'droitPaiement.stage.beneficiaire', 'droitPaiement.stage.entreprise.typeStructure',
                 'droitPaiement.stage.agence', 'droitPaiement.stage.sourceFinancement',
                 'droitPaiement.stage.typeStage', 'droitPaiement.stage.contrats',
-                'droitPaiement.stage.instanceParcours', 'droitPaiement.periode',
+                'droitPaiement.stage.instanceParcours', 'droitPaiement.pointage.instanceParcours',
+                'droitPaiement.periode',
             ])
             ->where('statut', 'A_TRAITER')
-            ->whereHas('droitPaiement', function (Builder $droit) use ($corbeille, $mois): void {
+            ->whereHas('droitPaiement', function (Builder $droit) use ($corbeillesEligibles, $mois, $originesExclues, $financementsExclus): void {
                 $droit->whereNull('annule_le')
                     ->when($mois, fn (Builder $q) => $q->whereHas('periode', fn (Builder $p) => $p->where('code', $mois)))
                     ->whereHas('stage.contrats')
-                    ->whereHas('stage.instanceParcours', function (Builder $instance) use ($corbeille): void {
-                        $instance->whereNull('terminee_le')
-                            ->where(function (Builder $workflow) use ($corbeille): void {
-                                // 1) Priorité : tâche ouverte dans la corbeille cible
-                                $workflow->whereHas('taches', fn (Builder $tache) => $tache
-                                    ->where('code_corbeille', $corbeille->value)
-                                    ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']))
-                                // 2) Fallback : aucune tâche ouverte ET corbeille_actuelle correspondante
-                                //    (couvre le cas où les tâches n'existent pas encore ou sont toutes fermées)
-                                ->orWhere(function (Builder $fallback) use ($corbeille): void {
-                                    $fallback->where('corbeille_actuelle', $corbeille->value)
-                                        ->where(function (Builder $noOpenTasks): void {
-                                            $noOpenTasks->whereDoesntHave('taches')
-                                                ->orWhere(function (Builder $onlyClosed): void {
-                                                    $onlyClosed->whereDoesntHave('taches', fn (Builder $t) => $t
-                                                        ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']));
-                                                });
-                                        });
-                                });
+                    ->whereHas('stage', function (Builder $stage) use ($originesExclues, $financementsExclus): void {
+                        // Equivalent legacy : scopeSansPaiement() et exclusion du financement PEJEDEC.
+                        if ($originesExclues !== []) {
+                            $stage->where(fn (Builder $o) => $o
+                                ->whereNull('origine_stagiaire_id')
+                                ->orWhereNotIn('origine_stagiaire_id', $originesExclues));
+                        }
+
+                        if ($financementsExclus !== []) {
+                            $stage->whereNotIn('source_financement_id', $financementsExclus);
+                        }
+                    })
+                    // Un pointage « réactivation » ou « fin de stage » (situation du stage au
+                    // moment précis de ce mois, distincte de sa situation courante) n'entre pas
+                    // dans la file DMG côté legacy même validé par le CIP et le CA : équivalent de
+                    // `situationstage_id = 1` dans PaiementDmgService::attentePaiementValidation().
+                    // Un droit sans pointage n'a pas cette granularité mensuelle, il n'est pas concerné.
+                    ->where(fn (Builder $situation) => $situation
+                        ->whereDoesntHave('pointage')
+                        ->orWhereHas('pointage', fn (Builder $p) => $p
+                            ->whereNull('situation_stage_id')
+                            ->orWhereHas('situationStage', fn (Builder $s) => $s->where('code', SituationStage::CODE_EN_COURS))))
+                    // Le paiement suit le pointage du mois (le legacy stocke un `pointage_id`
+                    // sur chaque paiement). L'instance du stage ne sert que de repli pour les
+                    // droits créés sans pointage : elle est unique et ne peut pas représenter
+                    // plusieurs mois impayés de natures différentes.
+                    ->where(function (Builder $portee) use ($corbeillesEligibles): void {
+                        $portee->whereHas('pointage.instanceParcours', fn (Builder $i) => $this->filtreCorbeille($i, $corbeillesEligibles))
+                            ->orWhere(function (Builder $repli) use ($corbeillesEligibles): void {
+                                $repli->whereDoesntHave('pointage.instanceParcours')
+                                    ->whereHas('stage.instanceParcours', fn (Builder $i) => $this->filtreCorbeille($i, $corbeillesEligibles));
                             });
                     });
             });
 
         $this->applyFilters($query, $filters);
 
-        // Filtre de cohérence : les paiements doivent concerner des stages
+        // Filtre de coherence : les paiements doivent concerner des stages
         // actifs durant la periode selectionnee (match legacy attestationDemarrage / attestationPresence)
         if ($mois) {
             if ($corbeille === CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE) {
@@ -113,9 +190,40 @@ class DmgService
         }
 
         // Mur Pare-feu (Doublon DESSE) : on exclut de la DMG (Démarrage et Présence) tous les stagiaires détectés comme doublons non traités.
-        app(\App\Domain\Workflow\Services\DesseDoublonService::class)->applyDuplicateExclusionFilter($query, 'droitPaiement.stage');
+        app(DesseDoublonService::class)->applyDuplicateExclusionFilter($query, 'droitPaiement.stage');
 
         return $query;
+    }
+
+    /**
+     * Une instance est « dans » l'une des corbeilles si une tâche ouverte l'y place, ou, à défaut
+     * de tâche ouverte, si sa `corbeille_actuelle` en fait partie.
+     *
+     * @param  array<int, CorbeilleEnum>  $corbeilles
+     */
+    private function filtreCorbeille(Builder $instance, array $corbeilles): Builder
+    {
+        $codes = array_map(fn (CorbeilleEnum $c) => $c->value, $corbeilles);
+
+        return $instance->whereNull('terminee_le')
+            ->where(function (Builder $workflow) use ($codes): void {
+                // 1) Priorité : tâche ouverte dans une corbeille cible
+                $workflow->whereHas('taches', fn (Builder $tache) => $tache
+                    ->whereIn('code_corbeille', $codes)
+                    ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']))
+                    // 2) Fallback : aucune tâche ouverte ET corbeille_actuelle correspondante
+                    //    (couvre le cas où les tâches n'existent pas encore ou sont toutes fermées)
+                    ->orWhere(function (Builder $fallback) use ($codes): void {
+                        $fallback->whereIn('corbeille_actuelle', $codes)
+                            ->where(function (Builder $noOpenTasks): void {
+                                $noOpenTasks->whereDoesntHave('taches')
+                                    ->orWhere(function (Builder $onlyClosed): void {
+                                        $onlyClosed->whereDoesntHave('taches', fn (Builder $t) => $t
+                                            ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE']));
+                                    });
+                            });
+                    });
+            });
     }
 
     /** @param array<string, mixed> $filters */
@@ -146,26 +254,26 @@ class DmgService
 
         $c1 = function (Builder $d) use ($day, $month) {
             $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-              ->whereRaw($day('s.date_debut').' BETWEEN 1 AND 5')
-              ->where(function (Builder $q) use ($day, $month) {
-                  $q->whereRaw($month('droits_paiement.created_at').' = '.$month('s.date_debut').' AND '.$day('droits_paiement.created_at').' >= 11')
-                    ->orWhereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
-              });
+                ->whereRaw($day('s.date_debut').' BETWEEN 1 AND 5')
+                ->where(function (Builder $q) use ($day, $month) {
+                    $q->whereRaw($month('droits_paiement.created_at').' = '.$month('s.date_debut').' AND '.$day('droits_paiement.created_at').' >= 11')
+                        ->orWhereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
+                });
         };
 
         $c2 = function (Builder $d) use ($day, $month) {
             $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-              ->whereRaw($day('s.date_debut').' = 10')
-              ->where(function (Builder $q) use ($day, $month) {
-                  $q->whereRaw($month('droits_paiement.created_at').' = '.$month('s.date_debut').' AND '.$day('droits_paiement.created_at').' >= 21')
-                    ->orWhereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
-              });
+                ->whereRaw($day('s.date_debut').' = 10')
+                ->where(function (Builder $q) use ($day, $month) {
+                    $q->whereRaw($month('droits_paiement.created_at').' = '.$month('s.date_debut').' AND '.$day('droits_paiement.created_at').' >= 21')
+                        ->orWhereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
+                });
         };
 
         $c3 = function (Builder $d) use ($day, $month) {
             $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-              ->whereRaw($day('s.date_debut').' = 20')
-              ->whereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
+                ->whereRaw($day('s.date_debut').' = 20')
+                ->whereRaw($month('droits_paiement.created_at').' > '.$month('s.date_debut'));
         };
 
         return match (str_replace('cohorte', '', strtolower($cohorte))) {
@@ -173,8 +281,8 @@ class DmgService
             '2' => $query->whereHas('droitPaiement', $c2),
             '3' => $query->whereHas('droitPaiement', $c3),
             default => $query->whereDoesntHave('droitPaiement', $c1)
-                             ->whereDoesntHave('droitPaiement', $c2)
-                             ->whereDoesntHave('droitPaiement', $c3),
+                ->whereDoesntHave('droitPaiement', $c2)
+                ->whereDoesntHave('droitPaiement', $c3),
         };
     }
 

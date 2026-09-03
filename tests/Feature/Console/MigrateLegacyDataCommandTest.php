@@ -15,11 +15,11 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
-use App\Models\Reference\TypePaiement;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
+use App\Models\Workflow\TacheParcours;
 use App\Services\Migration\LegacyMigrationRecorder;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -81,6 +81,8 @@ class MigrateLegacyDataCommandTest extends TestCase
             $table->text('commentaire')->nullable();
             $table->unsignedTinyInteger('status_dmg')->default(0);
             $table->unsignedTinyInteger('status_ca')->default(0);
+            $table->unsignedTinyInteger('status_cip')->default(0);
+            $table->unsignedBigInteger('situationstage_id')->nullable();
             $table->unsignedBigInteger('etape_id')->nullable();
             $table->timestamp('date_ca')->nullable();
             $table->timestamp('deleted_at')->nullable();
@@ -490,6 +492,47 @@ class MigrateLegacyDataCommandTest extends TestCase
 
         $this->artisan('migrate:legacy-data', ['--step' => 'pointages', '--resume' => true])->assertExitCode(0);
         $this->assertSame(2, VersionPointage::where('pointage_id', $pointage->id)->count());
+    }
+
+    public function test_pointage_for_a_stagiaire_who_left_the_program_does_not_create_a_ca_task(): void
+    {
+        $agence = Agence::factory()->create(['ancien_id' => 21]);
+        $source = SourceFinancement::factory()->create(['ancien_id' => 4]);
+        $stage = Stage::factory()->create([
+            'ancien_id' => 601,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+            'date_debut' => '2026-06-10',
+        ]);
+
+        DB::connection('legacy')->table('pointage_models')->insert([
+            'id' => 8001,
+            'stagiaire_id' => 601,
+            'mois' => '2026-07',
+            'status_cip' => 1,
+            'status_ca' => 0,
+            'status_dmg' => 0,
+            'situationstage_id' => 2, // ABANDON
+            'created_at' => '2026-07-05 08:00:00',
+            'updated_at' => '2026-07-05 08:00:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'pointages', '--chunk' => 1])->assertExitCode(0);
+
+        $pointage = Pointage::where('stage_id', $stage->id)->firstOrFail();
+        $instance = InstanceParcours::where('pointage_id', $pointage->id)->firstOrFail();
+
+        // La corbeille reste renseignée pour la traçabilité, mais aucune tâche CA ouverte
+        // ne doit être créée : le stagiaire est sorti du dispositif (abandon/suspension/désistement).
+        $this->assertSame('ca_validation_pointages', $instance->corbeille_actuelle);
+        $this->assertSame(0, TacheParcours::where('instance_parcours_id', $instance->id)
+            ->whereIn('statut', ['OUVERTE', 'REVENDIQUEE'])
+            ->count());
+        $this->assertDatabaseHas('anomalies_migration', [
+            'code' => 'POINTAGE_STAGIAIRE_SORTI_HORS_CORBEILLE_CA',
+            'table_source' => 'pointage_models',
+            'id_source' => '8001',
+        ]);
     }
 
     public function test_validated_legacy_payment_keeps_its_accounting_status_and_date(): void

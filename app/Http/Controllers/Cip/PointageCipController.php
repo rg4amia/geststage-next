@@ -11,6 +11,7 @@ use App\Models\Company\Entreprise;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SituationStage;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
@@ -58,7 +59,7 @@ class PointageCipController extends Controller
                     ->withExists(['pointages as has_pointage_demarrage' => function ($q) {
                         $q->where('nature', 'DEMARRAGE')->where('statut', 'VALIDE');
                     }])
-                    ->where('situation_stage', 'EN_COURS')
+                    ->where('situation_stage', SituationStage::CODE_EN_COURS)
                     ->where('date_debut', '<=', $periode->date_fin)
                     ->where(function ($q) use ($periode) {
                         $q->whereNull('date_fin_prevue')
@@ -67,6 +68,11 @@ class PointageCipController extends Controller
                     ->whereDoesntHave('pointages', function ($q) use ($periode) {
                         $q->where('periode_id', $periode->id)
                             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
+                    })
+                    // Le CA doit avoir validé le dossier avant que le CIP ne pointe un mois :
+                    // légacy `etat_chef_agence = 2` (WaitCheckedChefAgenceService).
+                    ->whereDoesntHave('instanceParcours', function ($q) {
+                        $q->whereIn('corbeille_actuelle', CorbeilleEnum::nonValideesParCa());
                     })
                     ->where('source_financement_id', '!=', 4); // Exclure PEJEDEC
 
@@ -84,7 +90,7 @@ class PointageCipController extends Controller
                     ->withExists(['pointages as has_pointage_demarrage' => function ($q) {
                         $q->where('nature', 'DEMARRAGE')->where('statut', 'VALIDE');
                     }])
-                    ->where('situation_stage', 'EN_COURS')
+                    ->where('situation_stage', SituationStage::CODE_EN_COURS)
                     ->where('date_debut', '<=', $periode->date_fin)
                     ->where(function ($q) use ($periode) {
                         $q->whereNull('date_fin_prevue')
@@ -93,6 +99,11 @@ class PointageCipController extends Controller
                     ->whereDoesntHave('pointages', function ($q) use ($periode) {
                         $q->where('periode_id', $periode->id)
                             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
+                    })
+                    // Le CA doit avoir validé le dossier avant que le CIP ne pointe un mois :
+                    // légacy `etat_chef_agence = 2` (WaitCheckedChefAgenceService).
+                    ->whereDoesntHave('instanceParcours', function ($q) {
+                        $q->whereIn('corbeille_actuelle', CorbeilleEnum::nonValideesParCa());
                     })
                     ->where('source_financement_id', 4); // Seulement PEJEDEC
 

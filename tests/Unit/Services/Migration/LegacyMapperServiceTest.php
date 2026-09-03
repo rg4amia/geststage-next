@@ -15,21 +15,103 @@ class LegacyMapperServiceTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_map_chef_agence_corbeille_returns_retour_ajournement_when_validation_date_exists(): void
+    /**
+     * Un dossier ajourné puis re-soumis par le CIP garde la `date_chef_agence` de la passe
+     * précédente alors que `etat_chef_agence` est remis à 0. WaitCheckedChefAgenceService ne
+     * lisant jamais cette date, le dossier revient dans la corbeille de validation du CA.
+     */
+    public function test_chef_agence_queue_ignores_a_leftover_validation_date(): void
     {
         Carbon::setTestNow(Carbon::parse('2026-08-16'));
 
         $mapper = new LegacyMapperService;
         $legacyContrat = (object) [
+            'etapetraitement_id' => 1,
             'etat_chef_agence' => 0,
             'date_chef_agence' => '2026-08-05',
             'date_debut' => '2026-08-10',
+            'agent_id' => 3,
+            'avis_contrat' => 1,
+            'file_contrat' => 'contrat.pdf',
         ];
 
         $this->assertSame(
-            CorbeilleEnum::CA_RETOUR_AJOURNEMENT,
+            CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE,
             $mapper->mapChefAgenceCorbeille($legacyContrat)
         );
+    }
+
+    /**
+     * Hors éligibilité CA, la date de passage du Chef d'Agence ne doit pas déplacer le dossier :
+     * la corbeille « ajournées » du CA est strictement `etapetraitement_id=2 AND etat_chef_agence=1`.
+     */
+    public function test_a_validation_date_alone_does_not_fill_the_adjournment_queue(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-16'));
+
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::CIP_MES_STAGIAIRES,
+            $mapper->mapChefAgenceCorbeille((object) [
+                'etapetraitement_id' => 1,
+                'etat_chef_agence' => 0,
+                'date_chef_agence' => '2026-08-05',
+                'date_debut' => '2026-08-10',
+                'agent_id' => 3,
+                'avis_contrat' => 0,
+                'file_contrat' => null,
+            ])
+        );
+
+        $this->assertSame(
+            CorbeilleEnum::CIP_MES_STAGIAIRES,
+            $mapper->mapChefAgenceCorbeille((object) [
+                'etapetraitement_id' => 2,
+                'etat_chef_agence' => null,
+                'date_chef_agence' => '2026-08-05',
+                'date_debut' => '2026-08-10',
+            ])
+        );
+    }
+
+    /**
+     * `status_dmg` ne concerne que l'étape de paiement : un pointage validé par le CIP puis
+     * par le CA est VALIDE même si le DMG n'a pas encore payé. Sinon les 68 651 pointages
+     * en attente de paiement retombent dans la corbeille de validation du Chef d'Agence,
+     * qui ne liste que les pointages `SOUMIS`.
+     */
+    public function test_pointage_validated_by_cip_and_chef_agence_is_valide_before_dmg(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame('VALIDE', $mapper->mapStatutPointage((object) [
+            'status_cip' => 1, 'status_ca' => 1, 'status_dmg' => 0,
+        ]));
+        $this->assertSame('VALIDE', $mapper->mapStatutPointage((object) [
+            'status_cip' => 1, 'status_ca' => 1, 'status_dmg' => 1,
+        ]));
+    }
+
+    public function test_pointage_awaiting_chef_agence_stays_soumis(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame('SOUMIS', $mapper->mapStatutPointage((object) [
+            'status_cip' => 1, 'status_ca' => 0, 'status_dmg' => 0,
+        ]));
+    }
+
+    public function test_pointage_adjournments_win_over_validation(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame('AJOURNE_CA', $mapper->mapStatutPointage((object) [
+            'status_cip' => 1, 'status_ca' => 2, 'status_dmg' => 0,
+        ]));
+        $this->assertSame('AJOURNE_DMG', $mapper->mapStatutPointage((object) [
+            'status_cip' => 1, 'status_ca' => 0, 'status_dmg' => 2,
+        ]));
     }
 
     public function test_normalize_legacy_date_returns_null_for_zero_dates(): void
@@ -161,6 +243,90 @@ class LegacyMapperServiceTest extends TestCase
         $this->assertSame(
             CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
             $mapper->mapPointageToCorbeille(null, 'VALIDE', 'PRESENCE')
+        );
+    }
+
+    /**
+     * Un paiement rejeté par l'AC repart au DMG (étape 29, `TraitementAjournementStagiaireRejetByAcJob`)
+     * sans que l'étape du pointage ne soit touchée : `PaiementDmgService::attentePaiementValidation()`
+     * ne teste que la signature du paiement, jamais l'étape. La contraindre à 20/21 laissait ces
+     * dossiers hors file DMG côté cible alors que l'ancien Gestage les affichait toujours.
+     */
+    public function test_dmg_signature_reclassifies_regardless_of_the_pointage_stage(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE,
+            $mapper->mapPointageToCorbeille(29, 'VALIDE', 'PRESENCE', null, true)
+        );
+        $this->assertSame(
+            CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE,
+            $mapper->mapPointageToCorbeille(19, 'VALIDE', 'DEMARRAGE', null, true)
+        );
+    }
+
+    /**
+     * L'étape legacy 2 s'intitule « Chef Agence : validation des informations », mais
+     * WaitCheckedChefAgenceService ne remonte que les étapes 1 et 4 dans la corbeille du
+     * CA. Un dossier resté à l'étape 2 avec etat_chef_agence=2 a donc déjà été validé :
+     * le laisser en CA_ATTENTE_VALIDATION_* gonflerait la corbeille du CA de milliers de
+     * dossiers absents du legacy.
+     */
+    public function test_stage_validated_by_chef_agence_leaves_the_validation_queue(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-16'));
+
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::EN_STAGE,
+            $mapper->mapChefAgenceCorbeille((object) [
+                'etapetraitement_id' => 2,
+                'etat_chef_agence' => 2,
+                'date_chef_agence' => '2026-08-05',
+                'date_debut' => '2026-08-10',
+                'agent_id' => 3,
+                'avis_contrat' => 1,
+                'file_contrat' => 'contrat.pdf',
+            ])
+        );
+    }
+
+    public function test_stage_adjourned_by_chef_agence_goes_to_the_adjournment_queue(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-16'));
+
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::CA_RETOUR_AJOURNEMENT,
+            $mapper->mapChefAgenceCorbeille((object) [
+                'etapetraitement_id' => 2,
+                'etat_chef_agence' => 1,
+                'date_chef_agence' => '2026-08-05',
+                'date_debut' => '2026-08-10',
+            ])
+        );
+    }
+
+    public function test_incomplete_stage_pending_chef_agence_stays_with_the_cip(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-08-16'));
+
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(
+            CorbeilleEnum::CIP_MES_STAGIAIRES,
+            $mapper->mapChefAgenceCorbeille((object) [
+                'etapetraitement_id' => 2,
+                'etat_chef_agence' => 0,
+                'date_chef_agence' => null,
+                'date_debut' => '2026-08-10',
+                'agent_id' => 3,
+                'avis_contrat' => 0,
+                'file_contrat' => null,
+            ])
         );
     }
 }
