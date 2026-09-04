@@ -234,6 +234,165 @@ class PaiementAcWorkflowTest extends TestCase
         $this->assertDatabaseHas('decisions_paiements', ['paiement_id' => $chaine['paiement']->id, 'decision' => 'RETRAIT_OP_BORDEREAU_AC']);
     }
 
+    public function test_le_detail_dune_op_repartit_les_stagiaires_dans_les_quatre_onglets(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+        $valide = $this->ajouterPaiement($chaine, 'VALIDE_AC', null);
+        $rejete = $this->ajouterPaiement($chaine, 'REJETE_AC', CorbeilleEnum::DMG_OP_REJETE_AC);
+        $differe = $this->ajouterPaiement($chaine, 'A_TRAITER', CorbeilleEnum::DMG_OP_DIFFERE_AC);
+
+        $this->actingAs($this->agentComptable);
+        $url = '/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/details';
+
+        $this->getJson($url)
+            ->assertOk()
+            ->assertJsonPath('onglet', 'attente')
+            ->assertJsonPath('compteurs', ['attente' => 1, 'valide' => 1, 'rejete' => 1, 'differe' => 1])
+            ->assertJsonCount(1, 'dossiers.0.stagiaires')
+            ->assertJsonPath('dossiers.0.stagiaires.0.paiement_id', $chaine['paiement']->id);
+
+        foreach (['valide' => $valide, 'rejete' => $rejete, 'differe' => $differe] as $onglet => $paiement) {
+            $this->getJson($url.'?onglet='.$onglet)
+                ->assertOk()
+                ->assertJsonPath('onglet', $onglet)
+                ->assertJsonCount(1, 'dossiers.0.stagiaires')
+                ->assertJsonPath('dossiers.0.stagiaires.0.paiement_id', $paiement->id);
+        }
+
+        // Un onglet inconnu retombe sur la corbeille par défaut.
+        $this->getJson($url.'?onglet=inconnu')->assertOk()->assertJsonPath('onglet', 'attente');
+    }
+
+    public function test_les_filtres_de_la_barre_de_recherche_restreignent_la_liste_des_stagiaires(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+        $beneficiaire = $chaine['paiement']->droitPaiement->stage->beneficiaire;
+        $stage = $chaine['paiement']->droitPaiement->stage;
+
+        $this->actingAs($this->agentComptable);
+        $url = '/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/details';
+
+        $this->getJson($url.'?agence_id='.$chaine['dossier']->agence_id)
+            ->assertOk()
+            ->assertJsonCount(1, 'dossiers');
+
+        $this->getJson($url.'?agence_id='.($chaine['dossier']->agence_id + 1000))
+            ->assertOk()
+            ->assertJsonCount(0, 'dossiers')
+            // Les compteurs restent ceux de l'OP entière, comme les onglets du legacy.
+            ->assertJsonPath('compteurs.attente', 1);
+
+        $this->getJson($url.'?type_stage_id='.$stage->type_stage_id)->assertOk()->assertJsonCount(1, 'dossiers');
+        $this->getJson($url.'?entreprise_id='.$stage->entreprise_id)->assertOk()->assertJsonCount(1, 'dossiers');
+        $this->getJson($url.'?recherche='.urlencode($beneficiaire->nom))->assertOk()->assertJsonCount(1, 'dossiers');
+        $this->getJson($url.'?recherche=introuvable-xyz')->assertOk()->assertJsonCount(0, 'dossiers');
+    }
+
+    public function test_differer_des_stagiaires_selectionnes_laisse_lop_ouverte_pour_les_autres(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+        $second = $this->ajouterPaiement($chaine, 'EN_OP', CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE);
+        $motif = 'Compte Trésor Money à régulariser';
+
+        $this->actingAs($this->agentComptable)
+            ->post('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/differer-stagiaires', [
+                'motif' => $motif,
+                'paiement_ids' => [$second->id],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('paiements', [
+            'id' => $second->id,
+            'statut' => 'A_TRAITER',
+            'corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC->value,
+        ]);
+        $this->assertDatabaseHas('lignes_dossiers_paiement', ['paiement_id' => $second->id, 'motif_retrait' => $motif]);
+        $this->assertDatabaseHas('decisions_paiements', ['paiement_id' => $second->id, 'decision' => 'DIFFERE_STAGIAIRE_AC']);
+
+        // Le stagiaire non sélectionné et l'OP restent en attente de visa.
+        $this->assertDatabaseHas('paiements', ['id' => $chaine['paiement']->id, 'statut' => 'EN_OP']);
+        $this->assertDatabaseHas('ordre_paiements', ['id' => $chaine['ordre']->id, 'statut' => 'EN_BORDEREAU']);
+        $this->assertDatabaseHas('bordereau_paiements', ['id' => $chaine['bordereau']->id, 'statut' => 'TRANSMIS_AC']);
+    }
+
+    public function test_la_validation_dune_op_epargne_les_stagiaires_deja_differes(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+        $differe = $this->ajouterPaiement($chaine, 'EN_OP', CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE);
+
+        $this->actingAs($this->agentComptable)
+            ->post('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/differer-stagiaires', [
+                'motif' => 'Pièces manquantes au dossier',
+                'paiement_ids' => [$differe->id],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->post('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/valider')
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('paiements', ['id' => $chaine['paiement']->id, 'statut' => 'VALIDE_AC']);
+        $this->assertDatabaseHas('paiements', [
+            'id' => $differe->id,
+            'statut' => 'A_TRAITER',
+            'corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC->value,
+        ]);
+        $this->assertDatabaseHas('ordre_paiements', ['id' => $chaine['ordre']->id, 'statut' => 'VISE_AC']);
+    }
+
+    public function test_differer_tous_les_stagiaires_clot_lop_et_le_bordereau(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+
+        $this->actingAs($this->agentComptable)
+            ->post('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/differer-stagiaires', [
+                'motif' => 'Dossier entièrement à reprendre',
+                'paiement_ids' => [$chaine['paiement']->id],
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('ordre_paiements', ['id' => $chaine['ordre']->id, 'statut' => 'DIFFERE_AC']);
+        $this->assertDatabaseHas('bordereau_paiements', ['id' => $chaine['bordereau']->id, 'statut' => 'REJETE_AC']);
+    }
+
+    public function test_un_stagiaire_deja_tranche_ne_peut_pas_etre_differe_une_seconde_fois(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+        $valide = $this->ajouterPaiement($chaine, 'VALIDE_AC', null);
+
+        $this->actingAs($this->agentComptable)
+            ->from('/agent-comptable/paiements')
+            ->post('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/differer-stagiaires', [
+                'motif' => 'Tentative de double décision',
+                'paiement_ids' => [$valide->id],
+            ])
+            ->assertSessionHasErrors('paiement_ids');
+
+        $this->assertDatabaseHas('paiements', ['id' => $valide->id, 'statut' => 'VALIDE_AC']);
+    }
+
+    public function test_les_actions_disponibles_suivent_les_decisions_deja_prises_sur_lop(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+        $this->actingAs($this->agentComptable);
+        $url = '/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/details';
+
+        $this->getJson($url)
+            ->assertJsonPath('actions', [
+                'valider' => true, 'differer' => true, 'differer_stagiaires' => true,
+                'rejeter' => true, 'retirer' => true,
+            ]);
+
+        // Un différé partiel ferme le rejet global et le retrait, comme `checkerAcAction`.
+        $this->ajouterPaiement($chaine, 'A_TRAITER', CorbeilleEnum::DMG_OP_DIFFERE_AC);
+
+        $this->getJson($url)
+            ->assertJsonPath('actions.rejeter', false)
+            ->assertJsonPath('actions.retirer', false)
+            ->assertJsonPath('actions.valider', true);
+    }
+
     private function periode(string $code): Periode
     {
         return Periode::create([
@@ -309,6 +468,21 @@ class PaiementAcWorkflowTest extends TestCase
             'montant_total' => 0,
             'statut' => $statut,
         ]);
+    }
+
+    /** @param array{dossier: DossierPaiement, paiement: Paiement} $chaine */
+    private function ajouterPaiement(array $chaine, string $statut, ?CorbeilleEnum $corbeille): Paiement
+    {
+        $paiement = Paiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'droit_paiement_id' => $chaine['paiement']->droit_paiement_id,
+            'montant' => 25000,
+            'statut' => $statut,
+            'corbeille_actuelle' => $corbeille?->value,
+        ]);
+        $chaine['dossier']->paiements()->attach($paiement->id, ['montant' => 25000, 'ajoute_le' => now()]);
+
+        return $paiement;
     }
 
     /** @param array{dossier: DossierPaiement, paiement: Paiement} $chaine */

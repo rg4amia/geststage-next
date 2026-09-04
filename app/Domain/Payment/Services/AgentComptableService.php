@@ -6,13 +6,23 @@ use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DecisionPaiement;
+use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\OrdrePaiement;
+use App\Models\Payment\Paiement;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class AgentComptableService
 {
+    /**
+     * Statut d'un paiement encore en attente du visa de l'Agent Comptable. Équivalent du
+     * `paiement_models.status_ac = 'processed'` du legacy : toutes les décisions de l'AC
+     * (visa, différé, rejet) ne portent que sur ces paiements-là, jamais sur ceux qui ont
+     * déjà été tranchés.
+     */
+    public const STATUT_ATTENTE_AC = 'EN_OP';
+
     public function __construct(private WorkflowTransitionService $workflowService) {}
 
     public function viserBordereau(BordereauPaiement $bordereau): void
@@ -21,11 +31,23 @@ class AgentComptableService
             $this->preparerTraitement($bordereau, 'VISE_AC');
 
             foreach ($bordereau->ordresPaiement as $ordre) {
+                if ($ordre->statut !== 'EN_BORDEREAU') {
+                    continue;
+                }
+
                 $ordre->update(['statut' => 'VISE_AC']);
 
                 foreach ($ordre->dossiersPaiement as $dossier) {
+                    $enAttente = $dossier->paiementsActifs->where('statut', self::STATUT_ATTENTE_AC);
+
+                    if ($enAttente->isEmpty()) {
+                        continue;
+                    }
+
                     $dossier->update(['statut' => 'VISE_AC']);
-                    $dossier->paiementsActifs()->update(['statut' => 'VALIDE_AC']);
+                    $dossier->paiementsActifs()
+                        ->where('paiements.statut', self::STATUT_ATTENTE_AC)
+                        ->update(['statut' => 'VALIDE_AC']);
                 }
             }
 
@@ -39,8 +61,14 @@ class AgentComptableService
             $bordereau = $this->preparerOrdre($ordre, 'VISE_AC');
 
             foreach ($ordre->dossiersPaiement as $dossier) {
+                $enAttente = $dossier->paiementsActifs->where('statut', self::STATUT_ATTENTE_AC);
+
+                if ($enAttente->isEmpty()) {
+                    continue;
+                }
+
                 $dossier->update(['statut' => 'VISE_AC']);
-                foreach ($dossier->paiementsActifs as $paiement) {
+                foreach ($enAttente as $paiement) {
                     $statutAvant = $paiement->statut;
                     $paiement->update(['statut' => 'VALIDE_AC', 'corbeille_actuelle' => null]);
                     DecisionPaiement::enregistrer($paiement, $auteur, 'VALIDATION_OP_AC', null, $statutAvant, 'VALIDE_AC');
@@ -57,19 +85,61 @@ class AgentComptableService
             $bordereau = $this->preparerOrdre($ordre, 'DIFFERE_AC');
 
             foreach ($ordre->dossiersPaiement as $dossier) {
+                $enAttente = $dossier->paiementsActifs->where('statut', self::STATUT_ATTENTE_AC);
+
+                if ($enAttente->isEmpty()) {
+                    continue;
+                }
+
                 $dossier->update(['statut' => 'AJOURNE_DMG']);
-                foreach ($dossier->paiementsActifs as $paiement) {
-                    $statutAvant = $paiement->statut;
-                    $paiement->update([
-                        'statut' => 'A_TRAITER',
-                        'corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC,
-                    ]);
-                    $dossier->paiements()->updateExistingPivot($paiement->id, ['motif_retrait' => $motif]);
-                    DecisionPaiement::enregistrer($paiement, $auteur, 'DIFFERE_OP_AC', $motif, $statutAvant, 'A_TRAITER');
+                foreach ($enAttente as $paiement) {
+                    $this->differerPaiement($dossier, $paiement, $auteur, $motif, 'DIFFERE_OP_AC');
                 }
             }
 
             $this->finaliserBordereau($bordereau);
+        });
+    }
+
+    /**
+     * Différé partiel : portage du `ProcessDifferedStagiaire` legacy en mode « partiel ».
+     * Seuls les stagiaires sélectionnés repartent à la DMG, l'OP reste ouverte tant qu'il
+     * lui reste des paiements en attente de visa.
+     *
+     * @param  array<int, int|string>  $paiementIds
+     */
+    public function differerStagiaires(OrdrePaiement $ordre, User $auteur, array $paiementIds, string $motif): int
+    {
+        return DB::transaction(function () use ($ordre, $auteur, $paiementIds, $motif): int {
+            $bordereau = $this->ordreOuvert($ordre);
+            $cibles = array_map('intval', $paiementIds);
+            $differes = 0;
+
+            foreach ($ordre->dossiersPaiement as $dossier) {
+                foreach ($dossier->paiementsActifs as $paiement) {
+                    if (! in_array($paiement->id, $cibles, true) || $paiement->statut !== self::STATUT_ATTENTE_AC) {
+                        continue;
+                    }
+
+                    $this->differerPaiement($dossier, $paiement, $auteur, $motif, 'DIFFERE_STAGIAIRE_AC');
+                    $differes++;
+                }
+            }
+
+            if ($differes === 0) {
+                throw ValidationException::withMessages([
+                    'paiement_ids' => 'Aucun des stagiaires sélectionnés n’est encore en attente de visa sur cette OP.',
+                ]);
+            }
+
+            // Une OP vidée de tous ses stagiaires en attente ne peut plus être visée :
+            // on la clôt en différé pour ne pas bloquer la clôture du bordereau.
+            if ($this->comptePaiementsEnAttente($ordre) === 0) {
+                $ordre->update(['statut' => 'DIFFERE_AC']);
+                $this->finaliserBordereau($bordereau);
+            }
+
+            return $differes;
         });
     }
 
@@ -79,8 +149,14 @@ class AgentComptableService
             $bordereau = $this->preparerOrdre($ordre, 'REJETE_AC');
 
             foreach ($ordre->dossiersPaiement as $dossier) {
+                $enAttente = $dossier->paiementsActifs->where('statut', self::STATUT_ATTENTE_AC);
+
+                if ($enAttente->isEmpty()) {
+                    continue;
+                }
+
                 $dossier->update(['statut' => 'REJETE_AC']);
-                foreach ($dossier->paiementsActifs as $paiement) {
+                foreach ($enAttente as $paiement) {
                     $statutAvant = $paiement->statut;
                     $paiement->update([
                         'statut' => 'REJETE_AC',
@@ -192,6 +268,55 @@ class AgentComptableService
         $bordereau->statut = $nouveauStatut;
     }
 
+    /**
+     * Différé d'un paiement : il repart dans la corbeille DMG avec son motif, exactement
+     * comme le `user_differed` du legacy qui renvoie le stagiaire à l'agence.
+     */
+    private function differerPaiement(
+        DossierPaiement $dossier,
+        Paiement $paiement,
+        User $auteur,
+        string $motif,
+        string $decision,
+    ): void {
+        $statutAvant = $paiement->statut;
+
+        $paiement->update([
+            'statut' => 'A_TRAITER',
+            'corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC,
+        ]);
+        $dossier->paiements()->updateExistingPivot($paiement->id, ['motif_retrait' => $motif]);
+        DecisionPaiement::enregistrer($paiement, $auteur, $decision, $motif, $statutAvant, 'A_TRAITER');
+    }
+
+    /**
+     * Vérifie que l'OP est encore ouverte dans un bordereau en cours de traitement AC,
+     * sans la faire changer de statut.
+     */
+    private function ordreOuvert(OrdrePaiement $ordre): BordereauPaiement
+    {
+        $ordre->loadMissing(['bordereau', 'dossiersPaiement.paiementsActifs']);
+        $bordereau = $ordre->bordereau;
+
+        if (! $bordereau || $bordereau->statut !== 'TRANSMIS_AC' || $ordre->statut !== 'EN_BORDEREAU') {
+            throw ValidationException::withMessages([
+                'ordre' => 'Cette OP ne dépend plus d’un bordereau en cours de traitement AC.',
+            ]);
+        }
+
+        return $bordereau;
+    }
+
+    private function comptePaiementsEnAttente(OrdrePaiement $ordre): int
+    {
+        return $ordre->dossiersPaiement()
+            ->with('paiementsActifs')
+            ->get()
+            ->sum(fn (DossierPaiement $dossier): int => $dossier->paiementsActifs
+                ->where('statut', self::STATUT_ATTENTE_AC)
+                ->count());
+    }
+
     private function preparerOrdre(OrdrePaiement $ordre, string $nouveauStatut): BordereauPaiement
     {
         $ordre->loadMissing(['bordereau', 'dossiersPaiement.paiementsActifs']);
@@ -206,6 +331,19 @@ class AgentComptableService
         if ($ordre->dossiersPaiement->sum(fn ($dossier): int => $dossier->paiementsActifs->count()) === 0) {
             throw ValidationException::withMessages([
                 'ordre' => 'Cette OP ne contient aucun paiement actif à traiter.',
+            ]);
+        }
+
+        // Le retrait renvoie toute l'OP à la DMG : il reste possible même si plus aucun
+        // paiement n'attend le visa. Les autres décisions n'ont plus d'objet dans ce cas.
+        if (
+            $nouveauStatut !== 'BROUILLON'
+            && $ordre->dossiersPaiement->sum(
+                fn ($dossier): int => $dossier->paiementsActifs->where('statut', self::STATUT_ATTENTE_AC)->count(),
+            ) === 0
+        ) {
+            throw ValidationException::withMessages([
+                'ordre' => 'Cette OP ne contient plus aucun stagiaire en attente du visa de l’Agent Comptable.',
             ]);
         }
 

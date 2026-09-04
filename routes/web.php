@@ -164,6 +164,7 @@ Route::post('/agent-comptable/paiements/rejeter/{id}', [PaiementAcController::cl
 Route::get('/agent-comptable/paiements/ordres/{ordre}/details', [PaiementAcController::class, 'ordreDetails'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.ordres.details');
 Route::post('/agent-comptable/paiements/ordres/{ordre}/valider', [PaiementAcController::class, 'validerOrdre'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.ordres.valider');
 Route::post('/agent-comptable/paiements/ordres/{ordre}/differer', [PaiementAcController::class, 'differerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.differer');
+Route::post('/agent-comptable/paiements/ordres/{ordre}/differer-stagiaires', [PaiementAcController::class, 'differerStagiaires'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.differer-stagiaires');
 Route::post('/agent-comptable/paiements/ordres/{ordre}/rejeter', [PaiementAcController::class, 'rejeterOrdre'])->middleware('can:rejeter_bordereau_ac')->name('ac.paiements.ordres.rejeter');
 Route::post('/agent-comptable/paiements/ordres/{ordre}/retirer', [PaiementAcController::class, 'retirerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.retirer');
 

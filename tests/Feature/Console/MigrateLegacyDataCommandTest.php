@@ -4,6 +4,7 @@ namespace Tests\Feature\Console;
 
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
+use App\Enums\CorbeilleEnum;
 use App\Enums\VisaDesseEnum;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Contract\AvenantContrat;
@@ -106,11 +107,21 @@ class MigrateLegacyDataCommandTest extends TestCase
             $table->unsignedTinyInteger('status_cb')->default(0);
             $table->string('observation')->nullable();
             $table->string('status_ac')->nullable();
+            $table->string('motif_status')->nullable();
+            $table->unsignedBigInteger('user_differed')->nullable();
             $table->unsignedBigInteger('created_by_cb')->nullable();
             $table->timestamp('date_vise_cb')->nullable();
             $table->timestamp('date_vise_ac')->nullable();
             $table->timestamp('date_confirm_pay')->nullable();
             $table->timestamp('deleted_at')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::connection('legacy')->create('users', function (Blueprint $table): void {
+            $table->id();
+            $table->string('nom')->nullable();
+            $table->string('pseudo')->nullable();
+            $table->string('email')->nullable();
             $table->timestamps();
         });
 
@@ -432,6 +443,39 @@ class MigrateLegacyDataCommandTest extends TestCase
             'ancien_id' => 9002,
             'statut' => 'EN_DOSSIER',
         ]);
+    }
+
+    /**
+     * Le legacy ne filtre jamais l'écran AC (`getAllBorderau`) sur `contrats_pae.deleted_at` :
+     * un paiement déjà validé reste visible même si le contrat a été retiré du portefeuille
+     * depuis. Sans `withTrashed()`, le scope global SoftDeletes de Stage faisait disparaître
+     * silencieusement ces paiements en anomalie `PAIEMENT_SANS_STAGE`.
+     */
+    public function test_payment_migration_reaches_stages_soft_deleted_after_their_creation(): void
+    {
+        $agence = Agence::factory()->create(['ancien_id' => 12]);
+        $source = SourceFinancement::factory()->create(['ancien_id' => 3]);
+        $stage = Stage::factory()->create([
+            'ancien_id' => 503,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+        ]);
+        $stage->delete();
+
+        DB::connection('legacy')->table('paiement_models')->insert([
+            'id' => 9003,
+            'stagiaire_id' => 503,
+            'mois' => '2026-08',
+            'montant' => 45000,
+            'status_ac' => 'validated',
+            'created_at' => '2026-08-12 08:00:00',
+            'updated_at' => '2026-08-12 08:00:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'paiements'])->assertExitCode(0);
+
+        $this->assertDatabaseHas('paiements', ['ancien_id' => 9003, 'droit_paiement_id' => DroitPaiement::where('ancien_id', 9003)->value('id')]);
+        $this->assertSame(0, DB::table('anomalies_migration')->where('code', 'PAIEMENT_SANS_STAGE')->where('id_source', '9003')->count());
     }
 
     public function test_legacy_dmg_deferred_pointage_keeps_its_period_link_and_reason(): void
@@ -938,6 +982,78 @@ class MigrateLegacyDataCommandTest extends TestCase
         // Le motif n'est conservé que sur les décisions, pas sur l'attente.
         $this->assertNull(Stage::where('ancien_id', 3001)->firstOrFail()->visa_desse_le);
         $this->assertSame('Motif historique', Stage::where('ancien_id', 3002)->firstOrFail()->motif_visa_desse);
+    }
+
+    /**
+     * Le legacy laisse un stagiaire différé par l'AC en `status_ac = 'processed'` et ne le
+     * distingue que par `user_differed`. Sans reprise, il réapparaît dans l'onglet
+     * « OP en attente » de l'écran AC au lieu de l'onglet « OP différé ».
+     */
+    public function test_it_backfills_ac_deferred_trainees_into_the_dmg_return_basket(): void
+    {
+        $auteur = User::factory()->create(['email' => 'ac.differe@aej.ci']);
+        DB::connection('legacy')->table('users')->insert([
+            'id' => 356, 'nom' => 'Agent', 'pseudo' => 'ac', 'email' => 'ac.differe@aej.ci',
+        ]);
+
+        $stage = Stage::factory()->create(['ancien_id' => 7301]);
+        $droit = DroitPaiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'stage_id' => $stage->id,
+            'periode_id' => Periode::firstOrCreate(['code' => '2026-08'], ['date_debut' => '2026-08-01', 'date_fin' => '2026-08-31'])->id,
+            'source_financement_id' => $stage->source_financement_id,
+            'nature' => 'PRESENCE',
+            'montant' => 45000,
+            'statut' => 'OUVERT',
+        ]);
+
+        $differe = Paiement::create([
+            'uuid_public' => (string) Str::uuid(), 'ancien_id' => 7401,
+            'droit_paiement_id' => $droit->id, 'montant' => 45000, 'statut' => 'EN_OP',
+        ]);
+        // Déjà tranché côté cible : le drapeau legacy ne doit pas défaire la décision.
+        $valide = Paiement::create([
+            'uuid_public' => (string) Str::uuid(), 'ancien_id' => 7402,
+            'droit_paiement_id' => $droit->id, 'montant' => 45000, 'statut' => 'VALIDE_AC',
+        ]);
+        // Différé côté legacy mais déjà validé par l'AC : hors périmètre.
+        $horsPerimetre = Paiement::create([
+            'uuid_public' => (string) Str::uuid(), 'ancien_id' => 7403,
+            'droit_paiement_id' => $droit->id, 'montant' => 45000, 'statut' => 'EN_OP',
+        ]);
+
+        foreach ([
+            ['id' => 7401, 'status_ac' => 'processed', 'user_differed' => 356],
+            ['id' => 7402, 'status_ac' => 'processed', 'user_differed' => 356],
+            ['id' => 7403, 'status_ac' => 'validated', 'user_differed' => 356],
+            ['id' => 7404, 'status_ac' => 'processed', 'user_differed' => null],
+        ] as $ligne) {
+            DB::connection('legacy')->table('paiement_models')->insert($ligne + [
+                'stagiaire_id' => 7301,
+                'mois' => '2026-08',
+                'montant' => 45000,
+                'status_dmg' => 1,
+                'motif_status' => 'Numéro Trésor Money incorrect',
+                'date_vise_ac' => '2026-08-30 10:00:00',
+            ]);
+        }
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'backfill_stagiaires_differes_ac'])
+            ->assertExitCode(0);
+
+        $this->assertDatabaseHas('paiements', [
+            'id' => $differe->id,
+            'statut' => 'A_TRAITER',
+            'corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC->value,
+        ]);
+        $this->assertDatabaseHas('decisions_paiements', [
+            'paiement_id' => $differe->id,
+            'auteur_id' => $auteur->id,
+            'decision' => 'DIFFERE_STAGIAIRE_AC',
+            'motif' => 'Numéro Trésor Money incorrect',
+        ]);
+        $this->assertDatabaseHas('paiements', ['id' => $valide->id, 'statut' => 'VALIDE_AC']);
+        $this->assertDatabaseHas('paiements', ['id' => $horsPerimetre->id, 'statut' => 'EN_OP', 'corbeille_actuelle' => null]);
     }
 
     /**

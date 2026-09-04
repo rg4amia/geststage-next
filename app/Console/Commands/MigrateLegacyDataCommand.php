@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Domain\Audit\Support\AuditContext;
+use App\Domain\Payment\Services\AgentComptableService;
 use App\Domain\Validation\Services\ValidationChefAgenceService;
 use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
@@ -132,7 +133,7 @@ class MigrateLegacyDataCommand extends Command
             'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_retour_chefagence', 'backfill_paiements_dmg', 'backfill_presence_payments',
             'backfill_situation_pointage', 'backfill_droits_pointage', 'backfill_corbeilles_dmg',
             'fix_statut_paiements_legacy', 'fix_pointage_revisions', 'backfill_avenants_renouvellement',
-            'backfill_visa_desse',
+            'backfill_visa_desse', 'backfill_stagiaires_differes_ac',
             'fix_etat_chef_agence_100', 'fix_legacy_ca_validation', 'update_missing_data',
             'remaining',
         ];
@@ -273,6 +274,10 @@ class MigrateLegacyDataCommand extends Command
 
             if ($step === 'all' || $step === 'backfill_avenants_renouvellement') {
                 $this->runPhase('backfill_avenants_renouvellement', fn () => $this->backfillAvenantsRenouvellement($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_stagiaires_differes_ac') {
+                $this->runPhase('backfill_stagiaires_differes_ac', fn () => $this->backfillStagiairesDifferesAc($dryRun));
             }
 
             if ($step === 'all' || $step === 'backfill_visa_desse') {
@@ -1453,9 +1458,15 @@ class MigrateLegacyDataCommand extends Command
             $legacyPointageIds = $paiements->pluck('pointage_id')->filter()->unique()->toArray();
             $legacyIds = $paiements->pluck('id')->toArray();
 
-            $stagesMap = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
-            $sourceFinancementParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('source_financement_id', 'ancien_id')->toArray();
-            $datesDebutParStage = Stage::whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
+            // withTrashed() : un paiement déjà validé/rejeté par l'AC dans le legacy reste dans
+            // son historique même si le stage a été soft-supprimé depuis (ex. contrat clôturé
+            // puis retiré du portefeuille). Le legacy ne filtre jamais l'écran AC sur
+            // `contrats_pae.deleted_at`, seulement sur celui du paiement et du dossier — sans
+            // withTrashed() le scope global de Stage (SoftDeletes) les faisait disparaître en
+            // PAIEMENT_SANS_STAGE alors que le stage existe bel et bien.
+            $stagesMap = Stage::withTrashed()->whereIn('ancien_id', $stagiaireIds)->pluck('id', 'ancien_id')->toArray();
+            $sourceFinancementParStage = Stage::withTrashed()->whereIn('ancien_id', $stagiaireIds)->pluck('source_financement_id', 'ancien_id')->toArray();
+            $datesDebutParStage = Stage::withTrashed()->whereIn('ancien_id', $stagiaireIds)->pluck('date_debut', 'ancien_id')->toArray();
             $usersMap = DB::table('correspondances_ancien_systeme')
                 ->where('table_source', 'users')
                 ->where('table_cible', 'users')
@@ -1596,8 +1607,18 @@ class MigrateLegacyDataCommand extends Command
                             'droit_paiement_id' => $droit->id,
                             'montant' => $legacyPaiement->montant,
                         ]);
+                        // Un stagiaire différé par l'AC (backfill_stagiaires_differes_ac) reste
+                        // en `A_TRAITER` avec la corbeille `dmg_op_differe_ac` alors que le
+                        // legacy garde `status_ac = 'processed'` sur la ligne d'origine : sans
+                        // ce garde-fou, chaque re-run de cette étape idempotente écrasait la
+                        // décision de l'AC en la repromouvant à `EN_OP`.
+                        $differeParAc = $paiement->exists
+                            && $paiement->statut === 'A_TRAITER'
+                            && $paiement->corbeille_actuelle === CorbeilleEnum::DMG_OP_DIFFERE_AC->value;
                         if (! $paiement->exists) {
                             $paiement->statut = $legacyStatus;
+                        } elseif ($differeParAc) {
+                            // Décision de l'AC préservée telle quelle.
                         } elseif (
                             ($legacyStatus === 'AJOURNE_DMG' && in_array($paiement->statut, ['A_TRAITER', 'EN_DOSSIER', 'AJOURNE_DMG'], true))
                             || $legacyStatus === 'VALIDE_AC'
@@ -1733,7 +1754,9 @@ class MigrateLegacyDataCommand extends Command
                 ->unique()
                 ->values()
                 ->all();
-            $agencesParStagiaire = Stage::query()
+            // withTrashed() pour la même raison que migratePaiements() : le dossier de paiement
+            // d'un stage depuis soft-supprimé doit conserver son agence d'origine.
+            $agencesParStagiaire = Stage::withTrashed()
                 ->whereIn('ancien_id', $legacyStagiaireIds)
                 ->pluck('agence_id', 'ancien_id');
 
@@ -4544,6 +4567,127 @@ class MigrateLegacyDataCommand extends Command
         }
 
         $this->info(($dryRun ? '[DRY-RUN] ' : '')."Visas DESSE repris : {$misAJour}");
+    }
+
+    /**
+     * Étape backfill_stagiaires_differes_ac : reprend le `paiement_models.user_differed` du
+     * legacy, seul support de l'onglet « OP différé » de l'écran AC `wait-to-generate-bordereau`.
+     *
+     * Le legacy laisse ces paiements en `status_ac = 'processed'` et se contente du drapeau
+     * `user_differed` ; le nouveau modèle porte le même état par le couple statut `A_TRAITER`
+     * + corbeille `dmg_op_differe_ac`, exactement ce qu'écrit AgentComptableService. Sans cette
+     * reprise, un stagiaire différé par l'AC réapparaît dans l'onglet « en attente ».
+     */
+    private function backfillStagiairesDifferesAc(bool $dryRun): void
+    {
+        $query = DB::connection('legacy')->table('paiement_models')
+            ->whereNull('deleted_at')
+            ->where('status_dmg', 1)
+            ->where('status_ac', 'processed')
+            ->whereNotNull('user_differed')
+            ->select(['id', 'motif_status', 'user_differed', 'date_vise_ac']);
+
+        $total = $query->count();
+        $this->info("Paiements legacy différés par l'AC : {$total}");
+
+        $misAJour = 0;
+        $sansPaiement = 0;
+        $dejaTranches = 0;
+        $userIdCache = [];
+
+        $this->processInChunks($query, 500, function ($legacyPaiements) use (&$misAJour, &$sansPaiement, &$dejaTranches, &$userIdCache, $dryRun) {
+            $paiements = Paiement::whereIn('ancien_id', collect($legacyPaiements)->pluck('id')->all())
+                ->get(['id', 'ancien_id', 'statut'])
+                ->keyBy('ancien_id');
+
+            foreach ($legacyPaiements as $legacyPaiement) {
+                $paiement = $paiements[$legacyPaiement->id] ?? null;
+
+                if (! $paiement) {
+                    $sansPaiement++;
+
+                    continue;
+                }
+
+                // Une décision prise côté cible depuis la migration prime sur le drapeau legacy.
+                if ($paiement->statut !== AgentComptableService::STATUT_ATTENTE_AC) {
+                    $dejaTranches++;
+
+                    continue;
+                }
+
+                $misAJour++;
+
+                if ($dryRun) {
+                    continue;
+                }
+
+                $motif = trim((string) ($legacyPaiement->motif_status ?? ''));
+
+                DB::table('paiements')->where('id', $paiement->id)->update([
+                    'statut' => 'A_TRAITER',
+                    'corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC->value,
+                ]);
+
+                if ($motif !== '') {
+                    DB::table('lignes_dossiers_paiement')
+                        ->where('paiement_id', $paiement->id)
+                        ->whereNull('retire_le')
+                        ->update(['motif_retrait' => $motif]);
+                }
+
+                $auteurId = $this->resoudreUserLegacy($legacyPaiement->user_differed, $userIdCache);
+
+                if ($auteurId !== null) {
+                    // updateOrCreate : l'étape amont (paiements) n'a pas connaissance de cette
+                    // décision et peut repromouvoir le paiement à EN_OP entre deux exécutions
+                    // (garde-fou côté migratePaiements) ; sans idempotence ici, chaque re-run
+                    // dupliquait la ligne de décision dans l'historique.
+                    DecisionPaiement::updateOrCreate(
+                        ['paiement_id' => $paiement->id, 'decision' => 'DIFFERE_STAGIAIRE_AC'],
+                        [
+                            'auteur_id' => $auteurId,
+                            'statut_avant' => AgentComptableService::STATUT_ATTENTE_AC,
+                            'statut_apres' => 'A_TRAITER',
+                            'motif' => $motif !== '' ? $motif : null,
+                            'decide_le' => $this->mapper->normalizeLegacyDate($legacyPaiement->date_vise_ac) ?? now(),
+                        ],
+                    );
+                }
+            }
+        });
+
+        if ($sansPaiement > 0) {
+            $this->warn("Paiements legacy différés sans paiement cible : {$sansPaiement}");
+        }
+
+        if ($dejaTranches > 0) {
+            $this->warn("Paiements différés déjà tranchés côté cible, laissés en l'état : {$dejaTranches}");
+        }
+
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Stagiaires différés par l'AC repris : {$misAJour}");
+    }
+
+    /**
+     * Résolution paresseuse d'un identifiant utilisateur legacy vers son homologue cible.
+     *
+     * @param  array<int|string, int|null>  $cache
+     */
+    private function resoudreUserLegacy(mixed $legacyUserId, array &$cache): ?int
+    {
+        if (empty($legacyUserId)) {
+            return null;
+        }
+
+        if (! array_key_exists($legacyUserId, $cache)) {
+            $legacyUser = DB::connection('legacy')->table('users')->where('id', $legacyUserId)->first();
+
+            $cache[$legacyUserId] = $legacyUser
+                ? User::where('email', $this->mapper->sanitizeEmail($legacyUser->email, $legacyUser->nom ?? 'User', $legacyUser->pseudo ?? '', $legacyUser->id))->value('id')
+                : null;
+        }
+
+        return $cache[$legacyUserId];
     }
 
     /**
