@@ -298,7 +298,7 @@ class PaiementsDmgWorkflowTest extends TestCase
 
         $op = OrdrePaiement::firstOrFail();
         $this->assertSame('OP paiement presence aout', $op->libelle);
-        $this->assertSame('50000.00', $op->montant_etat_financement);
+        $this->assertSame(50000.0, (float) $op->montant_etat_financement);
 
         $this->getJson('/dmg/paiements/ops?mois=2026-08')
             ->assertOk()
@@ -352,7 +352,7 @@ class PaiementsDmgWorkflowTest extends TestCase
         ])->assertRedirect()->assertSessionHasNoErrors();
 
         $bordereau = BordereauPaiement::firstOrFail();
-        $this->assertSame('100000.00', $bordereau->montant_total);
+        $this->assertSame(100000.0, (float) $bordereau->montant_total);
 
         $this->getJson("/dmg/paiements/bordereaux/{$bordereau->id}/ops")->assertOk()->assertJsonCount(2);
 
@@ -365,7 +365,7 @@ class PaiementsDmgWorkflowTest extends TestCase
         // L'OP retire redevient selectionnable, le bordereau reste en brouillon avec le reliquat.
         $this->assertDatabaseHas('ordre_paiements', ['id' => $retire->id, 'statut' => 'BROUILLON', 'bordereau_paiement_id' => null]);
         $this->assertDatabaseHas('bordereau_paiements', ['id' => $bordereau->id, 'statut' => 'BROUILLON']);
-        $this->assertSame('60000.00', $bordereau->fresh()->montant_total);
+        $this->assertSame(60000.0, (float) $bordereau->fresh()->montant_total);
         $this->assertDatabaseHas('journaux_audit', ['action' => 'retrait_op_bordereau', 'modele_id' => $bordereau->id]);
 
         $this->getJson('/dmg/paiements/ops?mois=2026-08&statut=BROUILLON')->assertOk()->assertJsonCount(1);
