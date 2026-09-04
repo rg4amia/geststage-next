@@ -351,7 +351,7 @@ class WorkflowTransitionService
      */
     public function dmgElaboreDossier(DossierPaiement $dossier): void
     {
-        $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_ELABORATION_OP]);
+        $dossier->paiementsActifs()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_ELABORATION_OP]);
     }
 
     /**
@@ -360,7 +360,7 @@ class WorkflowTransitionService
     public function dmgElaboreOp(OrdrePaiement $op): void
     {
         foreach ($op->dossiersPaiement as $dossier) {
-            $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_OP_ATTENTE_BORDEREAU]);
+            $dossier->paiementsActifs()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_OP_ATTENTE_BORDEREAU]);
         }
     }
 
@@ -371,7 +371,7 @@ class WorkflowTransitionService
     {
         foreach ($bordereau->ordresPaiement as $op) {
             foreach ($op->dossiersPaiement as $dossier) {
-                $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE]);
+                $dossier->paiementsActifs()->update(['corbeille_actuelle' => CorbeilleEnum::AC_BORDEREAU_OP_ATTENTE]);
             }
         }
     }
@@ -383,7 +383,7 @@ class WorkflowTransitionService
     {
         foreach ($bordereau->ordresPaiement as $op) {
             foreach ($op->dossiersPaiement as $dossier) {
-                $dossier->paiements()->update(['corbeille_actuelle' => null]);
+                $dossier->paiementsActifs()->update(['corbeille_actuelle' => null]);
             }
         }
     }
@@ -395,7 +395,7 @@ class WorkflowTransitionService
     {
         foreach ($bordereau->ordresPaiement as $op) {
             foreach ($op->dossiersPaiement as $dossier) {
-                $dossier->paiements()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC]);
+                $dossier->paiementsActifs()->update(['corbeille_actuelle' => CorbeilleEnum::DMG_OP_DIFFERE_AC]);
             }
         }
     }
@@ -407,7 +407,7 @@ class WorkflowTransitionService
     {
         foreach ($bordereau->ordresPaiement as $op) {
             foreach ($op->dossiersPaiement as $dossier) {
-                $dossier->paiements()->update([
+                $dossier->paiementsActifs()->update([
                     'statut' => 'REJETE_DEFINITIF',
                     'corbeille_actuelle' => CorbeilleEnum::DMG_OP_REJETE_AC,
                 ]);

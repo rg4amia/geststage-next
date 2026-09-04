@@ -9,25 +9,25 @@ use App\Http\Controllers\Controller;
 use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
 use App\Models\Company\Entreprise;
+use App\Models\Company\OffreEmploi;
 use App\Models\Internship\Stage;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Commune;
+use App\Models\Reference\Conseiller;
 use App\Models\Reference\Diplome;
 use App\Models\Reference\Handicap;
 use App\Models\Reference\LienParente;
 use App\Models\Reference\NiveauEtude;
+use App\Models\Reference\OrigineStagiaire;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SituationStage;
-use App\Models\Reference\Conseiller;
-use App\Models\Reference\OrigineStagiaire;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeEnseignement;
 use App\Models\Reference\TypeHandicap;
 use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
-use App\Models\Company\OffreEmploi;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
@@ -130,7 +130,9 @@ class PointageCipController extends Controller
                 });
 
             } elseif ($tab === 'effectue') {
-                $query = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante.saisiPar'])
+                // `periode` alimente la colonne Mois ; `typeStage` et `sourceFinancement`
+                // portent les colonnes Type de stage / Financement du stage pointé.
+                $query = Pointage::with(['periode', 'stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'stage.typeStage', 'versionCourante.saisiPar'])
                     ->where('periode_id', $periode->id)
                     ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP']);
 
@@ -138,7 +140,7 @@ class PointageCipController extends Controller
                 $data = $query->paginate(20)->withQueryString();
 
             } elseif ($tab === 'ajourne_ca') {
-                $query = Pointage::with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'versionCourante', 'decisions.auteur'])
+                $query = Pointage::with(['periode', 'stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'stage.sourceFinancement', 'stage.typeStage', 'versionCourante', 'decisions.auteur'])
                     ->where('periode_id', $periode->id)
                     // Legacy `PointageChefAgenceController::statusPointage()` pose `status_ca = 2`
                     // à l'ajournement : c'est bien l'équivalent de `AJOURNE_CA` (cf. mapStatutPointage()).

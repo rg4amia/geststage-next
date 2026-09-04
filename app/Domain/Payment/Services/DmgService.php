@@ -3,6 +3,7 @@
 namespace App\Domain\Payment\Services;
 
 use App\Domain\Workflow\Services\DesseDoublonService;
+use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Models\Audit\JournalAudit;
 use App\Models\Payment\BordereauPaiement;
@@ -24,6 +25,8 @@ use Illuminate\Validation\ValidationException;
 
 class DmgService
 {
+    public function __construct(private WorkflowTransitionService $workflowService) {}
+
     /**
      * Plafond des files d'attente DMG chargées d'un bloc (liste écran et export PDF).
      *
@@ -714,7 +717,11 @@ class DmgService
 
     public function transmettreBordereauAc(BordereauPaiement $bordereau): void
     {
-        $this->changerStatut($bordereau, 'BROUILLON', 'TRANSMIS_AC');
+        DB::transaction(function () use ($bordereau): void {
+            $this->changerStatut($bordereau, 'BROUILLON', 'TRANSMIS_AC');
+            $bordereau->loadMissing('ordresPaiement.dossiersPaiement.paiementsActifs');
+            $this->workflowService->dmgTransmetBordereauAc($bordereau);
+        });
     }
 
     private function changerStatut(DossierPaiement|BordereauPaiement $model, string $attendu, string $nouveau): void

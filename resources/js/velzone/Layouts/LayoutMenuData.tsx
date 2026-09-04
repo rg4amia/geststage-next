@@ -33,8 +33,10 @@ export const businessMenuSections: BusinessMenuSection[] = [
         icon: 'ri-team-line',
         itemIds: [
             'cip-mes-stagiaires',
+            'cip-renouvellements',
             'ca-validations',
             'desse-stagiaires',
+            'desse-visas',
             'daicg-stagiaires',
         ],
     },
@@ -43,6 +45,12 @@ export const businessMenuSections: BusinessMenuSection[] = [
         label: 'Présences et pointages',
         icon: 'ri-calendar-check-line',
         itemIds: ['cip-pointages', 'ca-pointages', 'cip-ajourne-dmg'],
+    },
+    {
+        id: 'situations',
+        label: 'Suivi et situations',
+        icon: 'ri-user-follow-line',
+        itemIds: ['cip-suivi', 'cip-situations'],
     },
     {
         id: 'payments',
@@ -93,6 +101,13 @@ export const menuItems: MenuItem[] = [
         actor: 'CIP',
     },
     {
+        id: 'cip-renouvellements',
+        label: 'Renouvellements',
+        icon: 'ri-refresh-line',
+        link: '/cip/renouvellements',
+        actor: 'CIP',
+    },
+    {
         id: 'cip-pointages',
         label: 'Présence - Pointages',
         icon: 'ri-calendar-check-line',
@@ -104,6 +119,20 @@ export const menuItems: MenuItem[] = [
         label: 'Pointage Ajourné (DMG)',
         icon: 'ri-error-warning-line',
         link: '/cip/pointage/ajourne-dmg',
+        actor: 'CIP',
+    },
+    {
+        id: 'cip-suivi',
+        label: 'Suivi et anomalies',
+        icon: 'ri-alarm-warning-line',
+        link: '/cip/suivi',
+        actor: 'CIP',
+    },
+    {
+        id: 'cip-situations',
+        label: 'Situation des stagiaires',
+        icon: 'ri-user-follow-line',
+        link: '/cip/situation-stagiaire',
         actor: 'CIP',
     },
     {
@@ -155,6 +184,13 @@ export const menuItems: MenuItem[] = [
         label: 'Validation et doublons',
         icon: 'ri-folder-warning-line',
         link: '/desse/stagiaires',
+        actor: 'DESSE',
+    },
+    {
+        id: 'desse-visas',
+        label: 'Visa des dossiers',
+        icon: 'ri-shield-star-line',
+        link: '/desse/visas',
         actor: 'DESSE',
     },
     {

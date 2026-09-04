@@ -6,11 +6,14 @@ use App\Http\Controllers\ChefAgence\HistoriqueGenerationController;
 use App\Http\Controllers\ChefAgence\IndexChefAgenceController;
 use App\Http\Controllers\ChefAgence\PointageChefAgenceController;
 use App\Http\Controllers\Cip\MesStagiairesCipController;
+use App\Http\Controllers\Cip\RenouvellementCipController;
+use App\Http\Controllers\Cip\SituationStagiaireCipController;
 use App\Http\Controllers\Cip\PointageCipController;
 use App\Http\Controllers\Company\EntrepriseController;
 use App\Http\Controllers\Company\OffreEmploiController;
 use App\Http\Controllers\Daicg\StagiaireDaicgController;
 use App\Http\Controllers\Desse\StagiaireDesseController;
+use App\Http\Controllers\Desse\VisaDesseController;
 use App\Http\Controllers\Dmg\AjournementPaiementDmgController;
 use App\Http\Controllers\Dmg\AttentePaiementDmgController;
 use App\Http\Controllers\Dmg\DossierPaiementDmgController;
@@ -45,6 +48,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cip/mes-stagiaires/ajournes-ca', [MesStagiairesCipController::class, 'ajournesChefAgence'])->name('cip.mes_stagiaires.ajournes_ca');
     Route::get('/cip/pointage/ajourne-dmg', [MesStagiairesCipController::class, 'pointageAjourneDmg'])->name('cip.pointages.ajourne_dmg');
     Route::get('/cip/suivi', [MesStagiairesCipController::class, 'suivi'])->name('cip.suivi.index');
+
+    // Situation du stagiaire : abandons et suspensions
+    Route::get('/cip/situation-stagiaire', [SituationStagiaireCipController::class, 'index'])->name('cip.situations.index');
+    Route::post('/cip/situation-stagiaire/{id}/reactiver', [SituationStagiaireCipController::class, 'reactiver'])->name('cip.situations.reactiver');
+
+    Route::get('/cip/renouvellements', [RenouvellementCipController::class, 'index'])->name('cip.renouvellements.index');
+    Route::post('/cip/renouvellements/{id}/renouveler', [RenouvellementCipController::class, 'renouveler'])->name('cip.renouvellements.renouveler');
+    Route::post('/cip/renouvellements/avenant/{avenantId}/renvoyer', [RenouvellementCipController::class, 'renvoyer'])->name('cip.renouvellements.renvoyer');
 
     // Nouveaux endpoints pour les boutons d'action (Mes Stagiaires)
     Route::get('/cip/mes-stagiaires/{id}/generer-contrat', [MesStagiairesCipController::class, 'genererContrat'])->name('cip.mes-stagiaires.generer-contrat');
@@ -146,12 +157,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dmg/rejets', [RejetDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.rejets.index');
 
     // Phase 7 : Agent Comptable
-    Route::get('/agent-comptable/paiements', [PaiementAcController::class, 'index'])->name('ac.paiements.index');
-    Route::post('/agent-comptable/paiements/viser/{id}', [PaiementAcController::class, 'viser'])->name('ac.paiements.viser');
-    Route::post('/agent-comptable/paiements/ajourner/{id}', [PaiementAcController::class, 'ajourner'])->name('ac.paiements.ajourner');
-    Route::post('/agent-comptable/paiements/rejeter/{id}', [PaiementAcController::class, 'rejeter'])->name('ac.paiements.rejeter');
-    Route::post('/ac/paiements/valider/{id}', [PaiementAcController::class, 'viser'])->name('ac.paiements.valider');
-    Route::post('/ac/paiements/ajourner/{id}', [PaiementAcController::class, 'ajourner'])->name('ac.paiements.ajourner.alias');
+Route::get('/agent-comptable/paiements', [PaiementAcController::class, 'index'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.index');
+Route::post('/agent-comptable/paiements/viser/{id}', [PaiementAcController::class, 'viser'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.viser');
+Route::post('/agent-comptable/paiements/ajourner/{id}', [PaiementAcController::class, 'ajourner'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ajourner');
+Route::post('/agent-comptable/paiements/rejeter/{id}', [PaiementAcController::class, 'rejeter'])->middleware('can:rejeter_bordereau_ac')->name('ac.paiements.rejeter');
+Route::get('/agent-comptable/paiements/ordres/{ordre}/details', [PaiementAcController::class, 'ordreDetails'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.ordres.details');
+Route::post('/agent-comptable/paiements/ordres/{ordre}/valider', [PaiementAcController::class, 'validerOrdre'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.ordres.valider');
+Route::post('/agent-comptable/paiements/ordres/{ordre}/differer', [PaiementAcController::class, 'differerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.differer');
+Route::post('/agent-comptable/paiements/ordres/{ordre}/rejeter', [PaiementAcController::class, 'rejeterOrdre'])->middleware('can:rejeter_bordereau_ac')->name('ac.paiements.ordres.rejeter');
+Route::post('/agent-comptable/paiements/ordres/{ordre}/retirer', [PaiementAcController::class, 'retirerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.retirer');
 
     // Phase 8 : Chef de Bureau (CB)
     Route::get('/cb/paiements', [PaiementCbController::class, 'index'])->name('cb.paiements.index');
@@ -167,6 +181,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/desse/stagiaires/retour-agence/{id}/historique', [StagiaireDesseController::class, 'historiqueRetourAgence'])->name('desse.stagiaires.retour-agence.historique');
     Route::post('/desse/stagiaires/ajourner/{id}', [StagiaireDesseController::class, 'ajourner'])->name('desse.stagiaires.ajourner');
     Route::post('/desse/stagiaires/doublons/{id}/traiter', [StagiaireDesseController::class, 'traiterDoublon'])->name('desse.stagiaires.doublons.traiter');
+    Route::get('/desse/visas', [VisaDesseController::class, 'index'])->name('desse.visas.index');
+    Route::post('/desse/visas/{id}/viser', [VisaDesseController::class, 'viser'])->name('desse.visas.viser');
+    Route::post('/desse/visas/{id}/rejeter', [VisaDesseController::class, 'rejeter'])->name('desse.visas.rejeter');
+    Route::post('/desse/visas/{id}/remettre-en-attente', [VisaDesseController::class, 'remettreEnAttente'])->name('desse.visas.remettre-en-attente');
+
     Route::get('/daicg/stagiaires', [StagiaireDaicgController::class, 'index'])->name('daicg.stagiaires.index');
 
     // Phase 9 : PEJEDEC / AAF

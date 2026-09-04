@@ -17,6 +17,15 @@ class SituationStage extends Model
      */
     public const CODE_EN_COURS = 'SS-001';
 
+    /** Legacy `situation_stage.id_situation_stage = 2`. */
+    public const CODE_ABANDON = 'SS-002';
+
+    /** Legacy `situation_stage.id_situation_stage = 3`. */
+    public const CODE_SUSPENSION = 'SS-003';
+
+    /** Legacy `situation_stage.id_situation_stage = 4` : terme atteint, renouvelable. */
+    public const CODE_FIN_DE_STAGE = 'SS-004';
+
     /**
      * The table associated with the model.
      *

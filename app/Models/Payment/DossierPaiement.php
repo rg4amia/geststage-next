@@ -58,6 +58,11 @@ class DossierPaiement extends Model
         )->withPivot(['montant', 'ajoute_le', 'retire_le', 'motif_retrait']);
     }
 
+    public function paiementsActifs(): BelongsToMany
+    {
+        return $this->paiements()->wherePivotNull('retire_le');
+    }
+
     public function ordrePaiement(): BelongsTo
     {
         return $this->belongsTo(OrdrePaiement::class, 'ordre_paiement_id');

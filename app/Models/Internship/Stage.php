@@ -4,6 +4,7 @@ namespace App\Models\Internship;
 
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
+use App\Enums\VisaDesseEnum;
 use App\Models\Attendance\Pointage;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\Entreprise;
@@ -52,6 +53,8 @@ class Stage extends Model
         'date_demarrage_capitalisation' => 'date',
         'date_demarrage_capitalisation_sans_financiere' => 'date',
         'date_entree_portefeuille' => 'date',
+        'visa_desse' => VisaDesseEnum::class,
+        'visa_desse_le' => 'datetime',
     ];
 
     /**

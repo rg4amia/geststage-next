@@ -4,7 +4,10 @@ namespace Tests\Feature\Console;
 
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
+use App\Enums\VisaDesseEnum;
 use App\Models\Beneficiary\Beneficiaire;
+use App\Models\Contract\AvenantContrat;
+use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DecisionPaiement;
@@ -884,5 +887,103 @@ class MigrateLegacyDataCommandTest extends TestCase
             'id_source' => '991',
             'table_cible' => 'evenements_parcours',
         ]);
+    }
+
+    /**
+     * `etat_desse` ne vaut que pour un dossier déjà validé par le chef d'agence : sans ce
+     * feu vert, le dossier n'est pas soumis à la DESSE et reste sans visa.
+     */
+    public function test_it_backfills_desse_visas_only_for_dossiers_validated_by_the_agency_head(): void
+    {
+        Schema::connection('legacy')->table('contrats_pae', function (Blueprint $table): void {
+            $table->unsignedTinyInteger('etat_desse')->nullable();
+            $table->text('motif_desse')->nullable();
+            $table->timestamp('date_desse')->nullable();
+            $table->unsignedBigInteger('id_user_desse')->nullable();
+            $table->timestamp('deleted_at')->nullable();
+        });
+
+        $attendus = [
+            // [ancien_id, etat_chef_agence, etat_desse, visa attendu]
+            [3001, 2, 0, VisaDesseEnum::EN_ATTENTE],
+            [3002, 2, 1, VisaDesseEnum::REJETE],
+            [3003, 2, 2, VisaDesseEnum::VISE],
+            // Pas encore validé par le CA : aucun visa, même si `etat_desse` est renseigné.
+            [3004, 1, 2, null],
+        ];
+
+        foreach ($attendus as [$ancienId, $etatCa, $etatDesse]) {
+            DB::connection('legacy')->table('contrats_pae')->insert([
+                'id' => $ancienId,
+                'etat_chef_agence' => $etatCa,
+                'etat_desse' => $etatDesse,
+                'motif_desse' => 'Motif historique',
+                'date_desse' => '2026-03-15 09:00:00',
+            ]);
+
+            Stage::factory()->create(['ancien_id' => $ancienId]);
+        }
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'backfill_visa_desse'])
+            ->assertExitCode(0);
+
+        foreach ($attendus as [$ancienId, , , $visaAttendu]) {
+            $this->assertSame(
+                $visaAttendu,
+                Stage::where('ancien_id', $ancienId)->firstOrFail()->visa_desse,
+                "Visa inattendu pour le contrat legacy {$ancienId}"
+            );
+        }
+
+        // Le motif n'est conservé que sur les décisions, pas sur l'attente.
+        $this->assertNull(Stage::where('ancien_id', 3001)->firstOrFail()->visa_desse_le);
+        $this->assertSame('Motif historique', Stage::where('ancien_id', 3002)->firstOrFail()->motif_visa_desse);
+    }
+
+    /**
+     * Le legacy ne distinguait un renouvellement ajourné que par le trio
+     * `etapetraitement_id=2 / etat_chef_agence=1 / active_chef_agence=0` : il doit devenir
+     * le `statut` de l'avenant, seul porteur de l'information côté Next.
+     */
+    public function test_it_flags_adjourned_renewals_on_the_created_amendment(): void
+    {
+        Schema::connection('legacy')->table('contrats_pae', function (Blueprint $table): void {
+            $table->unsignedBigInteger('etatrenouvellement_id')->nullable();
+            $table->unsignedBigInteger('etapetraitement_id')->nullable();
+            $table->unsignedTinyInteger('active_chef_agence')->nullable();
+            $table->date('date_debut_renouv')->nullable();
+            $table->date('date_fin_renouv')->nullable();
+            $table->timestamp('deleted_at')->nullable();
+        });
+
+        foreach ([
+            ['id' => 2001, 'etapetraitement_id' => 2, 'etat_chef_agence' => 1, 'active_chef_agence' => 0],
+            ['id' => 2002, 'etapetraitement_id' => 3, 'etat_chef_agence' => 1, 'active_chef_agence' => 1],
+        ] as $ligne) {
+            DB::connection('legacy')->table('contrats_pae')->insert($ligne + [
+                'etatrenouvellement_id' => 1,
+                'date_debut_renouv' => '2026-09-01',
+                'date_fin_renouv' => '2027-02-28',
+            ]);
+
+            $stage = Stage::factory()->create(['ancien_id' => $ligne['id']]);
+            Contrat::factory()->create([
+                'stage_id' => $stage->id,
+                'numero' => 'CTR-'.$ligne['id'],
+            ]);
+        }
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'backfill_avenants_renouvellement'])
+            ->assertExitCode(0);
+
+        $this->assertSame(
+            AvenantContrat::STATUT_AJOURNE,
+            AvenantContrat::where('numero', 'CTR-2001-R1')->firstOrFail()->statut
+        );
+
+        $this->assertSame(
+            AvenantContrat::STATUT_VALIDE,
+            AvenantContrat::where('numero', 'CTR-2002-R1')->firstOrFail()->statut
+        );
     }
 }

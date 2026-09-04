@@ -397,8 +397,9 @@ return;
                 header: 'Agent Saisie',
                 cell: (cell: any) => {
                     const ver = cell.row.original.versionCourante || cell.row.original.version_courante;
+                    const agent = ver?.saisi_par || ver?.saisiPar;
 
-                    return ver?.saisi_par?.name || ver?.saisiPar?.name || 'CIP';
+                    return agent?.name || agent?.nom || '-';
                 },
             },
             {
@@ -417,7 +418,19 @@ return;
             },
             {
                 header: 'Financement',
-                cell: (cell: any) => getStageData(cell.row.original)?.sourceFinancement?.nom || '-',
+                cell: (cell: any) => {
+                    const stage = getStageData(cell.row.original);
+
+                    return stage?.sourceFinancement?.nom || stage?.source_financement?.nom || '-';
+                },
+            },
+            {
+                header: 'Type de stage',
+                cell: (cell: any) => {
+                    const stage = getStageData(cell.row.original);
+
+                    return stage?.typeStage?.nom || stage?.type_stage?.nom || '-';
+                },
             },
             {
                 header: 'N° AEJ',

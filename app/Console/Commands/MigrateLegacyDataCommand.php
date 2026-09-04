@@ -7,6 +7,7 @@ use App\Domain\Validation\Services\ValidationChefAgenceService;
 use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
 use App\Enums\DoublonTypeEnum;
+use App\Enums\VisaDesseEnum;
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
 use App\Models\Beneficiary\Beneficiaire;
@@ -131,6 +132,7 @@ class MigrateLegacyDataCommand extends Command
             'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_retour_chefagence', 'backfill_paiements_dmg', 'backfill_presence_payments',
             'backfill_situation_pointage', 'backfill_droits_pointage', 'backfill_corbeilles_dmg',
             'fix_statut_paiements_legacy', 'fix_pointage_revisions', 'backfill_avenants_renouvellement',
+            'backfill_visa_desse',
             'fix_etat_chef_agence_100', 'fix_legacy_ca_validation', 'update_missing_data',
             'remaining',
         ];
@@ -271,6 +273,10 @@ class MigrateLegacyDataCommand extends Command
 
             if ($step === 'all' || $step === 'backfill_avenants_renouvellement') {
                 $this->runPhase('backfill_avenants_renouvellement', fn () => $this->backfillAvenantsRenouvellement($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_visa_desse') {
+                $this->runPhase('backfill_visa_desse', fn () => $this->backfillVisaDesse($dryRun));
             }
 
             if ($step === 'all' || $step === 'fix_statut_paiements_legacy') {
@@ -1165,6 +1171,17 @@ class MigrateLegacyDataCommand extends Command
             $etatsChefAgence = DB::connection('legacy')->table('contrats_pae')->whereIn('id', $stagiaireIds)->pluck('etat_chef_agence', 'id')->toArray();
             $paiementsRenvoyesAuDmg = $this->paiementsRenvoyesAuDmg($stagiaireIds);
 
+            // L'agent de saisie du pointage legacy (`pointage_models.user_id`, souvent le CIP)
+            // est conservé sur chaque version pour alimenter la colonne « Agent Saisie ».
+            $legacyUserIds = $pointages->pluck('user_id')->filter()->unique()->toArray();
+            $saisisParMap = DB::table('correspondances_ancien_systeme')
+                ->where('table_source', 'users')
+                ->where('table_cible', 'users')
+                ->whereIn('id_source', $legacyUserIds)
+                ->pluck('id_cible', 'id_source')
+                ->map(fn ($id): int => (int) $id)
+                ->all();
+
             $versionsMap = VersionPointage::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
             $stageIdsFilter = array_filter(array_values($stagesMap));
 
@@ -1288,6 +1305,7 @@ class MigrateLegacyDataCommand extends Command
                         $pointagesMap["{$stage_id}_{$periodeId}_{$naturePointage}"] = $pointage;
 
                         $versionExistante->update([
+                            'saisi_par_id' => $saisisParMap[$legacyPointage->user_id] ?? null,
                             'observation' => $legacyPointage->commentaire,
                             'saisi_le' => $date,
                         ]);
@@ -1330,6 +1348,7 @@ class MigrateLegacyDataCommand extends Command
 
                         VersionPointage::create([
                             'ancien_id' => $legacyPointage->id,
+                            'saisi_par_id' => $saisisParMap[$legacyPointage->user_id] ?? null,
                             'pointage_id' => $pointage->id,
                             'numero_version' => $numeroVersion,
                             'presence' => 'PRESENT',
@@ -4343,7 +4362,12 @@ class MigrateLegacyDataCommand extends Command
         $query = DB::connection('legacy')->table('contrats_pae')
             ->whereNull('deleted_at')
             ->where('etatrenouvellement_id', 1)
-            ->select(['id', 'date_debut_renouv', 'date_fin_renouv']);
+            ->select([
+                'id', 'date_debut_renouv', 'date_fin_renouv',
+                // Le trio ci-dessous marque, côté legacy, un renouvellement ajourné par le
+                // chef d'agence : il devient le `statut` de l'avenant.
+                'etapetraitement_id', 'etat_chef_agence', 'active_chef_agence',
+            ]);
 
         $total = $query->count();
         $this->info("Contrats legacy renouvelés à reprendre : {$total}");
@@ -4397,12 +4421,20 @@ class MigrateLegacyDataCommand extends Command
                     continue;
                 }
 
+                $ajourne = (int) ($legacyContrat->etapetraitement_id ?? 0) === 2
+                    && (int) ($legacyContrat->etat_chef_agence ?? 0) === 1
+                    && (int) ($legacyContrat->active_chef_agence ?? 1) === 0;
+
                 AvenantContrat::create([
                     'contrat_id' => $contrat->id,
                     'numero' => $contrat->numero.'-R1',
                     'date_effet' => $dateEffet,
                     'nouvelle_date_fin' => $this->mapper->normalizeLegacyDate($legacyContrat->date_fin_renouv ?? null),
                     'motif' => 'Renouvellement repris du legacy',
+                    'statut' => $ajourne
+                        ? AvenantContrat::STATUT_AJOURNE
+                        : AvenantContrat::STATUT_VALIDE,
+                    'motif_ajournement' => $ajourne ? 'Ajournement repris du legacy' : null,
                 ]);
             }
         });
@@ -4419,6 +4451,99 @@ class MigrateLegacyDataCommand extends Command
         }
 
         $this->info(($dryRun ? '[DRY-RUN] ' : '')."Avenants de renouvellement créés : {$crees}");
+    }
+
+    /**
+     * Étape backfill_visa_desse : reprend `contrats_pae.etat_desse` sur `stages.visa_desse`.
+     *
+     * Le visa n'est demandé qu'une fois le démarrage validé par le chef d'agence
+     * (`etat_chef_agence = 2`) ; sinon le dossier n'est pas encore soumis à la DESSE et
+     * reste sans visa.
+     */
+    private function backfillVisaDesse(bool $dryRun): void
+    {
+        $query = DB::connection('legacy')->table('contrats_pae')
+            ->whereNull('deleted_at')
+            ->select(['id', 'etat_desse', 'etat_chef_agence', 'motif_desse', 'date_desse', 'id_user_desse']);
+
+        $total = $query->count();
+        $this->info("Contrats legacy à viser : {$total}");
+
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $misAJour = 0;
+        $sansStage = 0;
+        $userIdCache = [];
+
+        $this->processInChunks($query, 1000, function ($contrats) use (&$misAJour, &$sansStage, &$userIdCache, $dryRun, $bar) {
+            $stagesMap = Stage::whereIn('ancien_id', collect($contrats)->pluck('id')->all())
+                ->pluck('id', 'ancien_id');
+
+            foreach ($contrats as $legacyContrat) {
+                $bar->advance();
+
+                $stageId = $stagesMap[$legacyContrat->id] ?? null;
+
+                if (! $stageId) {
+                    $sansStage++;
+
+                    continue;
+                }
+
+                $visa = (int) ($legacyContrat->etat_chef_agence ?? 0) === 2
+                    ? VisaDesseEnum::depuisEtatLegacy(
+                        $legacyContrat->etat_desse === null ? null : (int) $legacyContrat->etat_desse
+                    )
+                    : null;
+
+                if (! $visa) {
+                    continue;
+                }
+
+                $misAJour++;
+
+                if ($dryRun) {
+                    continue;
+                }
+
+                // Résolution paresseuse : la table `users` legacy n'est interrogée que si un
+                // dossier porte réellement un décideur.
+                $decideParId = null;
+                if (! empty($legacyContrat->id_user_desse)) {
+                    if (! array_key_exists($legacyContrat->id_user_desse, $userIdCache)) {
+                        $legacyUser = DB::connection('legacy')->table('users')
+                            ->where('id', $legacyContrat->id_user_desse)
+                            ->first();
+
+                        $userIdCache[$legacyContrat->id_user_desse] = $legacyUser
+                            ? User::where('email', $this->mapper->sanitizeEmail($legacyUser->email, $legacyUser->nom ?? 'User', $legacyUser->pseudo ?? '', $legacyUser->id))->value('id')
+                            : null;
+                    }
+                    $decideParId = $userIdCache[$legacyContrat->id_user_desse];
+                }
+
+                $motif = trim((string) ($legacyContrat->motif_desse ?? ''));
+
+                DB::table('stages')->where('id', $stageId)->update([
+                    'visa_desse' => $visa->value,
+                    'motif_visa_desse' => $motif !== '' ? $motif : null,
+                    'visa_desse_le' => $visa === VisaDesseEnum::EN_ATTENTE
+                        ? null
+                        : $this->mapper->normalizeLegacyDate($legacyContrat->date_desse),
+                    'visa_desse_par_id' => $visa === VisaDesseEnum::EN_ATTENTE ? null : $decideParId,
+                ]);
+            }
+        });
+
+        $bar->finish();
+        $this->newLine();
+
+        if ($sansStage > 0) {
+            $this->warn("Contrats legacy sans stage cible : {$sansStage}");
+        }
+
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Visas DESSE repris : {$misAJour}");
     }
 
     /**
