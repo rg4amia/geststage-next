@@ -1,7 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import classnames from 'classnames';
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
     Alert,
     Badge,
@@ -88,6 +88,11 @@ type DossierDetail = {
     agence?: string;
     source_financement?: string;
     stagiaires: Stagiaire[];
+};
+
+type LigneStagiaire = {
+    stagiaire: Stagiaire;
+    dossier: DossierDetail;
 };
 
 type OngletStagiaire = 'attente' | 'valide' | 'rejete' | 'differe';
@@ -181,14 +186,36 @@ const libelleMois = (code: string) => {
     const [annee, mois] = code.split('-').map(Number);
 
     if (!annee || !mois) {
-return code;
-}
+        return code;
+    }
 
     return new Intl.DateTimeFormat('fr-FR', {
         month: 'long',
         year: 'numeric',
     }).format(new Date(annee, mois - 1, 1));
 };
+
+const statutsOp: Record<
+    string,
+    {
+        libelle: string;
+        couleur: 'warning' | 'success' | 'danger' | 'secondary';
+    }
+> = {
+    EN_BORDEREAU: { libelle: 'En bordereau', couleur: 'warning' },
+    VISE_AC: { libelle: 'Visé AC', couleur: 'success' },
+    REJETE_AC_DEFINITIF: { libelle: 'Rejeté AC', couleur: 'danger' },
+    DIFFERE_AC: { libelle: 'Différé AC', couleur: 'secondary' },
+    REJETE_DMG: { libelle: 'Retour DMG', couleur: 'danger' },
+    DIFFERE_DMG: { libelle: 'Retour DMG', couleur: 'warning' },
+};
+
+const libelleStatutOp = (statut: string) =>
+    statutsOp[statut]?.libelle ??
+    statut
+        .replaceAll('_', ' ')
+        .toLowerCase()
+        .replace(/^./, (lettre) => lettre.toUpperCase());
 
 const actionsOp: Record<
     ActionOp,
@@ -233,7 +260,7 @@ function StatCard({
     label: string;
     value: string | number;
     hint: string;
-    tone: 'warning' | 'success' | 'danger';
+    tone: 'warning' | 'success' | 'danger' | 'info';
 }) {
     return (
         <Card className={`ac-stat-card ac-stat-card--${tone} mb-0 h-100`}>
@@ -295,6 +322,17 @@ export default function AcPaiementsIndex({
     const [filtresOp, setFiltresOp] = useState<FiltresOp>(filtresVides);
     const [selection, setSelection] = useState<number[]>([]);
     const [differePartiel, setDifferePartiel] = useState(false);
+    const workspaceRef = useRef<HTMLElement | null>(null);
+    const listeRef = useRef<HTMLDivElement | null>(null);
+
+    useEffect(() => {
+        if (details) {
+            workspaceRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }
+    }, [details]);
 
     const montantAttente = useMemo(
         () =>
@@ -313,13 +351,22 @@ export default function AcPaiementsIndex({
             ),
         [bordereauxAttente],
     );
+    const montantVise = useMemo(
+        () =>
+            bordereauxVises.reduce(
+                (total, bordereau) =>
+                    total + Number(bordereau.montant_total || 0),
+                0,
+            ),
+        [bordereauxVises],
+    );
 
     const filtrer = (liste: Bordereau[]) => {
         const terme = recherche.trim().toLocaleLowerCase('fr');
 
         if (!terme) {
-return liste;
-}
+            return liste;
+        }
 
         return liste.filter((bordereau) =>
             [
@@ -347,16 +394,27 @@ return liste;
         () => filtrer(bordereauxVises),
         [bordereauxVises, recherche],
     );
+    const nbResultats = useMemo(() => {
+        if (activeTab === 'vises') {
+            return visesFiltres.length;
+        }
+
+        if (activeTab === 'rejetes') {
+            return rejetesFiltres.length;
+        }
+
+        return attenteFiltree.length;
+    }, [activeTab, attenteFiltree, visesFiltres, rejetesFiltres]);
 
     const periodes = useMemo(() => {
         const options = [...periodesDisponibles];
 
         if (!options.some((periode) => periode.code === moisActuel)) {
-options.unshift({
+            options.unshift({
                 code: moisActuel,
                 count: bordereauxAttente.length,
             });
-}
+        }
 
         return options;
     }, [periodesDisponibles, moisActuel, bordereauxAttente.length]);
@@ -396,35 +454,51 @@ options.unshift({
         }
     };
 
+    const changerOrdreSel = (ordreId: number) => {
+        setOngletStagiaire('attente');
+        setFiltresOp(filtresVides);
+        setSelection([]);
+        chargerOrdre(ordreId, 'attente', filtresVides);
+    };
+
     const changerOnglet = (onglet: OngletStagiaire) => {
         setOngletStagiaire(onglet);
 
         if (ordreDetail) {
-chargerOrdre(ordreDetail.id, onglet);
-}
+            chargerOrdre(ordreDetail.id, onglet);
+        }
     };
 
     const appliquerFiltres = (filtres: FiltresOp) => {
         setFiltresOp(filtres);
 
         if (ordreDetail) {
-chargerOrdre(ordreDetail.id, ongletStagiaire, filtres);
-}
+            chargerOrdre(ordreDetail.id, ongletStagiaire, filtres);
+        }
     };
 
     const ouvrirDetails = (bordereau: Bordereau) => {
         setDetails(bordereau);
-        setOngletStagiaire('attente');
         setFiltresOp(filtresVides);
         const ordreInitial =
             bordereau.ordres.find((ordre) => ordre.statut === 'EN_BORDEREAU') ||
             bordereau.ordres[0];
 
         if (ordreInitial) {
-chargerOrdre(ordreInitial.id, 'attente', filtresVides);
-} else {
-setOrdreDetail(null);
-}
+            const ongletInitial: OngletStagiaire =
+                ordreInitial.statut === 'VISE_AC'
+                    ? 'valide'
+                    : ordreInitial.statut.includes('REJETE')
+                      ? 'rejete'
+                      : ordreInitial.statut.includes('DIFFERE')
+                        ? 'differe'
+                        : 'attente';
+            setOngletStagiaire(ongletInitial);
+            setSelection([]);
+            chargerOrdre(ordreInitial.id, ongletInitial, filtresVides);
+        } else {
+            setOrdreDetail(null);
+        }
     };
 
     const fermerDetails = () => {
@@ -432,14 +506,33 @@ setOrdreDetail(null);
         setOrdreDetail(null);
         setDetailError('');
         setSelection([]);
+        listeRef.current?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start',
+        });
     };
 
-    const stagiairesAffiches = useMemo(
+    const ouvrirDepuisLigne = (
+        event: React.MouseEvent<HTMLTableRowElement>,
+        bordereau: Bordereau,
+    ) => {
+        if ((event.target as HTMLElement).closest('button, a, input, label')) {
+            return;
+        }
+
+        ouvrirDetails(bordereau);
+    };
+
+    const lignesAffichees = useMemo<LigneStagiaire[]>(
         () =>
-            (ordreDetail?.dossiers || []).flatMap(
-                (dossier) => dossier.stagiaires,
+            (ordreDetail?.dossiers || []).flatMap((dossier) =>
+                dossier.stagiaires.map((stagiaire) => ({ stagiaire, dossier })),
             ),
         [ordreDetail],
+    );
+    const stagiairesAffiches = useMemo(
+        () => lignesAffichees.map((ligne) => ligne.stagiaire),
+        [lignesAffichees],
     );
     const selectionnables = useMemo(
         () =>
@@ -462,8 +555,8 @@ setOrdreDetail(null);
 
     const confirmerDifferePartiel = () => {
         if (!ordreDetail || !selection.length || motifOp.trim().length < 5) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         router.post(
@@ -486,8 +579,8 @@ return;
 
     const confirmerValidationOp = () => {
         if (!ordreAValider) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         router.post(
@@ -506,8 +599,8 @@ return;
 
     const confirmerActionOp = () => {
         if (!actionOp || motifOp.trim().length < 5) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         router.post(
@@ -543,47 +636,6 @@ return;
                         title="Traitement des bordereaux"
                         pageTitle="Agent comptable"
                     />
-
-                    <Card className="ac-hero-card border-0">
-                        <CardBody className="position-relative p-4">
-                            <Row className="align-items-center g-3">
-                                <Col lg={8}>
-                                    <div className="d-flex align-items-center gap-3">
-                                        <span className="ac-hero-card__icon">
-                                            <i className="ri-file-shield-2-line" />
-                                        </span>
-                                        <div>
-                                            <Badge
-                                                color="light"
-                                                className="text-success mb-2"
-                                            >
-                                                Circuit Agent Comptable
-                                            </Badge>
-                                            <h3 className="mb-1 text-white">
-                                                Bordereaux à viser
-                                            </h3>
-                                            <p className="text-white-50 mb-0">
-                                                Contrôlez les ordres de
-                                                paiement, puis validez ou
-                                                retournez le bordereau à la DMG.
-                                            </p>
-                                        </div>
-                                    </div>
-                                </Col>
-                                <Col lg={4} className="text-lg-end">
-                                    <div className="ac-hero-card__period">
-                                        <span className="text-white-50 fs-12 text-uppercase">
-                                            Période consultée
-                                        </span>
-                                        <strong className="d-block text-capitalize text-white">
-                                            {libelleMois(moisActuel)}
-                                        </strong>
-                                    </div>
-                                </Col>
-                            </Row>
-                        </CardBody>
-                    </Card>
-
                     {(flash?.success ||
                         flash?.error ||
                         errors?.bordereau ||
@@ -607,7 +659,7 @@ return;
                     )}
 
                     <Row className="g-3 mb-4">
-                        <Col xl={4} md={6}>
+                        <Col xl={3} md={6}>
                             <StatCard
                                 icon="ri-time-line"
                                 label="À traiter"
@@ -616,7 +668,7 @@ return;
                                 tone="warning"
                             />
                         </Col>
-                        <Col xl={4} md={6}>
+                        <Col xl={3} md={6}>
                             <StatCard
                                 icon="ri-money-dollar-circle-line"
                                 label="Montant en attente"
@@ -625,7 +677,16 @@ return;
                                 tone="success"
                             />
                         </Col>
-                        <Col xl={4} md={6}>
+                        <Col xl={3} md={6}>
+                            <StatCard
+                                icon="ri-checkbox-circle-line"
+                                label="Visés"
+                                value={bordereauxVises.length}
+                                hint={`${formatMontant(montantVise)} FCFA validés`}
+                                tone="info"
+                            />
+                        </Col>
+                        <Col xl={3} md={6}>
                             <StatCard
                                 icon="ri-arrow-go-back-line"
                                 label="Retours AC"
@@ -636,7 +697,10 @@ return;
                         </Col>
                     </Row>
 
-                    <Card className="ac-workspace-card border-0">
+                    <Card
+                        className="ac-workspace-card border-0"
+                        innerRef={listeRef}
+                    >
                         <CardBody className="p-0">
                             <div className="ac-toolbar p-lg-4 p-3">
                                 <Row className="align-items-end g-3">
@@ -704,9 +768,18 @@ return;
                                     <Col lg={3} className="text-lg-end">
                                         <div className="fs-13 pb-2 text-muted">
                                             <i className="ri-information-line me-1" />
-                                            {recherche
-                                                ? `${attenteFiltree.length} résultat(s) en attente`
-                                                : 'Cliquez sur une ligne pour voir ses OP'}
+                                            {recherche ? (
+                                                <>
+                                                    {nbResultats} bordereau
+                                                    {nbResultats > 1
+                                                        ? 'x'
+                                                        : ''}{' '}
+                                                    trouvé
+                                                    {nbResultats > 1 ? 's' : ''}
+                                                </>
+                                            ) : (
+                                                'Cliquez sur un bordereau pour ouvrir le détail de ses OP'
+                                            )}
                                         </div>
                                     </Col>
                                 </Row>
@@ -814,8 +887,12 @@ return;
                                                                 key={
                                                                     bordereau.id
                                                                 }
-                                                                onDoubleClick={() =>
-                                                                    ouvrirDetails(
+                                                                className="ac-bordereau-row"
+                                                                onClick={(
+                                                                    event,
+                                                                ) =>
+                                                                    ouvrirDepuisLigne(
+                                                                        event,
                                                                         bordereau,
                                                                     )
                                                                 }
@@ -940,6 +1017,9 @@ return;
                                                         </th>
                                                         <th>Date du visa</th>
                                                         <th>Statut</th>
+                                                        <th className="text-end">
+                                                            Actions
+                                                        </th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -948,6 +1028,15 @@ return;
                                                             <tr
                                                                 key={
                                                                     bordereau.id
+                                                                }
+                                                                className="ac-bordereau-row"
+                                                                onClick={(
+                                                                    event,
+                                                                ) =>
+                                                                    ouvrirDepuisLigne(
+                                                                        event,
+                                                                        bordereau,
+                                                                    )
                                                                 }
                                                             >
                                                                 <td>
@@ -972,9 +1061,17 @@ return;
                                                                         '—'}
                                                                 </td>
                                                                 <td>
-                                                                    {
-                                                                        bordereau.nombre_paiements
-                                                                    }
+                                                                    <div>
+                                                                        {
+                                                                            bordereau.nombre_paiements
+                                                                        }
+                                                                    </div>
+                                                                    <small className="fs-12 text-muted">
+                                                                        {
+                                                                            bordereau.nombre_ordres
+                                                                        }{' '}
+                                                                        OP
+                                                                    </small>
                                                                 </td>
                                                                 <td className="fw-semibold text-end">
                                                                     {formatMontant(
@@ -994,6 +1091,20 @@ return;
                                                                         <i className="ri-checkbox-circle-line me-1" />
                                                                         Visé AC
                                                                     </Badge>
+                                                                </td>
+                                                                <td className="text-end text-nowrap">
+                                                                    <Button
+                                                                        size="sm"
+                                                                        color="light"
+                                                                        onClick={() =>
+                                                                            ouvrirDetails(
+                                                                                bordereau,
+                                                                            )
+                                                                        }
+                                                                    >
+                                                                        <i className="ri-eye-line me-1" />
+                                                                        Consulter
+                                                                    </Button>
                                                                 </td>
                                                             </tr>
                                                         ),
@@ -1031,6 +1142,15 @@ return;
                                                             <tr
                                                                 key={
                                                                     bordereau.id
+                                                                }
+                                                                className="ac-bordereau-row"
+                                                                onClick={(
+                                                                    event,
+                                                                ) =>
+                                                                    ouvrirDepuisLigne(
+                                                                        event,
+                                                                        bordereau,
+                                                                    )
                                                                 }
                                                             >
                                                                 <td className="fw-semibold">
@@ -1105,6 +1225,716 @@ return;
                             </TabContent>
                         </CardBody>
                     </Card>
+
+                    {details && (
+                        <section
+                            ref={workspaceRef}
+                            className="ac-workspace-section"
+                            aria-label={`Traitement du bordereau ${details.numero}`}
+                        >
+                            <Card className="ac-ws-head-card border-0">
+                                <CardBody className="p-3">
+                                    <Row className="align-items-center g-3">
+                                        <Col
+                                            md={7}
+                                            className="d-flex align-items-center gap-3"
+                                        >
+                                            <Button
+                                                color="light"
+                                                size="sm"
+                                                className="ac-ws-back"
+                                                onClick={fermerDetails}
+                                                aria-label="Retour à la liste des bordereaux"
+                                            >
+                                                <i className="ri-arrow-left-line" />
+                                            </Button>
+                                            <div className="min-w-0">
+                                                <span className="fs-12 text-uppercase text-muted">
+                                                    Bordereau sélectionné
+                                                </span>
+                                                <h5 className="text-truncate mb-0">
+                                                    {details.numero}
+                                                </h5>
+                                            </div>
+                                        </Col>
+                                        <Col
+                                            md={5}
+                                            className="ac-ws-summary d-flex justify-content-md-end flex-wrap gap-2"
+                                        >
+                                            <div className="ac-ws-chip">
+                                                <span>Montant total</span>
+                                                <strong>
+                                                    {formatMontant(
+                                                        details.montant_total,
+                                                    )}{' '}
+                                                    FCFA
+                                                </strong>
+                                            </div>
+                                            <div className="ac-ws-chip">
+                                                <span>OP traitées</span>
+                                                <strong>
+                                                    {
+                                                        details.ordres.filter(
+                                                            (ordre) =>
+                                                                ordre.statut !==
+                                                                'EN_BORDEREAU',
+                                                        ).length
+                                                    }{' '}
+                                                    / {details.nombre_ordres}
+                                                </strong>
+                                            </div>
+                                            <div className="ac-ws-chip">
+                                                <span>Financement</span>
+                                                <strong className="text-truncate">
+                                                    {details.source_financement
+                                                        ?.libelle ||
+                                                        'Non renseigné'}
+                                                </strong>
+                                            </div>
+                                        </Col>
+                                    </Row>
+                                </CardBody>
+                            </Card>
+
+                            <Card className="ac-filter-card border-0">
+                                <CardBody className="p-lg-4 p-3">
+                                    <div className="ac-card-heading">
+                                        <h4 className="mb-0">
+                                            <i className="ri-filter-3-line me-2" />
+                                            Filtres de recherche
+                                        </h4>
+                                        <span className="fs-12 text-muted">
+                                            Sélectionnez l’OP puis affinez la
+                                            liste des stagiaires
+                                        </span>
+                                    </div>
+                                    <Row className="g-3 align-items-end">
+                                        <Col lg={3} md={6}>
+                                            <Label className="form-label ac-field-label">
+                                                N° OP
+                                            </Label>
+                                            <Input
+                                                className="ac-control"
+                                                type="select"
+                                                value={ordreDetail?.id ?? ''}
+                                                disabled={loadingOrdre}
+                                                onChange={(event) => {
+                                                    const ordreId = Number(
+                                                        event.target.value,
+                                                    );
+
+                                                    if (ordreId) {
+                                                        changerOrdreSel(
+                                                            ordreId,
+                                                        );
+                                                    }
+                                                }}
+                                            >
+                                                <option value="">
+                                                    Sélectionner OP
+                                                </option>
+                                                {details.ordres.map((ordre) => (
+                                                    <option
+                                                        key={ordre.id}
+                                                        value={ordre.id}
+                                                    >
+                                                        {ordre.numero} —{' '}
+                                                        {libelleStatutOp(
+                                                            ordre.statut,
+                                                        )}{' '}
+                                                        (
+                                                        {ordre.nombre_paiements}{' '}
+                                                        paiement
+                                                        {ordre.nombre_paiements >
+                                                        1
+                                                            ? 's'
+                                                            : ''}
+                                                        )
+                                                    </option>
+                                                ))}
+                                            </Input>
+                                        </Col>
+                                        <Col lg={3} md={6}>
+                                            <Label className="form-label ac-field-label">
+                                                Agence
+                                            </Label>
+                                            <Input
+                                                className="ac-control"
+                                                type="select"
+                                                value={filtresOp.agence_id}
+                                                onChange={(event) =>
+                                                    appliquerFiltres({
+                                                        ...filtresOp,
+                                                        agence_id:
+                                                            event.target.value,
+                                                    })
+                                                }
+                                            >
+                                                <option value="">Tout</option>
+                                                {(
+                                                    ordreDetail?.referentiels
+                                                        .agences || []
+                                                ).map((option) => (
+                                                    <option
+                                                        key={option.id}
+                                                        value={option.id}
+                                                    >
+                                                        {option.libelle}
+                                                    </option>
+                                                ))}
+                                            </Input>
+                                        </Col>
+                                        <Col lg={3} md={6}>
+                                            <Label className="form-label ac-field-label">
+                                                Entreprise
+                                            </Label>
+                                            <Input
+                                                className="ac-control"
+                                                type="select"
+                                                value={filtresOp.entreprise_id}
+                                                onChange={(event) =>
+                                                    appliquerFiltres({
+                                                        ...filtresOp,
+                                                        entreprise_id:
+                                                            event.target.value,
+                                                    })
+                                                }
+                                            >
+                                                <option value="">Tout</option>
+                                                {(
+                                                    ordreDetail?.referentiels
+                                                        .entreprises || []
+                                                ).map((option) => (
+                                                    <option
+                                                        key={option.id}
+                                                        value={option.id}
+                                                    >
+                                                        {option.libelle}
+                                                    </option>
+                                                ))}
+                                            </Input>
+                                        </Col>
+                                        <Col lg={3} md={6}>
+                                            <Label className="form-label ac-field-label">
+                                                Type de financement
+                                            </Label>
+                                            <Input
+                                                className="ac-control"
+                                                type="select"
+                                                value={
+                                                    filtresOp.source_financement_id
+                                                }
+                                                onChange={(event) =>
+                                                    appliquerFiltres({
+                                                        ...filtresOp,
+                                                        source_financement_id:
+                                                            event.target.value,
+                                                    })
+                                                }
+                                            >
+                                                <option value="">Tout</option>
+                                                {(
+                                                    ordreDetail?.referentiels
+                                                        .sources_financement ||
+                                                    []
+                                                ).map((option) => (
+                                                    <option
+                                                        key={option.id}
+                                                        value={option.id}
+                                                    >
+                                                        {option.libelle}
+                                                    </option>
+                                                ))}
+                                            </Input>
+                                        </Col>
+                                        <Col lg={3} md={6}>
+                                            <Label className="form-label ac-field-label">
+                                                Type de stage
+                                            </Label>
+                                            <Input
+                                                className="ac-control"
+                                                type="select"
+                                                value={filtresOp.type_stage_id}
+                                                onChange={(event) =>
+                                                    appliquerFiltres({
+                                                        ...filtresOp,
+                                                        type_stage_id:
+                                                            event.target.value,
+                                                    })
+                                                }
+                                            >
+                                                <option value="">Tout</option>
+                                                {(
+                                                    ordreDetail?.referentiels
+                                                        .types_stage || []
+                                                ).map((option) => (
+                                                    <option
+                                                        key={option.id}
+                                                        value={option.id}
+                                                    >
+                                                        {option.libelle}
+                                                    </option>
+                                                ))}
+                                            </Input>
+                                        </Col>
+                                        <Col lg={6} md={6}>
+                                            <Label className="form-label ac-field-label">
+                                                Stagiaire / dossier
+                                            </Label>
+                                            <div className="position-relative">
+                                                <i className="ri-search-line ac-input-icon" />
+                                                <Input
+                                                    className="ac-control ps-5"
+                                                    value={filtresOp.recherche}
+                                                    placeholder="Nom, prénom ou N° AEJ…"
+                                                    onChange={(event) =>
+                                                        setFiltresOp({
+                                                            ...filtresOp,
+                                                            recherche:
+                                                                event.target
+                                                                    .value,
+                                                        })
+                                                    }
+                                                    onKeyDown={(event) => {
+                                                        if (
+                                                            event.key ===
+                                                            'Enter'
+                                                        ) {
+                                                            appliquerFiltres(
+                                                                filtresOp,
+                                                            );
+                                                        }
+                                                    }}
+                                                />
+                                            </div>
+                                        </Col>
+                                        <Col lg={3} md={6}>
+                                            <Button
+                                                color="success"
+                                                className="ac-btn-rechercher w-100"
+                                                disabled={loadingOrdre}
+                                                onClick={() =>
+                                                    appliquerFiltres(filtresOp)
+                                                }
+                                            >
+                                                <i className="ri-search-line me-2" />
+                                                Rechercher
+                                            </Button>
+                                        </Col>
+                                    </Row>
+                                </CardBody>
+                            </Card>
+
+                            <Card className="ac-actions-card border-0">
+                                <CardBody className="p-lg-4 p-3">
+                                    <div className="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                                        <div className="ac-card-heading">
+                                            <h4 className="mb-1">
+                                                <i className="ri-slideshow-4-line me-2" />
+                                                Traitement sur les OP
+                                                sélectionnées
+                                            </h4>
+                                            {ordreDetail && (
+                                                <div className="fs-13 text-muted">
+                                                    OP{' '}
+                                                    <strong className="text-dark">
+                                                        {ordreDetail.numero}
+                                                    </strong>{' '}
+                                                    <Badge
+                                                        color={
+                                                            statutsOp[
+                                                                ordreDetail
+                                                                    .statut
+                                                            ]?.couleur ||
+                                                            'secondary'
+                                                        }
+                                                        pill
+                                                        className="ms-1"
+                                                    >
+                                                        {libelleStatutOp(
+                                                            ordreDetail.statut,
+                                                        )}
+                                                    </Badge>
+                                                </div>
+                                            )}
+                                        </div>
+                                        <div className="d-flex align-items-center flex-wrap gap-2">
+                                            {selection.length > 0 && (
+                                                <span className="ac-selection-chip">
+                                                    <i className="ri-checkbox-multiple-line me-1" />
+                                                    {selection.length} stagiaire
+                                                    {selection.length > 1
+                                                        ? 's'
+                                                        : ''}{' '}
+                                                    sélectionné
+                                                    {selection.length > 1
+                                                        ? 's'
+                                                        : ''}
+                                                </span>
+                                            )}
+                                            <Button
+                                                size="sm"
+                                                color="warning"
+                                                outline
+                                                disabled={
+                                                    !ordreDetail?.actions
+                                                        .retirer || loadingOrdre
+                                                }
+                                                onClick={() =>
+                                                    ordreSelectionne &&
+                                                    ouvrirActionOp(
+                                                        ordreSelectionne,
+                                                        'retirer',
+                                                    )
+                                                }
+                                            >
+                                                <i className="ri-subtract-line me-1" />
+                                                Retirer OP
+                                            </Button>
+                                            {ordreDetail?.actions
+                                                .differer_stagiaires &&
+                                                ongletStagiaire ===
+                                                    'attente' && (
+                                                    <Button
+                                                        size="sm"
+                                                        color="warning"
+                                                        outline
+                                                        disabled={
+                                                            !selection.length ||
+                                                            loadingOrdre
+                                                        }
+                                                        onClick={() => {
+                                                            setDifferePartiel(
+                                                                true,
+                                                            );
+                                                            setMotifOp('');
+                                                        }}
+                                                    >
+                                                        <i className="ri-pause-circle-line me-1" />
+                                                        Différer la sélection
+                                                    </Button>
+                                                )}
+                                            <Button
+                                                size="sm"
+                                                color="warning"
+                                                disabled={
+                                                    !ordreDetail?.actions
+                                                        .differer ||
+                                                    loadingOrdre
+                                                }
+                                                onClick={() =>
+                                                    ordreSelectionne &&
+                                                    ouvrirActionOp(
+                                                        ordreSelectionne,
+                                                        'differer',
+                                                    )
+                                                }
+                                            >
+                                                <i className="ri-pause-circle-line me-1" />
+                                                Différer OP (Global)
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                color="danger"
+                                                disabled={
+                                                    !ordreDetail?.actions
+                                                        .rejeter || loadingOrdre
+                                                }
+                                                onClick={() =>
+                                                    ordreSelectionne &&
+                                                    ouvrirActionOp(
+                                                        ordreSelectionne,
+                                                        'rejeter',
+                                                    )
+                                                }
+                                            >
+                                                <i className="ri-close-circle-line me-1" />
+                                                Rejeter
+                                            </Button>
+                                            <Button
+                                                size="sm"
+                                                color="primary"
+                                                disabled={
+                                                    !ordreDetail?.actions
+                                                        .valider || loadingOrdre
+                                                }
+                                                onClick={() =>
+                                                    ordreSelectionne &&
+                                                    setOrdreAValider(
+                                                        ordreSelectionne,
+                                                    )
+                                                }
+                                            >
+                                                <i className="ri-check-double-line me-1" />
+                                                Valider
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardBody>
+                            </Card>
+
+                            <Card className="ac-flat-card border-0">
+                                <CardBody className="p-0">
+                                    <Nav
+                                        tabs
+                                        className="ac-tabs ac-ws-tabs px-lg-4 px-3"
+                                        role="tablist"
+                                    >
+                                        {ongletsStagiaires.map((onglet) => (
+                                            <NavItem key={onglet.id}>
+                                                <NavLink
+                                                    role="tab"
+                                                    aria-selected={
+                                                        ongletStagiaire ===
+                                                        onglet.id
+                                                    }
+                                                    className={classnames({
+                                                        active:
+                                                            ongletStagiaire ===
+                                                            onglet.id,
+                                                    })}
+                                                    onClick={() =>
+                                                        changerOnglet(onglet.id)
+                                                    }
+                                                >
+                                                    <i
+                                                        className={`${onglet.icone} me-2`}
+                                                    />
+                                                    OP {onglet.libelle}
+                                                    <span className="d-none d-md-inline">
+                                                        {' '}
+                                                        (Liste stagiaires)
+                                                    </span>
+                                                    <Badge
+                                                        pill
+                                                        color={onglet.couleur}
+                                                        className="ms-2"
+                                                    >
+                                                        {ordreDetail
+                                                            ? ordreDetail
+                                                                  .compteurs[
+                                                                  onglet.id
+                                                              ]
+                                                            : 0}
+                                                    </Badge>
+                                                </NavLink>
+                                            </NavItem>
+                                        ))}
+                                    </Nav>
+
+                                    <div className="p-lg-4 p-3">
+                                        {loadingOrdre && (
+                                            <div className="ac-detail-loading">
+                                                <Spinner color="primary" />
+                                                <span>
+                                                    Chargement des stagiaires…
+                                                </span>
+                                            </div>
+                                        )}
+                                        {!loadingOrdre && detailError && (
+                                            <Alert
+                                                color="danger"
+                                                className="mb-0"
+                                            >
+                                                {detailError}
+                                            </Alert>
+                                        )}
+                                        {!loadingOrdre &&
+                                            !detailError &&
+                                            !ordreDetail && (
+                                                <EmptyState text="Sélectionnez une OP pour afficher ses dossiers et stagiaires." />
+                                            )}
+                                        {!loadingOrdre &&
+                                            !detailError &&
+                                            ordreDetail &&
+                                            !lignesAffichees.length && (
+                                                <EmptyState text="Aucun stagiaire dans cet onglet pour les filtres appliqués." />
+                                            )}
+                                        {!loadingOrdre &&
+                                            !detailError &&
+                                            ordreDetail &&
+                                            lignesAffichees.length > 0 && (
+                                                <div className="table-responsive ac-flat-table-wrap">
+                                                    <Table
+                                                        hover
+                                                        className="ac-table ac-flat-table mb-0 align-middle"
+                                                    >
+                                                        <thead>
+                                                            <tr>
+                                                                {ongletStagiaire ===
+                                                                    'attente' && (
+                                                                    <th
+                                                                        style={{
+                                                                            width: 40,
+                                                                        }}
+                                                                    >
+                                                                        <Input
+                                                                            type="checkbox"
+                                                                            checked={
+                                                                                toutSelectionne
+                                                                            }
+                                                                            onChange={() =>
+                                                                                setSelection(
+                                                                                    toutSelectionne
+                                                                                        ? []
+                                                                                        : selectionnables,
+                                                                                )
+                                                                            }
+                                                                            aria-label="Tout sélectionner"
+                                                                        />
+                                                                    </th>
+                                                                )}
+                                                                <th>
+                                                                    N° dossier
+                                                                </th>
+                                                                <th>
+                                                                    Date
+                                                                    création
+                                                                </th>
+                                                                <th>Agence</th>
+                                                                <th>
+                                                                    Entreprise
+                                                                </th>
+                                                                <th>
+                                                                    Source de
+                                                                    financement
+                                                                </th>
+                                                                <th>
+                                                                    Type de
+                                                                    stagiaire
+                                                                </th>
+                                                                <th>
+                                                                    Numéro AEJ
+                                                                </th>
+                                                                <th>
+                                                                    Nom et
+                                                                    prénoms
+                                                                </th>
+                                                                <th>
+                                                                    Date de
+                                                                    naissance
+                                                                </th>
+                                                                <th>Début</th>
+                                                                <th>Fin</th>
+                                                                <th>
+                                                                    N° Trésor
+                                                                    Money
+                                                                </th>
+                                                                <th className="text-center">
+                                                                    Pièce jointe
+                                                                </th>
+                                                                <th className="text-end">
+                                                                    Montant
+                                                                </th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                            {lignesAffichees.map(
+                                                                ({
+                                                                    stagiaire,
+                                                                    dossier,
+                                                                }) => (
+                                                                    <tr
+                                                                        key={
+                                                                            stagiaire.paiement_id
+                                                                        }
+                                                                    >
+                                                                        {ongletStagiaire ===
+                                                                            'attente' && (
+                                                                            <td className="text-center">
+                                                                                <Input
+                                                                                    type="checkbox"
+                                                                                    checked={selection.includes(
+                                                                                        stagiaire.paiement_id,
+                                                                                    )}
+                                                                                    onChange={() =>
+                                                                                        basculerSelection(
+                                                                                            stagiaire.paiement_id,
+                                                                                        )
+                                                                                    }
+                                                                                    aria-label={`Sélectionner ${stagiaire.nom || stagiaire.paiement_id}`}
+                                                                                />
+                                                                            </td>
+                                                                        )}
+                                                                        <td className="fw-semibold text-nowrap">
+                                                                            {
+                                                                                dossier.numero
+                                                                            }
+                                                                        </td>
+                                                                        <td className="text-nowrap">
+                                                                            {dossier.date_creation ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td>
+                                                                            {dossier.agence ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td>
+                                                                            {stagiaire.entreprise ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td>
+                                                                            {dossier.source_financement ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td>
+                                                                            {stagiaire.type_stage ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td className="fw-semibold text-nowrap text-primary">
+                                                                            {stagiaire.numero_aej ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td>
+                                                                            <strong>
+                                                                                {stagiaire.nom ||
+                                                                                    '—'}{' '}
+                                                                                {stagiaire.prenoms ||
+                                                                                    ''}
+                                                                            </strong>
+                                                                        </td>
+                                                                        <td className="text-nowrap">
+                                                                            {stagiaire.date_naissance ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td className="text-nowrap">
+                                                                            {stagiaire.date_debut ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td className="text-nowrap">
+                                                                            {stagiaire.date_fin ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td className="text-nowrap">
+                                                                            {stagiaire.numero_tresor_money ||
+                                                                                '—'}
+                                                                        </td>
+                                                                        <td className="text-center text-muted">
+                                                                            <i
+                                                                                className="ri-file-line"
+                                                                                title="Pièce jointe non disponible"
+                                                                            />
+                                                                        </td>
+                                                                        <td className="fw-semibold text-end text-nowrap">
+                                                                            {formatMontant(
+                                                                                stagiaire.montant,
+                                                                            )}{' '}
+                                                                            <span className="fs-11 text-muted">
+                                                                                FCFA
+                                                                            </span>
+                                                                        </td>
+                                                                    </tr>
+                                                                ),
+                                                            )}
+                                                        </tbody>
+                                                    </Table>
+                                                </div>
+                                            )}
+                                    </div>
+                                </CardBody>
+                            </Card>
+                        </section>
+                    )}
                 </Container>
             </div>
 
@@ -1269,645 +2099,6 @@ return;
                     >
                         {processing && <Spinner size="sm" className="me-2" />}
                         Différer la sélection
-                    </Button>
-                </ModalFooter>
-            </Modal>
-
-            <Modal
-                isOpen={Boolean(details)}
-                toggle={fermerDetails}
-                size="xl"
-                centered
-                scrollable
-                className="ac-detail-modal"
-            >
-                <ModalHeader toggle={fermerDetails}>
-                    <div>
-                        <span className="fs-12 d-block text-muted">
-                            Traitement des OP du bordereau
-                        </span>
-                        {details?.numero}
-                    </div>
-                </ModalHeader>
-                <ModalBody className="p-0">
-                    <div className="ac-detail-summary p-3">
-                        <Row className="g-3">
-                            <Col sm={4}>
-                                <span>Montant total</span>
-                                <strong>
-                                    {formatMontant(details?.montant_total || 0)}{' '}
-                                    FCFA
-                                </strong>
-                            </Col>
-                            <Col sm={4}>
-                                <span>Progression</span>
-                                <strong>
-                                    {details?.ordres.filter(
-                                        (ordre) =>
-                                            ordre.statut !== 'EN_BORDEREAU',
-                                    ).length || 0}{' '}
-                                    / {details?.nombre_ordres || 0} OP traitées
-                                </strong>
-                            </Col>
-                            <Col sm={4}>
-                                <span>Financement</span>
-                                <strong>
-                                    {details?.source_financement?.libelle ||
-                                        'Non renseigné'}
-                                </strong>
-                            </Col>
-                        </Row>
-                    </div>
-                    <Row className="g-0 ac-op-workspace">
-                        <Col lg={3} className="ac-op-sidebar">
-                            <div className="border-bottom p-3">
-                                <span className="text-uppercase fs-11 fw-semibold text-muted">
-                                    Ordres de paiement
-                                </span>
-                            </div>
-                            <div className="ac-op-list">
-                                {details?.ordres.map((ordre, index) => (
-                                    <button
-                                        key={ordre.id}
-                                        type="button"
-                                        className={classnames(
-                                            'ac-op-list__item',
-                                            {
-                                                active:
-                                                    ordreDetail?.id ===
-                                                    ordre.id,
-                                            },
-                                        )}
-                                        onClick={() => chargerOrdre(ordre.id)}
-                                    >
-                                        <span className="ac-op-list__index">
-                                            {index + 1}
-                                        </span>
-                                        <span className="min-w-0 flex-grow-1">
-                                            <strong className="d-block text-truncate">
-                                                {ordre.numero}
-                                            </strong>
-                                            <small>
-                                                {ordre.nombre_dossiers} dossiers
-                                                · {ordre.nombre_paiements}{' '}
-                                                stagiaires
-                                            </small>
-                                        </span>
-                                        <i
-                                            className={
-                                                ordre.statut === 'VISE_AC'
-                                                    ? 'ri-checkbox-circle-fill text-success'
-                                                    : ordre.statut ===
-                                                        'EN_BORDEREAU'
-                                                      ? 'ri-time-fill text-warning'
-                                                      : 'ri-arrow-go-back-fill text-danger'
-                                            }
-                                        />
-                                    </button>
-                                ))}
-                                {details && !details.ordres.length && (
-                                    <div className="p-3 text-center text-muted">
-                                        Aucune OP rattachée
-                                    </div>
-                                )}
-                            </div>
-                        </Col>
-                        <Col lg={9} className="ac-op-content">
-                            {loadingOrdre && (
-                                <div className="ac-detail-loading">
-                                    <Spinner color="primary" />
-                                    <span>
-                                        Chargement des dossiers et stagiaires…
-                                    </span>
-                                </div>
-                            )}
-                            {!loadingOrdre && detailError && (
-                                <Alert color="danger" className="m-3">
-                                    {detailError}
-                                </Alert>
-                            )}
-                            {!loadingOrdre && ordreDetail && (
-                                <>
-                                    <div className="ac-op-heading p-3">
-                                        <div>
-                                            <span className="fs-12 text-muted">
-                                                OP sélectionnée
-                                            </span>
-                                            <h5 className="mb-0">
-                                                {ordreDetail.numero}{' '}
-                                                <Badge
-                                                    color={
-                                                        ordreDetail.statut ===
-                                                        'EN_BORDEREAU'
-                                                            ? 'warning'
-                                                            : 'secondary'
-                                                    }
-                                                    className="ms-2"
-                                                >
-                                                    {ordreDetail.statut.replaceAll(
-                                                        '_',
-                                                        ' ',
-                                                    )}
-                                                </Badge>
-                                            </h5>
-                                        </div>
-                                        {ordreSelectionne && (
-                                            <div className="ac-op-actions">
-                                                {ordreDetail.actions
-                                                    .retirer && (
-                                                    <Button
-                                                        size="sm"
-                                                        color="warning"
-                                                        outline
-                                                        onClick={() =>
-                                                            ouvrirActionOp(
-                                                                ordreSelectionne,
-                                                                'retirer',
-                                                            )
-                                                        }
-                                                    >
-                                                        <i className="ri-subtract-line me-1" />
-                                                        Retirer OP
-                                                    </Button>
-                                                )}
-                                                {ordreDetail.actions
-                                                    .differer && (
-                                                    <Button
-                                                        size="sm"
-                                                        color="warning"
-                                                        onClick={() =>
-                                                            ouvrirActionOp(
-                                                                ordreSelectionne,
-                                                                'differer',
-                                                            )
-                                                        }
-                                                    >
-                                                        <i className="ri-pause-circle-line me-1" />
-                                                        Différer OP (Global)
-                                                    </Button>
-                                                )}
-                                                {ordreDetail.actions
-                                                    .rejeter && (
-                                                    <Button
-                                                        size="sm"
-                                                        color="danger"
-                                                        onClick={() =>
-                                                            ouvrirActionOp(
-                                                                ordreSelectionne,
-                                                                'rejeter',
-                                                            )
-                                                        }
-                                                    >
-                                                        <i className="ri-close-circle-line me-1" />
-                                                        Rejeter
-                                                    </Button>
-                                                )}
-                                                {ordreDetail.actions
-                                                    .valider && (
-                                                    <Button
-                                                        size="sm"
-                                                        color="primary"
-                                                        onClick={() =>
-                                                            setOrdreAValider(
-                                                                ordreSelectionne,
-                                                            )
-                                                        }
-                                                    >
-                                                        <i className="ri-check-double-line me-1" />
-                                                        Valider
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <div className="ac-op-filters px-3 pb-2">
-                                        <Row className="g-2 align-items-end">
-                                            <Col md={3}>
-                                                <Label className="form-label fs-11 text-uppercase text-muted">
-                                                    Agence
-                                                </Label>
-                                                <Input
-                                                    bsSize="sm"
-                                                    type="select"
-                                                    value={filtresOp.agence_id}
-                                                    onChange={(event) =>
-                                                        appliquerFiltres({
-                                                            ...filtresOp,
-                                                            agence_id:
-                                                                event.target
-                                                                    .value,
-                                                        })
-                                                    }
-                                                >
-                                                    <option value="">
-                                                        Tout
-                                                    </option>
-                                                    {ordreDetail.referentiels.agences.map(
-                                                        (option) => (
-                                                            <option
-                                                                key={option.id}
-                                                                value={
-                                                                    option.id
-                                                                }
-                                                            >
-                                                                {option.libelle}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </Input>
-                                            </Col>
-                                            <Col md={3}>
-                                                <Label className="form-label fs-11 text-uppercase text-muted">
-                                                    Entreprise
-                                                </Label>
-                                                <Input
-                                                    bsSize="sm"
-                                                    type="select"
-                                                    value={
-                                                        filtresOp.entreprise_id
-                                                    }
-                                                    onChange={(event) =>
-                                                        appliquerFiltres({
-                                                            ...filtresOp,
-                                                            entreprise_id:
-                                                                event.target
-                                                                    .value,
-                                                        })
-                                                    }
-                                                >
-                                                    <option value="">
-                                                        Tout
-                                                    </option>
-                                                    {ordreDetail.referentiels.entreprises.map(
-                                                        (option) => (
-                                                            <option
-                                                                key={option.id}
-                                                                value={
-                                                                    option.id
-                                                                }
-                                                            >
-                                                                {option.libelle}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </Input>
-                                            </Col>
-                                            <Col md={2}>
-                                                <Label className="form-label fs-11 text-uppercase text-muted">
-                                                    Financement
-                                                </Label>
-                                                <Input
-                                                    bsSize="sm"
-                                                    type="select"
-                                                    value={
-                                                        filtresOp.source_financement_id
-                                                    }
-                                                    onChange={(event) =>
-                                                        appliquerFiltres({
-                                                            ...filtresOp,
-                                                            source_financement_id:
-                                                                event.target
-                                                                    .value,
-                                                        })
-                                                    }
-                                                >
-                                                    <option value="">
-                                                        Tout
-                                                    </option>
-                                                    {ordreDetail.referentiels.sources_financement.map(
-                                                        (option) => (
-                                                            <option
-                                                                key={option.id}
-                                                                value={
-                                                                    option.id
-                                                                }
-                                                            >
-                                                                {option.libelle}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </Input>
-                                            </Col>
-                                            <Col md={2}>
-                                                <Label className="form-label fs-11 text-uppercase text-muted">
-                                                    Type de stage
-                                                </Label>
-                                                <Input
-                                                    bsSize="sm"
-                                                    type="select"
-                                                    value={
-                                                        filtresOp.type_stage_id
-                                                    }
-                                                    onChange={(event) =>
-                                                        appliquerFiltres({
-                                                            ...filtresOp,
-                                                            type_stage_id:
-                                                                event.target
-                                                                    .value,
-                                                        })
-                                                    }
-                                                >
-                                                    <option value="">
-                                                        Tout
-                                                    </option>
-                                                    {ordreDetail.referentiels.types_stage.map(
-                                                        (option) => (
-                                                            <option
-                                                                key={option.id}
-                                                                value={
-                                                                    option.id
-                                                                }
-                                                            >
-                                                                {option.libelle}
-                                                            </option>
-                                                        ),
-                                                    )}
-                                                </Input>
-                                            </Col>
-                                            <Col md={2}>
-                                                <Label className="form-label fs-11 text-uppercase text-muted">
-                                                    Stagiaire / dossier
-                                                </Label>
-                                                <Input
-                                                    bsSize="sm"
-                                                    value={filtresOp.recherche}
-                                                    placeholder="Nom, N° AEJ…"
-                                                    onChange={(event) =>
-                                                        setFiltresOp({
-                                                            ...filtresOp,
-                                                            recherche:
-                                                                event.target
-                                                                    .value,
-                                                        })
-                                                    }
-                                                    onKeyDown={(event) =>
-                                                        event.key === 'Enter' &&
-                                                        appliquerFiltres(
-                                                            filtresOp,
-                                                        )
-                                                    }
-                                                    onBlur={() =>
-                                                        appliquerFiltres(
-                                                            filtresOp,
-                                                        )
-                                                    }
-                                                />
-                                            </Col>
-                                        </Row>
-                                    </div>
-
-                                    <Nav
-                                        tabs
-                                        className="ac-tabs px-3"
-                                        role="tablist"
-                                    >
-                                        {ongletsStagiaires.map((onglet) => (
-                                            <NavItem key={onglet.id}>
-                                                <NavLink
-                                                    role="tab"
-                                                    aria-selected={
-                                                        ongletStagiaire ===
-                                                        onglet.id
-                                                    }
-                                                    className={classnames({
-                                                        active:
-                                                            ongletStagiaire ===
-                                                            onglet.id,
-                                                    })}
-                                                    onClick={() =>
-                                                        changerOnglet(onglet.id)
-                                                    }
-                                                >
-                                                    <i
-                                                        className={`${onglet.icone} me-2`}
-                                                    />
-                                                    {onglet.libelle}
-                                                    <Badge
-                                                        pill
-                                                        color={onglet.couleur}
-                                                        className="ms-2"
-                                                    >
-                                                        {
-                                                            ordreDetail
-                                                                .compteurs[
-                                                                onglet.id
-                                                            ]
-                                                        }
-                                                    </Badge>
-                                                </NavLink>
-                                            </NavItem>
-                                        ))}
-                                    </Nav>
-
-                                    {ordreDetail.actions.differer_stagiaires &&
-                                        selectionnables.length > 0 && (
-                                            <div className="ac-op-selection d-flex align-items-center justify-content-between gap-2 px-3 py-2">
-                                                <span className="fs-12 text-muted">
-                                                    {selection.length}{' '}
-                                                    stagiaire(s) sélectionné(s)
-                                                    sur {selectionnables.length}{' '}
-                                                    affiché(s)
-                                                </span>
-                                                <Button
-                                                    size="sm"
-                                                    color="warning"
-                                                    disabled={!selection.length}
-                                                    onClick={() => {
-                                                        setDifferePartiel(true);
-                                                        setMotifOp('');
-                                                    }}
-                                                >
-                                                    <i className="ri-pause-circle-line me-1" />
-                                                    Différer la sélection
-                                                </Button>
-                                            </div>
-                                        )}
-
-                                    <div className="ac-dossiers-list p-3">
-                                        {ordreDetail.dossiers.map((dossier) => (
-                                            <section
-                                                key={dossier.id}
-                                                className="ac-dossier-block mb-3"
-                                            >
-                                                <header className="ac-dossier-block__header">
-                                                    <div>
-                                                        <span className="fs-11 text-uppercase text-muted">
-                                                            Dossier
-                                                        </span>
-                                                        <strong className="d-block">
-                                                            {dossier.numero}
-                                                        </strong>
-                                                        <small className="text-muted">
-                                                            Créé le{' '}
-                                                            {dossier.date_creation ||
-                                                                '—'}{' '}
-                                                            ·{' '}
-                                                            {dossier.source_financement ||
-                                                                'Financement non renseigné'}
-                                                        </small>
-                                                    </div>
-                                                    <div className="text-end">
-                                                        <span className="d-block fw-semibold">
-                                                            {formatMontant(
-                                                                dossier.montant_total,
-                                                            )}{' '}
-                                                            FCFA
-                                                        </span>
-                                                        <small className="text-muted">
-                                                            {dossier.agence ||
-                                                                'Agence non renseignée'}{' '}
-                                                            ·{' '}
-                                                            {
-                                                                dossier
-                                                                    .stagiaires
-                                                                    .length
-                                                            }{' '}
-                                                            stagiaire(s)
-                                                        </small>
-                                                    </div>
-                                                </header>
-                                                <div className="table-responsive">
-                                                    <Table
-                                                        hover
-                                                        className="ac-table ac-stagiaires-table mb-0 align-middle"
-                                                    >
-                                                        <thead>
-                                                            <tr>
-                                                                {ongletStagiaire ===
-                                                                    'attente' && (
-                                                                    <th
-                                                                        style={{
-                                                                            width: 32,
-                                                                        }}
-                                                                    >
-                                                                        <Input
-                                                                            type="checkbox"
-                                                                            checked={
-                                                                                toutSelectionne
-                                                                            }
-                                                                            onChange={() =>
-                                                                                setSelection(
-                                                                                    toutSelectionne
-                                                                                        ? []
-                                                                                        : selectionnables,
-                                                                                )
-                                                                            }
-                                                                            aria-label="Tout sélectionner"
-                                                                        />
-                                                                    </th>
-                                                                )}
-                                                                <th>N° AEJ</th>
-                                                                <th>
-                                                                    Nom et
-                                                                    prénoms
-                                                                </th>
-                                                                <th>
-                                                                    Entreprise /
-                                                                    stage
-                                                                </th>
-                                                                <th>Période</th>
-                                                                <th>
-                                                                    N° Trésor
-                                                                    Money
-                                                                </th>
-                                                                <th className="text-end">
-                                                                    Montant
-                                                                </th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {dossier.stagiaires.map(
-                                                                (stagiaire) => (
-                                                                    <tr
-                                                                        key={
-                                                                            stagiaire.paiement_id
-                                                                        }
-                                                                    >
-                                                                        {ongletStagiaire ===
-                                                                            'attente' && (
-                                                                            <td>
-                                                                                <Input
-                                                                                    type="checkbox"
-                                                                                    checked={selection.includes(
-                                                                                        stagiaire.paiement_id,
-                                                                                    )}
-                                                                                    onChange={() =>
-                                                                                        basculerSelection(
-                                                                                            stagiaire.paiement_id,
-                                                                                        )
-                                                                                    }
-                                                                                    aria-label={`Sélectionner ${stagiaire.nom || stagiaire.paiement_id}`}
-                                                                                />
-                                                                            </td>
-                                                                        )}
-                                                                        <td className="fw-semibold text-primary">
-                                                                            {stagiaire.numero_aej ||
-                                                                                '—'}
-                                                                        </td>
-                                                                        <td>
-                                                                            <strong>
-                                                                                {stagiaire.nom ||
-                                                                                    '—'}{' '}
-                                                                                {stagiaire.prenoms ||
-                                                                                    ''}
-                                                                            </strong>
-                                                                            <small className="d-block text-muted">
-                                                                                Né(e)
-                                                                                le{' '}
-                                                                                {stagiaire.date_naissance ||
-                                                                                    '—'}
-                                                                            </small>
-                                                                        </td>
-                                                                        <td>
-                                                                            <span>
-                                                                                {stagiaire.entreprise ||
-                                                                                    '—'}
-                                                                            </span>
-                                                                            <small className="d-block text-muted">
-                                                                                {stagiaire.type_stage ||
-                                                                                    'Type non renseigné'}
-                                                                            </small>
-                                                                        </td>
-                                                                        <td>
-                                                                            {stagiaire.date_debut ||
-                                                                                '—'}
-                                                                            <small className="d-block text-muted">
-                                                                                au{' '}
-                                                                                {stagiaire.date_fin ||
-                                                                                    '—'}
-                                                                            </small>
-                                                                        </td>
-                                                                        <td>
-                                                                            {stagiaire.numero_tresor_money ||
-                                                                                '—'}
-                                                                        </td>
-                                                                        <td className="fw-semibold text-end">
-                                                                            {formatMontant(
-                                                                                stagiaire.montant,
-                                                                            )}{' '}
-                                                                            FCFA
-                                                                        </td>
-                                                                    </tr>
-                                                                ),
-                                                            )}
-                                                        </tbody>
-                                                    </Table>
-                                                </div>
-                                            </section>
-                                        ))}
-                                        {!ordreDetail.dossiers.length && (
-                                            <EmptyState text="Aucun stagiaire dans cet onglet pour les filtres appliqués." />
-                                        )}
-                                    </div>
-                                </>
-                            )}
-                        </Col>
-                    </Row>
-                </ModalBody>
-                <ModalFooter>
-                    <Button color="light" onClick={fermerDetails}>
-                        Fermer
                     </Button>
                 </ModalFooter>
             </Modal>
