@@ -105,8 +105,12 @@ export const formatMontant = (montant?: number | string | null): string =>
     `${Number(montant || 0).toLocaleString('fr-FR')} FCFA`;
 
 export const formatDate = (valeur?: string | null): string => {
-    if (!valeur) return '-';
+    if (!valeur) {
+return '-';
+}
+
     const date = new Date(valeur);
+
     return Number.isNaN(date.getTime()) ? valeur : date.toLocaleDateString('fr-FR');
 };
 
@@ -147,6 +151,7 @@ export const construireUrl = (
         }
     });
     const chaine = recherche.toString();
+
     return chaine ? `${base}?${chaine}` : base;
 };
 
@@ -163,8 +168,10 @@ export async function getJson<T>(
         headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
         signal,
     });
+
     if (!reponse.ok) {
         throw new Error(`Chargement impossible (${reponse.status}).`);
     }
+
     return (await reponse.json()) as T;
 }

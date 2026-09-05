@@ -89,7 +89,10 @@ const CipRenouvellementsIndex = ({
     };
 
     const confirmerRenouvellement = () => {
-        if (!aRenouveler) return;
+        if (!aRenouveler) {
+return;
+}
+
         setEnCours(true);
         router.post(
             `/cip/renouvellements/${aRenouveler.id}/renouveler`,
@@ -105,7 +108,10 @@ const CipRenouvellementsIndex = ({
     };
 
     const renvoyerAuChefAgence = (ligne: LigneStage) => {
-        if (!ligne.avenant_id) return;
+        if (!ligne.avenant_id) {
+return;
+}
+
         router.post(
             `/cip/renouvellements/avenant/${ligne.avenant_id}/renvoyer`,
             {},

@@ -75,7 +75,10 @@ const CipSituationsIndex = ({
     };
 
     const confirmerReactivation = () => {
-        if (!aReactiver) return;
+        if (!aReactiver) {
+return;
+}
+
         setEnCours(true);
         router.post(`/cip/situation-stagiaire/${aReactiver.id}/reactiver`, {}, {
             preserveScroll: true,

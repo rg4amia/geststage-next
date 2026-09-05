@@ -2,10 +2,10 @@
 
 namespace Tests\Feature\Console;
 
-use App\Models\Attendance\Pointage;
-use App\Models\Attendance\VersionPointage;
 use App\Enums\CorbeilleEnum;
 use App\Enums\VisaDesseEnum;
+use App\Models\Attendance\Pointage;
+use App\Models\Attendance\VersionPointage;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Contract\AvenantContrat;
 use App\Models\Contract\Contrat;
@@ -102,6 +102,9 @@ class MigrateLegacyDataCommandTest extends TestCase
             $table->unsignedBigInteger('user_id')->nullable();
             $table->string('mois')->nullable();
             $table->decimal('montant', 15, 2)->default(0);
+            // `paiement_models.status` porte la situation finale 0/1/2 du
+            // traitement AC (en attente / payé / non payé).
+            $table->unsignedTinyInteger('status')->default(0);
             $table->unsignedTinyInteger('status_dmg')->default(0);
             $table->unsignedTinyInteger('status_ar')->default(0);
             $table->unsignedTinyInteger('status_cb')->default(0);
@@ -146,6 +149,7 @@ class MigrateLegacyDataCommandTest extends TestCase
             $table->decimal('montant_op', 15, 2)->nullable();
             $table->decimal('montant', 15, 2)->nullable();
             $table->string('status_operation')->nullable();
+            $table->string('motif_status')->nullable();
             $table->unsignedBigInteger('borderau_id')->nullable();
             $table->timestamp('deleted_at')->nullable();
             $table->timestamps();
@@ -661,6 +665,7 @@ class MigrateLegacyDataCommandTest extends TestCase
             'status_dmg' => 1,
             'status_cb' => 1,
             'status_ac' => 'validated',
+            'status' => 1,
             'date_confirm_pay' => '2026-09-05 09:30:00',
             'created_at' => '2026-08-20 08:00:00',
             'updated_at' => '2026-09-05 09:30:00',
@@ -669,8 +674,61 @@ class MigrateLegacyDataCommandTest extends TestCase
         $this->artisan('migrate:legacy-data', ['--step' => 'paiements'])->assertExitCode(0);
 
         $paiement = Paiement::where('ancien_id', 9003)->firstOrFail();
-        $this->assertSame('VALIDE_AC', $paiement->statut);
+        $this->assertSame('PAYE', $paiement->statut);
         $this->assertSame('2026-09-05 09:30:00', $paiement->paye_le?->format('Y-m-d H:i:s'));
+    }
+
+    public function test_validated_legacy_payment_keeps_pending_and_non_paid_situations_distinct(): void
+    {
+        $agence = Agence::factory()->create(['ancien_id' => 16]);
+        $source = SourceFinancement::factory()->create(['ancien_id' => 10]);
+        Stage::factory()->create([
+            'ancien_id' => 506,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+            'date_debut' => '2026-08-10',
+        ]);
+        Stage::factory()->create([
+            'ancien_id' => 507,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+            'date_debut' => '2026-08-10',
+        ]);
+
+        DB::connection('legacy')->table('paiement_models')->insert([
+            [
+                'id' => 9004,
+                'stagiaire_id' => 506,
+                'mois' => '2026-08',
+                'montant' => 45000,
+                'status' => 0,
+                'status_dmg' => 1,
+                'status_cb' => 1,
+                'status_ac' => 'validated',
+                'date_confirm_pay' => null,
+                'created_at' => '2026-08-20 08:00:00',
+                'updated_at' => '2026-08-20 08:00:00',
+            ],
+            [
+                'id' => 9005,
+                'stagiaire_id' => 507,
+                'mois' => '2026-08',
+                'montant' => 45000,
+                'status' => 2,
+                'status_dmg' => 1,
+                'status_cb' => 1,
+                'status_ac' => 'validated',
+                'date_confirm_pay' => '2026-09-05 09:30:00',
+                'created_at' => '2026-08-20 08:00:00',
+                'updated_at' => '2026-09-05 09:30:00',
+            ],
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'paiements'])->assertExitCode(0);
+
+        $this->assertSame('VALIDE_AC', Paiement::where('ancien_id', 9004)->value('statut'));
+        $this->assertSame('NON_PAYE', Paiement::where('ancien_id', 9005)->value('statut'));
+        $this->assertNull(Paiement::where('ancien_id', 9005)->value('paye_le'));
     }
 
     public function test_presence_backfill_persists_the_missing_payment_idempotently(): void
@@ -872,6 +930,83 @@ class MigrateLegacyDataCommandTest extends TestCase
         $this->assertDatabaseHas('lignes_dossiers_groupes', [
             'dossier_groupe_id' => $groupe->id,
             'dossier_paiement_id' => $dossier->id,
+            'retire_le' => null,
+        ]);
+    }
+
+    public function test_it_preserves_rejected_operation_motif_on_active_payment_line(): void
+    {
+        $agence = Agence::factory()->create(['ancien_id' => 20]);
+        $source = SourceFinancement::factory()->create(['ancien_id' => 7]);
+        $periode = Periode::create([
+            'code' => '2026-08',
+            'date_debut' => '2026-08-01',
+            'date_fin' => '2026-08-31',
+        ]);
+        $stage = Stage::factory()->create([
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+        ]);
+        $droit = DroitPaiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'stage_id' => $stage->id,
+            'periode_id' => $periode->id,
+            'source_financement_id' => $source->id,
+            'nature' => 'PRESENCE',
+            'montant' => 45000,
+            'statut' => 'OUVERT',
+        ]);
+        $paiement = Paiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'droit_paiement_id' => $droit->id,
+            'montant' => 45000,
+            'statut' => 'EN_OP',
+        ]);
+        $dossier = DossierPaiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'ancien_id' => 901,
+            'periode_id' => $periode->id,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+            'numero' => 'DM082026-901',
+            'nature' => 'DM',
+            'statut' => 'TRANSMIS_CB',
+            'montant_total' => 45000,
+        ]);
+        $dossier->paiements()->attach($paiement->id, ['montant' => 45000, 'ajoute_le' => now()]);
+
+        DB::connection('legacy')->table('operations')->insert([
+            'id' => 91,
+            'numero_operation' => 'OP-91',
+            'mois' => '2026-08',
+            'type_financement_id' => 7,
+            'montant_op' => 45000,
+            'status_operation' => 'rejected',
+            'motif_status' => 'Compte bénéficiaire incorrect',
+            'created_at' => '2026-08-11 08:00:00',
+            'updated_at' => '2026-08-11 08:00:00',
+        ]);
+        DB::connection('legacy')->table('dossiers')->insert([
+            'id' => 901,
+            'identifiant' => 'DM082026-901',
+            'mois' => '2026-08',
+            'type_financement_id' => 7,
+            'agence_id' => 20,
+            'operation_id' => 91,
+            'created_at' => '2026-08-10 08:00:00',
+            'updated_at' => '2026-08-10 08:00:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'operations'])->assertExitCode(0);
+
+        $ordre = OrdrePaiement::where('ancien_id', 91)->firstOrFail();
+
+        $this->assertSame('REJETE_AC', $ordre->statut);
+        $this->assertSame('AJOURNE_DMG', $dossier->fresh()->statut);
+        $this->assertDatabaseHas('lignes_dossiers_paiement', [
+            'dossier_paiement_id' => $dossier->id,
+            'paiement_id' => $paiement->id,
+            'motif_retrait' => 'Compte bénéficiaire incorrect',
             'retire_le' => null,
         ]);
     }

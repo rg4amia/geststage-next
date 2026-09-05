@@ -54,6 +54,14 @@ return [
             'report' => false,
         ],
 
+        // Racine des pièces justificatives scannées de l'ancienne application (disque `piecejusticatif`),
+        // réutilisée pour prévisualiser les fichiers des stagiaires migrés dans les bordereaux AC.
+        'legacy_pieces' => [
+            'driver' => 'local',
+            'root' => env('LEGACY_PIECES_ROOT', ''),
+            'visibility' => 'public',
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

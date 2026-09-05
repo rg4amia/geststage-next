@@ -1,4 +1,5 @@
 <?php
+
 $content = file_get_contents('app/Http/Controllers/Dmg/PaiementDmgController.php');
 $search = <<<'EOD'
         $statut = $request->query('statut', 'TRANSMIS_CB');
@@ -32,4 +33,4 @@ $replace = <<<'EOD'
 EOD;
 $content = str_replace($search, $replace, $content);
 file_put_contents('app/Http/Controllers/Dmg/PaiementDmgController.php', $content);
-echo "Patched.";
+echo 'Patched.';

@@ -1,4 +1,5 @@
 <?php
+
 $file = 'app/Services/Migration/LegacyMapperService.php';
 $content = file_get_contents($file);
 $search = "public function mapPointageToCorbeille(?int \$legacyEtapeId, string \$statut, string \$nature): CorbeilleEnum\n    {";

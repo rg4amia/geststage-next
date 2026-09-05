@@ -1,4 +1,5 @@
 <?php
+
 $file = 'app/Domain/Payment/Services/DmgService.php';
 $content = file_get_contents($file);
 

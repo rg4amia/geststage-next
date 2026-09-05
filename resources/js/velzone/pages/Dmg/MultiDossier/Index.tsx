@@ -108,10 +108,22 @@ const MultiDossierIndex = (props: PageProps) => {
     const loadDossiers = useCallback(() => {
         setIsLoadingDossiers(true);
         const params = new URLSearchParams();
-        if (selectedMois) params.set('mois', selectedMois);
-        if (selectedAgence) params.set('agence_id', selectedAgence);
-        if (selectedSourceFinancement) params.set('source_financement_id', selectedSourceFinancement);
-        if (selectedTypeTraitement) params.set('typetraitement', selectedTypeTraitement);
+
+        if (selectedMois) {
+params.set('mois', selectedMois);
+}
+
+        if (selectedAgence) {
+params.set('agence_id', selectedAgence);
+}
+
+        if (selectedSourceFinancement) {
+params.set('source_financement_id', selectedSourceFinancement);
+}
+
+        if (selectedTypeTraitement) {
+params.set('typetraitement', selectedTypeTraitement);
+}
 
         fetch(`/dmg/multi-dossier/dossiers?${params.toString()}`, {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -136,6 +148,7 @@ const MultiDossierIndex = (props: PageProps) => {
         if (selectedDossierIds.length === 0) {
             setStagiaires([]);
             setStagiaireTotal(0);
+
             return;
         }
 
@@ -189,6 +202,7 @@ const MultiDossierIndex = (props: PageProps) => {
         } else {
             setSelectedDossierIds(dossiers.map((d) => d.id));
         }
+
         setStagiairePage(1);
     };
 
@@ -208,7 +222,10 @@ const MultiDossierIndex = (props: PageProps) => {
 
     /* ═══════════════ ACTIONS ═══════════════ */
     const handleValiderSelection = () => {
-        if (selectedDossierIds.length === 0 || !selectedMois) return;
+        if (selectedDossierIds.length === 0 || !selectedMois) {
+return;
+}
+
         setProcessing(true);
 
         fetch('/dmg/multi-dossier/validate', {
@@ -242,7 +259,10 @@ const MultiDossierIndex = (props: PageProps) => {
     };
 
     const handleAjournerDossier = () => {
-        if (selectedDossierIds.length === 0 || motifAjournerDossier.trim().length < 5) return;
+        if (selectedDossierIds.length === 0 || motifAjournerDossier.trim().length < 5) {
+return;
+}
+
         setProcessing(true);
 
         fetch('/dmg/multi-dossier/ajourner-dossier', {
@@ -273,7 +293,10 @@ const MultiDossierIndex = (props: PageProps) => {
     };
 
     const handleAjournerStagiaire = () => {
-        if (selectedStagiaireIds.length === 0 || motifAjournerStagiaire.trim().length < 5) return;
+        if (selectedStagiaireIds.length === 0 || motifAjournerStagiaire.trim().length < 5) {
+return;
+}
+
         setProcessing(true);
 
         fetch('/dmg/multi-dossier/ajourner-stagiaire', {
@@ -303,7 +326,10 @@ const MultiDossierIndex = (props: PageProps) => {
     };
 
     const handleGenererPdf = (type: 'paiement' | 'attestations') => {
-        if (selectedDossierIds.length === 0) return;
+        if (selectedDossierIds.length === 0) {
+return;
+}
+
         const url = type === 'paiement'
             ? '/dmg/multi-dossier/generer-pdf-paiement'
             : '/dmg/multi-dossier/generer-pdf-attestations';
@@ -323,7 +349,10 @@ const MultiDossierIndex = (props: PageProps) => {
             body: body.toString(),
         })
             .then((r) => {
-                if (!r.ok) throw new Error('Erreur');
+                if (!r.ok) {
+throw new Error('Erreur');
+}
+
                 return r.blob();
             })
             .then((blob) => {
@@ -517,6 +546,7 @@ const MultiDossierIndex = (props: PageProps) => {
                                     </small>
                                     {selectedDossierIds.map((id) => {
                                         const d = dossiers.find((x) => x.id === id);
+
                                         return d ? (
                                             <Badge key={id} color="primary" pill className="fs-12 py-2 px-2"
                                                 style={{ cursor: 'pointer' }}
@@ -544,7 +574,9 @@ const MultiDossierIndex = (props: PageProps) => {
                                 <Input type="text" bsSize="sm" placeholder="Rechercher..."
                                     style={{ maxWidth: 250 }}
                                     value={stagiaireSearch}
-                                    onChange={(e) => { setStagiaireSearch(e.target.value); setStagiairePage(1); }} />
+                                    onChange={(e) => {
+ setStagiaireSearch(e.target.value); setStagiairePage(1); 
+}} />
                             </CardHeader>
                             <CardBody className="p-0">
                                 {stagiaireLoading ? (
@@ -622,6 +654,7 @@ const MultiDossierIndex = (props: PageProps) => {
                                             </Button>
                                             {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
                                                 const page = i + 1;
+
                                                 return (
                                                     <Button key={page} size="sm"
                                                         color={page === stagiairePage ? 'primary' : 'light'}

@@ -77,7 +77,10 @@ interface PageProps {
 
 /* ─── Helpers ─── */
 const formatDateFr = (dateStr: string | null | undefined) => {
-    if (!dateStr || dateStr === '-') return '-';
+    if (!dateStr || dateStr === '-') {
+return '-';
+}
+
     try {
         return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
@@ -146,20 +149,33 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Données onglet courant ─── */
     const currentRows: RowData[] = useMemo(() => {
-        if (activeTab === '2') return data.demarrageOmis || [];
-        if (activeTab === '3') return data.retourAjournement || [];
+        if (activeTab === '2') {
+return data.demarrageOmis || [];
+}
+
+        if (activeTab === '3') {
+return data.retourAjournement || [];
+}
+
         return data.demarrage || [];
     }, [activeTab, data]);
 
     const currentTabType = useMemo(() => {
-        if (activeTab === '2') return 'demarrageOmis';
-        if (activeTab === '3') return 'retourAjournement';
+        if (activeTab === '2') {
+return 'demarrageOmis';
+}
+
+        if (activeTab === '3') {
+return 'retourAjournement';
+}
+
         return 'demarrage';
     }, [activeTab]);
 
     /* ─── Fetch Data ─── */
     const fetchValidations = useCallback(async (params: Record<string, string>) => {
         setIsLoading(true);
+
         try {
             const response = await axios.get('/chefagence/validations', {
                 params,
@@ -185,6 +201,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     const fetchMoisOmis = useCallback(async (commonFilters: Record<string, string>) => {
         setIsMoisLoading(true);
+
         try {
             const response = await axios.get('/chefagence/validations/mois-omis', {
                 params: commonFilters,
@@ -204,19 +221,25 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         (newFilters: typeof selectedFilters, tab?: string) => {
             const params: Record<string, string> = { tab: tab ?? activeTab };
             Object.entries(newFilters).forEach(([key, val]) => {
-                if (val) params[key] = val;
+                if (val) {
+params[key] = val;
+}
             });
             const url = new URL(window.location.href);
             url.search = '';
             Object.entries(params).forEach(([key, val]) => {
-                if (val) url.searchParams.set(key, val);
+                if (val) {
+url.searchParams.set(key, val);
+}
             });
             window.history.replaceState({}, '', url);
             fetchValidations(params);
 
             const commonParams: Record<string, string> = {};
             (['agence_id', 'entreprise_id', 'typesfinancement_id', 'typestage_id', 'type_structure_id'] as const).forEach((k) => {
-                if (newFilters[k]) commonParams[k] = newFilters[k];
+                if (newFilters[k]) {
+commonParams[k] = newFilters[k];
+}
             });
             fetchMoisOmis(commonParams);
         },
@@ -226,12 +249,16 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     useEffect(() => {
         const params: Record<string, string> = { tab: activeTab };
         Object.entries(selectedFilters).forEach(([key, val]) => {
-            if (val) params[key] = val;
+            if (val) {
+params[key] = val;
+}
         });
         fetchValidations(params);
         const commonParams: Record<string, string> = {};
         (['agence_id', 'entreprise_id', 'typesfinancement_id', 'typestage_id', 'type_structure_id'] as const).forEach((k) => {
-            if (selectedFilters[k]) commonParams[k] = selectedFilters[k];
+            if (selectedFilters[k]) {
+commonParams[k] = selectedFilters[k];
+}
         });
         fetchMoisOmis(commonParams);
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -275,14 +302,19 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     const reloadData = () => {
         const params: Record<string, string> = { tab: activeTab };
         Object.entries(selectedFilters).forEach(([key, val]) => {
-            if (val) params[key] = val;
+            if (val) {
+params[key] = val;
+}
         });
         fetchValidations(params);
     };
 
     /* ─── Validation individuelle ─── */
     const handleValiderIndividual = (instanceId: number) => {
-        if (isProcessing) return;
+        if (isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/chefagence/validations/valider-group`, {
             ids: [instanceId],
@@ -298,7 +330,10 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Validation groupée ─── */
     const openValiderModal = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+return;
+}
+
         setModalValiderOpen(true);
     };
 
@@ -320,40 +355,60 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Validation de toute la liste ─── */
     const handleValiderTout = () => {
-        if (activeTab === '2' && !selectedFilters.mois_debut) return;
+        if (activeTab === '2' && !selectedFilters.mois_debut) {
+return;
+}
+
         const allIds = currentRows.map((r) => r.id);
-        if (allIds.length === 0) return;
+
+        if (allIds.length === 0) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/chefagence/validations/valider-group', { ids: allIds.map(String), type: currentTabType }, {
             preserveScroll: true,
-            onSuccess: () => { setSelectedIds([]); reloadData(); },
+            onSuccess: () => {
+ setSelectedIds([]); reloadData(); 
+},
             onFinish: () => setIsProcessing(false),
         });
     };
 
     /* ─── Validation par filtre (financement + type stage) ─── */
     const handleValiderParFiltre = () => {
-        if (!hasFilterValidation || currentRows.length === 0 || isProcessing) return;
+        if (!hasFilterValidation || currentRows.length === 0 || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/chefagence/validations/valider-group', {
             ids: currentRows.map((r) => r.id).map(String),
             type: currentTabType,
         }, {
             preserveScroll: true,
-            onSuccess: () => { setSelectedIds([]); reloadData(); },
+            onSuccess: () => {
+ setSelectedIds([]); reloadData(); 
+},
             onFinish: () => setIsProcessing(false),
         });
     };
 
     /* ─── Ajournement ─── */
     const openAjournerModal = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+return;
+}
+
         setMotifAjournement('');
         setModalAjournerOpen(true);
     };
 
     const confirmAjourner = () => {
-        if (motifAjournement.trim().length < 5) return;
+        if (motifAjournement.trim().length < 5) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/chefagence/validations/ajourner-group', {
             ids: selectedIds.map(String),
@@ -372,11 +427,16 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Génération ADD ─── */
     const handleGenererAdd = (ids: number[]) => {
-        if (ids.length === 0) return;
+        if (ids.length === 0) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/chefagence/validations/generer-add-group', { ids: ids.map(String), type: currentTabType }, {
             preserveScroll: true,
-            onSuccess: () => { setSelectedIds([]); reloadData(); },
+            onSuccess: () => {
+ setSelectedIds([]); reloadData(); 
+},
             onFinish: () => setIsProcessing(false),
         });
     };
@@ -390,10 +450,20 @@ const ValidationDemarrageIndex = (props: PageProps) => {
     };
 
     const handleGenererContrat = () => {
-        if (!contratRowId) return;
+        if (!contratRowId) {
+return;
+}
+
         const params = new URLSearchParams();
-        if (contratFonction.trim()) params.append('fonction', contratFonction.trim());
-        if (contratMontant.trim()) params.append('montant', contratMontant.trim());
+
+        if (contratFonction.trim()) {
+params.append('fonction', contratFonction.trim());
+}
+
+        if (contratMontant.trim()) {
+params.append('montant', contratMontant.trim());
+}
+
         window.open(`/chefagence/validations/${contratRowId}/generer-contrat${params.toString() ? '?' + params.toString() : ''}`, '_blank');
         setModalContratOpen(false);
         setContratRowId(null);
@@ -401,13 +471,17 @@ const ValidationDemarrageIndex = (props: PageProps) => {
 
     /* ─── Génération Trésor Money ─── */
     const handleGenererTresorMoney = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+return;
+}
+
         setIsProcessing(true);
         const form = document.createElement('form');
         form.method = 'POST';
         form.action = '/chefagence/validations/generer-tresor-money-group';
         form.target = '_blank';
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
         if (csrfToken) {
             const csrfInput = document.createElement('input');
             csrfInput.type = 'hidden';
@@ -415,6 +489,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
             csrfInput.value = csrfToken;
             form.appendChild(csrfInput);
         }
+
         selectedIds.forEach((id) => {
             const input = document.createElement('input');
             input.type = 'hidden';
@@ -433,6 +508,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
         const withContrat = currentRows.filter((r) => r.contrat_label === 'Avec Contrat').length;
         const withIncidence = currentRows.filter((r) => r.incidence_financiere === 'Oui').length;
         const sansContrat = currentRows.length - withContrat;
+
         return { withContrat, withIncidence, sansContrat };
     }, [currentRows]);
 
@@ -485,6 +561,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                         'PEJEDEC': 'info', 'BUDGET AEJ': 'primary', 'PAPS-GOUV': 'success', 'C2D': 'warning',
                     };
                     const color = colorMap[val] || 'secondary';
+
                     return <Badge color={`${color}-subtle`} className={`text-${color}`}>{val}</Badge>;
                 },
             },
@@ -496,7 +573,11 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 header: 'Type Structure',
                 cell: (cell: any) => {
                     const val = cell.row.original.type_structure;
-                    if (!val || val === '-') return <span className="text-muted">-</span>;
+
+                    if (!val || val === '-') {
+return <span className="text-muted">-</span>;
+}
+
                     return <Badge color="success-subtle" className="text-success">{val}</Badge>;
                 },
             },
@@ -512,6 +593,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 header: 'Contrat',
                 cell: (cell: any) => {
                     const has = cell.row.original.contrat_label === 'Avec Contrat';
+
                     return (
                         <Badge color={has ? 'success-subtle' : 'warning-subtle'} className={`text-${has ? 'success' : 'warning'}`}>
                             <i className={`ri-${has ? 'check' : 'close'}-circle-line me-1`}></i>
@@ -524,6 +606,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 header: 'Incidence',
                 cell: (cell: any) => {
                     const has = cell.row.original.incidence_financiere === 'Oui';
+
                     return (
                         <Badge color={has ? 'danger-subtle' : 'secondary-subtle'} className={`text-${has ? 'danger' : 'secondary'}`}>
                             <i className={`ri-money-{has ? 'dollar' : 'none'}-circle-line me-1`}></i>
@@ -544,6 +627,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                 header: 'Actions',
                 cell: (cell: any) => {
                     const row = cell.row.original as RowData;
+
                     return (
                         <div className="d-flex gap-1">
                             <Button color="info" size="sm" outline onClick={() => setPreviewRow(row)} title="Voir le détail">
@@ -801,6 +885,7 @@ const ValidationDemarrageIndex = (props: PageProps) => {
                                                     <div className="d-flex flex-wrap gap-2">
                                                         {moisOmis.map((mois) => {
                                                             const isActive = selectedFilters.mois_debut === mois.value;
+
                                                             return (
                                                                 <button key={mois.value} type="button"
                                                                     onClick={() => handleFilterChange('mois_debut', isActive ? '' : mois.value)}

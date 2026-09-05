@@ -7,6 +7,7 @@ namespace App\Services;
 use App\Models\HistoriqueGeneration;
 use App\Models\Internship\Stage;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -98,10 +99,10 @@ class TresorMoneyService
                 'agence' => $stage->agence?->nom,
                 'type_financement' => $stage->sourceFinancement?->nom,
                 'montant_indemnite' => $stage->montant_indemnite,
-                'date_debut' => $stage->date_debut instanceof \Carbon\Carbon
+                'date_debut' => $stage->date_debut instanceof Carbon
                     ? $stage->date_debut->format('d/m/Y')
                     : $stage->date_debut,
-                'date_fin_prevue' => $stage->date_fin_prevue instanceof \Carbon\Carbon
+                'date_fin_prevue' => $stage->date_fin_prevue instanceof Carbon
                     ? $stage->date_fin_prevue->format('d/m/Y')
                     : $stage->date_fin_prevue,
             ];
@@ -115,7 +116,7 @@ class TresorMoneyService
     {
         $mois = $mois ?? now()->format('Y-m');
 
-        return 'TRESOR_MONEY_' . str_replace('-', '_', $mois) . '.pdf';
+        return 'TRESOR_MONEY_'.str_replace('-', '_', $mois).'.pdf';
     }
 
     /**

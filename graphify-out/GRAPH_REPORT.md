@@ -1,16 +1,16 @@
-# Graph Report - geststage-next  (2026-09-04)
+# Graph Report - geststage-next  (2026-09-05)
 
 ## Corpus Check
-- 1089 files · ~3,935,144 words
+- 1092 files · ~3,941,498 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 5414 nodes · 12898 edges · 446 communities (304 shown, 142 thin omitted)
-- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 233 edges (avg confidence: 0.82)
+- 5475 nodes · 13196 edges · 408 communities (285 shown, 123 thin omitted)
+- Extraction: 98% EXTRACTED · 2% INFERRED · 0% AMBIGUOUS · INFERRED: 236 edges (avg confidence: 0.82)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `aee8ed25`
+- Built from commit: `bed9010f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -22,35 +22,35 @@
 - Illuminate\Database\Eloquent\Relations\BelongsTo
 - data/index.ts
 - SourceFinancement
-- TresorMoneyService
+- DossierPaiement
 - fakebackend_helper.ts
 - DmgService
 - cn
-- PreviewCardHeader.tsx
+- Prism.tsx
 - MigrateLegacyDataCommand
-- Illuminate\Database\Eloquent\Factories\Factory
+- AvenantContrat
 - inertia-router.tsx
-- Pointage
+- Illuminate\Http\RedirectResponse
 - TableContainerReactTable.tsx
-- Paiement
+- Pointage
 - UiAnimation.tsx
 - button.tsx
-- OrdrePaiement
+- PaiementAcController
 - ecommerce/thunk.ts
 - Illuminate\Http\Request
-- app-header.tsx
+- dropdown-menu.tsx
 - AllTasks.tsx
-- slices/index.ts
+- .create
 - Illuminate\Support\Facades\Schema
 - EditStagiaire.tsx
-- .create
+- jobs/thunk.ts
 - Dmg/Paiements/Index.tsx
 - crm/thunk.ts
 - UiModals
 - Inscriptions/Create.tsx
 - types/index.ts
 - two-factor-setup-modal.tsx
-- useChartColors
+- Link
 - DashboardCrypto/index.tsx
 - ✅ Tests à Effectuer
 - DashboardAnalytics/index.tsx
@@ -63,8 +63,8 @@
 - layouts/reducer.ts
 - app.tsx
 - OnePage/index.tsx
-- dropdown-menu.tsx
-- Link
+- slices/index.ts
+- UiTypography.tsx
 - AllTransactions.tsx
 - Illuminate\Support\Facades\DB
 - .delete
@@ -72,22 +72,22 @@
 - TicketsData.tsx
 - UiCarousel.tsx
 - PaiementAcWorkflowTest
-- NFTMarketplace.ts
+- VerticalLayouts/index.tsx
 - AreaCharts.tsx
 - Chat/index.tsx
 - manage-two-factor.tsx
 - Job/index.tsx
 - Layouts/Header.tsx
-- Desse/Stagiaires/Index.tsx
+- PreviewCardHeader.tsx
 - DashboardCrm/index.tsx
 - Corbeille par corbeille
 - RightSidebar.tsx
 - UiButtons.tsx
 - MigrerReferentielsCommand
 - TableContainer.tsx
-- VerticalLayouts/index.tsx
-- UiTypography.tsx
-- Illuminate\Http\RedirectResponse
+- NFTMarketplace.ts
+- useChartColors
+- AttestationPresenceService
 - thunks.ts
 - ToDo/index.tsx
 - UiUtilities.tsx
@@ -98,12 +98,12 @@
 - AgentComptable/Paiements/Index.tsx
 - UiLists.tsx
 - ControlerCorbeillesMetierCommand
-- AttestationPresenceService
+- JournalAudit
 - DashboardJob/index.tsx
-- lib/utils.ts
-- RenouvellementService
+- app-header.tsx
+- Illuminate\Support\Collection
 - VisaDesseService
-- DesseDoublonService
+- Symfony\Component\HttpFoundation\Response
 - StagiaireDesseController
 - components.json
 - DashboardBlog/index.tsx
@@ -119,32 +119,32 @@
 - UiProgress.tsx
 - ColumnCharts.tsx
 - LineCharts.tsx
-- SituationStageService
+- DesseDoublonService
 - Manuel des règles de gestion — Corbeilles Pointage CIP / Chef d'Agence
 - include
-- EcommerceProducts/index.tsx
+- UiModals.tsx
 - UiAlerts.tsx
-- BuySell/index.tsx
-- AppServiceProvider.php
+- AafController
+- FortifyServiceProvider.php
 - optionalDependencies
 - projects/thunk.ts
 - UiBadges.tsx
-- LegacyMapperService
-- Illuminate\Foundation\Http\FormRequest
+- invoice/thunk.ts
+- Paiement
 - composer.json
 - UiDropdowns.tsx
-- cryptoPage.ts
+- Market.tsx
 - BasicAction/index.tsx
 - CheckBoxAndRadio.tsx
 - AafSectionPage.tsx
 - compilerOptions
-- AafController
-- CandidateList/ListView/index.tsx
-- Prism.tsx
+- CorbeilleParcoursQueryService
+- MainList.tsx
+- UiGrid.tsx
 - BarCharts/index.tsx
-- ComparerCorbeillesCommand
-- web.php
-- AllOrders.tsx
+- Reporting/Index.tsx
+- SituationStageService
+- widgets.ts
 - LAYOUT_THEME
 - FirebaseAuthBackend
 - BasicElements.tsx
@@ -152,38 +152,38 @@
 - Masks
 - ProjectOverview/Section.tsx
 - ProfileValidationRules.php
-- PasswordUpdateRequest
-- bootstrap/app.php
+- UpdateEntrepriseRequest
+- Illuminate\Foundation\Http\FormRequest
 - require
 - require-dev
 - Illuminate\Database\Seeder
 - auth.ts
 - JobList/Overview/index.tsx
 - FormAdvanced.tsx
-- api_helper.ts
+- APIClient
 - UiImages.tsx
 - UiLinks.tsx
 - PieCharts/index.tsx
 - RadialbarCharts/index.tsx
 - EcommerceAction/index.tsx
 - TicketsDetails/index.tsx
-- ReportingDashboardService
+- .computeOverview
 - scripts
-- UiRibbons.tsx
+- ReactTable.tsx
 - TimelineCharts/index.tsx
 - ChartsJs/index.tsx
-- ReactTable.tsx
-- widgets.ts
+- UiRibbons.tsx
+- .scenarioRejetDmg
 - laravel
 - ci:check
 - setup
 - manifest.json
-- UiRatings.tsx
+- PersonalInfo.tsx
 - HeatmapCharts.tsx
 - TaskDetails/index.tsx
 - InitialSchemaTest
-- StoreOffreEmploiRequest
-- ContratPaeService
+- appsJobs.ts
+- calender.ts
 - config
 - psr-4
 - Plan d'Amélioration des Performances (Optimisation des Requêtes)
@@ -193,71 +193,71 @@
 - MultiDossier/Index.tsx
 - EcommerceOrderDetail.tsx
 - LegacyMigrationRecorderTest
-- VisaDesseEnum.php
-- FortifyServiceProvider
+- LEFT_SIDEBAR_SIZE_TYPES
+- PolarCharts/index.tsx
 - filters.tsx
 - LEFT_SIDEBAR_IMAGE_TYPES
 - ChartsDynamicColor.tsx
-- RadarCharts/index.tsx
+- TaskList/index.tsx
 - ScatterCharts/index.tsx
 - KYCVerification
-- appsJobs.ts
-- PasswordValidationRules.php
-- ControlerCorbeillesMetierCommand.php
-- MultiDossierController
+- UiGeneral.tsx
+- StoreOffreEmploiRequest
+- FortifyServiceProvider
+- RadarCharts/index.tsx
 - logging.php
 - 2026_08_15_000500_create_attendance_and_payment_tables.php
 - Migration Gestage legacy vers Gestage Next
 - placeholder-pattern.tsx
 - appsCrm.ts
 - LAYOUT_TYPES
-- LEFT_SIDEBAR_SIZE_TYPES
+- PasswordValidationRules.php
 - BubbleChart/index.tsx
+- DashboardNFT/index.tsx
+- Cb/Paiements/Index.tsx
+- GoogleMaps.tsx
 - FunnelCharts/Index.tsx
-- PolarCharts/index.tsx
-- calender.ts
-- TaskList/index.tsx
-- UiEmbedVideo.tsx
+- UiContent.tsx
 - budget-etat-pae.blade.php
 - budget-etat-stageecole.blade.php
 - contrat/c2d.blade.php
 - paps-gouv-pae.blade.php
 - paps-gouv-stageecole.blade.php
 - contrat/pejedec.blade.php
-- UiGeneral.tsx
-- Reporting/Index.tsx
-- 2026_08_15_000200_create_reference_tables.php
+- CrmDeals/index.tsx
+- post-create-project-cmd
+- ajv
 - 2026_08_15_000600_create_workflow_and_adjournment_tables.php
-- package.json
+- bootstrap
 - Dossier des Assets TrésorMoney
 - replace_router.cjs
 - replace_router.js
 - replace_router_reverse.cjs
-- UiNotifications.tsx
+- feather-icons-react
 - partials_budgetetat/contract-parties.blade.php
 - partials_budgetetat/contract-parties-ecole.blade.php
 - partials_c2d/contract-parties.blade.php
 - partials_papsgouv/contract-parties.blade.php
 - partials_papsgouv/contract-parties-ecole.blade.php
 - partials_pejedec/contract-parties.blade.php
-- LandingNFT.ts
-- UiOffcanvas.tsx
+- @fullcalendar/core
+- @laravel/passkeys
+- @radix-ui/react-collapsible
+- @radix-ui/react-slot
+- react-colorful
 - eslint.config.js
 - console.php
 - types
 - tsconfig.json
 - icon.tsx
 - AGENTS.md
-- test
-- ajv-keywords
+- simplebar-react
+- typescript
 - aos
-- apexcharts
-- axios
+- @vtaits/react-color-picker
 - axios-mock-adapter
-- EcommerceCart.tsx
 - chart.js
 - @ckeditor/ckeditor5-build-classic
-- @ckeditor/ckeditor5-react
 - class-variance-authority
 - cleave.js
 - clsx
@@ -265,21 +265,15 @@
 - echarts
 - echarts-for-react
 - emoji-picker-react
-- eslint-import-resolver-typescript
-- eslint-plugin-react
 - filepond
 - filepond-plugin-image-exif-orientation
-- filepond-plugin-image-preview
 - firebase
 - formik
 - @fullcalendar/bootstrap
 - @fullcalendar/daygrid
 - @fullcalendar/list
 - @fullcalendar/multimonth
-- @fullcalendar/react
-- globals
 - gridjs
-- gridjs-react
 - @hello-pangea/dnd
 - i18next
 - i18next-browser-languagedetector
@@ -291,10 +285,8 @@
 - nouislider-react
 - prismjs
 - quill
-- @radix-ui/react-avatar
 - @radix-ui/react-checkbox
 - @radix-ui/react-dialog
-- @radix-ui/react-dropdown-menu
 - @radix-ui/react-label
 - @radix-ui/react-navigation-menu
 - @radix-ui/react-select
@@ -317,12 +309,8 @@
 - @react-google-maps/api
 - react-i18next
 - react-masonry-css
-- react-perfect-scrollbar
 - react-quilljs
-- react-rating
 - react-redux
-- react-responsive-carousel
-- react-router-dom
 - react-scrollspy
 - react-select
 - react-toastify
@@ -332,8 +320,6 @@
 - reselect
 - sass
 - sonner
-- @south-paw/react-vector-maps
-- swiper
 - tailwind-merge
 - tailwindcss
 - @tailwindcss/vite
@@ -345,46 +331,40 @@
 - @types/react-csv
 - @types/react-dom
 - @types/react-flatpickr
-- vite
 - @vitejs/plugin-react
 - yet-another-react-lightbox
 - yup
-- prettier
-- prettier-plugin-tailwindcss
-- EcommerceCheckout.tsx
 - vendor.d.ts
-- eslint-plugin-import
-- eslint-plugin-react-hooks
 - @fullcalendar/interaction
 
 ## God Nodes (most connected - your core abstractions)
-1. `User` - 241 edges
+1. `User` - 249 edges
 2. `Link` - 205 edges
 3. `BreadCrumb()` - 179 edges
-4. `Stage` - 166 edges
+4. `Stage` - 172 edges
 5. `getChartColorsArray()` - 162 edges
 6. `cn()` - 128 edges
-7. `InstanceParcours` - 123 edges
-8. `SourceFinancement` - 93 edges
-9. `Pointage` - 89 edges
-10. `Agence` - 88 edges
+7. `InstanceParcours` - 124 edges
+8. `Paiement` - 107 edges
+9. `SourceFinancement` - 99 edges
+10. `Agence` - 94 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `RenouvellementTest` --references--> `TypeStage`  [EXTRACTED]
+  tests/Feature/Cip/RenouvellementTest.php → app/Models/Reference/TypeStage.php
+- `PaiementAcWorkflowTest` --references--> `User`  [EXTRACTED]
+  tests/Feature/AgentCompt/PaiementAcWorkflowTest.php → app/Models/User.php
+- `PaiementCbWorkflowTest` --references--> `User`  [EXTRACTED]
+  tests/Feature/Cb/PaiementCbWorkflowTest.php → app/Models/User.php
 - `InscriptionStagiaireServiceTest` --references--> `InscriptionStagiaireService`  [EXTRACTED]
   tests/Feature/Domain/Registration/InscriptionStagiaireServiceTest.php → app/Domain/Registration/Services/InscriptionStagiaireService.php
 - `WorkflowTransitionServiceTest` --references--> `WorkflowTransitionService`  [EXTRACTED]
   tests/Feature/Domain/Workflow/WorkflowTransitionServiceTest.php → app/Domain/Workflow/Services/WorkflowTransitionService.php
-- `WorkflowTransitionTest` --references--> `WorkflowTransitionService`  [EXTRACTED]
-  tests/Feature/Domain/Workflow/WorkflowTransitionTest.php → app/Domain/Workflow/Services/WorkflowTransitionService.php
-- `InscriptionControllerTest` --references--> `OffreEmploi`  [EXTRACTED]
-  tests/Feature/Registration/InscriptionControllerTest.php → app/Models/Company/OffreEmploi.php
-- `RenouvellementTest` --references--> `TypeStage`  [EXTRACTED]
-  tests/Feature/Cip/RenouvellementTest.php → app/Models/Reference/TypeStage.php
 
 ## Import Cycles
 - None detected.
 
-## Communities (446 total, 142 thin omitted)
+## Communities (408 total, 123 thin omitted)
 
 ### Community 0 - "url_helper.ts"
 Cohesion: 0.01
@@ -392,67 +372,71 @@ Nodes (157): ADD_CANDIDATE_GRID, ADD_CATEGORY_LIST, ADD_MESSAGE, ADD_NEW_APPLICA
 
 ### Community 1 - "User"
 Cohesion: 0.02
-Nodes (58): AvenantContrat, User, EntreprisePolicy, InstanceParcoursPolicy, UserPolicy, RolePermissionSeeder, Illuminate\Auth\Events\Verified, Illuminate\Auth\Notifications\ResetPassword (+50 more)
+Nodes (25): OffreEmploi, User, EntreprisePolicy, InstanceParcoursPolicy, OffreEmploiPolicy, UserPolicy, Illuminate\Contracts\Http\Kernel, Illuminate\Database\Eloquent\Attributes\Fillable (+17 more)
 
 ### Community 2 - "Stage"
-Cohesion: 0.06
-Nodes (18): CorbeilleEnum, label(), labels(), MesStagiairesCipController, ValidationController, VersionPointage, Stage, DefinitionParcours (+10 more)
+Cohesion: 0.04
+Nodes (24): CorbeilleEnum, InscriptionStagiaireService, ValidationChefAgenceService, CorbeilleEnum, WorkflowTransitionService, label(), labels(), IndexChefAgenceController (+16 more)
 
 ### Community 3 - "BreadCrumb.tsx"
 Cohesion: 0.02
-Nodes (34): jobGrid, jobList, NFTRanking, topCollection, walletConnectData, gallery, BreadCrumb(), BreadCrumbProps (+26 more)
+Nodes (19): BreadCrumb(), BreadCrumbProps, Pagination(), CorbeillesProps, HistoriqueItem, Statistiques, Props, Props (+11 more)
 
 ### Community 4 - "Illuminate\Database\Eloquent\Relations\BelongsTo"
-Cohesion: 0.03
-Nodes (35): RejetDmgService, audit(), Ajournement, Beneficiaire, OffreEmploi, cached(), Contrat, Document (+27 more)
+Cohesion: 0.04
+Nodes (29): audit(), Ajournement, Beneficiaire, Contrat, Document, VersionDocument, OffreEmploi, Commune (+21 more)
 
 ### Community 5 - "data/index.ts"
-Cohesion: 0.05
-Nodes (81): allaudiencesMetricsData, allData, currentyearaudiencesCountryData, currentYearDeviceData, halfyearaudiencesMetricsData, halfyearData, lastMonthaudiencesCountryData, lastMonthDeviceData (+73 more)
+Cohesion: 0.04
+Nodes (87): allaudiencesMetricsData, allData, currentyearaudiencesCountryData, currentYearDeviceData, halfyearaudiencesMetricsData, halfyearData, lastMonthaudiencesCountryData, lastMonthDeviceData (+79 more)
 
 ### Community 6 - "SourceFinancement"
-Cohesion: 0.06
-Nodes (32): CorbeilleParcoursQueryService, EntrepriseController, OffreEmploiController, Controller, StagiaireDaicgController, OperationDmgController, RejetDmgController, ValidationDmgController (+24 more)
+Cohesion: 0.05
+Nodes (36): SituationStagiaireCipController, EntrepriseController, OffreEmploiController, Controller, SecurityController, Entreprise, Agence, SourceFinancement (+28 more)
+
+### Community 7 - "DossierPaiement"
+Cohesion: 0.05
+Nodes (15): AgentComptableService, CbPaiementService, BordereauPaiement, DecisionPaiement, self, DossierPaiement, LigneDossierPaiement, OrdrePaiement (+7 more)
 
 ### Community 8 - "fakebackend_helper.ts"
 Cohesion: 0.06
-Nodes (75): APIClient, api, getAllAudiencesMetricsData(), getAllData(), getAllMarketData(), getAllMarketplaceData(), getAllProjectData(), getAllProjectStatusData() (+67 more)
+Nodes (74): api, getAllAudiencesMetricsData(), getAllData(), getAllMarketData(), getAllMarketplaceData(), getAllProjectData(), getAllProjectStatusData(), getAllRevenueData() (+66 more)
 
 ### Community 9 - "DmgService"
-Cohesion: 0.12
-Nodes (6): DmgService, CorbeilleEnum, AttentePaiementDmgController, ExportPaiementDmgController, PaiementDmgController, Illuminate\Database\Eloquent\Builder
+Cohesion: 0.14
+Nodes (5): DmgService, CorbeilleEnum, AttentePaiementDmgController, ExportPaiementDmgController, Illuminate\Database\Eloquent\Builder
 
 ### Community 10 - "cn"
-Cohesion: 0.08
-Nodes (46): AppSidebar(), footerNavItems, mainNavItems, NavFooter(), NavMain(), NavUser(), SelectContent(), SelectItem() (+38 more)
+Cohesion: 0.06
+Nodes (61): footerNavItems, mainNavItems, NavFooter(), NavMain(), NavUser(), Badge(), badgeVariants, Checkbox() (+53 more)
 
-### Community 11 - "PreviewCardHeader.tsx"
-Cohesion: 0.19
-Nodes (10): PreviewCardHeader(), AlignSelfExample(), HorizontalAlignExample(), VerticalCenterExample(), VerticalEndExample(), VerticalStartExample(), BrowserDefaults(), CustomStyles() (+2 more)
+### Community 11 - "Prism.tsx"
+Cohesion: 0.13
+Nodes (15): PrismCode(), PrismCodeProps, CssHighlightExample(), HtmlHighlightExample(), JavaScriptExample(), BasicRaterExample(), CustomMsgExample(), OnHoverExample() (+7 more)
 
 ### Community 12 - "MigrateLegacyDataCommand"
-Cohesion: 0.10
+Cohesion: 0.09
 Nodes (4): MigrateLegacyDataCommand, AuditContext, Closure, Generator
 
-### Community 13 - "Illuminate\Database\Eloquent\Factories\Factory"
-Cohesion: 0.08
-Nodes (15): bootAuditable(), bootHasPublicUuid(), bootCachesReferenceData(), cachedOptions(), cachedPluck(), forgetCached(), BeneficiaireFactory, ContratFactory (+7 more)
+### Community 13 - "AvenantContrat"
+Cohesion: 0.07
+Nodes (13): bootAuditable(), RenouvellementService, bootHasPublicUuid(), RenouvellementCipController, bootCachesReferenceData(), cached(), cachedOptions(), cachedPluck() (+5 more)
 
 ### Community 14 - "inertia-router.tsx"
 Cohesion: 0.06
 Nodes (21): withRouter(), ComponentWithRouterProp(), Destination, destinationToHref(), LinkProps, Navigate(), NavLink, NavLinkProps (+13 more)
 
-### Community 15 - "Pointage"
-Cohesion: 0.05
-Nodes (8): PointageChefAgenceService, InscriptionStagiaireService, CorbeilleEnum, WorkflowTransitionService, InscriptionController, DecisionPointage, Pointage, Illuminate\Database\Eloquent\Relations\HasOne
+### Community 15 - "Illuminate\Http\RedirectResponse"
+Cohesion: 0.09
+Nodes (5): MultiDossierPdfService, DossierPaiementDmgController, OperationPaiementDmgController, DossierGroupe, Illuminate\Http\RedirectResponse
 
 ### Community 16 - "TableContainerReactTable.tsx"
-Cohesion: 0.04
-Nodes (33): TableContainer(), TableContainerProps, formatDateFr(), PageProps, PointagesIndex(), statusBadge(), Counts, MoisOption (+25 more)
-
-### Community 17 - "Paiement"
 Cohesion: 0.03
-Nodes (23): PointageService, PejedecAafService, ValidationChefAgenceService, PointageCipController, JournalAudit, App\Models\Auth\User, DecisionPaiement, self (+15 more)
+Nodes (53): buildPageRange(), normalizePagination(), PageItem, PaginationLink, PaginationMeta, ServerPagination(), ServerPaginationProps, TableContainer() (+45 more)
+
+### Community 17 - "Pointage"
+Cohesion: 0.07
+Nodes (6): PointageChefAgenceService, RejetDmgService, PointageCipController, DecisionPointage, Pointage, Illuminate\Database\Eloquent\Relations\HasOne
 
 ### Community 18 - "UiAnimation.tsx"
 Cohesion: 0.12
@@ -462,53 +446,45 @@ Nodes (28): DurationExample(), EaseInBackExample(), EaseOutCubicExample(), Easin
 Cohesion: 0.12
 Nodes (22): DeleteUser(), Heading(), InputError(), ManagePasskeys(), Props, PasskeyRegistration(), Props, PasskeyVerify() (+14 more)
 
-### Community 20 - "OrdrePaiement"
-Cohesion: 0.09
-Nodes (4): AgentComptableService, PaiementAcController, BordereauPaiement, OrdrePaiement
-
 ### Community 21 - "ecommerce/thunk.ts"
-Cohesion: 0.11
-Nodes (27): ExportCSVModal(), ExportCSVModalProps, addNewCustomer(), addNewOrder(), addNewProduct(), deleteCustomer(), deleteOrder(), deleteProducts() (+19 more)
+Cohesion: 0.08
+Nodes (39): ExportCSVModal(), ExportCSVModalProps, TableContainer(), addNewCustomer(), addNewOrder(), addNewProduct(), deleteCustomer(), deleteOrder() (+31 more)
 
 ### Community 22 - "Illuminate\Http\Request"
-Cohesion: 0.09
-Nodes (8): PaiementCbController, HistoriqueGenerationController, PointageChefAgenceController, AjournementPaiementDmgController, HistoriqueGeneration, Illuminate\Contracts\Database\Query\Builder, Illuminate\Http\JsonResponse, Illuminate\Http\Request
+Cohesion: 0.06
+Nodes (10): PaiementCbController, HistoriqueGenerationController, PointageChefAgenceController, MesStagiairesCipController, AjournementPaiementDmgController, HistoriqueGeneration, Illuminate\Contracts\Database\Query\Builder, Illuminate\Database\Query\JoinClause (+2 more)
 
-### Community 23 - "app-header.tsx"
-Cohesion: 0.08
-Nodes (28): mainNavItems, Props, rightNavItems, AppLogo(), AppLogoIcon(), Avatar(), AvatarFallback(), AvatarImage() (+20 more)
+### Community 23 - "dropdown-menu.tsx"
+Cohesion: 0.11
+Nodes (21): DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuGroup(), DropdownMenuItem(), DropdownMenuLabel(), DropdownMenuRadioItem(), DropdownMenuSeparator() (+13 more)
 
 ### Community 24 - "AllTasks.tsx"
 Cohesion: 0.10
 Nodes (28): addNewTask(), addNewTasks(), deleteTask(), deleteTasks(), getTaskList(), getTasks(), CardData, KanbanColumn (+20 more)
 
-### Community 25 - "slices/index.ts"
-Cohesion: 0.05
-Nodes (37): getApplicationsStatistic(), postFakeForgetPwd(), postFakeLogin(), postFakeProfile(), postFakeRegister(), postJwtForgetPwd(), postJwtLogin(), postJwtProfile() (+29 more)
+### Community 25 - ".create"
+Cohesion: 0.09
+Nodes (25): addCandidateGrid(), addcategoryList(), addJobCandidate(), addNewEvent(), addNewFile(), addNewFolder(), addNewJobApplicationList(), addNewProject() (+17 more)
 
 ### Community 26 - "Illuminate\Support\Facades\Schema"
-Cohesion: 0.08
-Nodes (3): Illuminate\Database\Migrations\Migration, Illuminate\Database\Schema\Blueprint, Illuminate\Support\Facades\Schema
+Cohesion: 0.06
+Nodes (5): createCodeReference(), up(), Illuminate\Database\Migrations\Migration, Illuminate\Database\Schema\Blueprint, Illuminate\Support\Facades\Schema
 
 ### Community 27 - "EditStagiaire.tsx"
 Cohesion: 0.09
 Nodes (32): Action, addDays(), addMonths(), ALLOWED_COHORT_DAYS, ALLOWED_DOC_EXTENSIONS, ALLOWED_IMAGE_EXTENSIONS, calculAge(), calculateDateFin() (+24 more)
 
-### Community 28 - ".create"
-Cohesion: 0.07
-Nodes (40): AddEditJobCandidateList(), ImgData, modal, addCandidateGrid(), addcategoryList(), addJobCandidate(), addNewEvent(), addNewFile() (+32 more)
+### Community 28 - "jobs/thunk.ts"
+Cohesion: 0.09
+Nodes (30): AddEditJobCandidateList(), ImgData, modal, getCandidateGrid(), getcategoryList(), getJobApplicationList(), getJobCandidateList(), AppId() (+22 more)
 
 ### Community 29 - "Dmg/Paiements/Index.tsx"
 Cohesion: 0.11
 Nodes (31): AjournesTab(), AjournesTabProps, FILTRES_VIDES, FiltresAjournes, BordereauxTab(), BordereauxTabProps, OrdresPaiementTab(), OrdresPaiementTabProps (+23 more)
 
 ### Community 30 - "crm/thunk.ts"
-Cohesion: 0.11
-Nodes (31): Loader(), addNewCompanies(), addNewContact(), addNewLead(), deleteCompanies(), deleteContact(), deleteLead(), getCompanies() (+23 more)
-
-### Community 31 - "UiModals"
-Cohesion: 0.05
-Nodes (13): AnimationModalExample(), CenteredModalExample(), DefaultModalExample(), FullscreenResponsiveExample(), GridsModalExample(), OptionalModalExample(), PositionModalExample(), ScrollableModalExample() (+5 more)
+Cohesion: 0.12
+Nodes (29): Loader(), addNewCompanies(), addNewContact(), addNewLead(), deleteCompanies(), deleteContact(), deleteLead(), getCompanies() (+21 more)
 
 ### Community 32 - "Inscriptions/Create.tsx"
 Cohesion: 0.09
@@ -516,19 +492,19 @@ Nodes (29): addDays(), addMonths(), ALLOWED_COHORT_DAYS, ALLOWED_DOC_EXTENSIONS,
 
 ### Community 33 - "types/index.ts"
 Cohesion: 0.11
-Nodes (22): AppContent(), Props, AppShell(), Props, AppSidebarHeader(), Breadcrumbs(), Breadcrumb(), BreadcrumbEllipsis() (+14 more)
+Nodes (22): AppContent(), Props, AppShell(), Props, AppSidebar(), AppSidebarHeader(), Breadcrumbs(), Breadcrumb() (+14 more)
 
 ### Community 34 - "two-factor-setup-modal.tsx"
 Cohesion: 0.10
 Nodes (23): PasskeyItem(), Props, Props, TwoFactorSetupStep(), Dialog(), DialogClose(), DialogContent(), DialogDescription() (+15 more)
 
-### Community 35 - "useChartColors"
-Cohesion: 0.14
-Nodes (16): cryptoSlider, getChartColorsArray(), useChartColors(), BalanceOverviewCharts(), DealTypeCharts(), SalesForecastCharts(), MarkerCharts(), PortfolioCharts() (+8 more)
+### Community 35 - "Link"
+Cohesion: 0.05
+Nodes (20): featuresData, productData, Link, AuthSlider(), Widgets(), EcommerceCheckout(), SellerChats(), FileUpload() (+12 more)
 
 ### Community 36 - "DashboardCrypto/index.tsx"
-Cohesion: 0.14
-Nodes (11): currencies, cyptoWidgets, newsFeed, topPerformers, MyCurrencies(), NewsFeed(), RecentActivity(), TopPerformers() (+3 more)
+Cohesion: 0.09
+Nodes (21): cryptoSlider, currencies, cyptoWidgets, newsFeed, topPerformers, MarkerCharts(), PortfolioCharts(), WidgetsCharts() (+13 more)
 
 ### Community 37 - "✅ Tests à Effectuer"
 Cohesion: 0.06
@@ -539,8 +515,8 @@ Cohesion: 0.10
 Nodes (20): topPages, AudiencesMetrics(), AudiencesSessions(), AudiencesCharts(), AudiencesSessionsCharts(), CountriesCharts(), UsersByDeviceCharts(), LiveUsers() (+12 more)
 
 ### Community 39 - "dashboardNFT.ts"
-Cohesion: 0.10
-Nodes (22): allMarketplaceData, featuredNFTData, halfyearMarketplaceData, monthMarketplaceData, popularCreatorsData, popularityData, recentNFTsData, topartWork (+14 more)
+Cohesion: 0.17
+Nodes (13): allMarketplaceData, featuredNFTData, halfyearMarketplaceData, monthMarketplaceData, popularCreatorsData, recentNFTsData, topartWork, topCollectionData (+5 more)
 
 ### Community 40 - "MyWallet/index.tsx"
 Cohesion: 0.18
@@ -552,43 +528,51 @@ Nodes (20): activeProjects, dashboardChat, projectsWidgets, projectTasks, teamMe
 
 ### Community 42 - "Widgets/Index.tsx"
 Cohesion: 0.14
-Nodes (13): widgetsActivities, widgetsAudiences, widgetsTasks, ChartMapWidgets(), CreditCard(), EcommerceWidgets(), TileBoxs(), UpcomingActivity() (+5 more)
+Nodes (13): otherWidgets2, widgetsActivities, widgetsTasks, ChartMapWidgets(), CreditCard(), EcommerceWidgets(), OtherWidgets(), UpcomingActivity() (+5 more)
+
+### Community 43 - "Carbon"
+Cohesion: 0.10
+Nodes (3): ContratPaeService, Carbon, LegacyMapperServiceTest
 
 ### Community 44 - "getChartColorsArray"
-Cohesion: 0.15
-Nodes (26): getChartColorsArray(), AreaChart(), BarLabelChart(), BasicBarChart(), BasicScatterChart(), CandleStickChart(), DoughnutChart(), FunnelChart() (+18 more)
+Cohesion: 0.14
+Nodes (27): getChartColorsArray(), AreaChart(), BarLabelChart(), BasicBarChart(), BasicScatterChart(), CandleStickChart(), DoughnutChart(), FunnelChart() (+19 more)
 
 ### Community 45 - "layouts/reducer.ts"
 Cohesion: 0.08
 Nodes (29): LAYOUT_MODE_TYPES, DARKMODE, LIGHTMODE, LAYOUT_POSITION_TYPES, FIXED, SCROLLABLE, LAYOUT_THEME_COLOR, BLUE (+21 more)
 
 ### Community 46 - "app.tsx"
-Cohesion: 0.13
-Nodes (23): pages, store, AppearanceToggleTab(), Toaster(), Appearance, applyTheme(), getStoredAppearance(), handleSystemThemeChange() (+15 more)
+Cohesion: 0.12
+Nodes (24): pages, store, AppearanceToggleTab(), Toaster(), Appearance, applyTheme(), getStoredAppearance(), handleSystemThemeChange() (+16 more)
 
 ### Community 47 - "OnePage/index.tsx"
 Cohesion: 0.10
 Nodes (14): Client(), Contact(), Counter(), Cta(), Faqs(), Features(), Footer(), Home() (+6 more)
 
-### Community 48 - "dropdown-menu.tsx"
-Cohesion: 0.11
-Nodes (20): DropdownMenu(), DropdownMenuCheckboxItem(), DropdownMenuContent(), DropdownMenuGroup(), DropdownMenuItem(), DropdownMenuLabel(), DropdownMenuRadioItem(), DropdownMenuSeparator() (+12 more)
+### Community 48 - "slices/index.ts"
+Cohesion: 0.08
+Nodes (17): getApplicationsStatistic(), forgotPasswordSlice, initialState, initialState, loginSlice, initialState, ProfileSlice, initialState (+9 more)
 
-### Community 49 - "Link"
-Cohesion: 0.05
-Nodes (17): connectData, productData, Link, AuthSlider(), leadDiscover(), Widgets(), SellerChats(), Connect() (+9 more)
+### Community 49 - "UiTypography.tsx"
+Cohesion: 0.17
+Nodes (19): BlockquoteBorderColorExample(), BlockquoteColorExample(), BlockquotesExample(), ClearfixExample(), DescriptionListExample(), DisplayHeadingExample(), FontSizeExample(), FontWeightExample() (+11 more)
 
 ### Community 50 - "AllTransactions.tsx"
-Cohesion: 0.24
-Nodes (10): AllTransactions(), DetailsCol(), FromCol(), Status(), ToCol(), TransactionID(), TypeCol(), Cryptoslice (+2 more)
+Cohesion: 0.13
+Nodes (19): AllOrders(), CryproOrder(), AvgPrice(), OrderValue(), Price(), Quantity(), Status(), Type() (+11 more)
+
+### Community 51 - "Illuminate\Support\Facades\DB"
+Cohesion: 0.07
+Nodes (3): App\Models\Stage\Stage, Illuminate\Contracts\Console\Kernel, Illuminate\Support\Facades\DB
 
 ### Community 52 - ".delete"
 Cohesion: 0.11
 Nodes (24): deleteEvent(), deleteFile(), deleteFolder(), deleteJobApplicationList(), deleteJobCandidate(), deleteMail(), deleteTeamData(), deleteTodo() (+16 more)
 
 ### Community 53 - "dependencies"
-Cohesion: 0.07
-Nodes (27): ajv, bootstrap, feather-icons-react, @fullcalendar/core, @inertiajs/vite, @laravel/passkeys, dependencies, ajv (+19 more)
+Cohesion: 0.05
+Nodes (39): ajv-keywords, apexcharts, axios, @ckeditor/ckeditor5-react, filepond-plugin-image-preview, @fullcalendar/react, globals, gridjs-react (+31 more)
 
 ### Community 54 - "TicketsData.tsx"
 Cohesion: 0.13
@@ -598,37 +582,37 @@ Nodes (21): addNewTicket(), deleteTicket(), getTicketsList(), updateTicket(), As
 Cohesion: 0.12
 Nodes (16): CrossfadeAnimation(), DisableTouch(), IndividualInterval(), Slide(), SlideDark(), Slidewithcaption(), Slidewithcontrol(), Slidewithindicator() (+8 more)
 
-### Community 57 - "NFTMarketplace.ts"
-Cohesion: 0.16
-Nodes (10): aution, creatorsData, creatorsListData, expolreNow, marketPlacewidget, nftArtworkData, popularCreatorsNFT, topCreator (+2 more)
+### Community 57 - "VerticalLayouts/index.tsx"
+Cohesion: 0.12
+Nodes (18): SearchOption(), HorizontalLayout(), BusinessMenuSection, businessMenuSections, MenuHeaderItem, MenuItem, menuItems, MenuLinkItem (+10 more)
 
 ### Community 58 - "AreaCharts.tsx"
 Cohesion: 0.14
 Nodes (19): AreaNullValueChart(), AxisChart(), BasicAreaCharts(), GithubStyleCharts(), GithubStyleCharts1(), IrregularAreaCharts(), NegativeAreaChart(), SplineAreaChart() (+11 more)
 
 ### Community 59 - "Chat/index.tsx"
-Cohesion: 0.10
-Nodes (23): attachements, Spinners(), addMessage(), deleteMessage(), getChannels(), getDirectContact(), getMessages(), channelsListType (+15 more)
+Cohesion: 0.12
+Nodes (21): Spinners(), addMessage(), deleteMessage(), getChannels(), getDirectContact(), getMessages(), channelsListType, Chat() (+13 more)
 
 ### Community 60 - "manage-two-factor.tsx"
 Cohesion: 0.14
 Nodes (17): AlertError(), ManageTwoFactor(), Props, Props, TwoFactorRecoveryCodes(), TwoFactorSetupModal(), Alert(), AlertDescription() (+9 more)
 
 ### Community 61 - "Job/index.tsx"
-Cohesion: 0.13
-Nodes (12): categories, findJob, jobProcess, Blog(), Candidates(), Categories(), Features(), FindJob() (+4 more)
+Cohesion: 0.15
+Nodes (11): categories, findJob, jobProcess, Candidates(), Categories(), Features(), FindJob(), Footer() (+3 more)
 
 ### Community 62 - "Layouts/Header.tsx"
 Cohesion: 0.11
 Nodes (14): languages, FullScreenDropdown(), LanguageDropdown(), LightDark(), LightDarkProps, MyCartDropdown(), NotificationDropdown(), AuthUser (+6 more)
 
-### Community 63 - "Desse/Stagiaires/Index.tsx"
-Cohesion: 0.14
-Nodes (20): buildPageRange(), normalizePagination(), PageItem, PaginationLink, PaginationMeta, ServerPagination(), ServerPaginationProps, corbeilleLabel() (+12 more)
+### Community 63 - "PreviewCardHeader.tsx"
+Cohesion: 0.19
+Nodes (10): PreviewCardHeader(), CustomRationExample(), Ratio11Example(), Ratio169Example(), Ratio219Example(), Ratio43Example(), BrowserDefaults(), CustomStyles() (+2 more)
 
 ### Community 64 - "DashboardCrm/index.tsx"
-Cohesion: 0.10
-Nodes (18): activities, closingDeals, crmWidgets, dealsStatus, tasks, BalanceOverview(), ClosingDeals(), DealsStatus() (+10 more)
+Cohesion: 0.12
+Nodes (16): BalanceOverview(), ClosingDeals(), BalanceOverviewCharts(), DealTypeCharts(), SalesForecastCharts(), DealsStatus(), DealType(), MyTasks() (+8 more)
 
 ### Community 65 - "Corbeille par corbeille"
 Cohesion: 0.09
@@ -643,28 +627,28 @@ Cohesion: 0.14
 Nodes (25): AnimationButtonsExample(), BaseClassExample(), BorderButtonsExample(), CheckButtonsExample(), CustomSizeExample(), CustomToggleButtonsExample(), DefaultButtonsExample(), FocusRingExample() (+17 more)
 
 ### Community 69 - "TableContainer.tsx"
-Cohesion: 0.07
-Nodes (28): CompaniesGlobalFilter(), ContactsGlobalFilter(), CryptoOrdersGlobalFilter(), CustomersGlobalFilter(), InvoiceListGlobalSearch(), LeadsGlobalFilter(), NFTRankingGlobalFilter(), OrderGlobalFilter() (+20 more)
+Cohesion: 0.14
+Nodes (12): CompaniesGlobalFilter(), ContactsGlobalFilter(), CryptoOrdersGlobalFilter(), CustomersGlobalFilter(), InvoiceListGlobalSearch(), LeadsGlobalFilter(), NFTRankingGlobalFilter(), OrderGlobalFilter() (+4 more)
 
-### Community 70 - "VerticalLayouts/index.tsx"
+### Community 70 - "NFTMarketplace.ts"
+Cohesion: 0.14
+Nodes (13): aution, creatorsData, creatorsListData, expolreNow, marketPlacewidget, nftArtworkData, NFTRanking, popularCreatorsNFT (+5 more)
+
+### Community 71 - "useChartColors"
 Cohesion: 0.13
-Nodes (18): SearchOption(), HorizontalLayout(), BusinessMenuSection, businessMenuSections, MenuHeaderItem, MenuItem, menuItems, MenuLinkItem (+10 more)
+Nodes (16): popularityData, getChartColorsArray(), useChartColors(), RevenueCharts(), StoreVisitsCharts(), Revenue(), StoreVisits(), ApplicationsStatistic() (+8 more)
 
-### Community 71 - "UiTypography.tsx"
+### Community 72 - "AttestationPresenceService"
 Cohesion: 0.17
-Nodes (19): BlockquoteBorderColorExample(), BlockquoteColorExample(), BlockquotesExample(), ClearfixExample(), DescriptionListExample(), DisplayHeadingExample(), FontSizeExample(), FontWeightExample() (+11 more)
-
-### Community 72 - "Illuminate\Http\RedirectResponse"
-Cohesion: 0.10
-Nodes (6): DossierPaiementDmgController, OperationPaiementDmgController, DossierGroupe, Illuminate\Database\Query\JoinClause, Illuminate\Http\RedirectResponse, Symfony\Component\HttpFoundation\Response
+Nodes (6): convertir_en_lettres(), getPrimeDisplayDataByFinancementType(), numberToFrenchWords(), Collection, preparePaginatedDataWithFooterSpace(), AttestationPresenceService
 
 ### Community 73 - "thunks.ts"
-Cohesion: 0.16
-Nodes (14): getTeamData(), MarketGraph(), MyPortfolio(), Team(), DashboardCryptoSlice, initialState, getMarketChartsData, getPortfolioChartsData (+6 more)
+Cohesion: 0.18
+Nodes (14): getTeamData(), postFakeProfile(), postJwtProfile(), UserProfile(), Team(), editProfile(), fireBaseBackend, resetProfileFlag() (+6 more)
 
 ### Community 74 - "ToDo/index.tsx"
-Cohesion: 0.19
-Nodes (14): addNewProject(), addNewTodo(), getProjects(), getTodos(), ImgData, ToDoList(), initialState, TodosSlice (+6 more)
+Cohesion: 0.22
+Nodes (12): getProjects(), getTodos(), ImgData, ToDoList(), initialState, TodosSlice, addNewProject, addNewTodo (+4 more)
 
 ### Community 75 - "UiUtilities.tsx"
 Cohesion: 0.30
@@ -679,44 +663,48 @@ Cohesion: 0.48
 Nodes (4): Area(), Line(), LineColumnArea(), YAxis()
 
 ### Community 78 - "pagesData.ts"
-Cohesion: 0.16
-Nodes (10): documents, news, pricing1, pricing2, pricing3, projects, SearchGallery, swiper (+2 more)
+Cohesion: 0.15
+Nodes (11): documents, gallery, news, pricing1, pricing2, pricing3, projects, SearchGallery (+3 more)
 
 ### Community 79 - "DeleteModal.tsx"
-Cohesion: 0.28
-Nodes (14): DeleteModal(), DeleteModalProps, Calender(), MonthGridCalender(), UpcommingEvents(), calendarSlice, initialState, addNewEvent (+6 more)
+Cohesion: 0.26
+Nodes (15): DeleteModal(), DeleteModalProps, getEvents(), Calender(), MonthGridCalender(), UpcommingEvents(), calendarSlice, initialState (+7 more)
 
 ### Community 80 - "AgentComptable/Paiements/Index.tsx"
-Cohesion: 0.10
-Nodes (20): AcPaiementsIndex(), ActionOp, actionsOp, Bordereau, DossierDetail, FiltresOp, filtresVides, FlashProps (+12 more)
+Cohesion: 0.07
+Nodes (29): AcPaiementsIndex(), ActionOp, actionsOp, Bordereau, Categorie, categories, DossierDetail, DossierOption (+21 more)
 
 ### Community 81 - "UiLists.tsx"
 Cohesion: 0.19
 Nodes (17): ActiveItemExample(), ColoredListExample(), ContextualClassExample(), ContextualLinkExample(), CustomContentExample(), CustomListExample(), DefaultListExample(), DisabledItemExample() (+9 more)
 
 ### Community 82 - "ControlerCorbeillesMetierCommand"
-Cohesion: 0.21
-Nodes (3): ControlerCorbeillesMetierCommand, CorbeilleEnum, Illuminate\Database\Query\Builder
+Cohesion: 0.16
+Nodes (5): ControlerCorbeillesMetierCommand, CorbeilleEnum, Illuminate\Console\Command, Illuminate\Database\Query\Builder, Throwable
+
+### Community 83 - "JournalAudit"
+Cohesion: 0.24
+Nodes (4): JournalAudit, Region, Illuminate\Database\Eloquent\Relations\MorphTo, AuditLogTest
 
 ### Community 84 - "DashboardJob/index.tsx"
 Cohesion: 0.15
 Nodes (11): featuredCompany, jobWidgets, recentApplicants, SalesByLocations(), Candidates(), DashboardCharts(), FeaturedCompanies(), featuredCompanyType (+3 more)
 
-### Community 85 - "lib/utils.ts"
-Cohesion: 0.12
-Nodes (18): AppHeader(), Badge(), badgeVariants, Checkbox(), Separator(), ToggleGroup(), ToggleGroupContext, ToggleGroupItem() (+10 more)
+### Community 85 - "app-header.tsx"
+Cohesion: 0.08
+Nodes (29): AppHeader(), mainNavItems, Props, rightNavItems, AppLogo(), AppLogoIcon(), Avatar(), AvatarFallback() (+21 more)
 
 ### Community 87 - "VisaDesseService"
-Cohesion: 0.20
-Nodes (3): VisaDesseService, VisaDesseController, VisaDesseEnum
+Cohesion: 0.16
+Nodes (7): VisaDesseService, depuisEtatLegacy(), label(), labels(), self, VisaDesseController, VisaDesseEnum
 
-### Community 88 - "DesseDoublonService"
+### Community 88 - "Symfony\Component\HttpFoundation\Response"
 Cohesion: 0.12
-Nodes (3): DesseDoublonService, DoublonTypeEnum, LegacyMigrationRecorder
+Nodes (9): HandleAppearance, HandleInertiaRequests, Illuminate\Foundation\Application, Illuminate\Foundation\Configuration\Exceptions, Illuminate\Foundation\Configuration\Middleware, Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets, Illuminate\Support\Facades\View, Inertia\Middleware (+1 more)
 
 ### Community 89 - "StagiaireDesseController"
-Cohesion: 0.19
-Nodes (4): Collection, CorbeilleEnum, DoublonTypeEnum, StagiaireDesseController
+Cohesion: 0.23
+Nodes (3): CorbeilleEnum, DoublonTypeEnum, StagiaireDesseController
 
 ### Community 90 - "components.json"
 Cohesion: 0.11
@@ -744,11 +732,11 @@ Nodes (9): InstallFeaturesCommand, Chisel, chiselRemoveNpmPackages(), chiselSkip
 
 ### Community 96 - "scripts"
 Cohesion: 0.12
-Nodes (16): scripts, lint, lint:check, post-autoload-dump, post-create-project-cmd, pre-package-uninstall, types:check, Illuminate\\Foundation\\ComposerScripts::postAutoloadDump (+8 more)
+Nodes (17): scripts, lint, lint:check, post-autoload-dump, pre-package-uninstall, test, types:check, Illuminate\\Foundation\\ComposerScripts::postAutoloadDump (+9 more)
 
 ### Community 97 - "devDependencies"
-Cohesion: 0.12
-Nodes (17): babel-plugin-react-compiler, eslint-config-prettier, @eslint/js, @laravel/vite-plugin-wayfinder, devDependencies, babel-plugin-react-compiler, eslint, eslint-config-prettier (+9 more)
+Cohesion: 0.07
+Nodes (29): babel-plugin-react-compiler, eslint-config-prettier, eslint-import-resolver-typescript, @eslint/js, eslint-plugin-import, eslint-plugin-react, eslint-plugin-react-hooks, @laravel/vite-plugin-wayfinder (+21 more)
 
 ### Community 98 - "paths"
 Cohesion: 0.12
@@ -774,6 +762,10 @@ Nodes (14): BasicColumn(), ColumnGroupLabels(), ColumnMarker(), ColumnWithLable(
 Cohesion: 0.23
 Nodes (14): BasicLineCharts(), BrushChart(), BrushChart1(), ChartSyncingArea(), ChartSyncingLine(), ChartSyncingLine2(), DashedLine(), generateDayWiseTimeSeriesline() (+6 more)
 
+### Community 104 - "DesseDoublonService"
+Cohesion: 0.06
+Nodes (7): ComparerCorbeillesCommand, DesseDoublonService, DoublonTypeEnum, LegacyMapperService, CorbeilleEnum, LegacyMigrationRecorder, RuntimeException
+
 ### Community 105 - "Manuel des règles de gestion — Corbeilles Pointage CIP / Chef d'Agence"
 Cohesion: 0.12
 Nodes (15): 1. CIP : attente de pointage, 2. CA : ajourner DMG, 3. CA : attente validation pointage, 4. CA : valider AR ajourné DMG, 5. CA : attente validation démarrage, Gap A — Onglet CIP « attente de pointage » vide sur toute donnée migrée, Gap B — Fuite de dossiers non encore validés par le CA dans l'onglet CIP, Gap C — Pointages hors dispositif créant une tâche CA fantôme (+7 more)
@@ -782,37 +774,37 @@ Nodes (15): 1. CIP : attente de pointage, 2. CA : ajourner DMG, 3. CA : attente 
 Cohesion: 0.12
 Nodes (16): resources/js/actions/**/*.ts, resources/js/app.tsx, resources/js/**/*.d.ts, resources/js/old/**/*.ts, resources/js/old/**/*.tsx, resources/js/routes/**/*.ts, resources/js/velzone/Components/**/*.ts, resources/js/velzone/Components/**/*.tsx (+8 more)
 
-### Community 107 - "EcommerceProducts/index.tsx"
-Cohesion: 0.22
-Nodes (12): Revenue(), handleValidDate(), handleValidTime(), Price(), Published(), Rating(), EcommerceProducts(), SingleOptions (+4 more)
+### Community 107 - "UiModals.tsx"
+Cohesion: 0.27
+Nodes (12): AnimationModalExample(), CenteredModalExample(), DefaultModalExample(), FullscreenResponsiveExample(), GridsModalExample(), OptionalModalExample(), PositionModalExample(), ScrollableModalExample() (+4 more)
 
 ### Community 108 - "UiAlerts.tsx"
 Cohesion: 0.23
 Nodes (13): AdditionalContentAlertsExample(), BorderlessExample(), DefaultAlertsExample(), DismissingExample(), LabelIconAlertsExample(), LabelIconArrowAlertsExample(), LeftBorderAlertsExample(), LinkColorExample() (+5 more)
 
-### Community 109 - "BuySell/index.tsx"
-Cohesion: 0.31
-Nodes (4): BuySellCoin(), Market(), MarketGraph(), Widgets()
-
-### Community 110 - "AppServiceProvider.php"
-Cohesion: 0.24
-Nodes (5): AppServiceProvider, Carbon\CarbonImmutable, Illuminate\Support\Facades\Date, Illuminate\Support\Facades\Gate, Illuminate\Support\ServiceProvider
+### Community 110 - "FortifyServiceProvider.php"
+Cohesion: 0.16
+Nodes (9): AppServiceProvider, Carbon\CarbonImmutable, Illuminate\Cache\RateLimiting\Limit, Illuminate\Support\Facades\Date, Illuminate\Support\Facades\Gate, Illuminate\Support\Facades\RateLimiter, Illuminate\Support\ServiceProvider, Illuminate\Validation\Rules\Password (+1 more)
 
 ### Community 111 - "optionalDependencies"
 Cohesion: 0.13
 Nodes (15): @laravel/multiplex, lightningcss-linux-x64-gnu, lightningcss-win32-x64-msvc, optionalDependencies, @laravel/multiplex, lightningcss-linux-x64-gnu, lightningcss-win32-x64-msvc, @rollup/rollup-linux-x64-gnu (+7 more)
 
 ### Community 112 - "projects/thunk.ts"
-Cohesion: 0.19
-Nodes (11): addProjectList(), deleteProjectList(), getProjectList(), updateProjectList(), List(), initialState, ProjectsSlice, addProjectList (+3 more)
+Cohesion: 0.21
+Nodes (10): addProjectList(), deleteProjectList(), getProjectList(), List(), initialState, ProjectsSlice, addProjectList, deleteProjectList (+2 more)
 
 ### Community 113 - "UiBadges.tsx"
 Cohesion: 0.25
 Nodes (12): ButtonBadgesExample(), ButtonPositionBadgesExample(), DefaultBadgesExample(), GradientBadgesExample(), HTMLBadgesExample(), LabelBadgesExample(), OutlineBadgesExample(), OutlinePillBadgesExample() (+4 more)
 
-### Community 115 - "Illuminate\Foundation\Http\FormRequest"
-Cohesion: 0.16
-Nodes (7): ProfileDeleteRequest, StoreEntrepriseRequest, UpdateEntrepriseRequest, UpdateOffreEmploiRequest, Illuminate\Contracts\Validation\ValidationRule, Illuminate\Foundation\Http\FormRequest, Illuminate\Validation\Rule
+### Community 114 - "invoice/thunk.ts"
+Cohesion: 0.23
+Nodes (10): addNewInvoice(), deleteInvoice(), getInvoices(), updateInvoice(), InvoiceList(), initialState, InvoiceSlice, deleteInvoice (+2 more)
+
+### Community 115 - "Paiement"
+Cohesion: 0.03
+Nodes (41): PointageService, PejedecAafService, VersionPointage, DroitPaiement, Paiement, Periode, RolePermissionSeeder, Illuminate\Auth\Events\Verified (+33 more)
 
 ### Community 116 - "composer.json"
 Cohesion: 0.14
@@ -822,9 +814,9 @@ Nodes (13): autoload-dev, psr-4, description, keywords, license, minimum-stabili
 Cohesion: 0.26
 Nodes (11): AlignDropdownExample(), AutoCloseDropdownExample(), ColorDropdownExample(), DarkDropdownExample(), MenuContentDropdownExample(), MenuItemDropdownExample(), NotificationDropdownExample(), OptionDropdownExample() (+3 more)
 
-### Community 118 - "cryptoPage.ts"
-Cohesion: 0.16
-Nodes (10): buysellWidgets, CryptoicoWidgets, CryptoOrders, icoWidgetsList, market, marketStatus, transactions, watchlist (+2 more)
+### Community 118 - "Market.tsx"
+Cohesion: 0.10
+Nodes (18): buysellWidgets, CryptoicoWidgets, CryptoOrders, icoWidgetsList, market, marketStatus, transactions, watchlist (+10 more)
 
 ### Community 119 - "BasicAction/index.tsx"
 Cohesion: 0.19
@@ -842,25 +834,25 @@ Nodes (5): AafSectionPage(), AafSectionPageProps, FilterState, OptionItem, Summa
 Cohesion: 0.14
 Nodes (14): compilerOptions, allowJs, baseUrl, esModuleInterop, forceConsistentCasingInFileNames, isolatedModules, jsx, module (+6 more)
 
-### Community 124 - "CandidateList/ListView/index.tsx"
-Cohesion: 0.21
-Nodes (4): jobCompanies, Pagination(), MainList(), Sidepanel()
+### Community 123 - "CorbeilleParcoursQueryService"
+Cohesion: 0.10
+Nodes (10): CorbeilleParcoursQueryService, StagiaireDaicgController, MultiDossierController, OperationDmgController, PaiementDmgController, RejetDmgController, ValidationDmgController, ProfileController (+2 more)
 
-### Community 125 - "Prism.tsx"
-Cohesion: 0.21
-Nodes (8): PrismCode(), PrismCodeProps, CssHighlightExample(), HtmlHighlightExample(), JavaScriptExample(), DefultExample(), MediaExample(), NestingExample()
+### Community 125 - "UiGrid.tsx"
+Cohesion: 0.43
+Nodes (5): AlignSelfExample(), HorizontalAlignExample(), VerticalCenterExample(), VerticalEndExample(), VerticalStartExample()
 
 ### Community 126 - "BarCharts/index.tsx"
 Cohesion: 0.28
 Nodes (10): BarwithImages(), Basic(), CustomDataLabel(), Groupes(), Markers(), Negative(), Patterned(), Reversed() (+2 more)
 
-### Community 128 - "web.php"
+### Community 127 - "Reporting/Index.tsx"
 Cohesion: 0.15
-Nodes (4): IndexChefAgenceController, ProfileController, Illuminate\Auth\Middleware\RequirePassword, Illuminate\Support\Facades\Route
+Nodes (6): EcommerceCart(), cards, moneyFormatter, numberFormatter, Props, Statistiques
 
-### Community 129 - "AllOrders.tsx"
+### Community 129 - "widgets.ts"
 Cohesion: 0.29
-Nodes (9): AllOrders(), CryproOrder(), AvgPrice(), OrderValue(), Price(), Quantity(), Status(), Type() (+1 more)
+Nodes (8): tileBoxes4, tileBoxes5, tileBoxs1, tileBoxs2, tileBoxs3, widgetsAudiences, widgetsPortfolio, TileBoxs()
 
 ### Community 130 - "LAYOUT_THEME"
 Cohesion: 0.17
@@ -882,17 +874,17 @@ Nodes (5): ActivitiesTab(), DocumentsTab(), OverviewTab(), Section(), TeamTab()
 Cohesion: 0.36
 Nodes (4): emailRules(), nameRules(), profileRules(), ProfileUpdateRequest
 
-### Community 137 - "PasswordUpdateRequest"
-Cohesion: 0.22
-Nodes (4): SecurityController, PasswordUpdateRequest, TwoFactorAuthenticationRequest, Laravel\Fortify\InteractsWithTwoFactorState
+### Community 137 - "UpdateEntrepriseRequest"
+Cohesion: 0.20
+Nodes (3): UpdateEntrepriseRequest, UpdateOffreEmploiRequest, Illuminate\Validation\Rule
 
-### Community 138 - "bootstrap/app.php"
-Cohesion: 0.14
-Nodes (8): HandleAppearance, HandleInertiaRequests, Illuminate\Foundation\Application, Illuminate\Foundation\Configuration\Exceptions, Illuminate\Foundation\Configuration\Middleware, Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets, Illuminate\Support\Facades\View, Inertia\Middleware
+### Community 138 - "Illuminate\Foundation\Http\FormRequest"
+Cohesion: 0.18
+Nodes (7): PasswordUpdateRequest, ProfileDeleteRequest, TwoFactorAuthenticationRequest, StoreEntrepriseRequest, Illuminate\Contracts\Validation\ValidationRule, Illuminate\Foundation\Http\FormRequest, Laravel\Fortify\InteractsWithTwoFactorState
 
 ### Community 139 - "require"
-Cohesion: 0.18
-Nodes (11): require, barryvdh/laravel-dompdf, inertiajs/inertia-laravel, laravel/chisel, laravel/fortify, laravel/framework, laravel/tinker, laravel/wayfinder (+3 more)
+Cohesion: 0.17
+Nodes (12): require, barryvdh/laravel-dompdf, inertiajs/inertia-laravel, laravel/chisel, laravel/fortify, laravel/framework, laravel/tinker, laravel/wayfinder (+4 more)
 
 ### Community 140 - "require-dev"
 Cohesion: 0.18
@@ -914,9 +906,9 @@ Nodes (5): overviewJobs, Header(), JobDescription(), RelatedJobs(), RightSection
 Cohesion: 0.20
 Nodes (6): country, DualListbox(), Optgroup, OptgroupFilter, options, FormAdvanced()
 
-### Community 145 - "api_helper.ts"
-Cohesion: 0.24
-Nodes (6): useProfile(), ApiConfig, Config, FacebookConfig, GoogleConfig, getLoggedinUser()
+### Community 145 - "APIClient"
+Cohesion: 0.22
+Nodes (7): useProfile(), ApiConfig, Config, FacebookConfig, GoogleConfig, APIClient, getLoggedinUser()
 
 ### Community 146 - "UiImages.tsx"
 Cohesion: 0.36
@@ -942,17 +934,17 @@ Nodes (3): FeedbackAction(), InvoiceAction(), RatingTemplate()
 Cohesion: 0.29
 Nodes (4): Section(), TicketDescription(), TicketDetails(), TicketCodeExample()
 
-### Community 152 - "ReportingDashboardService"
-Cohesion: 0.24
+### Community 152 - ".computeOverview"
+Cohesion: 0.23
 Nodes (3): ReportingDashboardService, TableauDeBordController, Symfony\Component\HttpFoundation\StreamedResponse
 
 ### Community 153 - "scripts"
-Cohesion: 0.22
-Nodes (9): scripts, build, build:ssr, dev, format, format:check, lint, lint:check (+1 more)
+Cohesion: 0.15
+Nodes (12): private, $schema, scripts, build, build:ssr, dev, format, format:check (+4 more)
 
-### Community 154 - "UiRibbons.tsx"
+### Community 154 - "ReactTable.tsx"
 Cohesion: 0.39
-Nodes (6): BoxedRibbonsExample(), FilledRibbonsExample(), RibbonsExample(), RibbonShapeExample(), RibbonsHoverExample(), RoundedRibbonExample()
+Nodes (6): DefaultTable(), HiddenColumns(), LoadingStateTable(), PaginationTable(), SearchTable(), SortingTable()
 
 ### Community 155 - "TimelineCharts/index.tsx"
 Cohesion: 0.39
@@ -962,13 +954,9 @@ Nodes (6): Advanced(), Basic(), DifferentColor(), Dumbbell(), MultipleSeries(), 
 Cohesion: 0.39
 Nodes (6): BarChart(), DonutChart(), LineChart(), PieChart(), PolarChart(), RadarChart()
 
-### Community 157 - "ReactTable.tsx"
+### Community 157 - "UiRibbons.tsx"
 Cohesion: 0.39
-Nodes (6): DefaultTable(), HiddenColumns(), LoadingStateTable(), PaginationTable(), SearchTable(), SortingTable()
-
-### Community 158 - "widgets.ts"
-Cohesion: 0.25
-Nodes (8): otherWidgets2, tileBoxes4, tileBoxes5, tileBoxs1, tileBoxs2, tileBoxs3, widgetsPortfolio, OtherWidgets()
+Nodes (6): BoxedRibbonsExample(), FilledRibbonsExample(), RibbonsExample(), RibbonShapeExample(), RibbonsHoverExample(), RoundedRibbonExample()
 
 ### Community 159 - "laravel"
 Cohesion: 0.25
@@ -986,9 +974,9 @@ Nodes (8): post-root-package-install, setup, composer install, npm install, npm 
 Cohesion: 0.25
 Nodes (7): background_color, display, icons, name, short_name, start_url, theme_color
 
-### Community 163 - "UiRatings.tsx"
-Cohesion: 0.39
-Nodes (6): BasicRaterExample(), CustomMsgExample(), OnHoverExample(), RaterWithStepExample(), ReadOnlyRaterExample(), ReasetRaterExample()
+### Community 163 - "PersonalInfo.tsx"
+Cohesion: 0.29
+Nodes (5): attachements, chatContactData, chatMessage, messages, PersonalInfo()
 
 ### Community 164 - "HeatmapCharts.tsx"
 Cohesion: 0.54
@@ -997,6 +985,14 @@ Nodes (5): BasicHeatmap(), ColorRange(), generateData(), MultipleHeatmap(), Rang
 ### Community 165 - "TaskDetails/index.tsx"
 Cohesion: 0.36
 Nodes (3): Comments(), Summary(), TimeTracking()
+
+### Community 167 - "appsJobs.ts"
+Cohesion: 0.20
+Nodes (9): jobApplication, jobCandidates, jobCategories, jobCompanies, jobGrid, jobList, jobWidgets, widgets (+1 more)
+
+### Community 168 - "calender.ts"
+Cohesion: 0.25
+Nodes (7): calenderDefaultCategories, d, date, defaultevent, events, m, y
 
 ### Community 169 - "config"
 Cohesion: 0.29
@@ -1026,9 +1022,9 @@ Nodes (4): BasicTreemap(), ColorRangeTreemap(), DiffColorTreemap(), MultiTreemap
 Cohesion: 0.29
 Nodes (5): DossierItem, PageProps, PeriodeOption, RefItem, StagiaireRow
 
-### Community 178 - "VisaDesseEnum.php"
-Cohesion: 0.47
-Nodes (4): depuisEtatLegacy(), label(), labels(), self
+### Community 178 - "LEFT_SIDEBAR_SIZE_TYPES"
+Cohesion: 0.40
+Nodes (5): LEFT_SIDEBAR_SIZE_TYPES, COMPACT, DEFAULT, SMALLHOVER, SMALLICON
 
 ### Community 181 - "LEFT_SIDEBAR_IMAGE_TYPES"
 Cohesion: 0.33
@@ -1036,11 +1032,11 @@ Nodes (6): LEFT_SIDEBAR_IMAGE_TYPES, IMG1, IMG2, IMG3, IMG4, NONE
 
 ### Community 182 - "ChartsDynamicColor.tsx"
 Cohesion: 0.15
-Nodes (8): Basic(), Horizontal(), Scatter(), RangeAreaBasicChartCode(), RangeAreaChartCode(), BasicSlop(), MultiGroup(), SimpleDonutCharts()
+Nodes (8): Basic(), Horizontal(), Scatter(), RangeAreaBasicChartCode(), RangeAreaChartCode(), BasicSlop(), MultiGroup(), MarketGraph()
 
-### Community 183 - "RadarCharts/index.tsx"
-Cohesion: 0.53
-Nodes (3): MultipleRadar(), PolygonRadar(), SimpleRadar()
+### Community 183 - "TaskList/index.tsx"
+Cohesion: 0.29
+Nodes (4): allTask, kanbanBoardData, taskWidgets, Widgets()
 
 ### Community 184 - "ScatterCharts/index.tsx"
 Cohesion: 0.53
@@ -1050,17 +1046,13 @@ Nodes (3): Basic(), Datetime(), ImagesChart()
 Cohesion: 0.32
 Nodes (3): KYCVerification(), formatBytes(), handleAcceptedFiles()
 
-### Community 186 - "appsJobs.ts"
-Cohesion: 0.29
-Nodes (6): jobApplication, jobCandidates, jobCategories, jobWidgets, widgets, Widgets()
+### Community 186 - "UiGeneral.tsx"
+Cohesion: 0.43
+Nodes (5): BreadcrumbExample(), PaginationExample(), PopoversExample(), SpinnersExample(), TooltipsExample()
 
-### Community 187 - "PasswordValidationRules.php"
-Cohesion: 0.17
-Nodes (9): CreateNewUser, ResetUserPassword, Illuminate\Cache\RateLimiting\Limit, Illuminate\Support\Facades\RateLimiter, Illuminate\Support\Facades\Validator, Illuminate\Validation\Rules\Password, Laravel\Fortify\Contracts\CreatesNewUsers, Laravel\Fortify\Contracts\ResetsUserPasswords (+1 more)
-
-### Community 189 - "MultiDossierController"
-Cohesion: 0.15
-Nodes (7): MultiDossierPdfService, convertir_en_lettres(), getPrimeDisplayDataByFinancementType(), numberToFrenchWords(), Collection, preparePaginatedDataWithFooterSpace(), MultiDossierController
+### Community 189 - "RadarCharts/index.tsx"
+Cohesion: 0.53
+Nodes (3): MultipleRadar(), PolygonRadar(), SimpleRadar()
 
 ### Community 190 - "logging.php"
 Cohesion: 0.40
@@ -1082,21 +1074,25 @@ Nodes (4): companies, crmcontacts, deals, leads
 Cohesion: 0.40
 Nodes (5): LAYOUT_TYPES, HORIZONTAL, SEMIBOX, TWOCOLUMN, VERTICAL
 
-### Community 196 - "LEFT_SIDEBAR_SIZE_TYPES"
-Cohesion: 0.40
-Nodes (5): LEFT_SIDEBAR_SIZE_TYPES, COMPACT, DEFAULT, SMALLHOVER, SMALLICON
+### Community 196 - "PasswordValidationRules.php"
+Cohesion: 0.24
+Nodes (5): CreateNewUser, ResetUserPassword, Illuminate\Support\Facades\Validator, Laravel\Fortify\Contracts\CreatesNewUsers, Laravel\Fortify\Contracts\ResetsUserPasswords
 
-### Community 200 - "calender.ts"
-Cohesion: 0.25
-Nodes (7): calenderDefaultCategories, d, date, defaultevent, events, m, y
+### Community 198 - "DashboardNFT/index.tsx"
+Cohesion: 0.36
+Nodes (4): FeaturedNFT(), Marketplace(), Widgets(), getMarketChartsDatas
 
-### Community 201 - "TaskList/index.tsx"
+### Community 199 - "Cb/Paiements/Index.tsx"
 Cohesion: 0.29
-Nodes (4): allTask, kanbanBoardData, taskWidgets, Widgets()
+Nodes (5): DocumentItem, DossierRow, PageProps, RefItem, StagiaireRow
 
-### Community 202 - "UiEmbedVideo.tsx"
-Cohesion: 0.43
-Nodes (5): CustomRationExample(), Ratio11Example(), Ratio169Example(), Ratio219Example(), Ratio43Example()
+### Community 200 - "GoogleMaps.tsx"
+Cohesion: 0.29
+Nodes (5): center, containerStyle, fourth, second, third
+
+### Community 202 - "UiContent.tsx"
+Cohesion: 0.13
+Nodes (11): UiContent(), DefultExample(), MediaExample(), NestingExample(), BackdropOffcanvasExample(), DefaultOffcanvasExample(), PlacementOffcanvasExample(), ColorExample() (+3 more)
 
 ### Community 203 - "budget-etat-pae.blade.php"
 Cohesion: 0.40
@@ -1122,25 +1118,17 @@ Nodes (4): stage.contrat.partials_papsgouv.article-pages-ecole, stage.contrat.pa
 Cohesion: 0.40
 Nodes (4): stage.contrat.partials_pejedec.article-pages, stage.contrat.partials_pejedec.contract-parties, stage.contrat.partials_pejedec.header, stage.contrat.partials_pejedec.signatures
 
-### Community 209 - "UiGeneral.tsx"
-Cohesion: 0.43
-Nodes (5): BreadcrumbExample(), PaginationExample(), PopoversExample(), SpinnersExample(), TooltipsExample()
+### Community 209 - "CrmDeals/index.tsx"
+Cohesion: 0.60
+Nodes (3): CrmDeals(), leadDiscover(), getDeals
 
-### Community 210 - "Reporting/Index.tsx"
-Cohesion: 0.29
-Nodes (5): cards, moneyFormatter, numberFormatter, Props, Statistiques
-
-### Community 213 - "package.json"
+### Community 210 - "post-create-project-cmd"
 Cohesion: 0.50
-Nodes (3): private, $schema, type
+Nodes (4): post-create-project-cmd, @php artisan key:generate --ansi, @php artisan migrate --graceful --ansi, @php -r \"file_exists('database/database.sqlite') || touch('database/database.sqlite');\
 
 ### Community 214 - "Dossier des Assets TrésorMoney"
 Cohesion: 0.50
 Nodes (3): Dossier des Assets TrésorMoney, Images requises, Note
-
-### Community 219 - "UiNotifications.tsx"
-Cohesion: 0.16
-Nodes (11): BootstrapToastsExample(), BorderIconExample(), ToastifyExample(), ToastPlacementExample(), ColorExample(), DefaultPlaceholderExample(), SizingExample(), WidthExample() (+3 more)
 
 ### Community 220 - "partials_budgetetat/contract-parties.blade.php"
 Cohesion: 0.50
@@ -1166,41 +1154,29 @@ Nodes (3): stage.contrat.partials_papsgouv.company-section, stage.contrat.partia
 Cohesion: 0.50
 Nodes (3): stage.contrat.partials_pejedec.company-section, stage.contrat.partials_pejedec.trainee-section, stage.contrat.partials_pejedec.usep-section
 
-### Community 229 - "LandingNFT.ts"
-Cohesion: 0.33
-Nodes (4): discoverItemsData, featuresData, topCreatorData, TopCreator()
-
-### Community 230 - "UiOffcanvas.tsx"
-Cohesion: 0.53
-Nodes (3): BackdropOffcanvasExample(), DefaultOffcanvasExample(), PlacementOffcanvasExample()
-
 ### Community 233 - "types"
 Cohesion: 0.67
 Nodes (3): node, vite/client, types
 
-### Community 237 - "test"
-Cohesion: 0.40
-Nodes (5): test, @lint:check, @php artisan config:clear --ansi, @php artisan test, @types:check
-
 ## Knowledge Gaps
-- **880 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+875 more)
+- **890 isolated node(s):** `$schema`, `style`, `rsc`, `tsx`, `config` (+885 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **142 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **123 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `cn()` connect `cn` to `types/index.ts`, `two-factor-setup-modal.tsx`, `app.tsx`, `dropdown-menu.tsx`, `FormAdvanced.tsx`, `button.tsx`, `lib/utils.ts`, `app-header.tsx`, `manage-two-factor.tsx`?**
-  _High betweenness centrality (0.067) - this node is a cross-community bridge._
-- **Why does `BreadCrumb()` connect `BreadCrumb.tsx` to `PreviewCardHeader.tsx`, `inertia-router.tsx`, `TableContainerReactTable.tsx`, `UiAnimation.tsx`, `ecommerce/thunk.ts`, `AllTasks.tsx`, `EditStagiaire.tsx`, `.create`, `Dmg/Paiements/Index.tsx`, `crm/thunk.ts`, `UiModals`, `Inscriptions/Create.tsx`, `useChartColors`, `DashboardCrypto/index.tsx`, `DashboardAnalytics/index.tsx`, `dashboardNFT.ts`, `MyWallet/index.tsx`, `DashboardProject/index.tsx`, `Widgets/Index.tsx`, `getChartColorsArray`, `Link`, `TicketsData.tsx`, `UiCarousel.tsx`, `NFTMarketplace.ts`, `AreaCharts.tsx`, `Desse/Stagiaires/Index.tsx`, `DashboardCrm/index.tsx`, `UiButtons.tsx`, `TableContainer.tsx`, `UiTypography.tsx`, `thunks.ts`, `UiUtilities.tsx`, `BasicTables.tsx`, `MixedCharts/index.tsx`, `pagesData.ts`, `DeleteModal.tsx`, `AgentComptable/Paiements/Index.tsx`, `UiLists.tsx`, `DashboardJob/index.tsx`, `DashboardBlog/index.tsx`, `FormSelect.tsx`, `APIKey/index.tsx`, `UiAccordion&Collapse.tsx`, `UiProgress.tsx`, `ColumnCharts.tsx`, `LineCharts.tsx`, `EcommerceProducts/index.tsx`, `UiAlerts.tsx`, `BuySell/index.tsx`, `projects/thunk.ts`, `UiBadges.tsx`, `UiDropdowns.tsx`, `cryptoPage.ts`, `BasicAction/index.tsx`, `CheckBoxAndRadio.tsx`, `AafSectionPage.tsx`, `CandidateList/ListView/index.tsx`, `Prism.tsx`, `BarCharts/index.tsx`, `AllOrders.tsx`, `BasicElements.tsx`, `Formlayouts.tsx`, `FormAdvanced.tsx`, `UiImages.tsx`, `UiLinks.tsx`, `PieCharts/index.tsx`, `RadialbarCharts/index.tsx`, `EcommerceAction/index.tsx`, `UiRibbons.tsx`, `TimelineCharts/index.tsx`, `ChartsJs/index.tsx`, `UiRatings.tsx`, `HeatmapCharts.tsx`, `TaskDetails/index.tsx`, `TreemapCharts/index.tsx`, `EcommerceOrderDetail.tsx`, `ChartsDynamicColor.tsx`, `RadarCharts/index.tsx`, `ScatterCharts/index.tsx`, `KYCVerification`, `BubbleChart/index.tsx`, `FunnelCharts/Index.tsx`, `PolarCharts/index.tsx`, `TaskList/index.tsx`, `UiEmbedVideo.tsx`, `UiGeneral.tsx`, `Reporting/Index.tsx`, `UiNotifications.tsx`, `UiOffcanvas.tsx`, `EcommerceCart.tsx`, `EcommerceCheckout.tsx`?**
-  _High betweenness centrality (0.057) - this node is a cross-community bridge._
-- **Why does `Link` connect `Link` to `AllOrders.tsx`, `BreadCrumb.tsx`, `Formlayouts.tsx`, `ProjectOverview/Section.tsx`, `inertia-router.tsx`, `JobList/Overview/index.tsx`, `UiImages.tsx`, `UiLinks.tsx`, `ecommerce/thunk.ts`, `EcommerceAction/index.tsx`, `TicketsDetails/index.tsx`, `AllTasks.tsx`, `.create`, `ReactTable.tsx`, `crm/thunk.ts`, `UiModals`, `widgets.ts`, `DashboardCrypto/index.tsx`, `TaskDetails/index.tsx`, `DashboardAnalytics/index.tsx`, `dashboardNFT.ts`, `MyWallet/index.tsx`, `DashboardProject/index.tsx`, `Widgets/Index.tsx`, `OnePage/index.tsx`, `EcommerceOrderDetail.tsx`, `AllTransactions.tsx`, `.delete`, `TicketsData.tsx`, `KYCVerification`, `AreaCharts.tsx`, `Chat/index.tsx`, `NFTMarketplace.ts`, `Job/index.tsx`, `Layouts/Header.tsx`, `DashboardCrm/index.tsx`, `UiButtons.tsx`, `TableContainer.tsx`, `VerticalLayouts/index.tsx`, `UiTypography.tsx`, `thunks.ts`, `ToDo/index.tsx`, `UiUtilities.tsx`, `BasicTables.tsx`, `pagesData.ts`, `DeleteModal.tsx`, `UiGeneral.tsx`, `UiLists.tsx`, `DashboardJob/index.tsx`, `EcommerceCheckout.tsx`, `UiNotifications.tsx`, `DashboardBlog/index.tsx`, `DashboardEcommerce/index.tsx`, `fileManager/thunk.ts`, `UiAccordion&Collapse.tsx`, `LandingNFT.ts`, `UiOffcanvas.tsx`, `EcommerceProducts/index.tsx`, `UiAlerts.tsx`, `projects/thunk.ts`, `EcommerceCart.tsx`, `UiDropdowns.tsx`, `cryptoPage.ts`, `BasicAction/index.tsx`, `CandidateList/ListView/index.tsx`?**
-  _High betweenness centrality (0.037) - this node is a cross-community bridge._
+- **Why does `cn()` connect `cn` to `types/index.ts`, `two-factor-setup-modal.tsx`, `app.tsx`, `FormAdvanced.tsx`, `button.tsx`, `app-header.tsx`, `dropdown-menu.tsx`, `manage-two-factor.tsx`?**
+  _High betweenness centrality (0.060) - this node is a cross-community bridge._
+- **Why does `BreadCrumb()` connect `BreadCrumb.tsx` to `Prism.tsx`, `inertia-router.tsx`, `TableContainerReactTable.tsx`, `UiAnimation.tsx`, `ecommerce/thunk.ts`, `AllTasks.tsx`, `EditStagiaire.tsx`, `jobs/thunk.ts`, `Dmg/Paiements/Index.tsx`, `crm/thunk.ts`, `Inscriptions/Create.tsx`, `Link`, `DashboardCrypto/index.tsx`, `DashboardAnalytics/index.tsx`, `MyWallet/index.tsx`, `DashboardProject/index.tsx`, `Widgets/Index.tsx`, `getChartColorsArray`, `UiTypography.tsx`, `AllTransactions.tsx`, `TicketsData.tsx`, `UiCarousel.tsx`, `AreaCharts.tsx`, `PreviewCardHeader.tsx`, `DashboardCrm/index.tsx`, `UiButtons.tsx`, `NFTMarketplace.ts`, `useChartColors`, `thunks.ts`, `UiUtilities.tsx`, `BasicTables.tsx`, `MixedCharts/index.tsx`, `pagesData.ts`, `DeleteModal.tsx`, `AgentComptable/Paiements/Index.tsx`, `UiLists.tsx`, `DashboardJob/index.tsx`, `DashboardBlog/index.tsx`, `FormSelect.tsx`, `APIKey/index.tsx`, `UiAccordion&Collapse.tsx`, `UiProgress.tsx`, `ColumnCharts.tsx`, `LineCharts.tsx`, `UiModals.tsx`, `UiAlerts.tsx`, `projects/thunk.ts`, `UiBadges.tsx`, `UiDropdowns.tsx`, `Market.tsx`, `BasicAction/index.tsx`, `CheckBoxAndRadio.tsx`, `AafSectionPage.tsx`, `MainList.tsx`, `UiGrid.tsx`, `BarCharts/index.tsx`, `Reporting/Index.tsx`, `BasicElements.tsx`, `Formlayouts.tsx`, `FormAdvanced.tsx`, `UiImages.tsx`, `UiLinks.tsx`, `PieCharts/index.tsx`, `RadialbarCharts/index.tsx`, `EcommerceAction/index.tsx`, `TimelineCharts/index.tsx`, `ChartsJs/index.tsx`, `UiRibbons.tsx`, `HeatmapCharts.tsx`, `TaskDetails/index.tsx`, `TreemapCharts/index.tsx`, `EcommerceOrderDetail.tsx`, `PolarCharts/index.tsx`, `ChartsDynamicColor.tsx`, `TaskList/index.tsx`, `ScatterCharts/index.tsx`, `KYCVerification`, `UiGeneral.tsx`, `RadarCharts/index.tsx`, `BubbleChart/index.tsx`, `DashboardNFT/index.tsx`, `Cb/Paiements/Index.tsx`, `GoogleMaps.tsx`, `FunnelCharts/Index.tsx`, `UiContent.tsx`, `CrmDeals/index.tsx`?**
+  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `Link` connect `Link` to `widgets.ts`, `BreadCrumb.tsx`, `Formlayouts.tsx`, `data/index.ts`, `ProjectOverview/Section.tsx`, `Prism.tsx`, `inertia-router.tsx`, `JobList/Overview/index.tsx`, `UiImages.tsx`, `UiLinks.tsx`, `ecommerce/thunk.ts`, `EcommerceAction/index.tsx`, `TicketsDetails/index.tsx`, `AllTasks.tsx`, `ReactTable.tsx`, `jobs/thunk.ts`, `crm/thunk.ts`, `PersonalInfo.tsx`, `DashboardCrypto/index.tsx`, `TaskDetails/index.tsx`, `DashboardAnalytics/index.tsx`, `dashboardNFT.ts`, `MyWallet/index.tsx`, `DashboardProject/index.tsx`, `Widgets/Index.tsx`, `OnePage/index.tsx`, `EcommerceOrderDetail.tsx`, `UiTypography.tsx`, `AllTransactions.tsx`, `.delete`, `TicketsData.tsx`, `VerticalLayouts/index.tsx`, `UiGeneral.tsx`, `AreaCharts.tsx`, `Chat/index.tsx`, `KYCVerification`, `Layouts/Header.tsx`, `Job/index.tsx`, `DashboardCrm/index.tsx`, `UiButtons.tsx`, `TableContainer.tsx`, `DashboardNFT/index.tsx`, `useChartColors`, `NFTMarketplace.ts`, `thunks.ts`, `UiContent.tsx`, `UiUtilities.tsx`, `BasicTables.tsx`, `ToDo/index.tsx`, `pagesData.ts`, `DeleteModal.tsx`, `UiLists.tsx`, `CrmDeals/index.tsx`, `DashboardJob/index.tsx`, `DashboardBlog/index.tsx`, `DashboardEcommerce/index.tsx`, `fileManager/thunk.ts`, `UiAccordion&Collapse.tsx`, `UiModals.tsx`, `UiAlerts.tsx`, `projects/thunk.ts`, `UiDropdowns.tsx`, `Market.tsx`, `BasicAction/index.tsx`, `MainList.tsx`, `Reporting/Index.tsx`?**
+  _High betweenness centrality (0.044) - this node is a cross-community bridge._
 - **What connects `$schema`, `style`, `rsc` to the rest of the system?**
-  _880 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _890 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `url_helper.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.012658227848101266 - nodes in this community are weakly interconnected._
 - **Should `User` be split into smaller, more focused modules?**
-  _Cohesion score 0.017872523686477175 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.024871891013623297 - nodes in this community are weakly interconnected._
 - **Should `Stage` be split into smaller, more focused modules?**
-  _Cohesion score 0.06184210526315789 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.044414370078740155 - nodes in this community are weakly interconnected._

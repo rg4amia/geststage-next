@@ -1,7 +1,9 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 $q = DB::connection('legacy')->table('contrats_pae')
@@ -45,8 +47,8 @@ $q->where(function ($query) {
             });
     })->whereNot(function ($query) {
         $query->whereRaw('DAY(date_debut) = 20')
-              ->whereRaw('MONTH(date_chef_agence) = MONTH(date_debut) + 1');
+            ->whereRaw('MONTH(date_chef_agence) = MONTH(date_debut) + 1');
     });
 });
 
-echo $q->count() . "\n";
+echo $q->count()."\n";

@@ -1,8 +1,10 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 $ids = DB::connection('legacy')->table('contrats_pae')
@@ -19,4 +21,4 @@ $withPayment = DB::connection('legacy')->table('paiement_models')
     ->unique();
 
 $withoutPayment = $ids->diff($withPayment);
-echo "Without Payment (etape 2): " . $withoutPayment->count() . "\n";
+echo 'Without Payment (etape 2): '.$withoutPayment->count()."\n";

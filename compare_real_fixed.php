@@ -1,10 +1,13 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use App\Domain\Payment\Services\DmgService;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
-$service = app(App\Domain\Payment\Services\DmgService::class);
+$service = app(DmgService::class);
 $paiements = $service->attentePaiementPresence([], '2026-08')->with('droitPaiement.stage')->get();
 $newIds = [];
 foreach ($paiements as $p) {
@@ -57,7 +60,7 @@ $legacyIds = DB::connection('legacy')->table('contrats_pae')
 $diff = array_diff($newIds, $legacyIds);
 $diffReverse = array_diff($legacyIds, $newIds);
 
-echo "New system has " . count($newIds) . " records.\n";
-echo "Legacy system has " . count($legacyIds) . " records.\n";
-echo "Records in New but NOT in Legacy: " . count($diff) . "\n";
-echo "Records in Legacy but NOT in New: " . count($diffReverse) . "\n";
+echo 'New system has '.count($newIds)." records.\n";
+echo 'Legacy system has '.count($legacyIds)." records.\n";
+echo 'Records in New but NOT in Legacy: '.count($diff)."\n";
+echo 'Records in Legacy but NOT in New: '.count($diffReverse)."\n";

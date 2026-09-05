@@ -1,10 +1,12 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-use Illuminate\Support\Facades\DB;
+$app->make(Kernel::class)->bootstrap();
+use App\Domain\Payment\Services\DmgService;
+use Illuminate\Contracts\Console\Kernel;
 
-$service = app(App\Domain\Payment\Services\DmgService::class);
+$service = app(DmgService::class);
 $paiements = $service->attentePaiementPresence([], '2026-08')->get();
 $newIds = [];
 foreach ($paiements as $p) {
@@ -13,4 +15,4 @@ foreach ($paiements as $p) {
     }
 }
 
-echo "New system has " . count($newIds) . " records.\n";
+echo 'New system has '.count($newIds)." records.\n";

@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import classnames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Select from 'react-select';
 import {
     Alert,
     Badge,
@@ -25,7 +26,6 @@ import {
     TabPane,
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import Select from 'react-select';
 
 /* ─── Types ─── */
 interface RefItem {
@@ -46,6 +46,7 @@ interface DossierRow {
     statut_code: string;
     date_creation: string;
     date_transmission?: string;
+    date_ajournement?: string;
     motif_ajournement?: string;
 }
 
@@ -96,17 +97,18 @@ const CbPaiementsIndex = (props: PageProps) => {
         dossiersControle = [],
         etatsAjournes = [],
         moisActuel = '',
-        periode,
         periodeOptions = [],
     } = props;
 
-    const { flash } = usePage<{ flash: { success?: string; error?: string } }>().props;
+    const { flash, errors } = usePage<{
+        flash: { success?: string; error?: string };
+        errors?: { dossier?: string; motif?: string; statut?: string };
+    }>().props;
 
     /* ─── États ─── */
     const [activeTab, setActiveTab] = useState('1');
     const [processing, setProcessing] = useState(false);
     const [selectedMois, setSelectedMois] = useState(moisActuel);
-    const [isLoading, setIsLoading] = useState(false);
 
     /* ─── Sélection dossier ─── */
     const [selectedDossierId, setSelectedDossierId] = useState<string>('');
@@ -145,8 +147,10 @@ const CbPaiementsIndex = (props: PageProps) => {
     const loadDossiers = useCallback(() => {
         if (!selectedMois) {
             setDossierOptions([]);
+
             return;
         }
+
         setIsLoadingDossiers(true);
         fetch(`/cb/paiements/dossiers?mois=${selectedMois}`, {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -169,7 +173,7 @@ const CbPaiementsIndex = (props: PageProps) => {
     }, [selectedMois]);
 
     useEffect(() => {
-        loadDossiers();
+        queueMicrotask(loadDossiers);
     }, [loadDossiers]);
 
     /* ═══════════════ CHARGEMENT STAGIAIRES ═══════════════ */
@@ -177,8 +181,10 @@ const CbPaiementsIndex = (props: PageProps) => {
         if (!selectedDossierId) {
             setStagiaires([]);
             setStagiaireTotal(0);
+
             return;
         }
+
         setStagiaireLoading(true);
         const params = new URLSearchParams();
         params.set('dossier_id', selectedDossierId);
@@ -211,7 +217,7 @@ const CbPaiementsIndex = (props: PageProps) => {
     }, [selectedDossierId, stagiairePage, stagiaireSearch]);
 
     useEffect(() => {
-        loadStagiaires();
+        queueMicrotask(loadStagiaires);
     }, [loadStagiaires]);
 
     /* ═══════════════ SÉLECTION ═══════════════ */
@@ -234,15 +240,19 @@ const CbPaiementsIndex = (props: PageProps) => {
     };
 
     const confirmValider = () => {
-        if (!dossierToAction) return;
+        if (!dossierToAction) {
+            return;
+        }
+
         setProcessing(true);
         router.post(`/cb/paiements/valider/${dossierToAction.id}`, {}, {
             preserveScroll: true,
-            onFinish: () => {
-                setProcessing(false);
+            preserveState: false,
+            onSuccess: () => {
                 setModalValiderOpen(false);
                 setDossierToAction(null);
             },
+            onFinish: () => setProcessing(false),
         });
     };
 
@@ -253,15 +263,21 @@ const CbPaiementsIndex = (props: PageProps) => {
     };
 
     const confirmAjourner = () => {
-        if (!dossierToAction || motifAjourner.trim().length < 5) return;
+        if (!dossierToAction || motifAjourner.trim().length < 5) {
+            return;
+        }
+
         setProcessing(true);
-        router.post(`/cb/paiements/ajourner/${dossierToAction.id}`, {}, {
+        router.post(`/cb/paiements/ajourner/${dossierToAction.id}`, { motif: motifAjourner }, {
             preserveScroll: true,
-            onFinish: () => {
-                setProcessing(false);
+            preserveState: false,
+            onSuccess: () => {
                 setModalAjournerOpen(false);
                 setDossierToAction(null);
                 setMotifAjourner('');
+            },
+            onFinish: () => {
+                setProcessing(false);
             },
         });
     };
@@ -286,7 +302,10 @@ const CbPaiementsIndex = (props: PageProps) => {
     };
 
     const getFileUrl = (chemin: string): string => {
-        if (!chemin) return '';
+        if (!chemin) {
+            return '';
+        }
+
         return `/storage/${chemin}`;
     };
 
@@ -330,6 +349,12 @@ const CbPaiementsIndex = (props: PageProps) => {
                             <i className="ri-error-warning-line me-2 align-middle"></i>{flash.error}
                         </Alert>
                     )}
+                    {(errors?.dossier || errors?.statut) && (
+                        <Alert color="danger" className="border-0 alert-dismissible fade show">
+                            <i className="ri-error-warning-line me-2 align-middle"></i>
+                            {errors.dossier || errors.statut}
+                        </Alert>
+                    )}
 
                     {/* ─── Cartes Statistiques ─── */}
                     {(() => {
@@ -343,6 +368,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                             { label: 'Stagiaires concernés', value: totalStagiaires, icon: 'ri-user-follow-line', color: 'info' },
                             { label: 'États ajournés', value: totalAjournes, icon: 'ri-close-circle-line', color: 'danger' },
                         ];
+
                         return (
                             <Row className="g-3 mb-4">
                                 {stats.map((s) => (
@@ -419,6 +445,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                             disabled={!selectedDossierId || processing}
                                             onClick={() => {
                                                 const dossier = dossierOptions.find(o => o.value === selectedDossierId)?.dossier;
+
                                                 if (dossier) {
                                                     const row: DossierRow = {
                                                         id: dossier.id,
@@ -441,6 +468,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                             disabled={!selectedDossierId}
                                             onClick={() => {
                                                 const dossier = dossierOptions.find(o => o.value === selectedDossierId)?.dossier;
+
                                                 if (dossier) {
                                                     const row: DossierRow = {
                                                         id: dossier.id,
@@ -576,17 +604,30 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                     // Pages visibles : max 7 avec ellipses
                                                     const maxVisible = 7;
                                                     let pages: (number | '...')[] = [];
+
                                                     if (totalPages <= maxVisible) {
                                                         pages = Array.from({ length: totalPages }, (_, i) => i + 1);
                                                     } else {
                                                         pages = [1];
-                                                        if (safeDossierPage > 3) pages.push('...');
+
+                                                        if (safeDossierPage > 3) {
+                                                            pages.push('...');
+                                                        }
+
                                                         const start = Math.max(2, safeDossierPage - 1);
                                                         const end = Math.min(totalPages - 1, safeDossierPage + 1);
-                                                        for (let i = start; i <= end; i++) pages.push(i);
-                                                        if (safeDossierPage < totalPages - 2) pages.push('...');
+
+                                                        for (let i = start; i <= end; i++) {
+                                                            pages.push(i);
+                                                        }
+
+                                                        if (safeDossierPage < totalPages - 2) {
+                                                            pages.push('...');
+                                                        }
+
                                                         pages.push(totalPages);
                                                     }
+
                                                     return (
                                                         <div className="d-flex justify-content-between align-items-center p-2 border-top mt-2">
                                                             <small className="text-muted">
@@ -727,20 +768,37 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                 {/* ── Pagination stagiaires ── */}
                                                 {(() => {
                                                     const stPages = Math.ceil(stagiaireTotal / 10);
-                                                    if (stPages <= 1) return null;
+
+                                                    if (stPages <= 1) {
+                                                        return null;
+                                                    }
+
                                                     const maxVis = 7;
                                                     let stPageNums: (number | '...')[] = [];
+
                                                     if (stPages <= maxVis) {
                                                         stPageNums = Array.from({ length: stPages }, (_, i) => i + 1);
                                                     } else {
                                                         stPageNums = [1];
-                                                        if (stagiairePage > 3) stPageNums.push('...');
+
+                                                        if (stagiairePage > 3) {
+                                                            stPageNums.push('...');
+                                                        }
+
                                                         const s = Math.max(2, stagiairePage - 1);
                                                         const e = Math.min(stPages - 1, stagiairePage + 1);
-                                                        for (let i = s; i <= e; i++) stPageNums.push(i);
-                                                        if (stagiairePage < stPages - 2) stPageNums.push('...');
+
+                                                        for (let i = s; i <= e; i++) {
+                                                            stPageNums.push(i);
+                                                        }
+
+                                                        if (stagiairePage < stPages - 2) {
+                                                            stPageNums.push('...');
+                                                        }
+
                                                         stPageNums.push(stPages);
                                                     }
+
                                                     return (
                                                         <div className="d-flex justify-content-between align-items-center p-2 border-top">
                                                             <small className="text-muted">
@@ -833,6 +891,12 @@ const CbPaiementsIndex = (props: PageProps) => {
                         <i className="ri-information-line me-2"></i>
                         En validant ce dossier, il sera transmis à la DMG pour l'élaboration de l'Ordre de Paiement.
                     </div>
+                    {(errors?.dossier || errors?.statut) && (
+                        <div className="alert alert-danger border-0 mb-3">
+                            <i className="ri-error-warning-line me-2"></i>
+                            {errors.dossier || errors.statut}
+                        </div>
+                    )}
                     {dossierToAction && (
                         <div className="border rounded p-3 bg-light">
                             <Row className="g-2">
@@ -864,6 +928,12 @@ const CbPaiementsIndex = (props: PageProps) => {
                         <i className="ri-alert-line me-2"></i>
                         En ajournant ce dossier, il retournera à la DMG pour correction.
                     </div>
+                    {(errors?.dossier || errors?.statut) && (
+                        <div className="alert alert-danger border-0 mb-3">
+                            <i className="ri-error-warning-line me-2"></i>
+                            {errors.dossier || errors.statut}
+                        </div>
+                    )}
                     {dossierToAction && (
                         <div className="border rounded p-3 bg-light mb-3">
                             <Row className="g-2">
@@ -878,9 +948,11 @@ const CbPaiementsIndex = (props: PageProps) => {
                             value={motifAjourner}
                             onChange={(e) => setMotifAjourner(e.target.value)}
                             placeholder="Ex: Montant incohérent, bénéficiaire inéligible, document manquant..."
-                            className={motifAjourner.length > 0 && motifAjourner.length < 5 ? 'is-invalid' : ''} />
-                        {motifAjourner.length > 0 && motifAjourner.length < 5 && (
-                            <div className="invalid-feedback">Le motif doit contenir au moins 5 caractères.</div>
+                            className={(motifAjourner.length > 0 && motifAjourner.length < 5) || errors?.motif ? 'is-invalid' : ''} />
+                        {((motifAjourner.length > 0 && motifAjourner.length < 5) || errors?.motif) && (
+                            <div className="invalid-feedback">
+                                {errors?.motif || 'Le motif doit contenir au moins 5 caractères.'}
+                            </div>
                         )}
                     </div>
                 </ModalBody>
@@ -952,6 +1024,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                         <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
                                     ) : (() => {
                                         const doc = getDocumentByType('CNI') || getDocumentByType('PIECE_IDENTITE');
+
                                         return doc ? (
                                             <iframe
                                                 src={getFileUrl(doc.chemin)}
@@ -971,6 +1044,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                         <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
                                     ) : (() => {
                                         const doc = getDocumentByType('FICHE_YUP') || getDocumentByType('TRESOR_MONEY') || getDocumentByType('FICHE_TRESOR_MONEY');
+
                                         return doc ? (
                                             <iframe
                                                 src={getFileUrl(doc.chemin)}
@@ -990,6 +1064,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                         <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
                                     ) : (() => {
                                         const doc = getDocumentByType('CONTRAT') || getDocumentByType('FILE_CONTRAT');
+
                                         return doc ? (
                                             <iframe
                                                 src={getFileUrl(doc.chemin)}
@@ -1009,6 +1084,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                         <div className="d-flex justify-content-center py-5"><Spinner color="primary" /></div>
                                     ) : (() => {
                                         const doc = getDocumentByType('ATTESTATION_PRESENCE') || getDocumentByType('ATTESTATION');
+
                                         return doc ? (
                                             <iframe
                                                 src={getFileUrl(doc.chemin)}

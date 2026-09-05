@@ -1,7 +1,10 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use App\Models\Payment\Paiement;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 $legacyDates = DB::connection('legacy')->table('contrats_pae')
@@ -10,9 +13,9 @@ $legacyDates = DB::connection('legacy')->table('contrats_pae')
     ->pluck('date_chef_agence', 'id')
     ->toArray();
 
-$paiements = App\Models\Payment\Paiement::where('statut', 'A_TRAITER')
-    ->whereHas('droitPaiement.stage', fn($s) => $s->whereYear('date_debut', 2026)->whereMonth('date_debut', 8))
-    ->whereHas('droitPaiement.stage.instanceParcours', fn($i) => $i->where('corbeille_actuelle', 'dmg_attente_paiement_demarrage'))
+$paiements = Paiement::where('statut', 'A_TRAITER')
+    ->whereHas('droitPaiement.stage', fn ($s) => $s->whereYear('date_debut', 2026)->whereMonth('date_debut', 8))
+    ->whereHas('droitPaiement.stage.instanceParcours', fn ($i) => $i->where('corbeille_actuelle', 'dmg_attente_paiement_demarrage'))
     ->with('droitPaiement.stage')
     ->get();
 

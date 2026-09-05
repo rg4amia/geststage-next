@@ -15,10 +15,11 @@ import {
     ModalHeader,
     Spinner,
 } from 'reactstrap';
-import {
+import type {
     BordereauRow,
     DossierOpRow,
-    OpRow,
+    OpRow} from '../shared';
+import {
     formatMontant,
     getJson,
     getStatutBadge,
@@ -62,13 +63,20 @@ const BordereauxTab = ({ actif, mois, periodeId, bordereaux }: BordereauxTabProp
         setChargement(true);
         setErreur(null);
         getJson<OpRow[]>('/dmg/paiements/ops', { mois, statut: 'BROUILLON' })
-            .then((data) => { setOpsEligibles(data ?? []); setSelection([]); })
-            .catch((e: Error) => { setOpsEligibles([]); setErreur(e.message); })
+            .then((data) => {
+ setOpsEligibles(data ?? []); setSelection([]); 
+})
+            .catch((e: Error) => {
+ setOpsEligibles([]); setErreur(e.message); 
+})
             .finally(() => setChargement(false));
     }, [mois]);
 
     useEffect(() => {
-        if (!actif) return;
+        if (!actif) {
+return;
+}
+
         chargerOpsEligibles();
     }, [actif, chargerOpsEligibles]);
 
@@ -85,7 +93,10 @@ const BordereauxTab = ({ actif, mois, periodeId, bordereaux }: BordereauxTabProp
         setSelection((prev) => (prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]));
 
     const creerBordereau = () => {
-        if (!selectionValide) return;
+        if (!selectionValide) {
+return;
+}
+
         setEnvoiEnCours(true);
         setErreurAction(null);
         router.post(
@@ -93,7 +104,9 @@ const BordereauxTab = ({ actif, mois, periodeId, bordereaux }: BordereauxTabProp
             { ops: selection, periode_id: periodeId },
             {
                 preserveScroll: true,
-                onSuccess: () => { setSelection([]); chargerOpsEligibles(); },
+                onSuccess: () => {
+ setSelection([]); chargerOpsEligibles(); 
+},
                 onError: (erreurs) => setErreurAction(Object.values(erreurs)[0] ?? 'Création impossible.'),
                 onFinish: () => setEnvoiEnCours(false),
             },
@@ -103,14 +116,18 @@ const BordereauxTab = ({ actif, mois, periodeId, bordereaux }: BordereauxTabProp
     const deplier = (bordereau: BordereauRow) => {
         if (bordereauDeplie === bordereau.id) {
             setBordereauDeplie(null);
+
             return;
         }
+
         setBordereauDeplie(bordereau.id);
         setOpsBordereau([]);
         setChargementOps(true);
         getJson<DossierOpRow[]>(`/dmg/paiements/bordereaux/${bordereau.id}/ops`)
             .then((data) => setOpsBordereau(data ?? []))
-            .catch((e: Error) => { setOpsBordereau([]); setErreur(e.message); })
+            .catch((e: Error) => {
+ setOpsBordereau([]); setErreur(e.message); 
+})
             .finally(() => setChargementOps(false));
     };
 
@@ -125,11 +142,16 @@ const BordereauxTab = ({ actif, mois, periodeId, bordereaux }: BordereauxTabProp
     };
 
     const confirmerRetrait = () => {
-        if (!retrait) return;
+        if (!retrait) {
+return;
+}
+
         if (motifRetrait.trim().length < 5) {
             setErreurAction('Le motif doit contenir au moins 5 caractères.');
+
             return;
         }
+
         setEnvoiEnCours(true);
         setErreurAction(null);
         router.post(
@@ -329,7 +351,9 @@ const BordereauxTab = ({ actif, mois, periodeId, bordereaux }: BordereauxTabProp
                                                                             <Button color="danger" size="sm" outline
                                                                                 disabled={bordereau.statut !== 'BROUILLON'}
                                                                                 title={bordereau.statut !== 'BROUILLON' ? 'Bordereau déjà transmis' : 'Retirer du bordereau'}
-                                                                                onClick={() => { setErreurAction(null); setMotifRetrait(''); setRetrait({ bordereau, op }); }}>
+                                                                                onClick={() => {
+ setErreurAction(null); setMotifRetrait(''); setRetrait({ bordereau, op }); 
+}}>
                                                                                 <i className="ri-delete-bin-line me-1"></i>Retirer
                                                                             </Button>
                                                                         </td>

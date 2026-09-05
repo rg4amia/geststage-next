@@ -1,12 +1,14 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
-use Illuminate\Support\Facades\DB;
+$app->make(Kernel::class)->bootstrap();
 use App\Models\Internship\Stage;
-use App\Models\Workflow\InstanceParcours;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Workflow\InstanceParcours;
+use Illuminate\Contracts\Console\Kernel;
+use Illuminate\Support\Facades\DB;
 
 $legacyIds100 = DB::connection('legacy')->table('contrats_pae')
     ->where('etat_chef_agence', 100)
@@ -18,10 +20,10 @@ $instances = InstanceParcours::whereIn('corbeille_actuelle', ['dmg_attente_paiem
     ->whereIn('stage_id', $stages)
     ->get();
 
-echo "Found " . $instances->count() . " Stage instances to fix.\n";
+echo 'Found '.$instances->count()." Stage instances to fix.\n";
 
 foreach ($instances as $instance) {
-    echo "Fixing Stage ID " . $instance->stage_id . "\n";
+    echo 'Fixing Stage ID '.$instance->stage_id."\n";
     $instance->corbeille_actuelle = 'ca_attente_validation_demarrage';
     $instance->save();
 

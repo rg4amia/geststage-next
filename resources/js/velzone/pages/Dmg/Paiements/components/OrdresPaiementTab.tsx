@@ -17,10 +17,11 @@ import {
     Row,
     Spinner,
 } from 'reactstrap';
-import {
+import type {
     DossierEligibleRow,
     DossierOpRow,
-    OpRow,
+    OpRow} from '../shared';
+import {
     formatMontant,
     getJson,
     getStatutBadge,
@@ -65,26 +66,35 @@ const OrdresPaiementTab = ({ actif, mois, periodeId, dossiersEligibles }: Ordres
         setErreur(null);
         getJson<OpRow[]>('/dmg/paiements/ops', { mois })
             .then((data) => setOps(data ?? []))
-            .catch((e: Error) => { setOps([]); setErreur(e.message); })
+            .catch((e: Error) => {
+ setOps([]); setErreur(e.message); 
+})
             .finally(() => setChargement(false));
     }, [mois]);
 
     useEffect(() => {
-        if (!actif) return;
+        if (!actif) {
+return;
+}
+
         chargerOps();
     }, [actif, chargerOps]);
 
     const deplier = (op: OpRow) => {
         if (opDeplie === op.id) {
             setOpDeplie(null);
+
             return;
         }
+
         setOpDeplie(op.id);
         setDossiersOp([]);
         setChargementDossiers(true);
         getJson<DossierOpRow[]>(`/dmg/paiements/ops/${op.id}/dossiers`)
             .then((data) => setDossiersOp(data ?? []))
-            .catch((e: Error) => { setDossiersOp([]); setErreur(e.message); })
+            .catch((e: Error) => {
+ setDossiersOp([]); setErreur(e.message); 
+})
             .finally(() => setChargementDossiers(false));
     };
 
@@ -108,7 +118,10 @@ const OrdresPaiementTab = ({ actif, mois, periodeId, dossiersEligibles }: Ordres
     };
 
     const elaborerOp = () => {
-        if (!periodeId || selection.length === 0) return;
+        if (!periodeId || selection.length === 0) {
+return;
+}
+
         setEnvoiEnCours(true);
         setErreurFormulaire(null);
         router.post(
@@ -135,11 +148,16 @@ const OrdresPaiementTab = ({ actif, mois, periodeId, dossiersEligibles }: Ordres
     };
 
     const confirmerRetrait = () => {
-        if (!retrait) return;
+        if (!retrait) {
+return;
+}
+
         if (motifRetrait.trim().length < 5) {
             setErreurFormulaire('Le motif doit contenir au moins 5 caractères.');
+
             return;
         }
+
         setEnvoiEnCours(true);
         setErreurFormulaire(null);
         const op = retrait.op;
@@ -335,7 +353,9 @@ const OrdresPaiementTab = ({ actif, mois, periodeId, dossiersEligibles }: Ordres
                                                                             <Button color="danger" size="sm" outline
                                                                                 disabled={op.statut !== 'BROUILLON'}
                                                                                 title={op.statut !== 'BROUILLON' ? 'OP déjà rattaché à un bordereau' : 'Retirer du OP'}
-                                                                                onClick={() => { setErreurFormulaire(null); setMotifRetrait(''); setRetrait({ op, dossier }); }}>
+                                                                                onClick={() => {
+ setErreurFormulaire(null); setMotifRetrait(''); setRetrait({ op, dossier }); 
+}}>
                                                                                 <i className="ri-delete-bin-line me-1"></i>Retirer
                                                                             </Button>
                                                                         </td>

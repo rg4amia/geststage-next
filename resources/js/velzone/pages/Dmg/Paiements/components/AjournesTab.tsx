@@ -17,11 +17,12 @@ import {
     Row,
     Spinner,
 } from 'reactstrap';
-import {
+import type {
     AjourneRow,
     OptionDossier,
     RefItem,
-    ReponsePaginee,
+    ReponsePaginee} from '../shared';
+import {
     formatDate,
     formatMontant,
     getJson,
@@ -100,6 +101,7 @@ const AjournesTab = ({
             setRechercheAppliquee(recherche);
             setPage(1);
         }, 400);
+
         return () => window.clearTimeout(minuteur);
     }, [recherche]);
 
@@ -130,31 +132,47 @@ const AjournesTab = ({
                 setDernierePage(reponse.last_page ?? 1);
             })
             .catch((e: Error) => {
-                if (e.name === 'AbortError') return;
+                if (e.name === 'AbortError') {
+return;
+}
+
                 setLignes([]);
                 setTotal(0);
                 setErreur(e.message);
             })
             .finally(() => {
-                if (!controleur.signal.aborted) setChargement(false);
+                if (!controleur.signal.aborted) {
+setChargement(false);
+}
             });
     }, [parametres, page]);
 
     useEffect(() => {
-        if (!actif) return;
+        if (!actif) {
+return;
+}
+
         charger();
     }, [actif, charger]);
 
     useEffect(() => {
-        if (!actif) return;
+        if (!actif) {
+return;
+}
+
         let annule = false;
         getJson<OptionDossier[]>('/dmg/paiements/ajournes/dossiers', { mois })
             .then((options) => {
-                if (!annule) setOptionsDossier(options ?? []);
+                if (!annule) {
+setOptionsDossier(options ?? []);
+}
             })
             .catch(() => {
-                if (!annule) setOptionsDossier([]);
+                if (!annule) {
+setOptionsDossier([]);
+}
             });
+
         return () => {
             annule = true;
         };
@@ -194,8 +212,10 @@ const AjournesTab = ({
     const reprendre = () => {
         if (motif.trim().length < 5) {
             setErreurMotif('Le motif doit contenir au moins 5 caractères.');
+
             return;
         }
+
         setEnvoiEnCours(true);
         setErreurMotif(null);
         router.post(
@@ -280,7 +300,9 @@ const AjournesTab = ({
                             </Button>
                             <Button color="success" size="sm" className="ms-auto"
                                 disabled={selection.length === 0}
-                                onClick={() => { setErreurMotif(null); setModalOuverte(true); }}>
+                                onClick={() => {
+ setErreurMotif(null); setModalOuverte(true); 
+}}>
                                 <i className="ri-arrow-go-back-line me-1"></i>
                                 Remettre en file d'attente ({selection.length})
                             </Button>

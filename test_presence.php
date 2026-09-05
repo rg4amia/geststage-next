@@ -1,7 +1,10 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use App\Models\Payment\Paiement;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 $legacyPointages = DB::connection('legacy')->table('pointage_models')
@@ -18,10 +21,10 @@ $legacyPointages = DB::connection('legacy')->table('pointage_models')
     ->count();
 echo "Legacy valid pointages without payment for 2026-08: $legacyPointages\n";
 
-$newPointages = App\Models\Payment\Paiement::where('statut', 'A_TRAITER')
+$newPointages = Paiement::where('statut', 'A_TRAITER')
     ->whereHas('droitPaiement', function ($query) {
         $query->where('nature', 'PRESENCE')
-            ->whereHas('periode', fn($q) => $q->where('code', '2026-08'));
+            ->whereHas('periode', fn ($q) => $q->where('code', '2026-08'));
     })
     ->count();
 echo "New system DroitPaiement PRESENCE for 2026-08: $newPointages\n";

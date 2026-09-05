@@ -53,7 +53,11 @@ const AjournesChefAgence = ({ instances, agences, entreprises, typesfinancements
 
     const applyFilters = () => {
         const params: Record<string, string> = {};
-        Object.entries(formData).forEach(([k, v]) => { if (v) params[k] = v; });
+        Object.entries(formData).forEach(([k, v]) => {
+ if (v) {
+params[k] = v;
+} 
+});
         router.get('/cip/mes-stagiaires/ajournes-ca', params, { preserveState: true, preserveScroll: true });
     };
 
@@ -71,25 +75,36 @@ const AjournesChefAgence = ({ instances, agences, entreprises, typesfinancements
     };
 
     const handleValiderSelection = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/cip/mes-stagiaires/valider-group', { ids: selectedIds.map(String) }, {
             preserveScroll: true,
-            onFinish: () => { setIsProcessing(false); setSelectedIds([]); },
+            onFinish: () => {
+ setIsProcessing(false); setSelectedIds([]); 
+},
         });
     };
 
     const handleAjournerSelection = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/cip/mes-stagiaires/ajourner-group', { ids: selectedIds.map(String), motif: 'Correction demandée par le Chef d\'Agence' }, {
             preserveScroll: true,
-            onFinish: () => { setIsProcessing(false); setSelectedIds([]); },
+            onFinish: () => {
+ setIsProcessing(false); setSelectedIds([]); 
+},
         });
     };
 
     const getDernierMotif = (row: InstanceRow) => {
         const dernierEvenement = row.evenements?.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())?.[0];
+
         return dernierEvenement?.motif || dernierEvenement?.description || 'Aucun motif renseigné';
     };
 
@@ -106,18 +121,21 @@ const AjournesChefAgence = ({ instances, agences, entreprises, typesfinancements
         { header: 'Entreprise', cell: (cell: any) => cell.row.original.stage?.entreprise?.raison_sociale || '-' },
         { header: 'Financement', cell: (cell: any) => {
             const val = cell.row.original.stage?.sourceFinancement?.nom || '-';
+
             return <Badge color="info-subtle" className="text-info">{val}</Badge>;
         }},
         { header: 'Type Stage', cell: (cell: any) => cell.row.original.stage?.typeStage?.nom || '-' },
         { header: 'N° AEJ', cell: (cell: any) => <span className="text-muted">{cell.row.original.stage?.beneficiaire?.numero_aej || '-'}</span> },
         { header: 'Nom et Prénoms', cell: (cell: any) => {
             const b = cell.row.original.stage?.beneficiaire;
+
             return <span className="fw-semibold">{b ? `${b.nom} ${b.prenoms}`.trim() : '-'}</span>;
         }},
         { header: 'Date Début', cell: (cell: any) => cell.row.original.stage?.date_debut || '-' },
         { header: 'Date Fin', cell: (cell: any) => cell.row.original.stage?.date_fin_prevue || '-' },
         { header: 'Avec Contrat', cell: (cell: any) => {
             const has = (cell.row.original.stage?.contrats?.length || 0) > 0;
+
             return <Badge color={has ? 'success-subtle' : 'danger-subtle'} className={`text-${has ? 'success' : 'danger'}`}>
                 <i className={`ri-${has ? 'check' : 'close'}-circle-line me-1`}></i>{has ? 'Oui' : 'Non'}
             </Badge>;

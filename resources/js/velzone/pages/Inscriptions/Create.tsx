@@ -141,6 +141,7 @@ const MAX_FILE_SIZE_KB = 10240; // 10 MB
 /** Valider l'extension d'un fichier */
 const validateFileExtension = (file: File, allowedExts: string[]): boolean => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
     return allowedExts.includes(ext);
 };
 
@@ -170,6 +171,7 @@ const RsSelect = ({
     id?: string;
 }) => {
     const selected = options.find(o => o.value === value) || null;
+
     return (
         <Select<RsSelectOption>
             inputId={id}
@@ -249,14 +251,22 @@ interface RecapitulatifProps {
 
 const RecapitulatifInscription: React.FC<RecapitulatifProps> = ({ beneficiaire, stage, documents, refData }) => {
     const getRefLabel = (items: RefItem[], id: string | undefined) => {
-        if (!id) return '—';
+        if (!id) {
+return '—';
+}
+
         const item = items.find(i => String(i.id) === id);
+
         return item?.nom || '—';
     };
 
     const formatDate = (date: string | undefined) => {
-        if (!date) return '—';
+        if (!date) {
+return '—';
+}
+
         const d = new Date(date);
+
         return d.toLocaleDateString('fr-FR');
     };
 
@@ -407,7 +417,10 @@ const RecapitulatifInscription: React.FC<RecapitulatifProps> = ({ beneficiaire, 
                                 <i className="ri-file-upload-line me-1" />Documents joints
                             </h6>
                             {Object.entries(documents).map(([key, file]) => {
-                                if (!file) return null;
+                                if (!file) {
+return null;
+}
+
                                 return (
                                     <div key={key} className="mb-2">
                                         <i className="ri-file-3-line text-success me-1" />
@@ -447,38 +460,73 @@ const todayString = () => new Date().toISOString().slice(0, 10);
 const normalizeLabel = (v: string) =>
     v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase();
 
-const addMonths = (d: Date, m: number) => { const n = new Date(d); n.setMonth(n.getMonth() + m); return n; };
-const addDays = (d: Date, days: number) => { const n = new Date(d); n.setDate(n.getDate() + days); return n; };
+const addMonths = (d: Date, m: number) => {
+ const n = new Date(d); n.setMonth(n.getMonth() + m);
+
+ return n; 
+};
+const addDays = (d: Date, days: number) => {
+ const n = new Date(d); n.setDate(n.getDate() + days);
+
+ return n; 
+};
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
 const calculateDateFin = (dateDebut: string, duree: string): string => {
-    if (!dateDebut || !duree) return '';
+    if (!dateDebut || !duree) {
+return '';
+}
+
     const start = new Date(`${dateDebut}T00:00:00`);
-    if (isNaN(start.getTime())) return '';
+
+    if (isNaN(start.getTime())) {
+return '';
+}
+
     if (duree === '1.5') {
         return start.getDate() > 1 ? fmt(addDays(start, 45)) : fmt(addDays(addMonths(start, 1), 14));
     }
+
     const months = Number(duree);
-    if (!isFinite(months)) return '';
+
+    if (!isFinite(months)) {
+return '';
+}
+
     return fmt(addDays(addMonths(start, months), -1));
 };
 
 /** Calcul âge exact à partir de la date de naissance */
 const calculAge = (dateNaissance: string): number => {
-    if (!dateNaissance) return 0;
+    if (!dateNaissance) {
+return 0;
+}
+
     const birth = new Date(`${dateNaissance}T00:00:00`);
-    if (isNaN(birth.getTime())) return 0;
+
+    if (isNaN(birth.getTime())) {
+return 0;
+}
+
     const now = new Date();
     let age = now.getFullYear() - birth.getFullYear();
     const monthDiff = now.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age--;
+
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+age--;
+}
+
     return age;
 };
 
 /** Date de capitalisation = date_debut + nbr_mois */
 const calculDateDemarrageCap = (dateDebut: string, nbMois: number): string => {
-    if (!dateDebut || nbMois <= 0) return '';
+    if (!dateDebut || nbMois <= 0) {
+return '';
+}
+
     const start = new Date(`${dateDebut}T00:00:00`);
+
     return fmt(addMonths(start, nbMois));
 };
 
@@ -493,13 +541,21 @@ const getPieceMaxLength = (typePiece: string): number => {
         "CARTE NATIONALE D'IDENTITÉ (ORANGE)": 10,
         PASSEPORT: 10,
     };
+
     return map[normalizeLabel(typePiece)] ?? 20;
 };
 
 const getPiecePrefix = (typePiece: string): string => {
     const n = normalizeLabel(typePiece);
-    if (n.includes('BLANC')) return 'CI';
-    if (n.includes('ORANGE')) return 'C';
+
+    if (n.includes('BLANC')) {
+return 'CI';
+}
+
+    if (n.includes('ORANGE')) {
+return 'C';
+}
+
     return '';
 };
 
@@ -520,16 +576,19 @@ const getFilteredTypeStageIds = (
     if (fCode.includes('C2D') || fCode.includes('PEJEDEC')) {
         return typesStage.filter(ts => normalizeLabel(ts.nom).includes('QUALIFICATION')).map(ts => String(ts.id));
     }
+
     // BUDGET AEJ + PEJEDEC (capitalisation avec) → uniquement ECOLE
     if (fCode.includes('BUDGET AEJ') && oCode.includes('CAPITALISATION AVEC')) {
         return typesStage.filter(ts => normalizeLabel(ts.nom).includes('ECOLE')).map(ts => String(ts.id));
     }
+
     // BUDGET AEJ + NON CAPITALISATION (AEJ) → ECOLE + QUALIFICATION
     if (fCode.includes('BUDGET AEJ') && oCode.includes('NON CAPITALISATION')) {
         return typesStage
             .filter(ts => normalizeLabel(ts.nom).includes('ECOLE') || normalizeLabel(ts.nom).includes('QUALIFICATION'))
             .map(ts => String(ts.id));
     }
+
     // Par défaut → tous
     return typesStage.map(ts => String(ts.id));
 };
@@ -558,10 +617,12 @@ const getDurationOptions = (financementCode: string, typeStageLabel: string): { 
             { value: '6', label: '6 mois' },
         ];
     }
+
     // STAGE DE QUALIFICATION → strictement 6 mois
     if (isQualif) {
         return [{ value: '6', label: '6 mois' }];
     }
+
     // Par défaut → toutes les durées
     return [
         { value: '1', label: '1 mois' },
@@ -658,6 +719,7 @@ const Create = ({
     /** Type de stage sélectionné → label */
     function getStageLabel(): string {
         const ts = typesStage.find(t => String(t.id) === stage.type_stage_id);
+
         return ts?.nom || '';
     }
     const stageLabel = normalizeLabel(getStageLabel());
@@ -695,16 +757,27 @@ const Create = ({
     );
 
     const filteredDiplomes = useMemo(() => {
-        if (!stage.niveau_etude_id) return diplomes;
+        if (!stage.niveau_etude_id) {
+return diplomes;
+}
+
         return diplomes.filter(d => !d.niveau_id || String(d.niveau_id) === stage.niveau_etude_id);
     }, [diplomes, stage.niveau_etude_id]);
 
     const entrepriseOptions = useMemo(() => {
-        if (!stage.agence_id) return [];
+        if (!stage.agence_id) {
+return [];
+}
+
         const unique = new Map<number, OffreItem>();
         offres
             .filter(o => o.agence_id === Number(stage.agence_id))
-            .forEach(o => { if (!unique.has(o.entreprise_id)) unique.set(o.entreprise_id, o); });
+            .forEach(o => {
+ if (!unique.has(o.entreprise_id)) {
+unique.set(o.entreprise_id, o);
+} 
+});
+
         return Array.from(unique.values()).map(o => ({
             value: o.entreprise_id,
             label: o.entreprise?.raison_sociale || `Entreprise #${o.entreprise_id}`,
@@ -838,6 +911,7 @@ const Create = ({
             ? stage.date_demarrage_capitalisation_sans_financiere
             : stage.date_debut;
         const fin = calculateDateFin(base, stage.duree_stage);
+
         if (fin && fin !== stage.date_fin_prevue) {
             setStage(s => ({ ...s, date_fin_prevue: fin }));
         }
@@ -851,16 +925,23 @@ const Create = ({
     const handleLoadDemandeur = useCallback(async () => {
         if (beneficiaire.numero_aej.length < 10) {
             setDemandeurError('Renseignez au moins 10 caracteres.');
+
             return;
         }
+
         setDemandeurLoading(true);
         setDemandeurError('');
+
         try {
             const resp = await fetch(`/api/stagiaires/demandeur/${encodeURIComponent(beneficiaire.numero_aej)}`, {
                 credentials: 'same-origin',
                 headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             });
-            if (!resp.ok) throw new Error('Demandeur non trouvé');
+
+            if (!resp.ok) {
+throw new Error('Demandeur non trouvé');
+}
+
             const { data }: { data: DemandeurAej } = await resp.json();
 
             // Déterminer nature piece et numéro
@@ -880,6 +961,7 @@ const Create = ({
                 maxLen = 9;
             } else {
                 const typePieceLib = (data.type_piece_identite || '').toUpperCase();
+
                 if (typePieceLib.includes('PASSEPORT')) {
                     naturePiece = 'PASSEPORT';
                     maxLen = 10;
@@ -941,7 +1023,10 @@ const Create = ({
 
     /** Sélection offre → remplir entreprise, sigle, intitulé, nb places */
     const handleOffreChange = useCallback((sel: any) => {
-        if (!sel) return;
+        if (!sel) {
+return;
+}
+
         const o = sel.offre as OffreItem;
         setStage(s => ({
             ...s,
@@ -961,9 +1046,15 @@ const Create = ({
        ═══════════════════════════════════════════════════════════════════════ */
     const validate = useCallback((): FormErrors => {
         const e: FormErrors = {};
-        const req = (f: string, v: string, label: string) => { if (!v?.trim()) e[f] = `${label} est obligatoire.`; };
+        const req = (f: string, v: string, label: string) => {
+ if (!v?.trim()) {
+e[f] = `${label} est obligatoire.`;
+} 
+};
         const reqNum = (f: string, v: string, len: number, label: string) => {
-            if (v && v.length !== len) e[f] = `${label} doit avoir exactement ${len} chiffres.`;
+            if (v && v.length !== len) {
+e[f] = `${label} doit avoir exactement ${len} chiffres.`;
+}
         };
 
         // ─── AGENCE ───
@@ -980,6 +1071,7 @@ const Create = ({
 
         // ─── IDENTIFICATION ───
         req('numero_aej', beneficiaire.numero_aej, 'Numero AEJ');
+
         if (beneficiaire.numero_aej && (beneficiaire.numero_aej.length < 10 || beneficiaire.numero_aej.length > 14)) {
             e.numero_aej = 'Le numéro AEJ doit être entre 10 et 14 caractères.';
         }
@@ -987,6 +1079,7 @@ const Create = ({
         req('nom', beneficiaire.nom, 'Nom');
         req('prenoms', beneficiaire.prenoms, 'Prénoms');
         req('date_naissance', beneficiaire.date_naissance, 'Date de naissance');
+
         if (beneficiaire.date_naissance && new Date(beneficiaire.date_naissance) >= new Date()) {
             e.date_naissance = 'La date de naissance doit être antérieure à aujourd\'hui.';
         }
@@ -994,9 +1087,11 @@ const Create = ({
         // Vérification âge min et max (legacy: min 17, max 40; BUDGET AEJ+ECOLE → min 14)
         if (beneficiaire.date_naissance) {
             const minimumAge = isFinancementBailleurs && isStageEcole ? 14 : 17;
+
             if (age < minimumAge) {
                 e.date_naissance = `Le stagiaire doit avoir au moins ${minimumAge} ans.`;
             }
+
             if (age > 40) {
                 e.date_naissance = 'Le stagiaire ne doit pas dépasser 40 ans.';
             }
@@ -1008,9 +1103,11 @@ const Create = ({
         req('numero_piece_identite', beneficiaire.numero_piece_identite, 'Numéro pièce');
         req('numero_cmu', beneficiaire.numero_cmu, 'Numéro CMU');
         req('telephone_principal', beneficiaire.telephone_principal, 'Contact téléphonique 1');
+
         if (beneficiaire.telephone_principal && beneficiaire.telephone_principal.length !== 10) {
             e.telephone_principal = 'Le contact doit avoir exactement 10 chiffres.';
         }
+
         if (beneficiaire.telephone_secondaire && beneficiaire.telephone_secondaire.length !== 10 && beneficiaire.telephone_secondaire.length > 0) {
             e.telephone_secondaire = 'Le contact doit avoir exactement 10 chiffres.';
         }
@@ -1018,9 +1115,11 @@ const Create = ({
         req('personne_urgence', beneficiaire.personne_urgence, 'Personne à contacter en cas d\'urgence');
         req('lien_parente_id', beneficiaire.lien_parente_id, 'Lien de parenté');
         req('contact_urgence_1', beneficiaire.contact_urgence_1, 'Contact parent 1');
+
         if (beneficiaire.contact_urgence_1 && beneficiaire.contact_urgence_1.length !== 10) {
             e.contact_urgence_1 = 'Le contact doit avoir exactement 10 chiffres.';
         }
+
         if (beneficiaire.contact_urgence_2 && beneficiaire.contact_urgence_2.length !== 0 && beneficiaire.contact_urgence_2.length !== 10) {
             e.contact_urgence_2 = 'Le contact doit avoir exactement 10 chiffres.';
         }
@@ -1028,19 +1127,26 @@ const Create = ({
         // ─── FORMATION ───
         req('niveau_etude_id', beneficiaire.niveau_etude_id, 'Niveau d\'études');
         req('diplome_id', beneficiaire.diplome_id, 'Diplôme');
-        if (isDiplomeAutre) req('autre_diplome', beneficiaire.autre_diplome, 'Préciser le diplôme');
+
+        if (isDiplomeAutre) {
+req('autre_diplome', beneficiaire.autre_diplome, 'Préciser le diplôme');
+}
+
         req('specialite', beneficiaire.specialite, 'Spécialité');
 
         // Annee diplome required si niveau ≠ 1
         if (!isNiveauAucun) {
             req('annee_diplome', beneficiaire.annee_diplome, 'Année du diplôme');
+
             if (beneficiaire.annee_diplome && beneficiaire.annee_diplome.length !== 4) {
                 e.annee_diplome = 'L\'année doit avoir 4 chiffres.';
             }
+
             // Validation: année diplôme > année naissance
             if (beneficiaire.annee_diplome && beneficiaire.date_naissance) {
                 const yearBirth = new Date(beneficiaire.date_naissance).getFullYear();
                 const yearDiplome = parseInt(beneficiaire.annee_diplome, 10);
+
                 if (yearDiplome < yearBirth) {
                     e.annee_diplome = 'L\'année du diplôme est antérieure à la date de naissance.';
                 }
@@ -1050,26 +1156,38 @@ const Create = ({
         req('etablissement_frequente', beneficiaire.etablissement_frequente, 'Établissement fréquenté');
         req('type_enseignement_id', beneficiaire.type_enseignement_id, 'Type d\'enseignement');
         req('handicap_id', beneficiaire.handicap_id, 'Handicap');
-        if (beneficiaire.handicap_id === 'HANDICAP') req('type_handicap_id', beneficiaire.type_handicap_id, 'Type de handicap');
-        if (beneficiaire.type_handicap_id === 'AUTRE') req('autre_handicap', beneficiaire.autre_handicap, 'Autre handicap');
+
+        if (beneficiaire.handicap_id === 'HANDICAP') {
+req('type_handicap_id', beneficiaire.type_handicap_id, 'Type de handicap');
+}
+
+        if (beneficiaire.type_handicap_id === 'AUTRE') {
+req('autre_handicap', beneficiaire.autre_handicap, 'Autre handicap');
+}
 
         // ─── PAIEMENT ───
         req('type_paiement_id', beneficiaire.type_paiement_id, 'Type de paiement');
+
         if (requiresYup) {
             req('numero_tresor_money', beneficiaire.numero_tresor_money, 'Numéro Trésor Money');
+
             if (beneficiaire.numero_tresor_money && beneficiaire.numero_tresor_money.length !== 10) {
                 e.numero_tresor_money = 'Le numéro doit avoir exactement 10 chiffres.';
             }
+
             // fiche_yup obligatoire si C2D — legacy: fiche_yup.required = financement==4
             if (!documents.fiche_tresor_money) {
                 e.fiche_tresor_money = 'La fiche Trésor Money est obligatoire pour ce type de financement.';
             }
         }
+
         if (requiresWave) {
             req('numero_wave', beneficiaire.numero_wave, 'Numéro Wave');
+
             if (beneficiaire.numero_wave && beneficiaire.numero_wave.length !== 10) {
                 e.numero_wave = 'Le numéro doit avoir exactement 10 chiffres.';
             }
+
             // fiche_wave obligatoire si BMZ — legacy: fiche_wave.required = financement==5
             if (!documents.fiche_wave) {
                 e.fiche_wave = 'La fiche Wave est obligatoire pour ce type de financement.';
@@ -1086,47 +1204,59 @@ const Create = ({
         req('nom_encadreur', stage.nom_encadreur, 'Nom et prénom de l\'encadreur');
         req('fonction_encadreur', stage.fonction_encadreur, 'Fonction de l\'encadreur');
         req('contact_encadreur', stage.contact_encadreur, 'Numéro de l\'encadreur');
+
         if (stage.contact_encadreur && stage.contact_encadreur.length !== 10) {
             e.contact_encadreur = 'Le contact doit avoir exactement 10 chiffres.';
         }
+
         req('situation_stage', stage.situation_stage, 'Situation du stage');
 
         // ─── DATES ───
         if (showDateDebut) {
             req('date_debut', stage.date_debut, 'Date de début de stage');
+
             if (stage.date_debut) {
                 const d = new Date(`${stage.date_debut}T00:00:00`);
                 const now = new Date();
+
                 // maxDate: aujourd'hui — legacy: maxDate: moment().format('YYYY-MM-DD')
                 if (d > now) {
                     e.date_debut = 'La date de début ne peut pas être dans le futur.';
                 }
+
                 // minDate: il y a 5 ans — legacy: minDate: moment().subtract(5, 'years').format('YYYY-MM-DD')
                 const fiveYearsAgo = new Date();
                 fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+
                 if (d < fiveYearsAgo) {
                     e.date_debut = 'La date de début ne peut pas être antérieure à 5 ans.';
                 }
+
                 // Jours de cohorte — legacy: validateDateCohorte
                 if (!isFinancementBMZ) {
                     const day = d.getDate();
+
                     if (!ALLOWED_COHORT_DAYS.includes(day)) {
                         e.date_debut = 'Veuillez choisir le 1 à 5, 10 ou 20 du mois.';
                     }
                 }
             }
         }
+
         if (isSpontaneOuDAICG) {
             req('date_demarrage_capitalisation_sans_financiere', stage.date_demarrage_capitalisation_sans_financiere, 'Date démarrage capitalisation');
         }
+
         if (isPEJEDEC) {
             // nbr_mois_capitaliser required when origin==2 — legacy: nbr_mois_captaliser.required = origin==2
             if (!stage.nbr_mois_capitaliser || stage.nbr_mois_capitaliser <= 0) {
                 e.nbr_mois_capitaliser = 'Le nombre de mois à capitaliser est obligatoire.';
             }
+
             if (stage.nbr_mois_capitaliser && stage.duree_stage && stage.nbr_mois_capitaliser >= Number(stage.duree_stage)) {
                 e.nbr_mois_capitaliser = 'Le mois de capitalisation est supérieur à la durée du stage !';
             }
+
             // date_demarrage_capitalisation required when origin==2 (auto-calculated but must exist)
             if (!stage.date_demarrage_capitalisation) {
                 e.date_demarrage_capitalisation = 'La date de démarrage de la capitalisation est obligatoire.';
@@ -1134,6 +1264,7 @@ const Create = ({
         }
 
         req('date_fin_prevue', stage.date_fin_prevue, 'Date fin prévisionnelle');
+
         if (stage.date_debut && stage.date_fin_prevue && stage.date_fin_prevue < stage.date_debut) {
             e.date_fin_prevue = 'La date de fin doit être postérieure à la date de début.';
         }
@@ -1149,6 +1280,7 @@ const Create = ({
             if (!validateFileExtension(documents.fichier_cmu, ALLOWED_IMAGE_EXTENSIONS)) {
                 e.fichier_cmu = 'Le fichier doit être au format PDF, JPG ou PNG.';
             }
+
             if (!validateFileSize(documents.fichier_cmu, MAX_FILE_SIZE_KB)) {
                 e.fichier_cmu = 'La taille du fichier ne doit pas dépasser 10 MB.';
             }
@@ -1161,6 +1293,7 @@ const Create = ({
             if (!validateFileExtension(documents.piece_identite, ALLOWED_DOC_EXTENSIONS)) {
                 e.piece_identite = 'Le fichier doit être au format PDF, DOC ou DOCX.';
             }
+
             if (!validateFileSize(documents.piece_identite, MAX_FILE_SIZE_KB)) {
                 e.piece_identite = 'La taille du fichier ne doit pas dépasser 10 MB.';
             }
@@ -1174,10 +1307,12 @@ const Create = ({
                 if (!validateFileExtension(documents.fichier_attestation, ALLOWED_DOC_EXTENSIONS)) {
                     e.fichier_attestation = 'Le fichier doit être au format PDF, DOC ou DOCX.';
                 }
+
                 if (!validateFileSize(documents.fichier_attestation, MAX_FILE_SIZE_KB)) {
                     e.fichier_attestation = 'La taille du fichier ne doit pas dépasser 10 MB.';
                 }
             }
+
             // Certificat de fréquentation — obligatoire si STAGE ECOLE
             if (!documents.fichier_certificat_frequentation) {
                 e.fichier_certificat_frequentation = 'Le certificat de fréquentation est obligatoire pour ce type de stage.';
@@ -1185,6 +1320,7 @@ const Create = ({
                 if (!validateFileExtension(documents.fichier_certificat_frequentation, ALLOWED_DOC_EXTENSIONS)) {
                     e.fichier_certificat_frequentation = 'Le fichier doit être au format PDF, DOC ou DOCX.';
                 }
+
                 if (!validateFileSize(documents.fichier_certificat_frequentation, MAX_FILE_SIZE_KB)) {
                     e.fichier_certificat_frequentation = 'La taille du fichier ne doit pas dépasser 10 MB.';
                 }
@@ -1199,6 +1335,7 @@ const Create = ({
                 if (!validateFileExtension(documents.fichier_diplome, ALLOWED_DOC_EXTENSIONS)) {
                     e.fichier_diplome = 'Le fichier doit être au format PDF, DOC ou DOCX.';
                 }
+
                 if (!validateFileSize(documents.fichier_diplome, MAX_FILE_SIZE_KB)) {
                     e.fichier_diplome = 'La taille du fichier ne doit pas dépasser 10 MB.';
                 }
@@ -1210,6 +1347,7 @@ const Create = ({
             if (!validateFileExtension(documents.fiche_tresor_money, ALLOWED_DOC_EXTENSIONS)) {
                 e.fiche_tresor_money = 'Le fichier doit être au format PDF, DOC ou DOCX.';
             }
+
             if (!validateFileSize(documents.fiche_tresor_money, MAX_FILE_SIZE_KB)) {
                 e.fiche_tresor_money = 'La taille du fichier ne doit pas dépasser 10 MB.';
             }
@@ -1220,6 +1358,7 @@ const Create = ({
             if (!validateFileExtension(documents.fiche_wave, ALLOWED_DOC_EXTENSIONS)) {
                 e.fiche_wave = 'Le fichier doit être au format PDF, DOC ou DOCX.';
             }
+
             if (!validateFileSize(documents.fiche_wave, MAX_FILE_SIZE_KB)) {
                 e.fiche_wave = 'La taille du fichier ne doit pas dépasser 10 MB.';
             }
@@ -1250,7 +1389,12 @@ const Create = ({
         };
         const fields = stepFields[step] || [];
         const stepErrors: FormErrors = {};
-        fields.forEach(f => { if (all[f]) stepErrors[f] = all[f]; });
+        fields.forEach(f => {
+ if (all[f]) {
+stepErrors[f] = all[f];
+} 
+});
+
         return stepErrors;
     }, [validate]);
 
@@ -1258,6 +1402,7 @@ const Create = ({
     const handleNext = useCallback(() => {
         const stepErrors = validateStep(currentStep);
         setErrors(stepErrors);
+
         if (Object.keys(stepErrors).length === 0 && currentStep < STEPS.length - 1) {
             setCurrentStep(s => s + 1);
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1290,16 +1435,23 @@ const Create = ({
        ═══════════════════════════════════════════════════════════════════════ */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+
         // Sur les étapes 0-2, Enter ne doit pas soumettre — avancer à la place
         if (currentStep < STEPS.length - 1) {
             handleNext();
+
             return;
         }
+
         const clientErrors = validate();
         setErrors(clientErrors);
-        if (Object.keys(clientErrors).length > 0) return;
+
+        if (Object.keys(clientErrors).length > 0) {
+return;
+}
 
         setSubmitting(true);
+
         try {
             // 1. Vérification doublons
             const checkData = {
@@ -1312,6 +1464,7 @@ const Create = ({
             };
 
             let hasDoublon = false;
+
             try {
                 const checkResp = await fetch('/inscriptions/check-doublon', {
                     method: 'POST',
@@ -1324,16 +1477,21 @@ const Create = ({
                     },
                     body: JSON.stringify(checkData),
                 });
+
                 if (checkResp.ok) {
                     const checkResult = await checkResp.json();
+
                     if (checkResult.has_doublon) {
                         const confirmed = window.confirm(
                             `Des doublons ont été détectés sur les champs suivants : ${checkResult.types?.join(', ') || 'plusieurs champs'}.\n\nVoulez-vous quand même enregistrer ce stagiaire ?`
                         );
+
                         if (!confirmed) {
                             setSubmitting(false);
+
                             return;
                         }
+
                         hasDoublon = true;
                     }
                 }
@@ -1343,15 +1501,23 @@ const Create = ({
 
             // 2. Soumission
             const formData = new FormData();
-            Object.entries(beneficiaire).forEach(([k, v]) => { if (v) formData.append(`beneficiaire[${k}]`, String(v)); });
+            Object.entries(beneficiaire).forEach(([k, v]) => {
+ if (v) {
+formData.append(`beneficiaire[${k}]`, String(v));
+} 
+});
             Object.entries(stage).forEach(([k, v]) => {
-                if (v !== '' && v !== 0) formData.append(`stage[${k}]`, String(v));
+                if (v !== '' && v !== 0) {
+formData.append(`stage[${k}]`, String(v));
+}
             });
             formData.append('contrat[date_debut]', stage.date_debut || todayString());
             formData.append('contrat[date_fin]', stage.date_fin_prevue || '');
 
             Object.entries(documents).forEach(([k, v]) => {
-                if (v instanceof File) formData.append(`documents[${k}]`, v);
+                if (v instanceof File) {
+formData.append(`documents[${k}]`, v);
+}
             });
 
             const resp = await fetch('/inscriptions', {
@@ -1365,6 +1531,7 @@ const Create = ({
                 window.location.href = '/cip/mes-stagiaires';
             } else {
                 const text = await resp.text();
+
                 try {
                     const json = JSON.parse(text);
                     setErrors(json.errors || { _form: json.message || 'Erreur serveur' });

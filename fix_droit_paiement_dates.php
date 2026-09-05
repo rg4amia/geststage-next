@@ -1,7 +1,10 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use App\Models\Payment\DroitPaiement;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 $legacyDates = DB::connection('legacy')->table('contrats_pae')
@@ -10,7 +13,7 @@ $legacyDates = DB::connection('legacy')->table('contrats_pae')
     ->pluck('date_chef_agence', 'id')
     ->toArray();
 
-$droits = App\Models\Payment\DroitPaiement::with('stage')->get();
+$droits = DroitPaiement::with('stage')->get();
 $updates = 0;
 foreach ($droits as $droit) {
     if ($droit->stage && $droit->stage->ancien_id) {
@@ -23,7 +26,7 @@ foreach ($droits as $droit) {
                     ->where('id', $droit->id)
                     ->update([
                         'created_at' => $legacyDate,
-                        'updated_at' => $legacyDate
+                        'updated_at' => $legacyDate,
                     ]);
                 $updates++;
             }

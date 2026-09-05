@@ -19,6 +19,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Pagination\Paginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 
@@ -339,15 +342,15 @@ class StagiaireDesseController extends Controller
     /**
      * Pagine une collection en conservant les paramètres d'URL de la requête courante.
      */
-    private function collectionPaginate(\Illuminate\Support\Collection $items, int $perPage)
+    private function collectionPaginate(Collection $items, int $perPage)
     {
-        $page = \Illuminate\Pagination\Paginator::resolveCurrentPage('page');
-        $paginator = new \Illuminate\Pagination\LengthAwarePaginator(
+        $page = Paginator::resolveCurrentPage('page');
+        $paginator = new LengthAwarePaginator(
             $items->forPage($page, $perPage)->values(),
             $items->count(),
             $perPage,
             $page,
-            ['path' => \Illuminate\Pagination\Paginator::resolveCurrentPath(), 'query' => request()->query()]
+            ['path' => Paginator::resolveCurrentPath(), 'query' => request()->query()]
         );
 
         return $paginator->withQueryString();

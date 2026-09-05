@@ -161,41 +161,70 @@ const normalizeLabel = (v: string) =>
 const addMonths = (d: Date, m: number) => {
     const n = new Date(d);
     n.setMonth(n.getMonth() + m);
+
     return n;
 };
 const addDays = (d: Date, days: number) => {
     const n = new Date(d);
     n.setDate(n.getDate() + days);
+
     return n;
 };
 const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
 const calculateDateFin = (dateDebut: string, duree: string): string => {
-    if (!dateDebut || !duree) return '';
+    if (!dateDebut || !duree) {
+return '';
+}
+
     const start = new Date(`${dateDebut}T00:00:00`);
-    if (isNaN(start.getTime())) return '';
+
+    if (isNaN(start.getTime())) {
+return '';
+}
+
     if (duree === '1.5') {
         return start.getDate() > 1 ? fmt(addDays(start, 45)) : fmt(addDays(addMonths(start, 1), 14));
     }
+
     const months = Number(duree);
-    if (!isFinite(months)) return '';
+
+    if (!isFinite(months)) {
+return '';
+}
+
     return fmt(addDays(addMonths(start, months), -1));
 };
 
 const calculAge = (dateNaissance: string): number => {
-    if (!dateNaissance) return 0;
+    if (!dateNaissance) {
+return 0;
+}
+
     const birth = new Date(`${dateNaissance}T00:00:00`);
-    if (isNaN(birth.getTime())) return 0;
+
+    if (isNaN(birth.getTime())) {
+return 0;
+}
+
     const now = new Date();
     let age = now.getFullYear() - birth.getFullYear();
     const monthDiff = now.getMonth() - birth.getMonth();
-    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) age--;
+
+    if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < birth.getDate())) {
+age--;
+}
+
     return age;
 };
 
 const calculDateDemarrageCap = (dateDebut: string, nbMois: number): string => {
-    if (!dateDebut || nbMois <= 0) return '';
+    if (!dateDebut || nbMois <= 0) {
+return '';
+}
+
     const start = new Date(`${dateDebut}T00:00:00`);
+
     return fmt(addMonths(start, nbMois));
 };
 
@@ -210,18 +239,27 @@ const getPieceMaxLength = (typePiece: string): number => {
         "CARTE NATIONALE D'IDENTITÉ (ORANGE)": 10,
         PASSEPORT: 10,
     };
+
     return map[normalizeLabel(typePiece)] ?? 20;
 };
 
 const getPiecePrefix = (typePiece: string): string => {
     const n = normalizeLabel(typePiece);
-    if (n.includes('BLANC')) return 'CI';
-    if (n.includes('ORANGE')) return 'C';
+
+    if (n.includes('BLANC')) {
+return 'CI';
+}
+
+    if (n.includes('ORANGE')) {
+return 'C';
+}
+
     return '';
 };
 
 const validateFileExtension = (file: File, allowedExts: string[]): boolean => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
+
     return allowedExts.includes(ext);
 };
 
@@ -245,14 +283,17 @@ const getFilteredTypeStageIds = (
     if (fCode.includes('C2D') || fCode.includes('PEJEDEC')) {
         return typesStage.filter(ts => normalizeLabel(ts.nom).includes('QUALIFICATION')).map(ts => String(ts.id));
     }
+
     if (fCode.includes('BUDGET AEJ') && oCode.includes('CAPITALISATION AVEC')) {
         return typesStage.filter(ts => normalizeLabel(ts.nom).includes('ECOLE')).map(ts => String(ts.id));
     }
+
     if (fCode.includes('BUDGET AEJ') && oCode.includes('NON CAPITALISATION')) {
         return typesStage
             .filter(ts => normalizeLabel(ts.nom).includes('ECOLE') || normalizeLabel(ts.nom).includes('QUALIFICATION'))
             .map(ts => String(ts.id));
     }
+
     return typesStage.map(ts => String(ts.id));
 };
 
@@ -272,9 +313,11 @@ const getDurationOptions = (
             { value: '6', label: '6 mois' },
         ];
     }
+
     if (isQualif) {
         return [{ value: '6', label: '6 mois' }];
     }
+
     return [
         { value: '1', label: '1 mois' },
         { value: '1.5', label: '1.5 mois' },
@@ -287,9 +330,11 @@ const getDurationOptions = (
 /** Calcul du numéro pièce avec préfixe */
 const computePieceDisplay = (typePiece: string, numeroPiece: string): string => {
     const prefix = getPiecePrefix(typePiece);
+
     if (prefix && numeroPiece.startsWith(prefix)) {
         return numeroPiece.slice(prefix.length);
     }
+
     return numeroPiece;
 };
 
@@ -461,6 +506,7 @@ export default function EditStagiaire({
 
     function getStageLabel(): string {
         const ts = references.typesStage.find(t => String(t.id) === String(data.type_stage_id));
+
         return ts?.nom || '';
     }
     const stageLabel = normalizeLabel(getStageLabel());
@@ -485,8 +531,11 @@ export default function EditStagiaire({
     const documentsDeposes = useMemo(() => {
         const parCode: Record<string, DocumentDepose> = {};
         documents.forEach(doc => {
-            if (doc.code) parCode[doc.code] = doc;
+            if (doc.code) {
+parCode[doc.code] = doc;
+}
         });
+
         return parCode;
     }, [documents]);
 
@@ -514,20 +563,29 @@ export default function EditStagiaire({
     );
 
     const filteredDiplomes = useMemo(() => {
-        if (!data.niveau_etude_id) return references.diplomes;
+        if (!data.niveau_etude_id) {
+return references.diplomes;
+}
+
         return references.diplomes.filter(
             d => !d.niveau_id || String(d.niveau_id) === String(data.niveau_etude_id),
         );
     }, [references.diplomes, data.niveau_etude_id]);
 
     const entrepriseOptions = useMemo(() => {
-        if (!data.agence_id) return references.entreprises.map(e => ({ value: String(e.id), label: e.raison_sociale }));
+        if (!data.agence_id) {
+return references.entreprises.map(e => ({ value: String(e.id), label: e.raison_sociale }));
+}
+
         const unique = new Map<number, OffreItem>();
         offres
             .filter(o => o.agence_id === Number(data.agence_id))
             .forEach(o => {
-                if (!unique.has(o.entreprise_id)) unique.set(o.entreprise_id, o);
+                if (!unique.has(o.entreprise_id)) {
+unique.set(o.entreprise_id, o);
+}
             });
+
         return Array.from(unique.values()).map(o => ({
             value: String(o.entreprise_id),
             label: o.entreprise?.raison_sociale || `Entreprise #${o.entreprise_id}`,
@@ -552,7 +610,11 @@ export default function EditStagiaire({
                 normalizeLabel(ts.nom).includes('ECOLE'),
             );
             setData('source_financement_id', '3');
-            if (ecole) setData('type_stage_id', String(ecole.id));
+
+            if (ecole) {
+setData('type_stage_id', String(ecole.id));
+}
+
             setData('duree_stage', '6');
         }
     }, [origineId]);
@@ -595,13 +657,21 @@ export default function EditStagiaire({
             const qualif = references.typesStage.find(ts =>
                 normalizeLabel(ts.nom).includes('QUALIFICATION'),
             );
-            if (qualif) setData('type_stage_id', String(qualif.id));
+
+            if (qualif) {
+setData('type_stage_id', String(qualif.id));
+}
+
             setData('duree_stage', '6');
         } else if (isFinancementBailleurs && isPEJEDEC) {
             const ecole = references.typesStage.find(ts =>
                 normalizeLabel(ts.nom).includes('ECOLE'),
             );
-            if (ecole) setData('type_stage_id', String(ecole.id));
+
+            if (ecole) {
+setData('type_stage_id', String(ecole.id));
+}
+
             setData('duree_stage', '6');
         }
     }, [financementId]);
@@ -634,6 +704,7 @@ export default function EditStagiaire({
                 ? data.date_demarrage_capitalisation_sans_financiere
                 : data.date_debut;
         const fin = calculateDateFin(base, data.duree_stage);
+
         if (fin && fin !== data.date_fin_prevue) {
             setData('date_fin_prevue', fin);
         }
@@ -645,7 +716,9 @@ export default function EditStagiaire({
     const validate = useCallback((): Record<string, string> => {
         const e: Record<string, string> = {};
         const req = (f: string, v: string, label: string) => {
-            if (!v?.trim()) e[f] = `${label} est obligatoire.`;
+            if (!v?.trim()) {
+e[f] = `${label} est obligatoire.`;
+}
         };
 
         // Structure
@@ -654,6 +727,7 @@ export default function EditStagiaire({
         req('origine_stagiaire_id', data.origine_stagiaire_id, 'Origine du stagiaire');
         req('source_financement_id', data.source_financement_id, 'Source de financement');
         req('type_stage_id', data.type_stage_id, 'Type de stage');
+
         if (showOffre && isAEJ) {
             req('offre_emploi_id', data.offre_emploi_id, "Numéro de l'offre");
         }
@@ -662,18 +736,23 @@ export default function EditStagiaire({
         req('nom', data.nom, 'Nom');
         req('prenoms', data.prenoms, 'Prénoms');
         req('date_naissance', data.date_naissance, 'Date de naissance');
+
         if (data.date_naissance && new Date(data.date_naissance) >= new Date()) {
             e.date_naissance = "La date de naissance doit être antérieure à aujourd'hui.";
         }
+
         if (data.date_naissance) {
             const minimumAge = isFinancementBailleurs && isStageEcole ? 14 : 17;
+
             if (age < minimumAge) {
                 e.date_naissance = `Le stagiaire doit avoir au moins ${minimumAge} ans.`;
             }
+
             if (age > 40) {
                 e.date_naissance = 'Le stagiaire ne doit pas dépasser 40 ans.';
             }
         }
+
         req('sexe', data.sexe, 'Sexe');
         req('lieu_naissance', data.lieu_naissance, 'Lieu de naissance');
         req('sous_prefecture_naissance', data.sous_prefecture_naissance, 'Sous-préfecture de naissance');
@@ -684,18 +763,23 @@ export default function EditStagiaire({
 
         // Contacts
         req('telephone_principal', data.telephone_principal, 'Contact téléphonique 1');
+
         if (data.telephone_principal && data.telephone_principal.length !== 10) {
             e.telephone_principal = 'Le contact doit avoir exactement 10 chiffres.';
         }
+
         if (data.telephone_secondaire && data.telephone_secondaire.length !== 0 && data.telephone_secondaire.length !== 10) {
             e.telephone_secondaire = 'Le contact doit avoir exactement 10 chiffres.';
         }
+
         req('personne_urgence', data.personne_urgence, 'Personne à contacter en cas d\'urgence');
         req('lien_parente_id', data.lien_parente_id, 'Lien de parenté');
         req('contact_urgence_1', data.contact_urgence_1, 'Contact parent 1');
+
         if (data.contact_urgence_1 && data.contact_urgence_1.length !== 10) {
             e.contact_urgence_1 = 'Le contact doit avoir exactement 10 chiffres.';
         }
+
         if (data.contact_urgence_2 && data.contact_urgence_2.length !== 0 && data.contact_urgence_2.length !== 10) {
             e.contact_urgence_2 = 'Le contact doit avoir exactement 10 chiffres.';
         }
@@ -703,41 +787,56 @@ export default function EditStagiaire({
         // Formation
         req('niveau_etude_id', data.niveau_etude_id, "Niveau d'études");
         req('diplome_id', data.diplome_id, 'Diplôme');
-        if (isDiplomeAutre) req('autre_diplome', data.autre_diplome, 'Préciser le diplôme');
+
+        if (isDiplomeAutre) {
+req('autre_diplome', data.autre_diplome, 'Préciser le diplôme');
+}
+
         req('specialite', data.specialite, 'Spécialité');
+
         if (!isNiveauAucun) {
             req('annee_diplome', data.annee_diplome, 'Année du diplôme');
+
             if (data.annee_diplome && data.annee_diplome.length !== 4) {
                 e.annee_diplome = "L'année doit avoir 4 chiffres.";
             }
+
             if (data.annee_diplome && data.date_naissance) {
                 const yearBirth = new Date(data.date_naissance).getFullYear();
                 const yearDiplome = parseInt(data.annee_diplome, 10);
+
                 if (yearDiplome < yearBirth) {
                     e.annee_diplome = "L'année du diplôme est antérieure à la date de naissance.";
                 }
             }
         }
+
         req('etablissement_frequente', data.etablissement_frequente, 'Établissement fréquenté');
         req('type_enseignement_id', data.type_enseignement_id, "Type d'enseignement");
         req('handicap_id', data.handicap_id, 'Handicap');
+
         if (data.handicap_id === 'HANDICAP') {
             req('type_handicap_id', data.type_handicap_id, 'Type de handicap');
         }
+
         if (data.type_handicap_id === 'AUTRE') {
             req('autre_handicap', data.autre_handicap, 'Autre handicap');
         }
 
         // Paiement
         req('type_paiement_id', data.type_paiement_id, 'Type de paiement');
+
         if (requiresYup) {
             req('numero_tresor_money', data.numero_tresor_money, 'Numéro Trésor Money');
+
             if (data.numero_tresor_money && data.numero_tresor_money.length !== 10) {
                 e.numero_tresor_money = 'Le numéro doit avoir exactement 10 chiffres.';
             }
         }
+
         if (requiresWave) {
             req('numero_wave', data.numero_wave, 'Numéro Wave');
+
             if (data.numero_wave && data.numero_wave.length !== 10) {
                 e.numero_wave = 'Le numéro doit avoir exactement 10 chiffres.';
             }
@@ -752,33 +851,42 @@ export default function EditStagiaire({
         req('nom_encadreur', data.nom_encadreur, "Nom et prénom de l'encadreur");
         req('fonction_encadreur', data.fonction_encadreur, "Fonction de l'encadreur");
         req('contact_encadreur', data.contact_encadreur, "Numéro de l'encadreur");
+
         if (data.contact_encadreur && data.contact_encadreur.length !== 10) {
             e.contact_encadreur = 'Le contact doit avoir exactement 10 chiffres.';
         }
+
         req('situation_stage', data.situation_stage, 'Situation du stage');
 
         // Dates
         if (showDateDebut) {
             req('date_debut', data.date_debut, 'Date de début de stage');
+
             if (data.date_debut) {
                 const d = new Date(`${data.date_debut}T00:00:00`);
                 const now = new Date();
+
                 if (d > now) {
                     e.date_debut = 'La date de début ne peut pas être dans le futur.';
                 }
+
                 const fiveYearsAgo = new Date();
                 fiveYearsAgo.setFullYear(fiveYearsAgo.getFullYear() - 5);
+
                 if (d < fiveYearsAgo) {
                     e.date_debut = 'La date de début ne peut pas être antérieure à 5 ans.';
                 }
+
                 if (!isFinancementBMZ) {
                     const day = d.getDate();
+
                     if (!ALLOWED_COHORT_DAYS.includes(day)) {
                         e.date_debut = 'Veuillez choisir le 1 à 5, 10 ou 20 du mois.';
                     }
                 }
             }
         }
+
         if (isSpontaneOuDAICG) {
             req(
                 'date_demarrage_capitalisation_sans_financiere',
@@ -786,10 +894,12 @@ export default function EditStagiaire({
                 'Date démarrage capitalisation',
             );
         }
+
         if (isPEJEDEC) {
             if (!data.nbr_mois_capitaliser || Number(data.nbr_mois_capitaliser) <= 0) {
                 e.nbr_mois_capitaliser = 'Le nombre de mois à capitaliser est obligatoire.';
             }
+
             if (
                 data.nbr_mois_capitaliser &&
                 data.duree_stage &&
@@ -797,12 +907,14 @@ export default function EditStagiaire({
             ) {
                 e.nbr_mois_capitaliser = 'Le mois de capitalisation est supérieur à la durée du stage !';
             }
+
             if (!data.date_demarrage_capitalisation) {
                 e.date_demarrage_capitalisation = 'La date de démarrage de la capitalisation est obligatoire.';
             }
         }
 
         req('date_fin_prevue', data.date_fin_prevue, 'Date fin prévisionnelle');
+
         if (data.date_debut && data.date_fin_prevue && data.date_fin_prevue < data.date_debut) {
             e.date_fin_prevue = 'La date de fin doit être postérieure à la date de début.';
         }
@@ -832,7 +944,10 @@ export default function EditStagiaire({
         e.preventDefault();
         const clientErrors = validate();
         setErrors(clientErrors);
-        if (Object.keys(clientErrors).length > 0) return;
+
+        if (Object.keys(clientErrors).length > 0) {
+return;
+}
 
         transform(valeurs => ({ ...valeurs, action }));
         post(`/cip/pointages/update-stagiaire/${stage.id}`, {
@@ -844,7 +959,10 @@ export default function EditStagiaire({
     const transmettreSeulement = () => {
         const clientErrors = validate();
         setErrors(clientErrors);
-        if (Object.keys(clientErrors).length > 0) return;
+
+        if (Object.keys(clientErrors).length > 0) {
+return;
+}
 
         setTransmissionEnCours(true);
         router.post(
@@ -1071,8 +1189,10 @@ export default function EditStagiaire({
                                                             if (!opt) {
                                                                 setData('offre_emploi_id', '');
                                                                 setData('entreprise_id', '');
+
                                                                 return;
                                                             }
+
                                                             const o = (opt as any).offre as OffreItem;
                                                             setData('offre_emploi_id', String(o.id));
                                                             setData('entreprise_id', String(o.entreprise_id));
@@ -1083,7 +1203,7 @@ export default function EditStagiaire({
                                                         placeholder="Selectionner Numéro de l'offre du stage"
                                                         isClearable
                                                         isDisabled={!isAEJ && !isPEJEDEC}
-                                                        className={!!errors.offre_emploi_id ? 'is-invalid' : ''}
+                                                        className={errors.offre_emploi_id ? 'is-invalid' : ''}
                                                     />
                                                     <div className="invalid-feedback">{errors.offre_emploi_id}</div>
                                                 </Col>
@@ -1988,9 +2108,14 @@ export default function EditStagiaire({
                                                     const type = typesDocument.find(
                                                         t => t.code === code,
                                                     );
-                                                    if (!type) return null;
+
+                                                    if (!type) {
+return null;
+}
+
                                                     const existant =
                                                         documentsDeposes[type.code];
+
                                                     return (
                                                         <Col md={6} key={type.code}>
                                                             <Label className="fw-semibold">
@@ -2039,6 +2164,7 @@ export default function EditStagiaire({
                                                                     const suivant = {
                                                                         ...data.documents,
                                                                     };
+
                                                                     if (fichier) {
                                                                         suivant[type.code] =
                                                                             fichier;
@@ -2047,6 +2173,7 @@ export default function EditStagiaire({
                                                                             type.code
                                                                         ];
                                                                     }
+
                                                                     setData(
                                                                         'documents',
                                                                         suivant,
@@ -2068,9 +2195,14 @@ export default function EditStagiaire({
                                                         const type = typesDocument.find(
                                                             t => t.code === code,
                                                         );
-                                                        if (!type) return null;
+
+                                                        if (!type) {
+return null;
+}
+
                                                         const existant =
                                                             documentsDeposes[type.code];
+
                                                         return (
                                                             <Col md={6} key={type.code}>
                                                                 <Label className="fw-semibold">
@@ -2122,6 +2254,7 @@ export default function EditStagiaire({
                                                                         const suivant = {
                                                                             ...data.documents,
                                                                         };
+
                                                                         if (fichier) {
                                                                             suivant[type.code] =
                                                                                 fichier;
@@ -2130,6 +2263,7 @@ export default function EditStagiaire({
                                                                                 type.code
                                                                             ];
                                                                         }
+
                                                                         setData(
                                                                             'documents',
                                                                             suivant,
@@ -2149,9 +2283,14 @@ export default function EditStagiaire({
                                                 const type = typesDocument.find(
                                                     t => t.code === 'FICHIER_DIPLOME',
                                                 );
-                                                if (!type) return null;
+
+                                                if (!type) {
+return null;
+}
+
                                                 const existant =
                                                     documentsDeposes[type.code];
+
                                                 return (
                                                     <Col md={6} key={type.code}>
                                                         <Label className="fw-semibold">
@@ -2201,6 +2340,7 @@ export default function EditStagiaire({
                                                                 const suivant = {
                                                                     ...data.documents,
                                                                 };
+
                                                                 if (fichier) {
                                                                     suivant[type.code] =
                                                                         fichier;
@@ -2209,6 +2349,7 @@ export default function EditStagiaire({
                                                                         type.code
                                                                     ];
                                                                 }
+
                                                                 setData(
                                                                     'documents',
                                                                     suivant,
@@ -2248,6 +2389,7 @@ export default function EditStagiaire({
                                                 const type = typesDocument.find(
                                                     t => t.code === 'TRESOR_MONEY',
                                                 );
+
                                                 return (
                                                     <>
                                                         <Col md={6}>
@@ -2287,6 +2429,7 @@ export default function EditStagiaire({
                                                                     const suivant = {
                                                                         ...data.documents,
                                                                     };
+
                                                                     if (fichier) {
                                                                         suivant.TRESOR_MONEY =
                                                                             fichier;
@@ -2295,6 +2438,7 @@ export default function EditStagiaire({
                                                                             'TRESOR_MONEY'
                                                                         ];
                                                                     }
+
                                                                     setData(
                                                                         'documents',
                                                                         suivant,
@@ -2338,6 +2482,7 @@ export default function EditStagiaire({
                                                 const type = typesDocument.find(
                                                     t => t.code === 'FICHE_WAVE',
                                                 );
+
                                                 return (
                                                     <>
                                                         <Col md={6}>
@@ -2375,6 +2520,7 @@ export default function EditStagiaire({
                                                                     const suivant = {
                                                                         ...data.documents,
                                                                     };
+
                                                                     if (fichier) {
                                                                         suivant.FICHE_WAVE =
                                                                             fichier;
@@ -2383,6 +2529,7 @@ export default function EditStagiaire({
                                                                             'FICHE_WAVE'
                                                                         ];
                                                                     }
+
                                                                     setData(
                                                                         'documents',
                                                                         suivant,
@@ -2420,9 +2567,14 @@ export default function EditStagiaire({
                                                 const type = typesDocument.find(
                                                     t => t.code === code,
                                                 );
-                                                if (!type) return null;
+
+                                                if (!type) {
+return null;
+}
+
                                                 const existant =
                                                     documentsDeposes[type.code];
+
                                                 return (
                                                     <Col md={6} key={type.code}>
                                                         <Label className="fw-semibold">
@@ -2471,6 +2623,7 @@ export default function EditStagiaire({
                                                                 const suivant = {
                                                                     ...data.documents,
                                                                 };
+
                                                                 if (fichier) {
                                                                     suivant[type.code] =
                                                                         fichier;
@@ -2479,6 +2632,7 @@ export default function EditStagiaire({
                                                                         type.code
                                                                     ];
                                                                 }
+
                                                                 setData(
                                                                     'documents',
                                                                     suivant,

@@ -1,7 +1,12 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use App\Models\Payment\DroitPaiement;
+use App\Models\Payment\Paiement;
+use App\Models\Stage\Stage;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 // Query 1: The legacy IDs that should be in Global (256 records)
@@ -44,36 +49,36 @@ $legacyIds = DB::connection('legacy')->table('contrats_pae')
                 });
         })->whereNot(function ($query) {
             $query->whereRaw('DAY(date_debut) = 20')
-                  ->whereRaw('MONTH(date_chef_agence) = MONTH(date_debut) + 1');
+                ->whereRaw('MONTH(date_chef_agence) = MONTH(date_debut) + 1');
         });
     })->pluck('id')->toArray();
 
 // Query 2: The legacy IDs currently in the new system's Global (238 records)
 $c1Closure = function ($d) {
     $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-      ->whereRaw('EXTRACT(DAY FROM s.date_debut) BETWEEN 1 AND 5')
-      ->where(function ($q) {
-          $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 11')
-            ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
-      });
+        ->whereRaw('EXTRACT(DAY FROM s.date_debut) BETWEEN 1 AND 5')
+        ->where(function ($q) {
+            $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 11')
+                ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+        });
 };
 $c2Closure = function ($d) {
     $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-      ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 10')
-      ->where(function ($q) {
-          $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 21')
-            ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
-      });
+        ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 10')
+        ->where(function ($q) {
+            $q->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) = EXTRACT(MONTH FROM s.date_debut) AND EXTRACT(DAY FROM droits_paiement.created_at) >= 21')
+                ->orWhereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+        });
 };
 $c3Closure = function ($d) {
     $d->join('stages as s', 's.id', '=', 'droits_paiement.stage_id')
-      ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 20')
-      ->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
+        ->whereRaw('EXTRACT(DAY FROM s.date_debut) = 20')
+        ->whereRaw('EXTRACT(MONTH FROM droits_paiement.created_at) > EXTRACT(MONTH FROM s.date_debut)');
 };
 
-$newIds = App\Models\Payment\Paiement::where('statut', 'A_TRAITER')
-    ->whereHas('droitPaiement.stage', fn($s) => $s->whereYear('date_debut', 2026)->whereMonth('date_debut', 8))
-    ->whereHas('droitPaiement.stage.instanceParcours', fn($i) => $i->where('corbeille_actuelle', 'dmg_attente_paiement_demarrage'))
+$newIds = Paiement::where('statut', 'A_TRAITER')
+    ->whereHas('droitPaiement.stage', fn ($s) => $s->whereYear('date_debut', 2026)->whereMonth('date_debut', 8))
+    ->whereHas('droitPaiement.stage.instanceParcours', fn ($i) => $i->where('corbeille_actuelle', 'dmg_attente_paiement_demarrage'))
     ->whereDoesntHave('droitPaiement', $c1Closure)
     ->whereDoesntHave('droitPaiement', $c2Closure)
     ->whereDoesntHave('droitPaiement', $c3Closure)
@@ -81,20 +86,20 @@ $newIds = App\Models\Payment\Paiement::where('statut', 'A_TRAITER')
 
 $missing = array_diff($legacyIds, $newIds);
 
-echo "Missing IDs count: " . count($missing) . "\n";
-echo "First 5 missing IDs: " . implode(', ', array_slice($missing, 0, 5)) . "\n";
+echo 'Missing IDs count: '.count($missing)."\n";
+echo 'First 5 missing IDs: '.implode(', ', array_slice($missing, 0, 5))."\n";
 
 // Why are they missing? Let's check the first one in the new system
 if (count($missing) > 0) {
     $firstMissing = reset($missing);
-    $stage = App\Models\Stage\Stage::where('ancien_id', $firstMissing)->first();
-    if (!$stage) {
+    $stage = Stage::where('ancien_id', $firstMissing)->first();
+    if (! $stage) {
         echo "Stage not migrated!\n";
     } else {
         echo "Statut stage: {$stage->statut_stage}\n";
         $corbeille = $stage->instanceParcours ? $stage->instanceParcours->corbeille_actuelle : 'No instance';
         echo "Corbeille actuelle: {$corbeille}\n";
-        $hasDroit = App\Models\Payment\DroitPaiement::where('stage_id', $stage->id)->count();
+        $hasDroit = DroitPaiement::where('stage_id', $stage->id)->count();
         echo "Has DroitPaiement: $hasDroit\n";
     }
 }

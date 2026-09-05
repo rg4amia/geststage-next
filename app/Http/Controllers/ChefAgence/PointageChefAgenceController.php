@@ -4,16 +4,17 @@ namespace App\Http\Controllers\ChefAgence;
 
 use App\Domain\Attendance\Services\PointageChefAgenceService;
 use App\Http\Controllers\Controller;
-use App\Services\AttestationPresenceService;
 use App\Models\Attendance\Pointage;
 use App\Models\Company\Entreprise;
 use App\Models\Reference\Agence;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
+use App\Services\AttestationPresenceService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\{Auth, DB};
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -50,7 +51,7 @@ class PointageChefAgenceController extends Controller
         // Si le mois sélectionné n'a pas de pointages, prendre le premier mois disponible
         if ($moisEnAttente->isEmpty()) {
             $mois = null;
-        } elseif (!$moisEnAttente->pluck('value')->contains($mois)) {
+        } elseif (! $moisEnAttente->pluck('value')->contains($mois)) {
             $mois = $moisEnAttente->first()['value'];
         }
 
@@ -108,11 +109,11 @@ class PointageChefAgenceController extends Controller
                 'message' => 'Pointage validé avec succès. Transmis à la DMG.',
             ]);
         } catch (\Exception $e) {
-            Log::error("Erreur validation pointage {$id}: " . $e->getMessage());
+            Log::error("Erreur validation pointage {$id}: ".$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la validation : ' . $e->getMessage(),
+                'message' => 'Erreur lors de la validation : '.$e->getMessage(),
             ], 500);
         }
     }
@@ -140,11 +141,11 @@ class PointageChefAgenceController extends Controller
                 'details' => $results,
             ]);
         } catch (\Exception $e) {
-            Log::error("Erreur validation groupée: " . $e->getMessage());
+            Log::error('Erreur validation groupée: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la validation groupée : ' . $e->getMessage(),
+                'message' => 'Erreur lors de la validation groupée : '.$e->getMessage(),
             ], 500);
         }
     }
@@ -173,11 +174,11 @@ class PointageChefAgenceController extends Controller
                 'message' => 'Pointage ajourné. Le CIP sera notifié pour correction.',
             ]);
         } catch (\Exception $e) {
-            Log::error("Erreur ajournement pointage {$id}: " . $e->getMessage());
+            Log::error("Erreur ajournement pointage {$id}: ".$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => "Erreur lors de l'ajournement : " . $e->getMessage(),
+                'message' => "Erreur lors de l'ajournement : ".$e->getMessage(),
             ], 500);
         }
     }
@@ -226,7 +227,7 @@ class PointageChefAgenceController extends Controller
         if ($pointage->statut !== 'CORRIGE_CIP') {
             return response()->json([
                 'success' => false,
-                'message' => "Ce pointage ne peut pas être validé dans son état actuel.",
+                'message' => 'Ce pointage ne peut pas être validé dans son état actuel.',
             ], 422);
         }
 
@@ -238,11 +239,11 @@ class PointageChefAgenceController extends Controller
                 'message' => 'Correction acceptée. Le pointage a été resoumis.',
             ]);
         } catch (\Exception $e) {
-            Log::error("Erreur validation ADP {$id}: " . $e->getMessage());
+            Log::error("Erreur validation ADP {$id}: ".$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur : ' . $e->getMessage(),
+                'message' => 'Erreur : '.$e->getMessage(),
             ], 500);
         }
     }
@@ -258,7 +259,7 @@ class PointageChefAgenceController extends Controller
         if ($pointage->statut !== 'CORRIGE_CIP') {
             return response()->json([
                 'success' => false,
-                'message' => "Ce pointage ne peut pas être rejeté dans son état actuel.",
+                'message' => 'Ce pointage ne peut pas être rejeté dans son état actuel.',
             ], 422);
         }
 
@@ -270,11 +271,11 @@ class PointageChefAgenceController extends Controller
                 'message' => 'Dossier rejeté. Renvoyé dans la corbeille "Mes Stagiaires" du CIP.',
             ]);
         } catch (\Exception $e) {
-            Log::error("Erreur rejet ADP {$id}: " . $e->getMessage());
+            Log::error("Erreur rejet ADP {$id}: ".$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur : ' . $e->getMessage(),
+                'message' => 'Erreur : '.$e->getMessage(),
             ], 500);
         }
     }
@@ -311,11 +312,11 @@ class PointageChefAgenceController extends Controller
                 'details' => $results,
             ]);
         } catch (\Exception $e) {
-            Log::error('Erreur validation par filtre: ' . $e->getMessage());
+            Log::error('Erreur validation par filtre: '.$e->getMessage());
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur lors de la validation : ' . $e->getMessage(),
+                'message' => 'Erreur lors de la validation : '.$e->getMessage(),
             ], 500);
         }
     }
@@ -367,9 +368,9 @@ class PointageChefAgenceController extends Controller
 
             return $pdf->stream($filename);
         } catch (\Exception $e) {
-            Log::error('Erreur génération attestation: ' . $e->getMessage());
+            Log::error('Erreur génération attestation: '.$e->getMessage());
 
-            return back()->with('error', 'Erreur lors de la génération de l\'attestation : ' . $e->getMessage());
+            return back()->with('error', 'Erreur lors de la génération de l\'attestation : '.$e->getMessage());
         }
     }
 }

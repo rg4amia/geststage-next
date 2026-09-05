@@ -1,16 +1,17 @@
 <?php
+
 $file = 'app/Http/Controllers/Dmg/PaiementDmgController.php';
 $content = file_get_contents($file);
-$replacement = <<<CODE
-    public function documentsByStage(Request \$request): JsonResponse
+$replacement = <<<'CODE'
+    public function documentsByStage(Request $request): JsonResponse
     {
-        \$request->validate(['stage_id' => 'required|integer']);
-        \$stageId = \$request->input('stage_id');
+        $request->validate(['stage_id' => 'required|integer']);
+        $stageId = $request->input('stage_id');
 
-        \$documents = DB::table('documents')
+        $documents = DB::table('documents')
             ->join('versions_documents', 'documents.id', '=', 'versions_documents.document_id')
             ->leftJoin('types_document', 'documents.type_document_id', '=', 'types_document.id')
-            ->where('documents.stage_id', \$stageId)
+            ->where('documents.stage_id', $stageId)
             ->select(
                 'documents.id',
                 'documents.nom',
@@ -24,7 +25,7 @@ $replacement = <<<CODE
             ->orderByDesc('versions_documents.numero_version')
             ->get();
 
-        return response()->json(['data' => \$documents]);
+        return response()->json(['data' => $documents]);
     }
 }
 CODE;

@@ -16,13 +16,13 @@ use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
+use Barryvdh\DomPDF\Facades\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Symfony\Component\HttpFoundation\StreamedResponse;
@@ -295,7 +295,7 @@ class MultiDossierController extends Controller
 
         $mois = Periode::whereIn('id', DossierPaiement::whereIn('id', $dossierIds)->pluck('periode_id'))->first()?->code ?? '';
 
-        $pdf = \Barryvdh\DomPDF\Facades\Pdf::loadView('pdf.dmg-paiements', [
+        $pdf = Pdf::loadView('pdf.dmg-paiements', [
             'paiements' => $paiements,
             'titre' => 'État de paiement — Multi-dossier',
             'type' => 'etat_paiement',
@@ -331,7 +331,7 @@ class MultiDossierController extends Controller
 
         $paginatedContrats = preparePaginatedDataWithFooterSpace($paiements);
 
-        $pdf = \Barryvdh\DomPDF\Facades\Pdf::loadView('pdf.dmg-paiements', [
+        $pdf = Pdf::loadView('pdf.dmg-paiements', [
             'paiements' => $paiements,
             'titre' => 'Attestations — Multi-dossier',
             'type' => 'attestation_presence',

@@ -1,6 +1,7 @@
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import classnames from 'classnames';
 import React, { useCallback, useMemo, useState } from 'react';
+import Select from 'react-select';
 import {
     Alert,
     Badge,
@@ -30,7 +31,6 @@ import {
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
-import Select from 'react-select';
 import AjournesTab from './components/AjournesTab';
 import BordereauxTab from './components/BordereauxTab';
 import OrdresPaiementTab from './components/OrdresPaiementTab';
@@ -236,14 +236,24 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [moisDossiers, setMoisDossiers] = useState(moisActuel || '');
 
     const getMoisForTab = (tab: string) => {
-        if (tab === '1') return moisDemarrage;
-        if (tab === '2') return moisPresence;
+        if (tab === '1') {
+return moisDemarrage;
+}
+
+        if (tab === '2') {
+return moisPresence;
+}
+
         return moisDossiers;
     };
     const setMoisForTab = (tab: string, value: string) => {
-        if (tab === '1') setMoisDemarrage(value);
-        else if (tab === '2') setMoisPresence(value);
-        else setMoisDossiers(value);
+        if (tab === '1') {
+setMoisDemarrage(value);
+} else if (tab === '2') {
+setMoisPresence(value);
+} else {
+setMoisDossiers(value);
+}
     };
 
     /* ─── Modales ─── */
@@ -293,9 +303,15 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const applyFilters = useCallback(() => {
         const params: Record<string, string> = {};
         const mois = getMoisForTab(activeTab);
-        if (mois) params.mois = mois;
+
+        if (mois) {
+params.mois = mois;
+}
+
         Object.entries(selectedFilters).forEach(([key, val]) => {
-            if (val) params[key] = val;
+            if (val) {
+params[key] = val;
+}
         });
         params.cohorte = demarrageTab;
         params.tab = activeTab;
@@ -303,7 +319,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
         const url = new URL(window.location.href);
         url.search = '';
         Object.entries(params).forEach(([key, val]) => {
-            if (val) url.searchParams.set(key, val);
+            if (val) {
+url.searchParams.set(key, val);
+}
         });
         window.history.replaceState({}, '', url);
 
@@ -338,9 +356,15 @@ const DmgPaiementsIndex = (props: PageProps) => {
             
             const params: Record<string, string> = {};
             const mois = getMoisForTab(tab);
-            if (mois) params.mois = mois;
+
+            if (mois) {
+params.mois = mois;
+}
+
             Object.entries(selectedFilters).forEach(([key, val]) => {
-                if (val) params[key] = val;
+                if (val) {
+params[key] = val;
+}
             });
             params.cohorte = demarrageTab;
             params.tab = tab;
@@ -348,7 +372,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
             const url = new URL(window.location.href);
             url.search = '';
             Object.entries(params).forEach(([key, val]) => {
-                if (val) url.searchParams.set(key, val);
+                if (val) {
+url.searchParams.set(key, val);
+}
             });
             window.history.replaceState({}, '', url);
 
@@ -367,9 +393,15 @@ const DmgPaiementsIndex = (props: PageProps) => {
             
             const params: Record<string, string> = {};
             const mois = getMoisForTab(activeTab);
-            if (mois) params.mois = mois;
+
+            if (mois) {
+params.mois = mois;
+}
+
             Object.entries(selectedFilters).forEach(([key, val]) => {
-                if (val) params[key] = val;
+                if (val) {
+params[key] = val;
+}
             });
             params.cohorte = tab;
             params.tab = activeTab;
@@ -377,7 +409,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
             const url = new URL(window.location.href);
             url.search = '';
             Object.entries(params).forEach(([key, val]) => {
-                if (val) url.searchParams.set(key, val);
+                if (val) {
+url.searchParams.set(key, val);
+}
             });
             window.history.replaceState({}, '', url);
 
@@ -411,7 +445,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
     /* ─── Actions backend ─── */
     const handleGenererDossiers = () => {
         const ids = activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds;
-        if (!props.periode || ids.length === 0) return;
+
+        if (!props.periode || ids.length === 0) {
+return;
+}
+
         setIsLoading(true);
         router.post('/dmg/paiements/generer', { periode_id: props.periode.id, paiement_ids: ids }, {
             preserveScroll: true,
@@ -424,7 +462,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
     };
 
     const handleValiderPaiement = (ids: number[], scope: 'liste' | 'selected') => {
-        if (ids.length === 0 || !props.periode) return;
+        if (ids.length === 0 || !props.periode) {
+return;
+}
+
         setProcessing(true);
         router.post('/dmg/paiements/generer', { periode_id: props.periode.id, paiement_ids: ids, scope }, {
             preserveScroll: true,
@@ -439,7 +480,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
     const handleAjournerPaiement = () => {
         const ids = activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds;
-        if (motifAjourner.trim().length < 5 || ids.length === 0) return;
+
+        if (motifAjourner.trim().length < 5 || ids.length === 0) {
+return;
+}
+
         setProcessing(true);
         router.post('/dmg/paiements/ajourner', { paiement_ids: ids, motif: motifAjourner }, {
             preserveScroll: true,
@@ -454,7 +499,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
     };
 
     const handleMarquerDossier = (ids: number[], status: string) => {
-        if (ids.length === 0) return;
+        if (ids.length === 0) {
+return;
+}
+
         setProcessing(true);
         router.post('/dmg/paiements/marquer-dossier-physique', {
             paiement_ids: ids,
@@ -473,9 +521,15 @@ const DmgPaiementsIndex = (props: PageProps) => {
         params.set('type', type);
         params.set('nature', activeTab === '2' ? 'presence' : 'demarrage');
         Object.entries(selectedFilters).forEach(([key, value]) => {
-            if (value) params.set(key, value);
+            if (value) {
+params.set(key, value);
+}
         });
-        if (scope === 'selected') ids.forEach((id) => params.append('ids[]', String(id)));
+
+        if (scope === 'selected') {
+ids.forEach((id) => params.append('ids[]', String(id)));
+}
+
         window.open(`/dmg/paiements/generer-pdf?${params.toString()}`, '_blank');
     };
 
@@ -484,7 +538,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
     };
 
     const handleGrouperDossiers = () => {
-        if (!props.periode || selectedDossierIds.length < 2) return;
+        if (!props.periode || selectedDossierIds.length < 2) {
+return;
+}
+
         setProcessing(true);
         router.post('/dmg/paiements/groupes', {
             periode_id: props.periode.id,
@@ -522,7 +579,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
     };
 
     const handleElaborerOp = (id: number) => {
-        if (!props.periode) return;
+        if (!props.periode) {
+return;
+}
+
         router.post('/dmg/paiements/elaborer-op', { dossiers: [id], periode_id: props.periode.id }, { preserveScroll: true });
     };
 
@@ -538,6 +598,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
             .then(data => {
                 const docs = data.data || [];
                 setPreviewDocs(docs);
+
                 if (docs.length > 0) {
                     setActivePreviewTab(docs[0].id.toString());
                 }
@@ -640,6 +701,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
         if (dossierTab === 'transmis' && prevDossierTabCb.current !== 'transmis') {
             loadDossiersCb();
         }
+
         prevDossierTabCb.current = dossierTab;
     }, [dossierTab, loadDossiersCb]);
 
@@ -655,10 +717,22 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const loadMultiDossiers = useCallback(() => {
         setIsLoadingMultiDossiers(true);
         const params = new URLSearchParams();
-        if (moisDossiers) params.set('mois', moisDossiers);
-        if (multiAgenceId) params.set('agence_id', multiAgenceId);
-        if (multiSourceId) params.set('source_financement_id', multiSourceId);
-        if (multiTypeTraitement) params.set('typetraitement', multiTypeTraitement);
+
+        if (moisDossiers) {
+params.set('mois', moisDossiers);
+}
+
+        if (multiAgenceId) {
+params.set('agence_id', multiAgenceId);
+}
+
+        if (multiSourceId) {
+params.set('source_financement_id', multiSourceId);
+}
+
+        if (multiTypeTraitement) {
+params.set('typetraitement', multiTypeTraitement);
+}
 
         fetch(`/dmg/multi-dossier/dossiers?${params.toString()}`, {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -681,8 +755,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
         if (selectedMultiDossierIds.length === 0) {
             setStagiaires([]);
             setStagiaireTotal(0);
+
             return;
         }
+
         setStagiaireLoading(true);
         const body = new URLSearchParams();
         body.set('draw', String(Date.now()));
@@ -706,7 +782,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                 setStagiaires(res.data || []);
                 setStagiaireTotal(res.recordsFiltered || 0);
             })
-            .catch(() => { setStagiaires([]); setStagiaireTotal(0); })
+            .catch(() => {
+ setStagiaires([]); setStagiaireTotal(0); 
+})
             .finally(() => setStagiaireLoading(false));
     }, [selectedMultiDossierIds, stagiairePage, stagiaireSearch]);
 
@@ -732,7 +810,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
     };
 
     const handleMultiValiderSelection = () => {
-        if (selectedMultiDossierIds.length === 0 || !moisDossiers) return;
+        if (selectedMultiDossierIds.length === 0 || !moisDossiers) {
+return;
+}
+
         setProcessing(true);
         fetch('/dmg/multi-dossier/validate', {
             method: 'POST',
@@ -754,7 +835,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
     };
 
     const handleMultiAjournerDossier = () => {
-        if (selectedMultiDossierIds.length === 0 || motifMultiAjournerDossier.trim().length < 5) return;
+        if (selectedMultiDossierIds.length === 0 || motifMultiAjournerDossier.trim().length < 5) {
+return;
+}
+
         setProcessing(true);
         fetch('/dmg/multi-dossier/ajourner-dossier', {
             method: 'POST',
@@ -762,13 +846,18 @@ const DmgPaiementsIndex = (props: PageProps) => {
             body: JSON.stringify({ dossier_id: selectedMultiDossierIds, motif: motifMultiAjournerDossier, mois: moisDossiers }),
         })
             .then((r) => r.json())
-            .then(() => { setModalMultiAjournerDossierOpen(false); setMotifMultiAjournerDossier(''); setSelectedMultiDossierIds([]); loadMultiDossiers(); })
+            .then(() => {
+ setModalMultiAjournerDossierOpen(false); setMotifMultiAjournerDossier(''); setSelectedMultiDossierIds([]); loadMultiDossiers(); 
+})
             .catch(() => {})
             .finally(() => setProcessing(false));
     };
 
     const handleMultiAjournerStagiaire = () => {
-        if (selectedStagiaireIds.length === 0 || motifMultiAjournerStagiaire.trim().length < 5) return;
+        if (selectedStagiaireIds.length === 0 || motifMultiAjournerStagiaire.trim().length < 5) {
+return;
+}
+
         setProcessing(true);
         fetch('/dmg/multi-dossier/ajourner-stagiaire', {
             method: 'POST',
@@ -776,13 +865,18 @@ const DmgPaiementsIndex = (props: PageProps) => {
             body: JSON.stringify({ paiementIds: selectedStagiaireIds, motif: motifMultiAjournerStagiaire }),
         })
             .then((r) => r.json())
-            .then(() => { setModalMultiAjournerStagiaireOpen(false); setMotifMultiAjournerStagiaire(''); setSelectedStagiaireIds([]); loadStagiairesMulti(); })
+            .then(() => {
+ setModalMultiAjournerStagiaireOpen(false); setMotifMultiAjournerStagiaire(''); setSelectedStagiaireIds([]); loadStagiairesMulti(); 
+})
             .catch(() => {})
             .finally(() => setProcessing(false));
     };
 
     const handleMultiGenererPdf = (type: 'paiement' | 'attestations') => {
-        if (selectedMultiDossierIds.length === 0) return;
+        if (selectedMultiDossierIds.length === 0) {
+return;
+}
+
         const url = type === 'paiement' ? '/dmg/multi-dossier/generer-pdf-paiement' : '/dmg/multi-dossier/generer-pdf-attestations';
         const body = new URLSearchParams();
         selectedMultiDossierIds.forEach((id) => body.append('dossiers[]', String(id)));
@@ -791,8 +885,16 @@ const DmgPaiementsIndex = (props: PageProps) => {
             headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
             body: body.toString(),
         })
-            .then((r) => { if (!r.ok) throw new Error(); return r.blob(); })
-            .then((blob) => { const u = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${type}_${new Date().toISOString().slice(0, 10)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(u); })
+            .then((r) => {
+ if (!r.ok) {
+throw new Error();
+}
+
+ return r.blob(); 
+})
+            .then((blob) => {
+ const u = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${type}_${new Date().toISOString().slice(0, 10)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(u); 
+})
             .catch(() => {});
     };
 
@@ -847,12 +949,14 @@ const DmgPaiementsIndex = (props: PageProps) => {
         { header: 'Financement', cell: (cell: any) => {
             const val = cell.row.original.stage?.source_financement || '-';
             const colorMap: Record<string, string> = { 'PEJEDEC': 'info', 'BUDGET AEJ': 'primary', 'PAPS-GOUV': 'success', 'C2D': 'warning' };
+
             return <Badge color={`${(colorMap[val] || 'secondary')}-subtle`} className={`text-${colorMap[val] || 'secondary'}`}>{val}</Badge>;
         }},
         { header: 'Type Stage', cell: (cell: any) => cell.row.original.stage?.type_stage || '-' },
         { header: 'N° AEJ', cell: (cell: any) => <span className="text-muted">{cell.row.original.beneficiaire?.matricule || '-'}</span> },
         { header: 'Nom et prénoms', cell: (cell: any) => {
             const b = cell.row.original.beneficiaire;
+
             return <span className="fw-semibold">{b ? `${b.nom} ${b.prenoms}`.trim() : '-'}</span>;
         }},
         { header: 'Date Naiss.', cell: (cell: any) => cell.row.original.beneficiaire?.date_naissance || '-' },
@@ -861,12 +965,15 @@ const DmgPaiementsIndex = (props: PageProps) => {
         { header: 'N° Trésor Pay', cell: (cell: any) => cell.row.original.beneficiaire?.tresor_pay || '-' },
         { header: 'Montant', cell: (cell: any) => {
             const m = cell.row.original.montant;
+
             return m ? <span className="fw-bold text-success">{Number(m).toLocaleString('fr-FR')} FCFA</span> : '-';
         }},
         { header: 'État', cell: (cell: any) => <Badge color={getStatutBadge(cell.row.original.statut)} className="fs-11">{cell.row.original.statut || '-'}</Badge> },
         { header: 'Actions', cell: (cell: any) => (
             <div className="d-flex gap-1">
-                <Button color="info" size="sm" outline onClick={() => { setDetailRow(cell.row.original); setModalDetailOpen(true); }} title="Détail">
+                <Button color="info" size="sm" outline onClick={() => {
+ setDetailRow(cell.row.original); setModalDetailOpen(true); 
+}} title="Détail">
                     <i className="ri-eye-line"></i>
                 </Button>
             </div>
@@ -913,9 +1020,11 @@ const DmgPaiementsIndex = (props: PageProps) => {
         if (dossierTab === 'multi' && prevDossierTab.current !== 'multi') {
             loadMultiDossiers();
         }
+
         if (dossierTab === 'multi') {
             loadStagiairesMulti();
         }
+
         prevDossierTab.current = dossierTab;
     }, [dossierTab, loadMultiDossiers, loadStagiairesMulti]);
 
@@ -924,15 +1033,18 @@ const DmgPaiementsIndex = (props: PageProps) => {
         if (dossierTab === 'multi' && prevMoisDossiers.current !== moisDossiers) {
             loadMultiDossiers();
         }
+
         prevMoisDossiers.current = moisDossiers;
     }, [moisDossiers, dossierTab, loadMultiDossiers]);
 
     const prevFiltresMulti = React.useRef(`${multiTypeTraitement}|${multiAgenceId}|${multiSourceId}`);
     React.useEffect(() => {
         const cle = `${multiTypeTraitement}|${multiAgenceId}|${multiSourceId}`;
+
         if (dossierTab === 'multi' && prevFiltresMulti.current !== cle) {
             loadMultiDossiers();
         }
+
         prevFiltresMulti.current = cle;
     }, [multiTypeTraitement, multiAgenceId, multiSourceId, dossierTab, loadMultiDossiers]);
 
@@ -948,7 +1060,10 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
     /* ─── Cohorte badges (démarrage uniquement) ─── */
     const cohortBadge = (cohorteKey: 'global' | 'cohorte1' | 'cohorte2' | 'cohorte3') => {
-        if (!compteurs || !compteurs[cohorteKey]) return null;
+        if (!compteurs || !compteurs[cohorteKey]) {
+return null;
+}
+
         return <Badge color="secondary" pill className="ms-1 fs-11">{compteurs[cohorteKey]?.demarrage ?? 0}</Badge>;
     };
 
@@ -1169,8 +1284,12 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => { setModalAjournerOpen(true); }}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => { setModalAjournerOpen(true); }}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                        <DropdownItem onClick={() => {
+ setModalAjournerOpen(true); 
+}}>Ajourner la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => {
+ setModalAjournerOpen(true); 
+}}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
@@ -1189,9 +1308,13 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         <i className="ri-folder-fill me-1"></i>Marquer dossier <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => { setModalDossierOpen(true); }}>Marquer la liste</DropdownItem>
+                                                        <DropdownItem onClick={() => {
+ setModalDossierOpen(true); 
+}}>Marquer la liste</DropdownItem>
                                                         {selectedDemarrageIds.length > 0 && (
-                                                            <DropdownItem onClick={() => { setModalDossierOpen(true); }}>Marquer sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            <DropdownItem onClick={() => {
+ setModalDossierOpen(true); 
+}}>Marquer sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                         )}
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
@@ -1332,8 +1455,12 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => { setModalAjournerOpen(true); }}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => { setModalAjournerOpen(true); }}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                        <DropdownItem onClick={() => {
+ setModalAjournerOpen(true); 
+}}>Ajourner la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => {
+ setModalAjournerOpen(true); 
+}}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
@@ -1460,7 +1587,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                         value={cbDossiersSearch}
                                                                         onChange={(e) => setCbDossiersSearch(e.target.value)}
                                                                         onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter') loadDossiersCb();
+                                                                            if (e.key === 'Enter') {
+loadDossiersCb();
+}
                                                                         }}
                                                                         style={{ minWidth: '250px' }}
                                                                     />
@@ -1492,6 +1621,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                             const safePage = Math.min(cbTransmisPage, tp);
                                                                             const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
                                                                             const rows = dossiersCbTransmis.slice(si, si + CB_DOSSIERS_PER_PAGE);
+
                                                                             return rows.map((d: any, idx: number) => (
                                                                                 <React.Fragment key={d.id}>
                                                                                     <tr
@@ -1519,7 +1649,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                                                             value={cbStagiaireSearch}
                                                                                                             onChange={(e) => setCbStagiaireSearch(e.target.value)}
                                                                                                             onKeyDown={(e) => {
-                                                                                                                if (e.key === 'Enter') loadCbStagiaires(d.id);
+                                                                                                                if (e.key === 'Enter') {
+loadCbStagiaires(d.id);
+}
                                                                                                             }}
                                                                                                             style={{ width: '200px' }}
                                                                                                         />
@@ -1601,15 +1733,29 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                 const tp = Math.ceil(dossiersCbTransmis.length / CB_DOSSIERS_PER_PAGE);
                                                                 const maxV = 7;
                                                                 let pgs: (number | '...')[] = [];
-                                                                if (tp <= maxV) { pgs = Array.from({ length: tp }, (_, i) => i + 1); }
-                                                                else {
+
+                                                                if (tp <= maxV) {
+ pgs = Array.from({ length: tp }, (_, i) => i + 1); 
+} else {
                                                                     pgs = [1];
-                                                                    if (cbTransmisPage > 3) pgs.push('...');
-                                                                    for (let i = Math.max(2, cbTransmisPage - 1); i <= Math.min(tp - 1, cbTransmisPage + 1); i++) pgs.push(i);
-                                                                    if (cbTransmisPage < tp - 2) pgs.push('...');
+
+                                                                    if (cbTransmisPage > 3) {
+pgs.push('...');
+}
+
+                                                                    for (let i = Math.max(2, cbTransmisPage - 1); i <= Math.min(tp - 1, cbTransmisPage + 1); i++) {
+pgs.push(i);
+}
+
+                                                                    if (cbTransmisPage < tp - 2) {
+pgs.push('...');
+}
+
                                                                     pgs.push(tp);
                                                                 }
+
                                                                 const siT = (Math.min(cbTransmisPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
+
                                                                 return (
                                                                     <div className="d-flex justify-content-between align-items-center p-2 border-top">
                                                                         <small className="text-muted">{siT + 1}–{Math.min(siT + CB_DOSSIERS_PER_PAGE, dossiersCbTransmis.length)} sur {dossiersCbTransmis.length}</small>
@@ -1659,6 +1805,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                             const safePage = Math.min(cbValidesPage, tp);
                                                                             const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
                                                                             const rows = dossiersCbValides.slice(si, si + CB_DOSSIERS_PER_PAGE);
+
                                                                             return rows.map((d: any, idx: number) => (
                                                                                 <tr key={d.id}>
                                                                                     <td>{si + idx + 1}</td>
@@ -1683,15 +1830,29 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                                 const tp = Math.ceil(dossiersCbValides.length / CB_DOSSIERS_PER_PAGE);
                                                                 const maxV = 7;
                                                                 let pgs: (number | '...')[] = [];
-                                                                if (tp <= maxV) { pgs = Array.from({ length: tp }, (_, i) => i + 1); }
-                                                                else {
+
+                                                                if (tp <= maxV) {
+ pgs = Array.from({ length: tp }, (_, i) => i + 1); 
+} else {
                                                                     pgs = [1];
-                                                                    if (cbValidesPage > 3) pgs.push('...');
-                                                                    for (let i = Math.max(2, cbValidesPage - 1); i <= Math.min(tp - 1, cbValidesPage + 1); i++) pgs.push(i);
-                                                                    if (cbValidesPage < tp - 2) pgs.push('...');
+
+                                                                    if (cbValidesPage > 3) {
+pgs.push('...');
+}
+
+                                                                    for (let i = Math.max(2, cbValidesPage - 1); i <= Math.min(tp - 1, cbValidesPage + 1); i++) {
+pgs.push(i);
+}
+
+                                                                    if (cbValidesPage < tp - 2) {
+pgs.push('...');
+}
+
                                                                     pgs.push(tp);
                                                                 }
+
                                                                 const siP = (Math.min(cbValidesPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
+
                                                                 return (
                                                                     <div className="d-flex justify-content-between align-items-center p-2 border-top">
                                                                         <small className="text-muted">{siP + 1}–{Math.min(siP + CB_DOSSIERS_PER_PAGE, dossiersCbValides.length)} sur {dossiersCbValides.length}</small>
@@ -1858,7 +2019,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                             <Badge color="info" pill className="ms-2 fs-11">{stagiaireTotal}</Badge>
                                                         </h6>
                                                         <Input type="text" bsSize="sm" placeholder="Rechercher..." style={{ maxWidth: 220 }}
-                                                            value={stagiaireSearch} onChange={(e) => { setStagiaireSearch(e.target.value); setStagiairePage(1); }} />
+                                                            value={stagiaireSearch} onChange={(e) => {
+ setStagiaireSearch(e.target.value); setStagiairePage(1); 
+}} />
                                                     </CardHeader>
                                                     <CardBody className="p-0">
                                                         {stagiaireLoading ? (
@@ -1926,17 +2089,34 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         )}
                                                         {(() => {
                                                             const stPages = Math.ceil(stagiaireTotal / 10);
-                                                            if (stPages <= 1) return null;
+
+                                                            if (stPages <= 1) {
+return null;
+}
+
                                                             const maxVis = 7;
                                                             let stPageNums: (number | '...')[] = [];
-                                                            if (stPages <= maxVis) { stPageNums = Array.from({ length: stPages }, (_, i) => i + 1); }
-                                                            else {
+
+                                                            if (stPages <= maxVis) {
+ stPageNums = Array.from({ length: stPages }, (_, i) => i + 1); 
+} else {
                                                                 stPageNums = [1];
-                                                                if (stagiairePage > 3) stPageNums.push('...');
-                                                                for (let i = Math.max(2, stagiairePage - 1); i <= Math.min(stPages - 1, stagiairePage + 1); i++) stPageNums.push(i);
-                                                                if (stagiairePage < stPages - 2) stPageNums.push('...');
+
+                                                                if (stagiairePage > 3) {
+stPageNums.push('...');
+}
+
+                                                                for (let i = Math.max(2, stagiairePage - 1); i <= Math.min(stPages - 1, stagiairePage + 1); i++) {
+stPageNums.push(i);
+}
+
+                                                                if (stagiairePage < stPages - 2) {
+stPageNums.push('...');
+}
+
                                                                 stPageNums.push(stPages);
                                                             }
+
                                                             return (
                                                                 <div className="d-flex justify-content-between align-items-center p-2 border-top">
                                                                     <small className="text-muted">{stagiaireTotal} résultat(s) — Page {stagiairePage}/{stPages}</small>

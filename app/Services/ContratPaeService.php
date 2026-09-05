@@ -260,8 +260,8 @@ class ContratPaeService
         return str_replace(
             ' ',
             '_',
-            'CONTRAT_' . $beneficiaire->nom . '_' . $beneficiaire->prenoms . '_' . $beneficiaire->numero_aej
-        ) . '.pdf';
+            'CONTRAT_'.$beneficiaire->nom.'_'.$beneficiaire->prenoms.'_'.$beneficiaire->numero_aej
+        ).'.pdf';
     }
 
     /**

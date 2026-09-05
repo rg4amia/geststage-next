@@ -1621,21 +1621,22 @@ class MigrateLegacyDataCommand extends Command
                             // Décision de l'AC préservée telle quelle.
                         } elseif (
                             ($legacyStatus === 'AJOURNE_DMG' && in_array($paiement->statut, ['A_TRAITER', 'EN_DOSSIER', 'AJOURNE_DMG'], true))
-                            || $legacyStatus === 'VALIDE_AC'
+                            || in_array($legacyStatus, ['VALIDE_AC', 'PAYE', 'NON_PAYE'], true)
                             || $legacyStatus === 'REJETE_AC'
                             || ($legacyStatus === 'EN_OP' && in_array($paiement->statut, ['A_TRAITER', 'EN_DOSSIER'], true))
                             || ($legacyStatus === 'EN_DOSSIER' && $paiement->statut === 'A_TRAITER')
                         ) {
                             $paiement->statut = $legacyStatus;
                         }
-                        if ($legacyStatus === 'VALIDE_AC') {
+                        if ($legacyStatus === 'PAYE') {
                             $payeLe = $this->mapper->normalizeLegacyDate(
                                 $legacyPaiement->date_confirm_pay
-                                    ?? $legacyPaiement->date_vise_ac
                                     ?? $legacyPaiement->updated_at
                                     ?? null,
                             );
                             $paiement->paye_le = $payeLe?->toImmutable();
+                        } elseif (in_array($legacyStatus, ['VALIDE_AC', 'NON_PAYE'], true)) {
+                            $paiement->paye_le = null;
                         }
                         $paiement->save();
 
@@ -2156,10 +2157,20 @@ class MigrateLegacyDataCommand extends Command
                     'ANNULE', 'A_RECONCILIER' => 'A_RECONCILIER',
                     default => 'EN_OP',
                 };
-                DossierPaiement::whereIn('ancien_id', $legacyDossierIds)->update([
+                $dossierIds = $dossiersCibles->modelKeys();
+                DossierPaiement::whereIn('id', $dossierIds)->update([
                     'ordre_paiement_id' => $ordre->id,
                     'statut' => $dossierStatus,
                 ]);
+
+                $motifOperation = trim((string) ($legacyOperation->motif_status ?? ''));
+                if ($motifOperation !== '' && in_array($ordre->statut, ['REJETE_AC', 'REJETE_CB', 'DIFFERE_AC'], true)) {
+                    DB::table('lignes_dossiers_paiement')
+                        ->whereIn('dossier_paiement_id', $dossierIds)
+                        ->whereNull('retire_le')
+                        ->whereNull('motif_retrait')
+                        ->update(['motif_retrait' => $motifOperation]);
+                }
 
                 $montantDossiers = DossierPaiement::where('ordre_paiement_id', $ordre->id)->sum('montant_total');
                 $montantLegacy = (float) ($legacyOperation->montant_op ?? $legacyOperation->montant ?? 0);
@@ -2415,9 +2426,12 @@ class MigrateLegacyDataCommand extends Command
     private function mapLegacyPaymentStatus(object $legacyPaiement): string
     {
         $statusAc = mb_strtolower(trim((string) ($legacyPaiement->status_ac ?? '')));
+        $statusPaiement = (int) ($legacyPaiement->status ?? 0);
 
         return match (true) {
             $this->estPointageAjournePourCorrectionCip($legacyPaiement) => 'AJOURNE_DMG',
+            $statusAc === 'validated' && $statusPaiement === 1 => 'PAYE',
+            $statusAc === 'validated' && $statusPaiement === 2 => 'NON_PAYE',
             $statusAc === 'validated' => 'VALIDE_AC',
             in_array($statusAc, ['rejected', 'rejected-by-ac'], true) => 'REJETE_AC',
             $statusAc === 'processed' => 'EN_OP',
@@ -4701,7 +4715,7 @@ class MigrateLegacyDataCommand extends Command
     private function fixStatutPaiementsLegacy(bool $dryRun): void
     {
         $query = DB::connection('legacy')->table('paiement_models')
-            ->select(['id', 'status_ac', 'status_dmg', 'status_cb', 'dossier_id', 'created_by_cb', 'date_vise_cb']);
+            ->select(['id', 'status', 'status_ac', 'status_dmg', 'status_cb', 'dossier_id', 'created_by_cb', 'date_vise_cb', 'date_confirm_pay', 'updated_at']);
 
         $total = $query->count();
         $this->info("Paiements legacy à réévaluer : {$total}");
@@ -4714,8 +4728,10 @@ class MigrateLegacyDataCommand extends Command
 
         $this->processInChunks($query, 2000, function ($legacyPaiements) use (&$corriges, &$transitions, $dryRun, $bar) {
             $attendus = [];
+            $legacyParId = [];
             foreach ($legacyPaiements as $legacyPaiement) {
                 $attendus[(int) $legacyPaiement->id] = $this->mapLegacyPaymentStatus($legacyPaiement);
+                $legacyParId[(int) $legacyPaiement->id] = $legacyPaiement;
             }
 
             $paiements = Paiement::whereIn('ancien_id', array_keys($attendus))->get();
@@ -4732,7 +4748,18 @@ class MigrateLegacyDataCommand extends Command
                 $corriges++;
 
                 if (! $dryRun) {
-                    $paiement->update(['statut' => $attendu]);
+                    $valeurs = ['statut' => $attendu];
+                    if ($attendu === 'PAYE') {
+                        $valeurs['paye_le'] = $this->mapper->normalizeLegacyDate(
+                            $legacyParId[(int) $paiement->ancien_id]->date_confirm_pay
+                                ?? $legacyParId[(int) $paiement->ancien_id]->updated_at
+                                ?? null,
+                        )?->toImmutable();
+                    } elseif (in_array($attendu, ['VALIDE_AC', 'NON_PAYE'], true)) {
+                        $valeurs['paye_le'] = null;
+                    }
+
+                    $paiement->update($valeurs);
                 }
             }
 

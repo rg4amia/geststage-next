@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Registration;
 
 use App\Domain\Registration\Services\InscriptionStagiaireService;
 use App\Http\Controllers\Controller;
+use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\OffreEmploi;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Commune;
+use App\Models\Reference\Conseiller;
 use App\Models\Reference\Diplome;
 use App\Models\Reference\Handicap;
 use App\Models\Reference\LienParente;
@@ -16,7 +18,6 @@ use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeEnseignement;
 use App\Models\Reference\TypeHandicap;
 use App\Models\Reference\TypePaiement;
-use App\Models\Reference\Conseiller;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\InstanceParcours;
@@ -108,7 +109,7 @@ class InscriptionController extends Controller
      */
     public function demandeur(string $matricule)
     {
-        $beneficiaire = \App\Models\Beneficiary\Beneficiaire::where('numero_aej', $matricule)->first();
+        $beneficiaire = Beneficiaire::where('numero_aej', $matricule)->first();
 
         if (! $beneficiaire) {
             return response()->json(['message' => 'Demandeur non trouvé pour ce matricule.'], 404);

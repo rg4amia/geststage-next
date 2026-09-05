@@ -79,6 +79,78 @@ class AgentComptableService
         });
     }
 
+    /**
+     * Enregistre la situation effective d'un paiement après le visa de l'OP.
+     *
+     * Le legacy distinguait le visa AC (`status_ac = validated`) de la situation
+     * Trésor Money (`status = 0/1/2`). `VALIDE_AC` conserve donc la file à
+     * confirmer, puis elle devient `PAYE` ou `NON_PAYE` sans modifier le visa de
+     * l'OP ni celui du bordereau.
+     *
+     * @param  array<int, int|string>  $paiementIds
+     */
+    public function confirmerSituationPaiements(
+        OrdrePaiement $ordre,
+        User $auteur,
+        array $paiementIds,
+        string $situation,
+        string $motif,
+    ): int {
+        if (! in_array($situation, ['PAYE', 'NON_PAYE'], true)) {
+            throw ValidationException::withMessages([
+                'situation' => 'La situation doit être « Payé » ou « Non payé ».',
+            ]);
+        }
+
+        return DB::transaction(function () use ($ordre, $auteur, $paiementIds, $situation, $motif): int {
+            $ordre->loadMissing(['bordereau', 'dossiersPaiement.paiementsActifs']);
+            $bordereau = $ordre->bordereau;
+
+            if (! $bordereau
+                || ! in_array($bordereau->statut, ['TRANSMIS_AC', 'VISE_AC'], true)
+                || $ordre->statut !== 'VISE_AC') {
+                throw ValidationException::withMessages([
+                    'ordre' => 'Cette OP n’est pas encore visée par l’Agent Comptable.',
+                ]);
+            }
+
+            $cibles = array_flip(array_map('intval', $paiementIds));
+            $confirmes = 0;
+
+            foreach ($ordre->dossiersPaiement as $dossier) {
+                foreach ($dossier->paiementsActifs as $paiement) {
+                    if (! isset($cibles[$paiement->id]) || $paiement->statut !== 'VALIDE_AC') {
+                        continue;
+                    }
+
+                    $statutAvant = $paiement->statut;
+                    $paiement->update([
+                        'statut' => $situation,
+                        'paye_le' => $situation === 'PAYE' ? now() : null,
+                        'corbeille_actuelle' => null,
+                    ]);
+                    DecisionPaiement::enregistrer(
+                        $paiement,
+                        $auteur,
+                        $situation === 'PAYE' ? 'CONFIRMATION_PAIEMENT_AC' : 'CONFIRMATION_NON_PAIEMENT_AC',
+                        $motif,
+                        $statutAvant,
+                        $situation,
+                    );
+                    $confirmes++;
+                }
+            }
+
+            if ($confirmes === 0) {
+                throw ValidationException::withMessages([
+                    'paiement_ids' => 'Aucun des paiements sélectionnés n’est encore à confirmer.',
+                ]);
+            }
+
+            return $confirmes;
+        });
+    }
+
     public function differerOrdre(OrdrePaiement $ordre, User $auteur, string $motif): void
     {
         DB::transaction(function () use ($ordre, $auteur, $motif): void {

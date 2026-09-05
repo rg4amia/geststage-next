@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
 import { Head } from '@inertiajs/react';
 import axios from 'axios';
-import BreadCrumb from '@/velzone/Components/Common/BreadCrumb';
+import React, { useState, useEffect } from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Table, Badge, Spinner } from 'reactstrap';
+import BreadCrumb from '@/velzone/Components/Common/BreadCrumb';
 
 interface HistoriqueItem {
     id: number;
@@ -62,8 +62,10 @@ const HistoriqueGenerationIndex: React.FC = () => {
 
     const chargerHistorique = async () => {
         setLoading(true);
+
         try {
             const params: any = { page };
+
             if (filtreType) {
                 params.type_document = filtreType;
             }
@@ -93,6 +95,7 @@ const HistoriqueGenerationIndex: React.FC = () => {
             TRESOR_MONEY: { color: 'success', label: 'Trésor Money' },
             ADD: { color: 'info', label: 'ADD' },
         };
+
         return badges[type] || { color: 'secondary', label: type };
     };
 

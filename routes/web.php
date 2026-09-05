@@ -6,9 +6,9 @@ use App\Http\Controllers\ChefAgence\HistoriqueGenerationController;
 use App\Http\Controllers\ChefAgence\IndexChefAgenceController;
 use App\Http\Controllers\ChefAgence\PointageChefAgenceController;
 use App\Http\Controllers\Cip\MesStagiairesCipController;
+use App\Http\Controllers\Cip\PointageCipController;
 use App\Http\Controllers\Cip\RenouvellementCipController;
 use App\Http\Controllers\Cip\SituationStagiaireCipController;
-use App\Http\Controllers\Cip\PointageCipController;
 use App\Http\Controllers\Company\EntrepriseController;
 use App\Http\Controllers\Company\OffreEmploiController;
 use App\Http\Controllers\Daicg\StagiaireDaicgController;
@@ -157,16 +157,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dmg/rejets', [RejetDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.rejets.index');
 
     // Phase 7 : Agent Comptable
-Route::get('/agent-comptable/paiements', [PaiementAcController::class, 'index'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.index');
-Route::post('/agent-comptable/paiements/viser/{id}', [PaiementAcController::class, 'viser'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.viser');
-Route::post('/agent-comptable/paiements/ajourner/{id}', [PaiementAcController::class, 'ajourner'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ajourner');
-Route::post('/agent-comptable/paiements/rejeter/{id}', [PaiementAcController::class, 'rejeter'])->middleware('can:rejeter_bordereau_ac')->name('ac.paiements.rejeter');
-Route::get('/agent-comptable/paiements/ordres/{ordre}/details', [PaiementAcController::class, 'ordreDetails'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.ordres.details');
-Route::post('/agent-comptable/paiements/ordres/{ordre}/valider', [PaiementAcController::class, 'validerOrdre'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.ordres.valider');
-Route::post('/agent-comptable/paiements/ordres/{ordre}/differer', [PaiementAcController::class, 'differerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.differer');
-Route::post('/agent-comptable/paiements/ordres/{ordre}/differer-stagiaires', [PaiementAcController::class, 'differerStagiaires'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.differer-stagiaires');
-Route::post('/agent-comptable/paiements/ordres/{ordre}/rejeter', [PaiementAcController::class, 'rejeterOrdre'])->middleware('can:rejeter_bordereau_ac')->name('ac.paiements.ordres.rejeter');
-Route::post('/agent-comptable/paiements/ordres/{ordre}/retirer', [PaiementAcController::class, 'retirerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.retirer');
+    Route::get('/agent-comptable/status-validation', [PaiementAcController::class, 'statusValidation'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.status-validation');
+    Route::get('/agent-comptable/operation-rejete', [PaiementAcController::class, 'operationRejete'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.operation-rejete');
+    Route::get('/agent-comptable/paiements', [PaiementAcController::class, 'index'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.index');
+    Route::post('/agent-comptable/paiements/viser/{id}', [PaiementAcController::class, 'viser'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.viser');
+    Route::post('/agent-comptable/paiements/ajourner/{id}', [PaiementAcController::class, 'ajourner'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ajourner');
+    Route::post('/agent-comptable/paiements/rejeter/{id}', [PaiementAcController::class, 'rejeter'])->middleware('can:rejeter_bordereau_ac')->name('ac.paiements.rejeter');
+    Route::get('/agent-comptable/paiements/ordres/{ordre}/details', [PaiementAcController::class, 'ordreDetails'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.ordres.details');
+    Route::get('/agent-comptable/paiements/pieces', [PaiementAcController::class, 'piecesStage'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.pieces');
+    Route::get('/agent-comptable/paiements/piece', [PaiementAcController::class, 'streamPiece'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.piece');
+    Route::get('/agent-comptable/paiements/statuts', [PaiementAcController::class, 'paiementsStatuts'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.statuts');
+    Route::get('/agent-comptable/paiements/statuts/export', [PaiementAcController::class, 'exportPaiementsStatuts'])->middleware('can:voir_bordereau_ac')->name('ac.paiements.statuts.export');
+    Route::post('/agent-comptable/paiements/ordres/{ordre}/valider', [PaiementAcController::class, 'validerOrdre'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.ordres.valider');
+    Route::post('/agent-comptable/paiements/ordres/{ordre}/differer', [PaiementAcController::class, 'differerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.differer');
+    Route::post('/agent-comptable/paiements/ordres/{ordre}/differer-stagiaires', [PaiementAcController::class, 'differerStagiaires'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.differer-stagiaires');
+    Route::post('/agent-comptable/paiements/ordres/{ordre}/situation-paiements', [PaiementAcController::class, 'confirmerSituationPaiements'])->middleware('can:viser_bordereau_ac')->name('ac.paiements.ordres.situation-paiements');
+    Route::post('/agent-comptable/paiements/ordres/{ordre}/rejeter', [PaiementAcController::class, 'rejeterOrdre'])->middleware('can:rejeter_bordereau_ac')->name('ac.paiements.ordres.rejeter');
+    Route::post('/agent-comptable/paiements/ordres/{ordre}/retirer', [PaiementAcController::class, 'retirerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.retirer');
 
     // Phase 8 : Chef de Bureau (CB)
     Route::get('/cb/paiements', [PaiementCbController::class, 'index'])->name('cb.paiements.index');

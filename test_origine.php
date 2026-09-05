@@ -1,12 +1,16 @@
 <?php
+
+use App\Models\Payment\Paiement;
+use Illuminate\Contracts\Console\Kernel;
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
-$count = App\Models\Payment\Paiement::where('statut', 'A_TRAITER')
+$count = Paiement::where('statut', 'A_TRAITER')
     ->whereHas('droitPaiement', function ($query) {
         $query->where('nature', 'PRESENCE')
-            ->whereHas('periode', fn($q) => $q->where('code', '2026-08'));
+            ->whereHas('periode', fn ($q) => $q->where('code', '2026-08'));
     })
     ->whereHas('droitPaiement.stage', function ($q) {
         $q->whereIn('origine_stagiaire_id', [4, 3, 19]);

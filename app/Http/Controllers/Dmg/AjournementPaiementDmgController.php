@@ -53,7 +53,6 @@ class AjournementPaiementDmgController extends Controller
      * Options du sélecteur « Dossier / Multi-dossier » : uniquement ceux qui portent encore un
      * stagiaire ajourné sur le mois demandé. Un dossier appartenant à un multi-dossier est
      * présenté sous ce multi-dossier, comme dans l'ancien Gestage (`dossier-rejected-by-month`).
-     *
      */
     public function dossiers(Request $request): JsonResponse
     {

@@ -4,6 +4,7 @@ namespace App\Models\Reference;
 
 use App\Domain\Audit\Traits\Auditable;
 use App\Models\Concerns\CachesReferenceData;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -46,7 +47,7 @@ class Conseiller extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     /**
@@ -54,7 +55,8 @@ class Conseiller extends Model
      */
     public function getNomCompletAttribute(): string
     {
-        $prenoms = $this->prenoms ? ' ' . $this->prenoms : '';
-        return $this->nom . $prenoms;
+        $prenoms = $this->prenoms ? ' '.$this->prenoms : '';
+
+        return $this->nom.$prenoms;
     }
 }

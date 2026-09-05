@@ -23,7 +23,7 @@ class PointageChefAgenceService
     /**
      * Récupère les mois distincts ayant des pointages en attente de validation CA.
      *
-     * @return \Illuminate\Support\Collection<int, array{value: string, label: string, count: int}>
+     * @return Collection<int, array{value: string, label: string, count: int}>
      */
     public function getMoisEnAttente(?int $agenceId = null): Collection
     {
@@ -187,7 +187,7 @@ class PointageChefAgenceService
                         'pointage_id' => $pointage->id,
                         'message' => $e->getMessage(),
                     ];
-                    Log::error("Erreur validation pointage {$pointage->id}: " . $e->getMessage());
+                    Log::error("Erreur validation pointage {$pointage->id}: ".$e->getMessage());
                 }
             }
         });

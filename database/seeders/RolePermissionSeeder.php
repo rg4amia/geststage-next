@@ -55,9 +55,9 @@ class RolePermissionSeeder extends Seeder
                 'valider_pejedec',
                 'valider_aaf',
             ],
-        'dmg_paiements' => [
-            'voir_paiements_dmg',
-            'voir_attente_paiement_demarrage',
+            'dmg_paiements' => [
+                'voir_paiements_dmg',
+                'voir_attente_paiement_demarrage',
                 'voir_attente_paiement_presence',
                 'valider_paiement_dmg',
                 'generer_dossier_paiement',
@@ -67,10 +67,10 @@ class RolePermissionSeeder extends Seeder
                 'marquer_dossier_physique',
                 'ajourner_paiement_dmg',
                 'elaborer_op',
-            'creer_bordereau',
-            'transmettre_cb',
-            'transmettre_bordereau_ac',
-            'retirer_paiement_dossier',
+                'creer_bordereau',
+                'transmettre_cb',
+                'transmettre_bordereau_ac',
+                'retirer_paiement_dossier',
             ],
             'cb_paiements' => [
                 'voir_dossier_cb',

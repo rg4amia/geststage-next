@@ -4,8 +4,8 @@ namespace App\Domain\Attendance\Services;
 
 use App\Models\Internship\Stage;
 use App\Models\Reference\SituationStage;
-use Illuminate\Database\Eloquent\Builder;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 

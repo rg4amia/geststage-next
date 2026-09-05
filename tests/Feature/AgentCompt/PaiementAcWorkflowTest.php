@@ -16,6 +16,8 @@ use App\Models\Reference\SourceFinancement;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\TestCase;
@@ -42,6 +44,8 @@ class PaiementAcWorkflowTest extends TestCase
         $attente = $this->chainePaiement($periode, 'TRANSMIS_AC', 'EN_OP');
         $this->chainePaiement($periode, 'TRANSMIS_AC', 'VALIDE_AC');
         $vise = $this->chainePaiement($periode, 'VISE_AC', 'VALIDE_AC');
+        $vise['ordre']->update(['statut' => 'VISE_AC']);
+        $vise['dossier']->update(['statut' => 'VISE_AC']);
         $rejete = $this->chainePaiement($periode, 'REJETE_AC', 'A_TRAITER');
         $this->chainePaiement($autrePeriode, 'TRANSMIS_AC', 'EN_OP');
         $this->bordereauVide($periode, 'TRANSMIS_AC');
@@ -63,7 +67,205 @@ class PaiementAcWorkflowTest extends TestCase
                 ->where('bordereauxRejetes.0.id', $rejete['bordereau']->id)
                 ->has('bordereauxVises', 1)
                 ->where('bordereauxVises.0.id', $vise['bordereau']->id)
+                ->has('statutPaiements', 1)
+                ->where('statutPaiements.0.ordres.0.id', $vise['ordre']->id)
                 ->where('moisActuel', '2026-08'));
+    }
+
+    public function test_les_vues_legacy_status_validation_et_operation_rejete_sont_integrees_a_lindex(): void
+    {
+        $periode = $this->periode('2026-08');
+
+        $statusPaiement = $this->chainePaiement($periode, 'TRANSMIS_AC', 'PAYE', null);
+        $statusPaiement['ordre']->update(['statut' => 'VISE_AC']);
+        $statusPaiement['dossier']->update(['statut' => 'VISE_AC']);
+        $this->ajouterPaiement($statusPaiement, 'VALIDE_AC', null);
+
+        $operationRejetee = $this->chainePaiement($periode, 'TRANSMIS_AC', 'REJETE_AC', CorbeilleEnum::DMG_OP_REJETE_AC);
+        $operationRejetee['ordre']->update(['statut' => 'REJETE_AC']);
+        $operationRejetee['dossier']->update(['statut' => 'REJETE_AC']);
+        $operationRejetee['dossier']->paiements()->updateExistingPivot($operationRejetee['paiement']->id, [
+            'motif_retrait' => 'Compte bénéficiaire incorrect',
+        ]);
+
+        $this->actingAs($this->agentComptable)
+            ->get('/agent-comptable/paiements?mois=2026-08')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AgentComptable/Paiements/Index')
+                ->has('statutPaiements', 1)
+                ->where('statutPaiements.0.id', $statusPaiement['bordereau']->id)
+                ->where('statutPaiements.0.ordres.0.id', $statusPaiement['ordre']->id)
+                ->where('statutPaiements.0.ordres.0.compteurs.total', 2)
+                ->where('statutPaiements.0.ordres.0.compteurs.payes', 1)
+                ->where('statutPaiements.0.ordres.0.compteurs.nonPayes', 0)
+                ->where('statutPaiements.0.ordres.0.compteurs.valides', 1)
+                ->has('operationsRejetees', 1)
+                ->where('operationsRejetees.0.id', $operationRejetee['bordereau']->id)
+                ->where('operationsRejetees.0.ordres.0.id', $operationRejetee['ordre']->id)
+                ->where('operationsRejetees.0.motif', 'Compte bénéficiaire incorrect')
+                ->has('bordereauxRejetes', 0));
+
+        $this->get('/agent-comptable/status-validation?mois=2026-08')
+            ->assertRedirect('/agent-comptable/paiements?mois=2026-08&vue=statuts');
+
+        $this->get('/agent-comptable/operation-rejete?mois=2026-08')
+            ->assertRedirect('/agent-comptable/paiements?mois=2026-08&vue=operations_rejetees');
+    }
+
+    public function test_les_onglets_globaux_payes_et_non_payes_listent_les_paiements_tranches_du_mois(): void
+    {
+        $periode = $this->periode('2026-08');
+        $autrePeriode = $this->periode('2026-07');
+
+        $paye = $this->chainePaiement($periode, 'VISE_AC', 'PAYE', null);
+        $paye['ordre']->update(['statut' => 'VISE_AC']);
+        $paye['paiement']->update(['paye_le' => now()->subDay()]);
+
+        $nonPaye = $this->chainePaiement($periode, 'VISE_AC', 'NON_PAYE', null);
+        $nonPaye['ordre']->update(['statut' => 'VISE_AC']);
+
+        // Un paiement payé sur une autre période ne doit pas polluer le mois demandé.
+        $horsMois = $this->chainePaiement($autrePeriode, 'VISE_AC', 'PAYE', null);
+
+        $this->actingAs($this->agentComptable)
+            ->get('/agent-comptable/paiements?mois=2026-08')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AgentComptable/Paiements/Index')
+                ->where('statutCompteurs.payes', 1)
+                ->where('statutCompteurs.nonPayes', 1)
+                ->where('sousOngletActuel', 'par_op'));
+
+        $this->getJson('/agent-comptable/paiements/statuts?mois=2026-08&situation=paye')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('montant_total', 50000)
+            ->assertJsonCount(1, 'rows')
+            ->assertJsonPath('rows.0.stagiaire.nom', $paye['paiement']->droitPaiement->stage->beneficiaire->nom)
+            ->assertJsonPath('rows.0.dossier.numero', $paye['dossier']->numero)
+            ->assertJsonPath('rows.0.ordre.numero', $paye['ordre']->numero)
+            ->assertJsonPath('rows.0.stagiaire.statut_paiement', 'PAYE')
+            ->assertJsonPath('rows.0.stagiaire.paye_le', $paye['paiement']->paye_le->format('d/m/Y H:i'));
+
+        $this->getJson('/agent-comptable/paiements/statuts?mois=2026-08&situation=non_paye')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('rows.0.stagiaire.statut_paiement', 'NON_PAYE');
+
+        $this->getJson('/agent-comptable/paiements/statuts?mois=2026-08&situation=paye&page=2')
+            ->assertOk()
+            ->assertJsonCount(0, 'rows');
+
+        $this->getJson('/agent-comptable/paiements/statuts?mois=2026-08&situation=annule')
+            ->assertStatus(422);
+    }
+
+    public function test_les_onglets_globaux_payes_sont_pagines_par_lots_de_cent(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'VISE_AC', 'PAYE', null);
+        $chaine['ordre']->update(['statut' => 'VISE_AC']);
+
+        for ($i = 0; $i < 99; $i++) {
+            $this->ajouterPaiement($chaine, 'PAYE', null);
+        }
+
+        $this->actingAs($this->agentComptable)
+            ->getJson('/agent-comptable/paiements/statuts?mois=2026-08&situation=paye')
+            ->assertOk()
+            ->assertJsonPath('total', 100)
+            ->assertJsonCount(100, 'rows')
+            ->assertJsonPath('per_page', 100);
+
+        $this->getJson('/agent-comptable/paiements/statuts?mois=2026-08&situation=paye&page=2')
+            ->assertOk()
+            ->assertJsonCount(0, 'rows')
+            ->assertJsonPath('total', 100);
+    }
+
+    public function test_lexport_des_onglets_globaux_produit_un_excel_et_un_pdf(): void
+    {
+        $this->periode('2026-07');
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'VISE_AC', 'PAYE', null);
+        $chaine['ordre']->update(['statut' => 'VISE_AC']);
+        $chaine['paiement']->update(['paye_le' => now()]);
+
+        $this->actingAs($this->agentComptable);
+
+        $excel = $this->get('/agent-comptable/paiements/statuts/export?mois=2026-08&situation=paye&format=excel');
+        $excel->assertOk();
+        $this->assertSame(
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            $excel->headers->get('Content-Type'),
+        );
+        $this->assertStringContainsString('paiements-payes-2026-08.xlsx', $excel->headers->get('Content-Disposition'));
+        $this->assertStringStartsWith('PK', $excel->streamedContent());
+
+        $pdf = $this->get('/agent-comptable/paiements/statuts/export?mois=2026-08&situation=paye&format=pdf');
+        $pdf->assertOk();
+        $this->assertSame('application/pdf', $pdf->headers->get('Content-Type'));
+        $this->assertStringContainsString('paiements-payes-2026-08.pdf', $pdf->headers->get('Content-Disposition'));
+        $this->assertStringStartsWith('%PDF', $pdf->getContent());
+
+        $this->getJson('/agent-comptable/paiements/statuts/export?mois=2026-08&situation=paye&format=csv')
+            ->assertStatus(422);
+
+        $this->get('/agent-comptable/paiements/statuts/export?mois=2026-07&situation=paye&format=excel')
+            ->assertNotFound();
+    }
+
+    public function test_les_pieces_jointes_legacy_ne_sont_exposees_que_si_le_fichier_existe(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');
+        $stage = $chaine['paiement']->droitPaiement->stage;
+
+        $executionId = DB::table('executions_migration')->insertGetId([
+            'uuid_public' => (string) Str::uuid(),
+            'version_source' => 'gestage-mysql-v2',
+            'statut' => 'TERMINEE',
+        ]);
+        DB::table('conservations_contrats_pae')->insert([
+            'execution_migration_id' => $executionId,
+            'contrat_pae_ancien_id' => 90001,
+            'stage_id' => $stage->id,
+            'nombre_colonnes_source' => 6,
+            'donnees_originales' => json_encode([
+                'file_cni' => 'PIECE_IDENTITE/cni.pdf',
+                'file_fiche_yup' => 'FICHE_YUP/absente.pdf',
+                'file_contrat' => '0',
+                'filecontratavenant' => '0',
+                'file_attestation' => null,
+                'attest_presence' => '0',
+            ]),
+            'empreinte_originale' => str_repeat('a', 64),
+            'version_schema_source' => 'gestage-mysql-v2',
+        ]);
+
+        $racine = sys_get_temp_dir().'/ac-pieces-'.Str::random(8);
+        mkdir($racine.'/PIECE_IDENTITE', 0777, true);
+        file_put_contents($racine.'/PIECE_IDENTITE/cni.pdf', 'CONTENU-CNI');
+        config(['filesystems.disks.legacy_pieces.root' => $racine]);
+
+        try {
+            $urlCni = route('ac.paiements.piece', ['stage_id' => $stage->id, 'type' => 'cni']);
+
+            $this->actingAs($this->agentComptable)
+                ->getJson('/agent-comptable/paiements/pieces?stage_id='.$stage->id)
+                ->assertOk()
+                ->assertJsonPath('pieces.cni', $urlCni)
+                ->assertJsonPath('pieces.tresor', null)
+                ->assertJsonPath('pieces.contrat', null)
+                ->assertJsonPath('pieces.attestation', null);
+
+            // Le fichier existant est streamé ; un chemin conservé sans fichier répond 404.
+            $reponseFichier = $this->get($urlCni);
+            $reponseFichier->assertOk();
+            $this->assertSame('CONTENU-CNI', $reponseFichier->streamedContent());
+            $this->get('/agent-comptable/paiements/piece?stage_id='.$stage->id.'&type=tresor')
+                ->assertNotFound();
+        } finally {
+            File::deleteDirectory($racine);
+        }
     }
 
     public function test_la_transmission_dmg_alimente_la_corbeille_ac_pour_tous_les_paiements(): void
@@ -247,7 +449,7 @@ class PaiementAcWorkflowTest extends TestCase
         $this->getJson($url)
             ->assertOk()
             ->assertJsonPath('onglet', 'attente')
-            ->assertJsonPath('compteurs', ['attente' => 1, 'valide' => 1, 'rejete' => 1, 'differe' => 1])
+            ->assertJsonPath('compteurs', ['attente' => 1, 'valide' => 1, 'paye' => 0, 'non_paye' => 0, 'rejete' => 1, 'differe' => 1])
             ->assertJsonCount(1, 'dossiers.0.stagiaires')
             ->assertJsonPath('dossiers.0.stagiaires.0.paiement_id', $chaine['paiement']->id);
 
@@ -381,7 +583,7 @@ class PaiementAcWorkflowTest extends TestCase
         $this->getJson($url)
             ->assertJsonPath('actions', [
                 'valider' => true, 'differer' => true, 'differer_stagiaires' => true,
-                'rejeter' => true, 'retirer' => true,
+                'rejeter' => true, 'retirer' => true, 'confirmer_paiements' => false,
             ]);
 
         // Un différé partiel ferme le rejet global et le retrait, comme `checkerAcAction`.
@@ -391,6 +593,47 @@ class PaiementAcWorkflowTest extends TestCase
             ->assertJsonPath('actions.rejeter', false)
             ->assertJsonPath('actions.retirer', false)
             ->assertJsonPath('actions.valider', true);
+    }
+
+    public function test_lac_confirme_la_situation_des_paiements_apres_le_visa_de_lop(): void
+    {
+        $chaine = $this->chainePaiement($this->periode('2026-08'), 'VISE_AC', 'VALIDE_AC', null);
+        $chaine['ordre']->update(['statut' => 'VISE_AC']);
+        $chaine['dossier']->update(['statut' => 'VISE_AC']);
+        $second = $this->ajouterPaiement($chaine, 'VALIDE_AC', null);
+
+        $this->actingAs($this->agentComptable)
+            ->post('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/situation-paiements', [
+                'paiement_ids' => [$chaine['paiement']->id],
+                'situation' => 'PAYE',
+                'motif' => 'Paiement Trésor Money confirmé.',
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('paiements', ['id' => $chaine['paiement']->id, 'statut' => 'PAYE']);
+        $this->assertDatabaseHas('decisions_paiements', [
+            'paiement_id' => $chaine['paiement']->id,
+            'decision' => 'CONFIRMATION_PAIEMENT_AC',
+            'motif' => 'Paiement Trésor Money confirmé.',
+        ]);
+
+        $this->post('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/situation-paiements', [
+            'paiement_ids' => [$second->id],
+            'situation' => 'NON_PAYE',
+            'motif' => 'Paiement annulé après contrôle.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('paiements', ['id' => $second->id, 'statut' => 'NON_PAYE', 'paye_le' => null]);
+        $this->assertDatabaseHas('decisions_paiements', [
+            'paiement_id' => $second->id,
+            'decision' => 'CONFIRMATION_NON_PAIEMENT_AC',
+        ]);
+
+        $this->getJson('/agent-comptable/paiements/ordres/'.$chaine['ordre']->id.'/details?onglet=paye')
+            ->assertOk()
+            ->assertJsonPath('compteurs.paye', 1)
+            ->assertJsonCount(1, 'dossiers.0.stagiaires');
     }
 
     private function periode(string $code): Periode

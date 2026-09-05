@@ -13,14 +13,14 @@ trait CachesReferenceData
 {
     protected static function bootCachesReferenceData(): void
     {
-        static::saved(fn() => Cache::forget(static::referenceCacheKey()));
-        static::deleted(fn() => Cache::forget(static::referenceCacheKey()));
+        static::saved(fn () => Cache::forget(static::referenceCacheKey()));
+        static::deleted(fn () => Cache::forget(static::referenceCacheKey()));
 
         // `restored` n'existe que via le trait SoftDeletes (absent des autres modèles de référence) :
         // l'appeler sans garde tomberait dans Model::__callStatic() et re-instancierait le modèle
         // en pleine phase de boot (LogicException "may not be called ... while it is being booted").
         if (method_exists(static::class, 'restored')) {
-            static::restored(fn() => Cache::forget(static::referenceCacheKey()));
+            static::restored(fn () => Cache::forget(static::referenceCacheKey()));
         }
     }
 
@@ -28,9 +28,9 @@ trait CachesReferenceData
     {
         $attributes = Cache::rememberForever(
             static::referenceCacheKey(),
-            fn(): array => static::query()
+            fn (): array => static::query()
                 ->get()
-                ->map(fn(Model $model): array => $model->getAttributes())
+                ->map(fn (Model $model): array => $model->getAttributes())
                 ->all(),
         );
 
@@ -39,7 +39,7 @@ trait CachesReferenceData
 
             $attributes = static::query()
                 ->get()
-                ->map(fn(Model $model): array => $model->getAttributes())
+                ->map(fn (Model $model): array => $model->getAttributes())
                 ->all();
 
             Cache::forever(static::referenceCacheKey(), $attributes);
@@ -62,7 +62,7 @@ trait CachesReferenceData
         return static::cached()
             ->sortBy($labelColumn, SORT_REGULAR, $descending)
             ->values()
-            ->map(fn(self $model) => [
+            ->map(fn (self $model) => [
                 'id' => $model->getKey(),
                 $labelColumn => $model->{$labelColumn},
             ])
@@ -83,6 +83,6 @@ trait CachesReferenceData
 
     protected static function referenceCacheKey(): string
     {
-        return 'ref.' . (new static)->getTable();
+        return 'ref.'.(new static)->getTable();
     }
 }

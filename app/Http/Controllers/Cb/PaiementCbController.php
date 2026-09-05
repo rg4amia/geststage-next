@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers\Cb;
 
+use App\Domain\Payment\Services\CbPaiementService;
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
 use App\Http\Controllers\Controller;
 use App\Models\Payment\DossierPaiement;
-use App\Models\Payment\GroupePaiement;
 use App\Models\Reference\Periode;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -15,7 +15,10 @@ use Inertia\Inertia;
 
 class PaiementCbController extends Controller
 {
-    public function __construct(private CorbeilleParcoursQueryService $corbeilles) {}
+    public function __construct(
+        private CorbeilleParcoursQueryService $corbeilles,
+        private CbPaiementService $cbService,
+    ) {}
 
     public function index(Request $request)
     {
@@ -23,14 +26,14 @@ class PaiementCbController extends Controller
         $periode = Periode::where('code', $mois)->first();
 
         $dossiersAttenteCB = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
-            ->withCount('paiements')
+            ->withCount(['paiementsActifs as paiements_count'])
             ->where('statut', 'TRANSMIS_CB')
             ->where('periode_id', $periode?->id)
             ->orderByDesc('created_at')
             ->get();
 
         $dossiersAjournes = DossierPaiement::with(['agence', 'sourceFinancement', 'periode'])
-            ->withCount('paiements')
+            ->withCount(['paiementsActifs as paiements_count'])
             ->where('statut', 'AJOURNE_CB')
             ->where('periode_id', $periode?->id)
             ->orderByDesc('created_at')
@@ -59,7 +62,7 @@ class PaiementCbController extends Controller
         $periode = Periode::where('code', $mois)->first();
 
         $dossiers = DossierPaiement::with(['agence', 'sourceFinancement'])
-            ->withCount('paiements')
+            ->withCount(['paiementsActifs as paiements_count'])
             ->where('statut', 'TRANSMIS_CB')
             ->where('periode_id', $periode?->id)
             ->orderByDesc('created_at')
@@ -68,7 +71,7 @@ class PaiementCbController extends Controller
                 'id' => $d->id,
                 'identifiant' => $d->numero,
                 'agence' => $d->agence?->nom ?? '-',
-                'source_financement' => $d->sourceFinancement?->nom ?? '-',
+                'source_financement' => $d->sourceFinancement?->libelle ?? $d->sourceFinancement?->nom ?? '-',
                 'nombre_stagiaires' => $d->paiements_count,
                 'montant_total' => $d->montant_total,
             ]);
@@ -127,8 +130,8 @@ class PaiementCbController extends Controller
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('beneficiaires.nom', 'LIKE', "%{$search}%")
-                  ->orWhere('beneficiaires.prenoms', 'LIKE', "%{$search}%")
-                  ->orWhere('beneficiaires.numero_aej', 'LIKE', "%{$search}%");
+                    ->orWhere('beneficiaires.prenoms', 'LIKE', "%{$search}%")
+                    ->orWhere('beneficiaires.numero_aej', 'LIKE', "%{$search}%");
             });
         }
 
@@ -177,16 +180,20 @@ class PaiementCbController extends Controller
     public function valider(Request $request, $id)
     {
         $dossier = DossierPaiement::findOrFail($id);
-        $dossier->update(['statut' => 'VALIDE_CB']);
+        $nombre = $this->cbService->validerDossier($dossier, $request->user());
 
-        return redirect()->back()->with('success', 'Dossier validé et transmis à la DMG pour élaboration OP.');
+        return redirect()->back()->with('success', "{$nombre} paiement(s) validé(s). Dossier transmis à la DMG pour élaboration OP.");
     }
 
     public function ajourner(Request $request, $id)
     {
-        $dossier = DossierPaiement::findOrFail($id);
-        $dossier->update(['statut' => 'AJOURNE_CB']);
+        $data = $request->validate([
+            'motif' => ['required', 'string', 'min:5', 'max:2000'],
+        ]);
 
-        return redirect()->back()->with('success', 'Dossier ajourné et renvoyé à la DMG.');
+        $dossier = DossierPaiement::findOrFail($id);
+        $nombre = $this->cbService->ajournerDossier($dossier, $request->user(), $data['motif']);
+
+        return redirect()->back()->with('success', "{$nombre} paiement(s) ajourné(s). Dossier renvoyé à la DMG.");
     }
 }

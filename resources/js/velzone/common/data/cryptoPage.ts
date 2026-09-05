@@ -22,24 +22,24 @@ import fillCoin from "../../assets/images/svg/crypto-icons/fil.svg";
 import gbp from "../../assets/images/svg/crypto-icons/gbp.svg";
 import jpy from "../../assets/images/svg/crypto-icons/jpy.svg";
 import ltc from "../../assets/images/svg/crypto-icons/ltc.svg";
+import ltcCoin from "../../assets/images/svg/crypto-icons/ltc.svg";
+import makerCoin from "../../assets/images/svg/crypto-icons/mkr.svg";
+import enzymeCoin from "../../assets/images/svg/crypto-icons/mln.svg";
+import neoCoin from "../../assets/images/svg/crypto-icons/neo.svg";
 import ppt from "../../assets/images/svg/crypto-icons/ppt.svg";
+import riseCoin from "../../assets/images/svg/crypto-icons/rise.svg";
+import solCoin from "../../assets/images/svg/crypto-icons/sol.svg";
+import vtcCoin from "../../assets/images/svg/crypto-icons/vtc.svg";
 import xmr from "../../assets/images/svg/crypto-icons/xmr.svg";
+import moneroCoin from "../../assets/images/svg/crypto-icons/xmr.svg";
 import xpm from "../../assets/images/svg/crypto-icons/xpm.svg";
 
 
-import vtcCoin from "../../assets/images/svg/crypto-icons/vtc.svg";
 import xrp from "../../assets/images/svg/crypto-icons/xrp.svg";
 import xsgCoin from "../../assets/images/svg/crypto-icons/xsg.svg";
-import riseCoin from "../../assets/images/svg/crypto-icons/rise.svg";
 
 // Import Images
-import ltcCoin from "../../assets/images/svg/crypto-icons/ltc.svg";
-import solCoin from "../../assets/images/svg/crypto-icons/sol.svg";
-import moneroCoin from "../../assets/images/svg/crypto-icons/xmr.svg";
-import makerCoin from "../../assets/images/svg/crypto-icons/mkr.svg";
 import yearnCoin from "../../assets/images/svg/crypto-icons/yfi.svg";
-import neoCoin from "../../assets/images/svg/crypto-icons/neo.svg";
-import enzymeCoin from "../../assets/images/svg/crypto-icons/mln.svg";
 
 
 const transactions = [

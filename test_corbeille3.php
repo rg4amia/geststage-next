@@ -1,7 +1,9 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 $countMois = DB::table('pointages')
@@ -11,9 +13,9 @@ $countMois = DB::table('pointages')
     ->where('periodes.code', '2026-08')
     ->whereNotExists(function ($query) {
         $query->select(DB::raw(1))
-              ->from('droits_paiement')
-              ->whereColumn('droits_paiement.pointage_id', 'pointages.id');
+            ->from('droits_paiement')
+            ->whereColumn('droits_paiement.pointage_id', 'pointages.id');
     })
     ->count();
-    
+
 echo "Pointages in DMG but missing DroitPaiement for August 2026: $countMois\n";

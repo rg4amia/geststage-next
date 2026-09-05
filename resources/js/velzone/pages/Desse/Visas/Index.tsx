@@ -101,7 +101,10 @@ const DesseVisasIndex = ({
     };
 
     const confirmerRejet = () => {
-        if (!aRejeter) return;
+        if (!aRejeter) {
+return;
+}
+
         setEnCours(true);
         router.post(
             `/desse/visas/${aRejeter.id}/rejeter`,

@@ -5,13 +5,11 @@ declare(strict_types=1);
 namespace App\Domain\Payment\Services;
 
 use App\Models\Payment\DossierGroupe;
-use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\SourceFinancement;
 use Barryvdh\DomPDF\Facades\Pdf;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 class MultiDossierPdfService
@@ -127,11 +125,11 @@ class MultiDossierPdfService
         $canvas = $pdf->get_canvas();
         $canvas->page_text(10, $canvas->get_height() - 20, 'P. {PAGE_NUM} / {PAGE_COUNT}', null, 10, [0, 0, 0]);
 
-        $filename = 'attestation_presence_' . $groupe->numero . '.pdf';
-        $path = 'multi_dossiers/' . $groupe->id;
+        $filename = 'attestation_presence_'.$groupe->numero.'.pdf';
+        $path = 'multi_dossiers/'.$groupe->id;
 
         Storage::disk('temp_files')->makeDirectory($path);
-        $fullPath = $path . '/' . $filename;
+        $fullPath = $path.'/'.$filename;
         $pdf->save(Storage::disk('temp_files')->path($fullPath));
 
         return $fullPath;
@@ -155,7 +153,7 @@ class MultiDossierPdfService
 
         $pdf = Pdf::loadView('pdf.dmg-paiements', [
             'paiements' => $paiements,
-            'titre' => 'État financier — ' . $groupe->numero,
+            'titre' => 'État financier — '.$groupe->numero,
             'type' => 'etat_paiement',
             'mois' => $moisPointage,
         ])->setPaper('a4', 'landscape');
@@ -175,11 +173,11 @@ class MultiDossierPdfService
         $canvas = $pdf->get_canvas();
         $canvas->page_text(10, $canvas->get_height() - 20, 'P. {PAGE_NUM} / {PAGE_COUNT}', null, 10, [0, 0, 0]);
 
-        $filename = 'etat_financier_' . $groupe->numero . '.pdf';
-        $path = 'multi_dossiers/' . $groupe->id;
+        $filename = 'etat_financier_'.$groupe->numero.'.pdf';
+        $path = 'multi_dossiers/'.$groupe->id;
 
         Storage::disk('temp_files')->makeDirectory($path);
-        $fullPath = $path . '/' . $filename;
+        $fullPath = $path.'/'.$filename;
         $pdf->save(Storage::disk('temp_files')->path($fullPath));
 
         return $fullPath;

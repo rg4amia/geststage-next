@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+use Illuminate\Support\Collection;
 
 if (! function_exists('getInitials')) {
     /**
@@ -82,10 +83,9 @@ if (! function_exists('preparePaginatedDataWithFooterSpace')) {
      * Prépare les données pour une pagination personnalisée avec espace pour le footer.
      * Première page : 11 éléments, pages suivantes : 18 éléments.
      *
-     * @param  \Illuminate\Support\Collection $items
-     * @return array<int, \Illuminate\Support\Collection>
+     * @return array<int, Collection>
      */
-    function preparePaginatedDataWithFooterSpace(\Illuminate\Support\Collection $items): array
+    function preparePaginatedDataWithFooterSpace(Collection $items): array
     {
         $firstPageItems = 11;
         $subsequentPageItems = 18;
@@ -96,7 +96,7 @@ if (! function_exists('preparePaginatedDataWithFooterSpace')) {
 
         if ($remaining->isNotEmpty()) {
             $pages = array_merge($pages, array_map(
-                fn (array $chunk) => \Illuminate\Support\Collection::make($chunk),
+                fn (array $chunk) => Collection::make($chunk),
                 array_chunk($remaining->all(), $subsequentPageItems)
             ));
         }
@@ -123,7 +123,7 @@ if (! function_exists('numberToFrenchWords')) {
         }
 
         if ($number < 20) {
-            return 'dix-' . $units[$number - 10];
+            return 'dix-'.$units[$number - 10];
         }
 
         if ($number < 100) {
@@ -141,18 +141,18 @@ if (! function_exists('numberToFrenchWords')) {
                     return $label;
                 }
 
-                return $unit === 1 ? $label . ' et un' : $label . '-' . numberToFrenchWords($unit);
+                return $unit === 1 ? $label.' et un' : $label.'-'.numberToFrenchWords($unit);
             }
 
             if ($number < 80) {
-                return 'soixante-' . numberToFrenchWords($number - 60);
+                return 'soixante-'.numberToFrenchWords($number - 60);
             }
 
             if ($number === 80) {
                 return 'quatre-vingts';
             }
 
-            return 'quatre-vingt-' . numberToFrenchWords($number - 80);
+            return 'quatre-vingt-'.numberToFrenchWords($number - 80);
         }
 
         if ($number < 1000) {
@@ -160,29 +160,29 @@ if (! function_exists('numberToFrenchWords')) {
             $remainder = $number % 100;
 
             if ($hundreds === 1) {
-                return $remainder === 0 ? 'cent' : 'cent ' . numberToFrenchWords($remainder);
+                return $remainder === 0 ? 'cent' : 'cent '.numberToFrenchWords($remainder);
             }
 
-            $prefix = $units[$hundreds] . ' cent';
+            $prefix = $units[$hundreds].' cent';
 
             if ($remainder === 0) {
-                return $prefix . 's';
+                return $prefix.'s';
             }
 
-            return $prefix . ' ' . numberToFrenchWords($remainder);
+            return $prefix.' '.numberToFrenchWords($remainder);
         }
 
         if ($number < 1000000) {
             $thousands = intdiv($number, 1000);
             $remainder = $number % 1000;
 
-            $prefix = $thousands === 1 ? 'mille' : numberToFrenchWords($thousands) . ' mille';
+            $prefix = $thousands === 1 ? 'mille' : numberToFrenchWords($thousands).' mille';
 
             if ($remainder === 0) {
                 return $prefix;
             }
 
-            return $prefix . ' ' . numberToFrenchWords($remainder);
+            return $prefix.' '.numberToFrenchWords($remainder);
         }
 
         return (string) $number;

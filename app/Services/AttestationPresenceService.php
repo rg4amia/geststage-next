@@ -8,6 +8,7 @@ use App\Domain\Attendance\Services\PointageChefAgenceService;
 use App\Models\Attendance\Pointage;
 use App\Models\HistoriqueGeneration;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -58,25 +59,25 @@ class AttestationPresenceService
         }
 
         // Appliquer les filtres additionnels
-        if (!empty($filters['source_financement_id'])) {
+        if (! empty($filters['source_financement_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('source_financement_id', $filters['source_financement_id']);
             });
         }
 
-        if (!empty($filters['agence_id'])) {
+        if (! empty($filters['agence_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('agence_id', $filters['agence_id']);
             });
         }
 
-        if (!empty($filters['entreprise_id'])) {
+        if (! empty($filters['entreprise_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('entreprise_id', $filters['entreprise_id']);
             });
         }
 
-        if (!empty($filters['type_stage_id'])) {
+        if (! empty($filters['type_stage_id'])) {
             $query->whereHas('stage', function ($q) use ($filters) {
                 $q->where('type_stage_id', $filters['type_stage_id']);
             });
@@ -162,7 +163,7 @@ class AttestationPresenceService
     private function determinerTypeStageLabel(?int $typeStageId, Collection $pointages): string
     {
         if ($typeStageId !== null) {
-            $typeStage = \App\Models\Reference\TypeStage::find($typeStageId);
+            $typeStage = TypeStage::find($typeStageId);
             if ($typeStage) {
                 // IDs legacy 1, 3, 4 => STAGE DE QUALIFICATION OU D'EXPERIENCE PROFESSIONNELLE
                 // Autres => STAGE DE VALIDATION

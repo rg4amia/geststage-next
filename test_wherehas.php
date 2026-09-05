@@ -1,10 +1,14 @@
 <?php
+
+use App\Models\Payment\DroitPaiement;
+use Illuminate\Contracts\Console\Kernel;
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
 
-$count = App\Models\Payment\DroitPaiement::whereHas('stage.sourceFinancement', fn ($sf) => $sf->where('code', '!=', 'PEJEDEC'))->count();
+$count = DroitPaiement::whereHas('stage.sourceFinancement', fn ($sf) => $sf->where('code', '!=', 'PEJEDEC'))->count();
 echo "DroitPaiement not PEJEDEC: $count\n";
 
-$countAll = App\Models\Payment\DroitPaiement::count();
+$countAll = DroitPaiement::count();
 echo "DroitPaiement Total: $countAll\n";

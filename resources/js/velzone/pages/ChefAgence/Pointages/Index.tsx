@@ -43,7 +43,10 @@ interface PageProps {
 
 /* ─── Helpers ─── */
 const formatDateFr = (dateStr: string | null | undefined) => {
-    if (!dateStr) return '-';
+    if (!dateStr) {
+return '-';
+}
+
     try {
         return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
@@ -60,6 +63,7 @@ const statusBadge = (statut: string) => {
         CORRIGE_CIP: { color: 'primary', label: 'Corrigé CIP' },
     };
     const s = map[statut] || { color: 'secondary', label: statut || '-' };
+
     return <span className={`badge bg-${s.color}-subtle text-${s.color}`}>{s.label}</span>;
 };
 
@@ -109,9 +113,15 @@ const PointagesIndex = (props: PageProps) => {
     const applyFilters = useCallback(
         (mois: string, tab: string, currentFilters: typeof selectedFilters) => {
             const params: Record<string, string> = { tab };
-            if (mois) params.mois = mois;
+
+            if (mois) {
+params.mois = mois;
+}
+
             Object.entries(currentFilters).forEach(([key, val]) => {
-                if (val) params[key] = val;
+                if (val) {
+params[key] = val;
+}
             });
             router.get('/chefagence/pointages', params, {
                 preserveState: true,
@@ -162,7 +172,10 @@ const PointagesIndex = (props: PageProps) => {
 
     /* ─── Validation individuelle ─── */
     const handleValider = (pointageId: number) => {
-        if (isProcessing) return;
+        if (isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/chefagence/pointages/valider/${pointageId}`, {}, {
             preserveScroll: true,
@@ -172,7 +185,10 @@ const PointagesIndex = (props: PageProps) => {
 
     /* ─── Validation groupée ─── */
     const handleValiderGroupe = () => {
-        if (selectedIds.length === 0 || isProcessing) return;
+        if (selectedIds.length === 0 || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/chefagence/pointages/valider-groupe', {
             pointage_ids: selectedIds,
@@ -187,7 +203,10 @@ const PointagesIndex = (props: PageProps) => {
     const hasFilterValidation = selectedFilters.source_financement_id && selectedFilters.type_stage_id;
 
     const handleValiderParFiltre = () => {
-        if (!hasFilterValidation || !selectedMois || isProcessing) return;
+        if (!hasFilterValidation || !selectedMois || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/chefagence/pointages/valider-par-filtre', {
             mois: selectedMois,
@@ -207,7 +226,10 @@ const PointagesIndex = (props: PageProps) => {
     };
 
     const confirmAjourner = () => {
-        if (!ajournerTarget || isProcessing) return;
+        if (!ajournerTarget || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/chefagence/pointages/ajourner/${ajournerTarget.id}`, {
             motif: ajournerMotif,
@@ -224,13 +246,19 @@ const PointagesIndex = (props: PageProps) => {
 
     /* ─── Ajournement groupé ─── */
     const openAjournerGroupeModal = () => {
-        if (selectedIds.length === 0) return;
+        if (selectedIds.length === 0) {
+return;
+}
+
         setAjournerGroupeMotif('');
         setAjournerGroupeModalOpen(true);
     };
 
     const confirmAjournerGroupe = () => {
-        if (selectedIds.length === 0 || isProcessing) return;
+        if (selectedIds.length === 0 || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post('/chefagence/pointages/ajourner-groupe', {
             pointage_ids: selectedIds,
@@ -248,7 +276,10 @@ const PointagesIndex = (props: PageProps) => {
 
     /* ─── Validation correction ADP ─── */
     const handleValiderAdp = (pointageId: number) => {
-        if (isProcessing) return;
+        if (isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/chefagence/pointages-adp/${pointageId}/valider`, {}, {
             preserveScroll: true,
@@ -263,7 +294,10 @@ const PointagesIndex = (props: PageProps) => {
     };
 
     const confirmRejeter = () => {
-        if (!rejeterTarget || isProcessing) return;
+        if (!rejeterTarget || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
         router.post(`/chefagence/pointages-adp/${rejeterTarget.id}/rejeter`, {}, {
             preserveScroll: true,
@@ -277,20 +311,27 @@ const PointagesIndex = (props: PageProps) => {
 
     /* ─── Génération Attestation PDF ─── */
     const handleGenererAttestation = () => {
-        if (!selectedMois || isProcessing) return;
+        if (!selectedMois || isProcessing) {
+return;
+}
+
         setIsProcessing(true);
 
         const formData = new FormData();
         formData.append('mois', selectedMois);
+
         if (selectedFilters.source_financement_id) {
             formData.append('source_financement_id', selectedFilters.source_financement_id);
         }
+
         if (selectedFilters.type_stage_id) {
             formData.append('type_stage_id', selectedFilters.type_stage_id);
         }
+
         if (selectedIds.length > 0) {
             selectedIds.forEach((id) => formData.append('pointage_ids[]', String(id)));
         }
+
         formData.append('mode_traitement', '1');
 
         // Utiliser fetch pour télécharger le PDF
@@ -303,7 +344,10 @@ const PointagesIndex = (props: PageProps) => {
             },
         })
             .then((response) => {
-                if (!response.ok) throw new Error('Erreur lors de la génération');
+                if (!response.ok) {
+throw new Error('Erreur lors de la génération');
+}
+
                 return response.blob();
             })
             .then((blob) => {
@@ -379,6 +423,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Nom et prénoms',
                 cell: (cell: any) => {
                     const b = cell.row.original.stage?.beneficiaire;
+
                     return <span className="fw-medium">{b?.nom} {b?.prenoms}</span>;
                 },
             },
@@ -439,6 +484,7 @@ const PointagesIndex = (props: PageProps) => {
                 header: 'Nom et prénoms',
                 cell: (cell: any) => {
                     const b = cell.row.original.stage?.beneficiaire;
+
                     return <span className="fw-medium">{b?.nom} {b?.prenoms}</span>;
                 },
             },
@@ -680,9 +726,15 @@ const PointagesIndex = (props: PageProps) => {
                                                 serverPagination={pointagesSoumis}
                                                 onPageChange={(page: number) => {
                                                     const params: Record<string, string> = { tab: 'attente', page: String(page) };
-                                                    if (selectedMois) params.mois = selectedMois;
+
+                                                    if (selectedMois) {
+params.mois = selectedMois;
+}
+
                                                     Object.entries(selectedFilters).forEach(([k, v]) => {
-                                                        if (v) params[k] = v;
+                                                        if (v) {
+params[k] = v;
+}
                                                     });
                                                     router.get('/chefagence/pointages', params, { preserveState: true, preserveScroll: true });
                                                 }}
@@ -710,9 +762,15 @@ const PointagesIndex = (props: PageProps) => {
                                                 serverPagination={pointagesCorrigeAdp}
                                                 onPageChange={(page: number) => {
                                                     const params: Record<string, string> = { tab: 'corrige_adp', page: String(page) };
-                                                    if (selectedMois) params.mois = selectedMois;
+
+                                                    if (selectedMois) {
+params.mois = selectedMois;
+}
+
                                                     Object.entries(selectedFilters).forEach(([k, v]) => {
-                                                        if (v) params[k] = v;
+                                                        if (v) {
+params[k] = v;
+}
                                                     });
                                                     router.get('/chefagence/pointages', params, { preserveState: true, preserveScroll: true });
                                                 }}

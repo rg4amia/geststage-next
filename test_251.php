@@ -1,13 +1,16 @@
 <?php
+
 require 'vendor/autoload.php';
 $app = require_once 'bootstrap/app.php';
-$app->make(Illuminate\Contracts\Console\Kernel::class)->bootstrap();
+$app->make(Kernel::class)->bootstrap();
+use App\Models\Payment\Paiement;
+use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Support\Facades\DB;
 
 // the 427 records we have in the new project
-$q = App\Models\Payment\Paiement::where('statut', 'A_TRAITER')
-    ->whereHas('droitPaiement.stage', fn($s) => $s->whereYear('date_debut', 2026)->whereMonth('date_debut', 8))
-    ->whereHas('droitPaiement.stage.instanceParcours', fn($i) => $i->where('corbeille_actuelle', 'dmg_attente_paiement_demarrage'));
+$q = Paiement::where('statut', 'A_TRAITER')
+    ->whereHas('droitPaiement.stage', fn ($s) => $s->whereYear('date_debut', 2026)->whereMonth('date_debut', 8))
+    ->whereHas('droitPaiement.stage.instanceParcours', fn ($i) => $i->where('corbeille_actuelle', 'dmg_attente_paiement_demarrage'));
 $ancienIds = $q->get()->pluck('droitPaiement.stage.ancien_id')->toArray();
 
 $rows = DB::connection('legacy')->table('contrats_pae')->whereIn('id', $ancienIds)->get();
@@ -26,7 +29,7 @@ foreach ($rows as $row) {
         'doubloncheck' => $row->doubloncheck,
         'valid' => $row->valid,
     ];
-    
+
     foreach ($keys as $k => $v) {
         $groups[$k][$v] = ($groups[$k][$v] ?? 0) + 1;
     }

@@ -3,6 +3,7 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+use App\Models\Reference\Agence;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -79,7 +80,7 @@ class User extends Authenticatable implements PasskeyUser
     public function perimetresAgences()
     {
         return $this->belongsToMany(
-            \App\Models\Reference\Agence::class,
+            Agence::class,
             'perimetres_agences_utilisateurs',
             'user_id',
             'agence_id'

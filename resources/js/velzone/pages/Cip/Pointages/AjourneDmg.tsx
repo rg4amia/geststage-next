@@ -19,7 +19,10 @@ import TableContainerReactTable from '../../../Components/Common/TableContainerR
 
 /* ─── Helpers ─── */
 const formatDateFr = (dateStr: string | null | undefined) => {
-    if (!dateStr) return '-';
+    if (!dateStr) {
+return '-';
+}
+
     try {
         return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
     } catch {
@@ -28,7 +31,10 @@ const formatDateFr = (dateStr: string | null | undefined) => {
 };
 
 const formatMontant = (montant: number | null | undefined) => {
-    if (montant == null) return '-';
+    if (montant == null) {
+return '-';
+}
+
     return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'XOF', minimumFractionDigits: 0 }).format(montant);
 };
 
@@ -96,7 +102,9 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
     const applyFilters = useCallback(() => {
         const params: Record<string, string> = {};
         Object.entries(selectedFilters).forEach(([k, v]) => {
-            if (v) params[k] = v;
+            if (v) {
+params[k] = v;
+}
         });
         router.get('/cip/pointage/ajourne-dmg', params, { preserveState: true, preserveScroll: true });
     }, [selectedFilters]);
@@ -117,6 +125,7 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
                 header: 'Période',
                 cell: (cell: any) => {
                     const code = cell.row.original.periode?.code;
+
                     return code ? <Badge color="secondary-subtle" className="text-secondary">{code}</Badge> : '-';
                 },
             },
@@ -128,6 +137,7 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
                 header: 'Motif DMG',
                 cell: (cell: any) => {
                     const motif = cell.row.original.observation_dmg || 'Ajourné par la DMG';
+
                     return (
                         <span
                             className="text-danger fw-medium"
@@ -151,6 +161,7 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
                 header: 'Financement',
                 cell: (cell: any) => {
                     const val = getStageData(cell.row.original)?.sourceFinancement?.nom;
+
                     return val ? <Badge color="info-subtle" className="text-info">{val}</Badge> : '-';
                 },
             },
@@ -163,6 +174,7 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
                 cell: (cell: any) => {
                     const stage = getStageData(cell.row.original);
                     const b = stage?.beneficiaire;
+
                     return (
                         <div>
                             <span className="fw-semibold">{b?.nom || ''} {b?.prenoms || ''}</span>
@@ -179,8 +191,13 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
                 header: 'Type paiement',
                 cell: (cell: any) => {
                     const tp = getStageData(cell.row.original)?.beneficiaire?.typePaiement;
-                    if (!tp?.nom) return '-';
+
+                    if (!tp?.nom) {
+return '-';
+}
+
                     const isTresor = tp.code === 'TRESOR_MONEY';
+
                     return (
                         <Badge color={isTresor ? 'warning-subtle' : 'success-subtle'} className={`text-${isTresor ? 'warning' : 'success'}`}>
                             <i className={`${isTresor ? 'ri-bank-line' : 'ri-smartphone-line'} me-1`}></i>{tp.nom}
@@ -208,6 +225,7 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
                     const editHref = stageId
                         ? `/cip/pointages/edit-stagiaire/${stageId}?return_tab=ajourne_dmg&mois=${encodeURIComponent(selectedFilters.periode_id || '')}`
                         : '#';
+
                     return (
                         <div className="d-flex gap-1">
                             <Button color="primary" size="sm" href={editHref} disabled={!stageId} title="Traiter le stagiaire">
@@ -374,7 +392,9 @@ const AjourneDmgIndex = ({ paiements, periodes, agences, entreprises, sourcesFin
                                 onPageChange={(page: number) => {
                                     const params: Record<string, string> = {};
                                     Object.entries(selectedFilters).forEach(([k, v]) => {
-                                        if (v) params[k] = v;
+                                        if (v) {
+params[k] = v;
+}
                                     });
                                     params.page = String(page);
                                     router.get('/cip/pointage/ajourne-dmg', params, { preserveState: true, preserveScroll: true });
