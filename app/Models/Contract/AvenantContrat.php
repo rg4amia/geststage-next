@@ -39,12 +39,24 @@ class AvenantContrat extends Model
             'nouvelle_date_fin' => 'date',
             'nouvelle_prime_mensuelle' => 'decimal:2',
             'decide_le' => 'datetime',
+            'propose_le' => 'datetime',
+            'metadata' => 'array',
         ];
     }
 
     public function contrat(): BelongsTo
     {
         return $this->belongsTo(Contrat::class);
+    }
+
+    public function typeStructure(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Reference\TypeStructure::class, 'type_structure_id');
+    }
+
+    public function proposePar(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'propose_par_id');
     }
 
     public function decideur(): BelongsTo

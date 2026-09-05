@@ -53,9 +53,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cip/situation-stagiaire', [SituationStagiaireCipController::class, 'index'])->name('cip.situations.index');
     Route::post('/cip/situation-stagiaire/{id}/reactiver', [SituationStagiaireCipController::class, 'reactiver'])->name('cip.situations.reactiver');
 
+    // Renouvellements de contrat (CIP et Chef d'Agence)
+    Route::redirect('/cip/renouvellement', '/cip/renouvellements');
     Route::get('/cip/renouvellements', [RenouvellementCipController::class, 'index'])->name('cip.renouvellements.index');
     Route::post('/cip/renouvellements/{id}/renouveler', [RenouvellementCipController::class, 'renouveler'])->name('cip.renouvellements.renouveler');
     Route::post('/cip/renouvellements/avenant/{avenantId}/renvoyer', [RenouvellementCipController::class, 'renvoyer'])->name('cip.renouvellements.renvoyer');
+    Route::post('/cip/renouvellements/avenant/{avenantId}/valider', [RenouvellementCipController::class, 'valider'])->name('cip.renouvellements.valider');
+    Route::post('/cip/renouvellements/avenant/{avenantId}/ajourner', [RenouvellementCipController::class, 'ajourner'])->name('cip.renouvellements.ajourner');
+    Route::post('/cip/renouvellements/avenants/valider-groupe', [RenouvellementCipController::class, 'validerGroupe'])->name('cip.renouvellements.valider_groupe');
+    Route::post('/cip/renouvellements/avenants/ajourner-groupe', [RenouvellementCipController::class, 'ajournerGroupe'])->name('cip.renouvellements.ajourner_groupe');
+    Route::post('/cip/renouvellements/renouveler-groupe', [RenouvellementCipController::class, 'renouvelerGroupe'])->name('cip.renouvellements.renouveler_groupe');
+    Route::get('/cip/renouvellements/batch-status/{batchId}', [RenouvellementCipController::class, 'getBatchStatus'])->name('cip.renouvellements.batch_status');
+    Route::match(['get', 'post'], '/cip/renouvellements/avenant/generer-pdf', [RenouvellementCipController::class, 'genererPdf'])->name('cip.renouvellements.generer_pdf');
+    Route::get('/cip/renouvellements/type-structure/{id}', [RenouvellementCipController::class, 'getTypeStructure'])->name('cip.renouvellements.type_structure');
+    Route::get('/cip/renouvellements/export', [RenouvellementCipController::class, 'export'])->name('cip.renouvellements.export');
 
     // Nouveaux endpoints pour les boutons d'action (Mes Stagiaires)
     Route::get('/cip/mes-stagiaires/{id}/generer-contrat', [MesStagiairesCipController::class, 'genererContrat'])->name('cip.mes-stagiaires.generer-contrat');

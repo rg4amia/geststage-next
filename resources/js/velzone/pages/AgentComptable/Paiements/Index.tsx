@@ -393,6 +393,7 @@ export default function AcPaiementsIndex({
     bordereauxVises = [],
     operationsRejetees = [],
     statutPaiements,
+    statutCompteurs,
     moisActuel,
     periodesDisponibles = [],
     vueActuelle = 'attente',
@@ -674,15 +675,36 @@ export default function AcPaiementsIndex({
         return `/agent-comptable/paiements/statuts/export?${parametres.toString()}`;
     };
 
-    // Chargement initial uniquement, depuis l'onglet porté par l'URL ;
-    // le chargement d'état est délégué à `chargerSituation`.
+    // L'URL peut changer sans remonter le composant Inertia ; on resynchronise
+    // l'onglet affiché avec les paramètres `vue` et `sous_onglet`.
     useEffect(() => {
-        if (categorie === 'statuts' && sousOngletStatuts !== 'par_op') {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            void chargerSituation(sousOngletStatuts);
-        }
+        const prochaineCategorie = categories.some(
+            (item) => item.id === vueActuelle,
+        )
+            ? vueActuelle
+            : 'attente';
+        const prochainSousOnglet = ['payes', 'non_payes'].includes(
+            sousOngletActuel ?? 'par_op',
+        )
+            ? sousOngletActuel
+            : 'par_op';
+
+        queueMicrotask(() => {
+            setCategorie(prochaineCategorie);
+            setSousOngletStatuts(prochainSousOnglet as SousOngletStatuts);
+
+            if (
+                prochaineCategorie === 'statuts' &&
+                prochainSousOnglet !== 'par_op'
+            ) {
+                void chargerSituation(prochainSousOnglet as Exclude<
+                    SousOngletStatuts,
+                    'par_op'
+                >);
+            }
+        });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    }, [vueActuelle, sousOngletActuel]);
 
     const ouvrirPieces = async (stagiaire: Stagiaire) => {
         if (!stagiaire.stage_id) {
