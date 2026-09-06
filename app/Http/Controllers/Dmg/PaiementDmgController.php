@@ -36,7 +36,8 @@ class PaiementDmgController extends Controller
         $periode = Periode::where('code', $mois)->first();
         $filters = $request->only([
             'agence_id', 'entreprise_id', 'source_financement_id', 'type_stage_id',
-            'type_structure_id', 'date_debut', 'date_fin', 'search', 'dossier_physique',
+            'type_structure_id', 'date_debut', 'date_fin', 'date_validation_debut',
+            'date_validation_fin', 'search', 'dossier_physique',
         ]);
         $cohorte = $request->string('cohorte', 'global')->toString();
 

@@ -96,12 +96,17 @@ class CorbeilleParcoursQueryService
             ],
             'entreprise' => [
                 'raison_sociale' => $stage?->entreprise?->raison_sociale ?? '-',
+                // Badge « public / privé / néant » : le type de structure porte la nature de
+                // l'entreprise d'accueil, « néant » quand elle n'en a pas.
+                'type_structure' => $stage?->entreprise?->typeStructure?->nom ?? null,
             ],
             'agence' => [
                 'nom' => $stage?->agence?->nom ?? '-',
             ],
             'stage' => [
+                'id' => $stage?->id,
                 'source_financement' => $stage?->sourceFinancement?->nom ?? '-',
+                'source_financement_code' => $stage?->sourceFinancement?->code ?? null,
                 'type_stage' => $stage?->typeStage?->nom ?? '-',
                 'date_validation' => '-',
                 'date_debut' => $stage?->date_debut ? Carbon::parse($stage->date_debut)->format('d/m/Y') : '-',
@@ -111,6 +116,13 @@ class CorbeilleParcoursQueryService
             'statut' => $statut,
             'date_creation' => $paiement->created_at?->format('d/m/Y'),
             'piece_jointe' => $paiement->statut_dossier_physique,
+            // Statut du dossier physique (en_attente/recu/conforme) et horodatage du dernier
+            // marquage : équivalent du couple legacy `date_recu`/`date_depose`, remplacé par un
+            // unique horodatage + auteur (cf. DmgService::marquerDossiersPhysiques()).
+            'dossier_physique' => [
+                'statut' => $paiement->statut_dossier_physique,
+                'marque_le' => $paiement->dossier_physique_marque_le?->format('d/m/Y'),
+            ],
             'cohorte' => $cohorte,
         ];
     }

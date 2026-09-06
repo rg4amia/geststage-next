@@ -1,7 +1,8 @@
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import classnames from 'classnames';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Select from 'react-select';
+import { toast } from 'sonner';
 import {
     Alert,
     Badge,
@@ -20,6 +21,7 @@ import {
     Nav,
     NavItem,
     NavLink,
+    Progress,
     Row,
     Spinner,
     TabContent,
@@ -57,10 +59,12 @@ interface PaiementRow {
         date_naissance: string;
         tresor_pay: string;
     };
-    entreprise: { raison_sociale: string };
+    entreprise: { raison_sociale: string; type_structure?: string | null };
     agence: { nom: string };
     stage: {
+        id?: number;
         source_financement: string;
+        source_financement_code?: string | null;
         type_stage: string;
         date_validation: string;
         date_debut: string;
@@ -70,6 +74,8 @@ interface PaiementRow {
     statut: string;
     date_creation: string;
     piece_jointe: string | null;
+    // Statut du dossier physique : en_attente / recu / conforme, avec la date du dernier marquage.
+    dossier_physique?: { statut: string | null; marque_le: string | null };
     cohorte: number;
 }
 
@@ -218,6 +224,17 @@ const DmgPaiementsIndex = (props: PageProps) => {
     const [selectedPresenceIds, setSelectedPresenceIds] = useState<number[]>([]);
     const [selectedDossierIds, setSelectedDossierIds] = useState<number[]>([]);
 
+    /* ─── Export en arrière-plan ─── */
+    type ExportType = 'etat_paiement' | 'attestation_demarrage' | 'attestation_presence' | 'fusion_tresor' | 'excel';
+    const [batchExport, setBatchExport] = useState<{
+        id: string;
+        type: ExportType;
+        libelle: string;
+        progress: number;
+        disponible: boolean;
+        echec: boolean;
+    } | null>(null);
+
     /* ─── Filtres ─── */
     const [selectedFilters, setSelectedFilters] = useState<Filters>({
         agence_id: filters?.agence_id || '',
@@ -269,6 +286,10 @@ setMoisDossiers(value);
     const [activePreviewTab, setActivePreviewTab] = useState<string | null>(null);
     const [detailRow, setDetailRow] = useState<PaiementRow | null>(null);
     const [motifAjourner, setMotifAjourner] = useState('');
+    // Portée des actions de masse : « toute la liste » (équivalent legacy annuler-tous) ou
+    // « sélection » (annuler-selection). Posée à l'ouverture de la modale par l'élément cliqué.
+    const [ajournerScope, setAjournerScope] = useState<'liste' | 'selection'>('liste');
+    const [dossierScope, setDossierScope] = useState<'liste' | 'selection'>('liste');
     const [dossierStatus, setDossierStatus] = useState('en_attente');
     const [observationGroupe, setObservationGroupe] = useState('');
 
@@ -478,8 +499,10 @@ return;
         });
     };
 
+    const currentRows = activeTab === '2' ? currentPresenceRows : currentDemarrageRows;
+
     const handleAjournerPaiement = () => {
-        const ids = activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds;
+        const ids = ajournerScope === 'liste' ? currentRows.map((r) => r.id) : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds);
 
         if (motifAjourner.trim().length < 5 || ids.length === 0) {
 return;
@@ -498,7 +521,9 @@ return;
         });
     };
 
-    const handleMarquerDossier = (ids: number[], status: string) => {
+    const handleMarquerDossier = (status: string) => {
+        const ids = dossierScope === 'liste' ? currentRows.map((r) => r.id) : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds);
+
         if (ids.length === 0) {
 return;
 }
@@ -514,24 +539,129 @@ return;
         });
     };
 
-    const handleGenererPdf = (type: 'etat_paiement' | 'attestation_demarrage' | 'attestation_presence' | 'fusion_tresor', scope: 'liste' | 'selected') => {
-        const ids = scope === 'selected' ? (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds) : [];
-        const params = new URLSearchParams();
-        params.set('mois', getMoisForTab(activeTab));
-        params.set('type', type);
-        params.set('nature', activeTab === '2' ? 'presence' : 'demarrage');
-        Object.entries(selectedFilters).forEach(([key, value]) => {
-            if (value) {
-params.set(key, value);
-}
-        });
+    const openAjournerModal = (scope: 'liste' | 'selection') => {
+        const count = scope === 'liste' ? currentRows.length : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds).length;
 
-        if (scope === 'selected') {
-ids.forEach((id) => params.append('ids[]', String(id)));
+        if (count === 0) {
+return;
 }
 
-        window.open(`/dmg/paiements/generer-pdf?${params.toString()}`, '_blank');
+        setAjournerScope(scope);
+        setModalAjournerOpen(true);
     };
+
+    const openDossierModal = (scope: 'liste' | 'selection') => {
+        const count = scope === 'liste' ? currentRows.length : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds).length;
+
+        if (count === 0) {
+return;
+}
+
+        setDossierScope(scope);
+        setModalDossierOpen(true);
+    };
+
+    // Génération en arrière-plan : un mois entier (~2 500 lignes) dépasse le temps de réponse
+    // HTTP d'une génération synchrone (dompdf est gourmand en mémoire), d'où un job suivi par
+    // un batch, sondé toutes les 2 s jusqu'à ce que le fichier soit prêt (ou en échec).
+    const lancerExport = async (type: ExportType, scope: 'liste' | 'selected', libelle: string) => {
+        const ids = scope === 'selected' ? (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds) : [];
+        const payload: Record<string, unknown> = {
+            type,
+            mois: getMoisForTab(activeTab),
+            nature: activeTab === '2' ? 'presence' : 'demarrage',
+            ...selectedFilters,
+            ids,
+        };
+
+        try {
+            const reponse = await fetch('/dmg/paiements/exporter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                },
+                body: JSON.stringify(payload),
+            });
+
+            const donnees = await reponse.json();
+
+            if (donnees.batch_id) {
+                if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+                setBatchExport({ id: donnees.batch_id, type, libelle, progress: 0, disponible: false, echec: false });
+                toast.info('Export lancé en arrière-plan', { description: `${libelle} — vous serez prévenu dès que le fichier sera prêt.` });
+            } else {
+                toast.error(donnees.message || "Impossible de lancer l'export.");
+            }
+        } catch {
+            toast.error("Impossible de lancer l'export.");
+        }
+    };
+
+    // Suit l'avancement de l'export lancé en arrière-plan jusqu'à ce que le fichier soit
+    // téléchargeable ou en échec ; le sondage s'arrête de lui-même.
+    useEffect(() => {
+        if (!batchExport || batchExport.disponible || batchExport.echec) {
+            return;
+        }
+
+        const minuteur = window.setInterval(async () => {
+            const reponse = await fetch(`/dmg/paiements/exporter/${batchExport.id}/progression`, {
+                headers: { Accept: 'application/json' },
+            });
+
+            if (!reponse.ok) {
+                window.clearInterval(minuteur);
+                return;
+            }
+
+            const donnees = await reponse.json();
+            setBatchExport((etat) => {
+                if (!etat || etat.id !== donnees.id) {
+                    return etat;
+                }
+
+                return {
+                    ...etat,
+                    progress: donnees.progress ?? 0,
+                    disponible: Boolean(donnees.disponible),
+                    echec: Boolean(donnees.completed && donnees.failedJobs > 0),
+                };
+            });
+        }, 2000);
+
+        return () => window.clearInterval(minuteur);
+    }, [batchExport?.id, batchExport?.disponible, batchExport?.echec]);
+
+    // Notifie l'utilisateur (toast + notification navigateur si l'onglet n'est pas visible) dès
+    // que le fichier devient disponible ou que le job a échoué, sans qu'il ait besoin de garder
+    // les yeux sur la barre de progression.
+    useEffect(() => {
+        if (!batchExport) {
+            return;
+        }
+
+        if (batchExport.disponible) {
+            const url = `/dmg/paiements/exporter/${batchExport.id}/telechargement`;
+            toast.success('Export prêt au téléchargement', {
+                description: batchExport.libelle,
+                action: { label: 'Télécharger', onClick: () => window.open(url, '_blank') },
+            });
+
+            if (typeof Notification !== 'undefined' && Notification.permission === 'granted' && document.visibilityState !== 'visible') {
+                const notification = new Notification('Export prêt au téléchargement', { body: batchExport.libelle });
+                notification.onclick = () => {
+                    window.focus();
+                    window.open(url, '_blank');
+                };
+            }
+        } else if (batchExport.echec) {
+            toast.error('Échec de la génération', { description: batchExport.libelle });
+        }
+    }, [batchExport?.disponible, batchExport?.echec]);
 
     const handleTransmettreDossier = (id: number) => {
         router.post(`/dmg/paiements/transmettre/${id}`, {}, { preserveScroll: true });
@@ -576,6 +706,16 @@ return;
 
     const handleDownloadEtatFinancier = (id: number) => {
         window.open(`/dmg/paiements/groupes/${id}/download-etat-financier`, '_blank');
+    };
+
+    // Régénération a posteriori d'un dossier simple (équivalent legacy
+    // generateAttestationPresenceFromDossier / generateEtatFinancierFromDossier).
+    const handleDownloadAttestationDossier = (id: number) => {
+        window.open(`/dmg/paiements/dossiers/${id}/download-attestation`, '_blank');
+    };
+
+    const handleDownloadEtatFinancierDossier = (id: number) => {
+        window.open(`/dmg/paiements/dossiers/${id}/download-etat-financier`, '_blank');
     };
 
     const handleElaborerOp = (id: number) => {
@@ -944,8 +1084,16 @@ throw new Error();
 
     const commonDemarrageColumns = useMemo(() => [
         { header: '#', cell: (cell: any) => cell.row.index + 1, size: 50 },
+        { header: 'Date Création', cell: (cell: any) => cell.row.original.date_creation || '-' },
         { header: 'Agence', cell: (cell: any) => <span className="fw-medium">{cell.row.original.agence?.nom || '-'}</span> },
         { header: 'Entreprise', cell: (cell: any) => cell.row.original.entreprise?.raison_sociale || '-' },
+        { header: 'Type Structure', cell: (cell: any) => {
+            const ts = cell.row.original.entreprise?.type_structure;
+            const colorMap: Record<string, string> = { PUBLIC: 'success', PRIVE: 'info' };
+            const label = ts || 'néant';
+
+            return <Badge color={`${(colorMap[ts || ''] || 'secondary')}-subtle`} className={`text-${colorMap[ts || ''] || 'secondary'}`}>{label}</Badge>;
+        }},
         { header: 'Financement', cell: (cell: any) => {
             const val = cell.row.original.stage?.source_financement || '-';
             const colorMap: Record<string, string> = { 'PEJEDEC': 'info', 'BUDGET AEJ': 'primary', 'PAPS-GOUV': 'success', 'C2D': 'warning' };
@@ -963,6 +1111,23 @@ throw new Error();
         { header: 'Date Début', cell: (cell: any) => cell.row.original.stage?.date_debut || '-' },
         { header: 'Date Fin', cell: (cell: any) => cell.row.original.stage?.date_fin || '-' },
         { header: 'N° Trésor Pay', cell: (cell: any) => cell.row.original.beneficiaire?.tresor_pay || '-' },
+        { header: 'Dossier Physique', cell: (cell: any) => {
+            const dp = cell.row.original.dossier_physique;
+            const statut = dp?.statut || null;
+            const colorMap: Record<string, string> = { EN_ATTENTE: 'warning', RECU: 'info', CONFORME: 'success' };
+            const labelMap: Record<string, string> = { EN_ATTENTE: 'En attente', RECU: 'Reçu', CONFORME: 'Conforme' };
+
+            if (!statut) {
+return <span className="text-muted">—</span>;
+}
+
+            return (
+                <div>
+                    <Badge color={`${(colorMap[statut] || 'secondary')}-subtle`} className={`text-${colorMap[statut] || 'secondary'}`}>{labelMap[statut] || statut}</Badge>
+                    {dp?.marque_le && <div className="text-muted fs-11">le {dp.marque_le}</div>}
+                </div>
+            );
+        }},
         { header: 'Montant', cell: (cell: any) => {
             const m = cell.row.original.montant;
 
@@ -976,9 +1141,14 @@ throw new Error();
 }} title="Détail">
                     <i className="ri-eye-line"></i>
                 </Button>
+                {cell.row.original.stage?.id && (
+                    <Button color="primary" size="sm" outline onClick={() => handlePreviewDocs(cell.row.original)} title="Pièces jointes (CNI, Trésor Money, contrat, attestation)">
+                        <i className="ri-folder-open-line"></i>
+                    </Button>
+                )}
             </div>
         )},
-    ], []);
+    ], [selectedPresenceIds, selectedDemarrageIds]);
 
     const presenceColumns = useMemo(() => [
         selectColumnPresence,
@@ -1009,6 +1179,16 @@ throw new Error();
                     <Button color="primary" size="sm" outline onClick={() => handleElaborerOp(cell.row.original.id)} title="Elaborer un OP">
                         <i className="ri-file-list-3-line"></i>
                     </Button>
+                )}
+                {cell.row.original.statut_code !== 'BROUILLON' && (
+                    <>
+                        <Button color="info" size="sm" outline onClick={() => handleDownloadAttestationDossier(cell.row.original.id)} title="Attestation de présence (PDF)">
+                            <i className="ri-file-text-line"></i>
+                        </Button>
+                        <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancierDossier(cell.row.original.id)} title="État de paiement (PDF)">
+                            <i className="ri-money-dollar-circle-line"></i>
+                        </Button>
+                    </>
                 )}
             </div>
         )},
@@ -1221,6 +1401,39 @@ return null;
                             </Col>
                             <Col xs={12}>
 
+                            {/* ── Export en arrière-plan : progression et téléchargement ── */}
+                            {batchExport && (
+                                <Card className="border shadow-none mb-3 border-primary">
+                                    <CardBody className="py-2">
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                            <i className="ri-loader-4-line ri-spin text-primary me-1"></i>
+                                            <span className="fw-semibold fs-13">{batchExport.libelle}</span>
+                                            {batchExport.echec ? (
+                                                <Badge color="danger">Échec</Badge>
+                                            ) : batchExport.disponible ? (
+                                                <Badge color="success">Prêt</Badge>
+                                            ) : (
+                                                <Badge color="info">En cours…</Badge>
+                                            )}
+                                        </div>
+                                        {batchExport.echec ? (
+                                            <p className="text-muted mb-0 fs-12">
+                                                La génération a échoué (fichier trop volumineux ou aucun paiement éligible).
+                                                Réduisez la sélection ou les filtres, puis relancez.
+                                            </p>
+                                        ) : batchExport.disponible ? (
+                                            <a className="btn btn-sm btn-success mt-1" href={`/dmg/paiements/exporter/${batchExport.id}/telechargement`}>
+                                                <i className="ri-download-2-line me-1"></i>Télécharger le fichier
+                                            </a>
+                                        ) : (
+                                            <Progress value={batchExport.progress} color="success" className="mt-1" style={{ height: '6px' }}>
+                                                {batchExport.progress}%
+                                            </Progress>
+                                        )}
+                                    </CardBody>
+                                </Card>
+                            )}
+
 <TabContent activeTab={activeTab} className="pt-4 text-muted">
                                 {/* ═══════ ONGLET 1 : ATTENTE DÉMARRAGE ═══════ */}
                                 <TabPane tabId="1">
@@ -1256,40 +1469,48 @@ return null;
                                                         <i className="ri-printer-line me-1"></i>État Paiement (PDF) <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => handleGenererPdf('etat_paiement', 'liste')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => handleGenererPdf('etat_paiement', 'selected')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                        <DropdownItem onClick={() => lancerExport('etat_paiement', 'liste', 'État de paiement — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('etat_paiement', 'selected', 'État de paiement — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
-                                                <button type="button" className="btn btn-soft-success btn-sm" onClick={() => handleGenererPdf('etat_paiement' as any, 'liste')}>
-                                                    <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay
-                                                </button>
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-soft-success btn-sm">
+                                                        <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay <i className="ri-arrow-down-s-line"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem onClick={() => lancerExport('excel', 'liste', 'Canvas TrésorPay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('excel', 'selected', 'Canvas TrésorPay — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
 
                                                 <UncontrolledDropdown>
                                                     <DropdownToggle tag="button" className="btn btn-soft-primary btn-sm">
                                                         <i className="ri-printer-line me-1"></i>Attestation Démarrage (PDF) <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => handleGenererPdf('attestation_demarrage', 'liste')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => handleGenererPdf('attestation_demarrage', 'selected')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                        <DropdownItem onClick={() => lancerExport('attestation_demarrage', 'liste', 'Attestation de démarrage — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('attestation_demarrage', 'selected', 'Attestation de démarrage — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
-                                                <button type="button" className="btn btn-primary btn-sm" onClick={() => handleGenererPdf('fusion_tresor' as any, 'liste')}>
-                                                    <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay
-                                                </button>
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-primary btn-sm">
+                                                        <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay <i className="ri-arrow-down-s-line"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem onClick={() => lancerExport('fusion_tresor', 'liste', 'Fusion Trésor Pay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('fusion_tresor', 'selected', 'Fusion Trésor Pay — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
 
                                                 <UncontrolledDropdown>
                                                     <DropdownToggle tag="button" className="btn btn-soft-danger btn-sm">
                                                         <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => {
- setModalAjournerOpen(true); 
-}}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => {
- setModalAjournerOpen(true); 
-}}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                        <DropdownItem disabled={currentDemarrageRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openAjournerModal('selection')}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
@@ -1308,14 +1529,8 @@ return null;
                                                         <i className="ri-folder-fill me-1"></i>Marquer dossier <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => {
- setModalDossierOpen(true); 
-}}>Marquer la liste</DropdownItem>
-                                                        {selectedDemarrageIds.length > 0 && (
-                                                            <DropdownItem onClick={() => {
- setModalDossierOpen(true); 
-}}>Marquer sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                        )}
+                                                        <DropdownItem disabled={currentDemarrageRows.length === 0} onClick={() => openDossierModal('liste')}>Marquer la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openDossierModal('selection')}>Marquer sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
                                             </div>
@@ -1427,40 +1642,58 @@ return null;
                                                         <i className="ri-printer-line me-1"></i>État Paiement (PDF) <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => handleGenererPdf('etat_paiement', 'liste')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => handleGenererPdf('etat_paiement', 'selected')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                        <DropdownItem onClick={() => lancerExport('etat_paiement', 'liste', 'État de paiement — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('etat_paiement', 'selected', 'État de paiement — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
-                                                <button type="button" className="btn btn-soft-success btn-sm">
-                                                    <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay
-                                                </button>
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-soft-success btn-sm">
+                                                        <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay <i className="ri-arrow-down-s-line"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem onClick={() => lancerExport('excel', 'liste', 'Canvas TrésorPay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('excel', 'selected', 'Canvas TrésorPay — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
 
                                                 <UncontrolledDropdown>
                                                     <DropdownToggle tag="button" className="btn btn-soft-primary btn-sm">
                                                         <i className="ri-printer-line me-1"></i>Attestation Présence (PDF) <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => handleGenererPdf('attestation_presence', 'liste')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => handleGenererPdf('attestation_presence', 'selected')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                        <DropdownItem onClick={() => lancerExport('attestation_presence', 'liste', 'Attestation de présence — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('attestation_presence', 'selected', 'Attestation de présence — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
-                                                <button type="button" className="btn btn-primary btn-sm">
-                                                    <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay
-                                                </button>
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-primary btn-sm">
+                                                        <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay <i className="ri-arrow-down-s-line"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem onClick={() => lancerExport('fusion_tresor', 'liste', 'Fusion Trésor Pay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('fusion_tresor', 'selected', 'Fusion Trésor Pay — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
 
                                                 <UncontrolledDropdown>
                                                     <DropdownToggle tag="button" className="btn btn-soft-danger btn-sm">
                                                         <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => {
- setModalAjournerOpen(true); 
-}}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => {
- setModalAjournerOpen(true); 
-}}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                        <DropdownItem disabled={currentPresenceRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openAjournerModal('selection')}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                    </DropdownMenu>
+                                                </UncontrolledDropdown>
+
+                                                <UncontrolledDropdown>
+                                                    <DropdownToggle tag="button" className="btn btn-soft-dark btn-sm">
+                                                        <i className="ri-folder-fill me-1"></i>Marquer dossier <i className="ri-arrow-down-s-line"></i>
+                                                    </DropdownToggle>
+                                                    <DropdownMenu>
+                                                        <DropdownItem disabled={currentPresenceRows.length === 0} onClick={() => openDossierModal('liste')}>Marquer la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openDossierModal('selection')}>Marquer sélection ({selectedPresenceIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
@@ -2342,7 +2575,7 @@ stPageNums.push('...');
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setModalDossierOpen(false)} disabled={processing}>Annuler</Button>
-                    <Button color="dark" onClick={() => handleMarquerDossier(activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds, dossierStatus)} disabled={processing}>
+                    <Button color="dark" onClick={() => handleMarquerDossier(dossierStatus)} disabled={processing}>
                         {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : 'Confirmer'}
                     </Button>
                 </ModalFooter>

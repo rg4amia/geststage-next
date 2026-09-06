@@ -251,6 +251,16 @@ class DmgService
             ->when($filters['type_structure_id'] ?? null, fn (Builder $q, $id) => $q->whereHas('droitPaiement.stage.entreprise', fn (Builder $e) => $e->where('type_structure_id', $id)))
             ->when(($filters['date_debut'] ?? null) && ($filters['date_fin'] ?? null), fn (Builder $q) => $q
                 ->whereHas('droitPaiement.stage', fn (Builder $s) => $s->whereBetween('date_debut', [$filters['date_debut'], $filters['date_fin']])))
+            // Filtre « date de validation » : équivalent de `date_chef_agence` du legacy, filtré sur
+            // la date de création du droit. Le droit de paiement est créé au moment précis de la
+            // validation par le Chef d'Agence (ValidationChefAgenceService::validerDemarrage pour
+            // le démarrage, PointageService::validerMensuel pour la présence) : `created_at` du
+            // droit est la date de validation la plus proche disponible dans le schéma cible.
+            ->when(($filters['date_validation_debut'] ?? null) && ($filters['date_validation_fin'] ?? null), fn (Builder $q) => $q
+                ->whereHas('droitPaiement', fn (Builder $d) => $d->whereBetween('created_at', [
+                    $filters['date_validation_debut'].' 00:00:00',
+                    $filters['date_validation_fin'].' 23:59:59',
+                ])))
             ->when($filters['dossier_physique'] ?? null, fn (Builder $q, $statut) => $q->where('statut_dossier_physique', $statut))
             ->when($filters['search'] ?? null, function (Builder $q, string $search): void {
                 $operator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';

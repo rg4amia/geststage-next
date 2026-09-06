@@ -69,6 +69,7 @@ interface Ligne {
     montant?: number;
     motif?: string | null;
     date_differe?: string | null;
+    _rowClassName?: string;
 }
 
 interface LigneStatistique {
@@ -209,15 +210,82 @@ const COULEUR_VISA: Record<string, string> = {
     REJETE: 'danger',
 };
 
-const formatNombre = (valeur: number | string | null | undefined) =>
-    Number(valeur ?? 0).toLocaleString('fr-FR');
+const visaBadge = (visa: string | null | undefined, label: string | null | undefined) => {
+    if (!visa) {
+        return <span className="text-muted">-</span>;
+    }
 
-const formatMontant = (valeur: number | string | null | undefined) =>
-    Number(valeur ?? 0).toLocaleString('fr-FR', {
-        style: 'currency',
-        currency: 'XOF',
-        maximumFractionDigits: 0,
-    });
+    const couleur = COULEUR_VISA[visa] ?? 'secondary';
+
+    return <span className={`badge bg-${couleur}-subtle text-${couleur}`}>{label ?? visa}</span>;
+};
+
+const MESSAGES_ONGLET: Record<Onglet, { color: string; icon: string; message: string }> = {
+    attente_visa_desse: {
+        color: 'warning',
+        icon: 'ri-time-line',
+        message: 'Dossiers validés par l’agence régionale et en attente de décision DESSE.',
+    },
+    rejetes_desse: {
+        color: 'danger',
+        icon: 'ri-close-circle-line',
+        message: 'Dossiers rejetés par la DESSE. Le motif indiqué doit être corrigé avant une remise en attente.',
+    },
+    vises_desse: {
+        color: 'success',
+        icon: 'ri-stamp-line',
+        message: 'Dossiers ayant reçu le visa DESSE.',
+    },
+    valides_ar: {
+        color: 'primary',
+        icon: 'ri-check-double-line',
+        message: 'Dossiers validés par l’agence régionale, avant décision DESSE.',
+    },
+    differes_ac: {
+        color: 'secondary',
+        icon: 'ri-time-insert-line',
+        message: 'Paiements différés par l’Agent Comptable, à suivre ou à corriger.',
+    },
+    suivi_enregistres: {
+        color: 'info',
+        icon: 'ri-folder-open-line',
+        message: 'Extraction de suivi des dossiers enregistrés.',
+    },
+    suivi_valides_ar: {
+        color: 'success',
+        icon: 'ri-checkbox-circle-line',
+        message: 'Extraction de suivi des dossiers déjà validés par l’agence régionale.',
+    },
+    pieces: {
+        color: 'dark',
+        icon: 'ri-attachment-line',
+        message: 'Consultation et téléchargement des pièces justificatives des dossiers validés.',
+    },
+    statistiques: {
+        color: 'primary',
+        icon: 'ri-bar-chart-grouped-line',
+        message: 'Tableau statistique consolidé par agence régionale, sur la période sélectionnée.',
+    },
+};
+
+/** Un dossier en attente de visa depuis plus de ce délai attire l'attention (ligne surlignée). */
+const SEUIL_ATTENTE_JOURS = 30;
+
+const joursDepuis = (dateFr: string | null | undefined): number | null => {
+    if (!dateFr) {
+        return null;
+    }
+
+    const [jour, mois, annee] = dateFr.split('/').map(Number);
+
+    if (!jour || !mois || !annee) {
+        return null;
+    }
+
+    const date = new Date(annee, mois - 1, jour);
+
+    return Math.floor((Date.now() - date.getTime()) / (1000 * 60 * 60 * 24));
+};
 
 const Index = () => {
     const { props } = usePage<any>();
@@ -382,8 +450,26 @@ const Index = () => {
 
     const estOngletPaiement = onglet === 'differes_ac';
     const ongletActif = ONGLETS.find((item) => item.id === onglet) ?? ONGLETS[0];
-    const lignes = stages?.data ?? [];
+    const messageOnglet = MESSAGES_ONGLET[onglet];
     const numeroDepart = stages?.from ?? 1;
+
+    // Sur l'onglet « attente visa », un dossier validé par l'AR depuis plus de
+    // SEUIL_ATTENTE_JOURS jours sans décision DESSE est mis en évidence en rouge.
+    const lignes = useMemo(() => {
+        const base = stages?.data ?? [];
+
+        if (onglet !== 'attente_visa_desse') {
+            return base;
+        }
+
+        return base.map((ligne) => ({
+            ...ligne,
+            _rowClassName:
+                (joursDepuis(ligne.date_validation_ar ?? ligne.date_debut) ?? 0) > SEUIL_ATTENTE_JOURS
+                    ? 'table-danger'
+                    : '',
+        }));
+    }, [stages, onglet]);
 
     return (
         <React.Fragment>
@@ -403,8 +489,8 @@ const Index = () => {
                         </Alert>
                     )}
 
-                    <Card className="shadow-sm border-0">
-                        <CardHeader className="bg-transparent border-bottom-0 pb-0">
+                    <Card>
+                        <CardHeader className="border-0 pb-0">
                             <Nav tabs className="nav-tabs-custom nav-success flex-wrap">
                                 {ONGLETS.map((item) => (
                                     <NavItem key={item.id}>
@@ -613,6 +699,25 @@ const Index = () => {
                         </CardBody>
 
                         <CardBody>
+                            {messageOnglet && onglet !== 'statistiques' && (
+                                <Alert color={messageOnglet.color} className="border-0 mb-3">
+                                    <i className={`${messageOnglet.icon} align-middle me-2`}></i>
+                                    {messageOnglet.message}
+                                </Alert>
+                            )}
+
+                            {onglet === 'attente_visa_desse' && (
+                                <Alert color="danger" className="border-0 mb-3">
+                                    <div className="d-flex align-items-center">
+                                        <div className="d-inline-block me-2" style={{ width: 16, height: 16, backgroundColor: '#f84343', border: '1px solid #999' }}></div>
+                                        <div>
+                                            <strong>Dossiers en attente prolongée :</strong> les lignes en rouge indiquent des dossiers validés
+                                            par l'agence régionale depuis plus de {SEUIL_ATTENTE_JOURS} jours sans décision DESSE.
+                                        </div>
+                                    </div>
+                                </Alert>
+                            )}
+
                             {onglet === 'statistiques' ? (
                                 <div className="table-responsive">
                                     <Table className="table-sm align-middle table-bordered mb-0">
@@ -709,7 +814,7 @@ const Index = () => {
                                             </thead>
                                             <tbody>
                                                 {lignes.map((ligne, idx) => (
-                                                    <tr key={ligne.id}>
+                                                    <tr key={ligne.id} className={ligne._rowClassName || ''}>
                                                         <td>{idx + 1}</td>
                                                         <td>{ligne.numero_aej}</td>
                                                         <td>
@@ -731,15 +836,7 @@ const Index = () => {
                                                                 <td>{ligne.date_debut}</td>
                                                                 <td>{ligne.date_fin_prevue}</td>
                                                                 <td>{ligne.date_validation_ar ?? '-'}</td>
-                                                                <td>
-                                                                    {ligne.visa_desse ? (
-                                                                        <Badge color={COULEUR_VISA[ligne.visa_desse] ?? 'secondary'}>
-                                                                            {ligne.visa_desse_label}
-                                                                        </Badge>
-                                                                    ) : (
-                                                                        <span className="text-muted">-</span>
-                                                                    )}
-                                                                </td>
+                                                                <td>{visaBadge(ligne.visa_desse, ligne.visa_desse_label)}</td>
                                                             </>
                                                         )}
                                                         <td className="text-end">
@@ -752,10 +849,10 @@ const Index = () => {
                                                                         setModalDetail(true);
                                                                     }}
                                                                 >
-                                                                    Détail
+                                                                    <i className="ri-eye-line me-1"></i>Détail
                                                                 </Button>
                                                                 <Button size="sm" color="light" onClick={() => ouvrirPieces(ligne)}>
-                                                                    Pièces
+                                                                    <i className="ri-attachment-line me-1"></i>Pièces
                                                                 </Button>
                                                                 {peutViser && !estOngletPaiement && onglet === 'attente_visa_desse' && (
                                                                     <>
@@ -765,7 +862,7 @@ const Index = () => {
                                                                             disabled={enCours}
                                                                             onClick={() => decider(ligne, 'viser')}
                                                                         >
-                                                                            Viser
+                                                                            <i className="ri-check-line me-1"></i>Viser
                                                                         </Button>
                                                                         <Button
                                                                             size="sm"
@@ -777,7 +874,7 @@ const Index = () => {
                                                                                 setModalRejet(true);
                                                                             }}
                                                                         >
-                                                                            Rejeter
+                                                                            <i className="ri-close-circle-line me-1"></i>Rejeter
                                                                         </Button>
                                                                     </>
                                                                 )}
@@ -788,7 +885,7 @@ const Index = () => {
                                                                         disabled={enCours}
                                                                         onClick={() => decider(ligne, 'remettre-en-attente')}
                                                                     >
-                                                                        Remettre en attente
+                                                                        <i className="ri-arrow-go-back-line me-1"></i>Remettre en attente
                                                                     </Button>
                                                                 )}
                                                             </div>

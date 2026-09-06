@@ -7,9 +7,8 @@ namespace App\Domain\Payment\Services;
 use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\SourceFinancement;
-use Barryvdh\DomPDF\Facades\Pdf;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
 class MultiDossierPdfService
@@ -37,39 +36,51 @@ class MultiDossierPdfService
     }
 
     /**
-     * Détermine la vue Blade attestation selon la source de financement.
+     * Construit le PDF d'attestation de présence pour un lot de paiements (partagé entre les
+     * multi-dossiers et les dossiers simples). Vue différenciée par source de financement
+     * (PAPS-GOUV / Budget AEJ / C2D), paginée avec espace pied de page réservé.
+     *
+     * @param  Collection<int, Paiement>  $paiements
      */
-    private function attestationView(?int $sourceFinancementId): string
+    public function construireAttestation(Collection $paiements, ?int $sourceFinancementId, string $moisCode)
     {
-        if ($sourceFinancementId === null) {
-            return 'attestation_presence.budget-aej';
-        }
+        $codeFinancement = $this->codeFinancement($sourceFinancementId);
+        $mois = \Carbon\Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
 
-        $source = SourceFinancement::find($sourceFinancementId);
-        if ($source === null) {
-            return 'attestation_presence.budget-aej';
-        }
+        $pdf = Pdf::loadView('pdf.dmg-attestation-presence', [
+            'paiements' => $paiements,
+            'financement' => $codeFinancement,
+            'mois' => $mois,
+            'moisCode' => $moisCode,
+        ])->setPaper('a4', 'landscape');
 
-        return match ($source->code) {
-            'PAPS_GOUV' => 'attestation_presence.paps-gouv',
-            'C2D' => 'attestation_presence.c2d',
-            'PEJEDEC' => 'attestation_presence.pejedec',
-            default => 'attestation_presence.budget-aej',
-        };
+        $this->configurerPdf($pdf);
+
+        return $pdf;
     }
 
     /**
-     * Détermine la vue Blade état financier selon la source de financement.
+     * Construit le PDF d'état de paiement (état financier) pour un lot de paiements : paysage,
+     * paginé avec espace pied de page réservé et solde total des primes en dernière page.
+     *
+     * @param  Collection<int, Paiement>  $paiements
      */
-    private function etatFinancierView(?int $sourceFinancementId): string
+    public function construireEtatFinancier(Collection $paiements, string $moisCode)
     {
-        $source = $sourceFinancementId ? SourceFinancement::find($sourceFinancementId) : null;
-        $code = $source?->code ?? '';
+        $pages = preparePaginatedDataWithFooterSpace($paiements);
+        $mois = \Carbon\Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
 
-        return match ($code) {
-            'PAPS_GOUV' => 'pdf.dmg-paiements',
-            default => 'pdf.dmg-paiements',
-        };
+        $pdf = Pdf::loadView('pdf.dmg-etat-paiement', [
+            'pages' => $pages,
+            'solde' => (float) $paiements->sum('montant'),
+            'total' => $paiements->count(),
+            'mois' => $mois,
+            'moisCode' => $moisCode,
+        ])->setPaper('a4', 'landscape');
+
+        $this->configurerPdf($pdf);
+
+        return $pdf;
     }
 
     /**
@@ -83,47 +94,8 @@ class MultiDossierPdfService
             return null;
         }
 
-        $sourceFinancementId = $groupe->source_financement_id;
-        $view = $this->attestationView($sourceFinancementId);
-        $moisPointage = $groupe->periode?->code ?? '';
-
-        $paginatedContrats = preparePaginatedDataWithFooterSpace($paiements);
-        $totalContrats = $paiements->count();
-
-        $typeStageLabel = $this->determinerTypeStageLabel($paiements);
-
-        $user = Auth::user();
-        $dataAgence = [
-            'chef_agence' => $user?->agence?->chef_agence ?? 'N/A',
-            'agence' => $user?->agence?->nom ?? 'N/A',
-        ];
-
-        $pdf = Pdf::loadView($view, [
-            'paginatedContrats' => $paginatedContrats,
-            'mois_pointage' => $moisPointage,
-            'type_stage' => $typeStageLabel,
-            'data_agence' => $dataAgence,
-            'mode_traitement' => 1,
-            'totalContrats' => $totalContrats,
-            'contrats' => $paiements,
-            'dossier' => null,
-        ]);
-
-        $pdf->getDomPDF()->setHttpContext(
-            stream_context_create([
-                'ssl' => [
-                    'allow_self_signed' => true,
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                ],
-            ])
-        );
-
-        $pdf->setPaper('A4', 'landscape');
-        $pdf->output();
-
-        $canvas = $pdf->get_canvas();
-        $canvas->page_text(10, $canvas->get_height() - 20, 'P. {PAGE_NUM} / {PAGE_COUNT}', null, 10, [0, 0, 0]);
+        $moisCode = $groupe->periode?->code ?? now()->format('Y-m');
+        $pdf = $this->construireAttestation($paiements, $groupe->source_financement_id, $moisCode);
 
         $filename = 'attestation_presence_'.$groupe->numero.'.pdf';
         $path = 'multi_dossiers/'.$groupe->id;
@@ -146,32 +118,8 @@ class MultiDossierPdfService
             return null;
         }
 
-        $sourceFinancementId = $groupe->source_financement_id;
-        $moisPointage = $groupe->periode?->code ?? '';
-
-        $paginatedContrats = preparePaginatedDataWithFooterSpace($paiements);
-
-        $pdf = Pdf::loadView('pdf.dmg-paiements', [
-            'paiements' => $paiements,
-            'titre' => 'État financier — '.$groupe->numero,
-            'type' => 'etat_paiement',
-            'mois' => $moisPointage,
-        ])->setPaper('a4', 'landscape');
-
-        $pdf->getDomPDF()->setHttpContext(
-            stream_context_create([
-                'ssl' => [
-                    'allow_self_signed' => true,
-                    'verify_peer' => false,
-                    'verify_peer_name' => false,
-                ],
-            ])
-        );
-
-        $pdf->output();
-
-        $canvas = $pdf->get_canvas();
-        $canvas->page_text(10, $canvas->get_height() - 20, 'P. {PAGE_NUM} / {PAGE_COUNT}', null, 10, [0, 0, 0]);
+        $moisCode = $groupe->periode?->code ?? now()->format('Y-m');
+        $pdf = $this->construireEtatFinancier($paiements, $moisCode);
 
         $filename = 'etat_financier_'.$groupe->numero.'.pdf';
         $path = 'multi_dossiers/'.$groupe->id;
@@ -199,16 +147,28 @@ class MultiDossierPdfService
         return $groupe->fresh();
     }
 
-    /**
-     * Détermine le libellé du type de stage.
-     */
-    private function determinerTypeStageLabel(Collection $paiements): string
+    private function codeFinancement(?int $sourceFinancementId): ?string
     {
-        $firstTypeStage = $paiements->first()?->droitPaiement?->stage?->typeStage;
-        if ($firstTypeStage) {
-            return strtoupper($firstTypeStage->nom);
+        if ($sourceFinancementId === null) {
+            return null;
         }
 
-        return "STAGE DE QUALIFICATION OU D'EXPERIENCE PROFESSIONNELLE";
+        return SourceFinancement::whereKey($sourceFinancementId)->value('code');
+    }
+
+    private function configurerPdf($pdf): void
+    {
+        $pdf->getDomPDF()->setHttpContext(
+            stream_context_create([
+                'ssl' => [
+                    'allow_self_signed' => true,
+                    'verify_peer' => false,
+                    'verify_peer_name' => false,
+                ],
+            ])
+        );
+        $pdf->output();
+        $canvas = $pdf->get_canvas();
+        $canvas->page_text(10, $canvas->get_height() - 20, 'P. {PAGE_NUM} / {PAGE_COUNT}', null, 10, [0, 0, 0]);
     }
 }

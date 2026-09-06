@@ -12,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class DossierPaiementDmgController extends Controller
 {
@@ -114,5 +115,66 @@ class DossierPaiementDmgController extends Controller
         $filePath = Storage::disk('temp_files')->path($groupe->etat_financier_path);
 
         return response()->download($filePath, basename($groupe->etat_financier_path));
+    }
+
+    /**
+     * Régénération a posteriori pour un dossier simple : attestation de présence, générée à la
+     * volée depuis les paiements actifs du dossier (équivalent legacy
+     * generateAttestationPresenceFromDossier).
+     */
+    public function downloadAttestationDossier(DossierPaiement $dossier): Response
+    {
+        $paiements = $this->paiementsActifsDuDossier($dossier);
+        if ($paiements->isEmpty()) {
+            throw new NotFoundHttpException('Aucun paiement actif dans ce dossier.');
+        }
+
+        $moisCode = $dossier->periode?->code ?? now()->format('Y-m');
+        $pdf = $this->pdfService->construireAttestation($paiements, $dossier->source_financement_id, $moisCode);
+
+        return response()->streamDownload(function () use ($pdf): void {
+            echo $pdf->output();
+        }, 'attestation-presence-'.$dossier->numero.'.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    /**
+     * Régénération a posteriori pour un dossier simple : état financier (état de paiement),
+     * généré à la volée (équivalent legacy generateEtatFinancierFromDossier).
+     */
+    public function downloadEtatFinancierDossier(DossierPaiement $dossier): Response
+    {
+        $paiements = $this->paiementsActifsDuDossier($dossier);
+        if ($paiements->isEmpty()) {
+            throw new NotFoundHttpException('Aucun paiement actif dans ce dossier.');
+        }
+
+        $moisCode = $dossier->periode?->code ?? now()->format('Y-m');
+        $pdf = $this->pdfService->construireEtatFinancier($paiements, $moisCode);
+
+        return response()->streamDownload(function () use ($pdf): void {
+            echo $pdf->output();
+        }, 'etat-paiement-'.$dossier->numero.'.pdf', ['Content-Type' => 'application/pdf']);
+    }
+
+    /**
+     * Paiements actifs (ligne non retirée) d'un dossier, avec les relations nécessaires aux vues PDF.
+     */
+    private function paiementsActifsDuDossier(DossierPaiement $dossier)
+    {
+        return Paiement::query()
+            ->with([
+                'droitPaiement.stage.beneficiaire',
+                'droitPaiement.stage.entreprise.typeStructure',
+                'droitPaiement.stage.agence',
+                'droitPaiement.stage.sourceFinancement',
+                'droitPaiement.stage.typeStage',
+                'droitPaiement.stage.contrats',
+            ])
+            ->whereHas('dossiersPaiement', fn ($q) => $q
+                ->where('dossiers_paiement.id', $dossier->id)
+                ->whereNull('lignes_dossiers_paiement.retire_le'))
+            ->orderBy('paiements.id')
+            ->limit(DmgService::LIMITE_LISTE_ATTENTE)
+            ->get();
     }
 }

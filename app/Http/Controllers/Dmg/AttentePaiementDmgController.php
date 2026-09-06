@@ -17,7 +17,7 @@ class AttentePaiementDmgController extends Controller
     public function index(Request $request): JsonResponse
     {
         $mois = $request->string('mois', Carbon::now()->format('Y-m'))->toString();
-        $filters = $request->only(['agence_id', 'entreprise_id', 'source_financement_id', 'type_stage_id', 'type_structure_id', 'date_debut', 'date_fin', 'search', 'dossier_physique']);
+        $filters = $request->only(['agence_id', 'entreprise_id', 'source_financement_id', 'type_stage_id', 'type_structure_id', 'date_debut', 'date_fin', 'date_validation_debut', 'date_validation_fin', 'search', 'dossier_physique']);
         $presence = $request->string('type', 'demarrage')->toString() === 'presence';
         $query = $presence
             ? $this->service->attentePaiementPresence($filters, $mois)
