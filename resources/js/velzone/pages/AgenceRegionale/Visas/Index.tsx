@@ -123,16 +123,84 @@ interface Props {
     situations: Record<string, string>;
 }
 
-const ONGLETS: { id: Onglet; label: string; compteur?: string }[] = [
-    { id: 'attente_visa_desse', label: 'En attente de visa', compteur: 'attente_visa_desse' },
-    { id: 'rejetes_desse', label: 'Rejetés DESSE', compteur: 'rejetes_desse' },
-    { id: 'vises_desse', label: 'Visés DESSE', compteur: 'vises_desse' },
-    { id: 'valides_ar', label: 'Validés agence régionale', compteur: 'valides_ar' },
-    { id: 'differes_ac', label: 'Différés agent comptable', compteur: 'differes_ac' },
-    { id: 'suivi_enregistres', label: 'Suivi : enregistrés', compteur: 'suivi_enregistres' },
-    { id: 'suivi_valides_ar', label: 'Suivi : validés AR', compteur: 'suivi_valides_ar' },
-    { id: 'pieces', label: 'Pièces justificatives' },
-    { id: 'statistiques', label: 'Tableau statistique' },
+const ONGLETS: {
+    id: Onglet;
+    label: string;
+    compteur?: string;
+    color: string;
+    icon: string;
+    description: string;
+}[] = [
+    {
+        id: 'attente_visa_desse',
+        label: 'ATTENTE VISA',
+        compteur: 'attente_visa_desse',
+        color: 'warning',
+        icon: 'ri-time-line',
+        description: 'Dossiers validés par l’agence régionale et en attente de décision DESSE.',
+    },
+    {
+        id: 'rejetes_desse',
+        label: 'REJETÉS DESSE',
+        compteur: 'rejetes_desse',
+        color: 'danger',
+        icon: 'ri-close-circle-line',
+        description: 'Dossiers rejetés par la DESSE, avec motif de correction.',
+    },
+    {
+        id: 'vises_desse',
+        label: 'VISÉS DESSE',
+        compteur: 'vises_desse',
+        color: 'success',
+        icon: 'ri-stamp-line',
+        description: 'Dossiers ayant reçu le visa DESSE.',
+    },
+    {
+        id: 'valides_ar',
+        label: 'VALIDÉS AR',
+        compteur: 'valides_ar',
+        color: 'primary',
+        icon: 'ri-check-double-line',
+        description: 'Dossiers validés par l’agence régionale avant visa DESSE.',
+    },
+    {
+        id: 'differes_ac',
+        label: 'DIFFÉRÉS AC',
+        compteur: 'differes_ac',
+        color: 'secondary',
+        icon: 'ri-time-insert-line',
+        description: 'Paiements différés par l’Agent Comptable à suivre ou corriger.',
+    },
+    {
+        id: 'suivi_enregistres',
+        label: 'ENREGISTRÉS',
+        compteur: 'suivi_enregistres',
+        color: 'info',
+        icon: 'ri-folder-open-line',
+        description: 'Extraction de suivi des dossiers enregistrés.',
+    },
+    {
+        id: 'suivi_valides_ar',
+        label: 'SUIVI VALIDÉS AR',
+        compteur: 'suivi_valides_ar',
+        color: 'success',
+        icon: 'ri-checkbox-circle-line',
+        description: 'Extraction de suivi des dossiers déjà validés par l’agence régionale.',
+    },
+    {
+        id: 'pieces',
+        label: 'PIÈCES',
+        color: 'dark',
+        icon: 'ri-attachment-line',
+        description: 'Consultation et téléchargement des pièces justificatives.',
+    },
+    {
+        id: 'statistiques',
+        label: 'STATISTIQUES',
+        color: 'primary',
+        icon: 'ri-bar-chart-grouped-line',
+        description: 'Tableau statistique consolidé par agence régionale.',
+    },
 ];
 
 const COULEUR_VISA: Record<string, string> = {
@@ -140,6 +208,16 @@ const COULEUR_VISA: Record<string, string> = {
     VISE: 'success',
     REJETE: 'danger',
 };
+
+const formatNombre = (valeur: number | string | null | undefined) =>
+    Number(valeur ?? 0).toLocaleString('fr-FR');
+
+const formatMontant = (valeur: number | string | null | undefined) =>
+    Number(valeur ?? 0).toLocaleString('fr-FR', {
+        style: 'currency',
+        currency: 'XOF',
+        maximumFractionDigits: 0,
+    });
 
 const Index = () => {
     const { props } = usePage<any>();
@@ -303,7 +381,9 @@ const Index = () => {
     }, [batchExport?.id, batchExport?.disponible]);
 
     const estOngletPaiement = onglet === 'differes_ac';
+    const ongletActif = ONGLETS.find((item) => item.id === onglet) ?? ONGLETS[0];
     const lignes = stages?.data ?? [];
+    const numeroDepart = stages?.from ?? 1;
 
     return (
         <React.Fragment>
@@ -312,11 +392,19 @@ const Index = () => {
                 <Container fluid>
                     <BreadCrumb title="Supervision régionale" pageTitle="Agence régionale" />
 
-                    {flash.success && <Alert color="success">{flash.success}</Alert>}
-                    {flash.error && <Alert color="danger">{flash.error}</Alert>}
+                    {flash.success && (
+                        <Alert color="success" className="border-0 alert-dismissible fade show" role="alert">
+                            <i className="ri-check-double-line me-2 align-middle"></i>{flash.success}
+                        </Alert>
+                    )}
+                    {flash.error && (
+                        <Alert color="danger" className="border-0 alert-dismissible fade show" role="alert">
+                            <i className="ri-error-warning-line me-2 align-middle"></i>{flash.error}
+                        </Alert>
+                    )}
 
-                    <Card>
-                        <CardHeader className="border-0 pb-0">
+                    <Card className="shadow-sm border-0">
+                        <CardHeader className="bg-transparent border-bottom-0 pb-0">
                             <Nav tabs className="nav-tabs-custom nav-success flex-wrap">
                                 {ONGLETS.map((item) => (
                                     <NavItem key={item.id}>
@@ -328,6 +416,7 @@ const Index = () => {
                                                 naviguer(item.id);
                                             }}
                                         >
+                                            <i className={`${item.icon} me-1`}></i>
                                             {item.label}
                                             {item.compteur !== undefined && (
                                                 <Badge color="light" className="text-body ms-1">
@@ -593,6 +682,7 @@ const Index = () => {
                                         <Table className="table-sm align-middle table-nowrap mb-0">
                                             <thead className="table-light">
                                                 <tr>
+                                                    <th>#</th>
                                                     <th>N° AEJ</th>
                                                     <th>Bénéficiaire</th>
                                                     <th>Entreprise</th>
@@ -618,8 +708,9 @@ const Index = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {lignes.map((ligne) => (
+                                                {lignes.map((ligne, idx) => (
                                                     <tr key={ligne.id}>
+                                                        <td>{idx + 1}</td>
                                                         <td>{ligne.numero_aej}</td>
                                                         <td>
                                                             {ligne.beneficiaire.nom} {ligne.beneficiaire.prenoms}
@@ -706,7 +797,10 @@ const Index = () => {
                                                 ))}
                                                 {lignes.length === 0 && (
                                                     <tr>
-                                                        <td colSpan={11} className="text-center">Aucun dossier dans cette corbeille.</td>
+                                                        <td colSpan={12} className="text-center py-4">
+                                                            <i className="ri-inbox-line fs-1 text-muted d-block mb-2"></i>
+                                                            Aucun dossier dans cette corbeille.
+                                                        </td>
                                                     </tr>
                                                 )}
                                             </tbody>
@@ -724,7 +818,10 @@ const Index = () => {
             </div>
 
             <Modal isOpen={modalRejet} toggle={() => setModalRejet(false)} centered>
-                <ModalHeader toggle={() => setModalRejet(false)}>Rejeter le dossier</ModalHeader>
+                <ModalHeader toggle={() => setModalRejet(false)} className="bg-danger-subtle">
+                    <i className="ri-error-warning-line me-2 text-danger"></i>
+                    Rejeter le dossier
+                </ModalHeader>
                 <ModalBody>
                     <p className="text-muted">
                         {ligneActive?.beneficiaire.nom} {ligneActive?.beneficiaire.prenoms} — {ligneActive?.numero_aej}
@@ -753,7 +850,10 @@ const Index = () => {
             </Modal>
 
             <Modal isOpen={modalDetail} toggle={() => setModalDetail(false)} centered size="lg">
-                <ModalHeader toggle={() => setModalDetail(false)}>Détail du dossier</ModalHeader>
+                <ModalHeader toggle={() => setModalDetail(false)}>
+                    <i className="ri-eye-line me-2 text-primary"></i>
+                    Détail du dossier
+                </ModalHeader>
                 <ModalBody>
                     {ligneActive && (
                         <Row className="g-3">
@@ -780,7 +880,10 @@ const Index = () => {
             </Modal>
 
             <Modal isOpen={modalPieces} toggle={() => setModalPieces(false)} centered>
-                <ModalHeader toggle={() => setModalPieces(false)}>Pièces justificatives</ModalHeader>
+                <ModalHeader toggle={() => setModalPieces(false)}>
+                    <i className="ri-attachment-line me-2 text-info"></i>
+                    Pièces justificatives
+                </ModalHeader>
                 <ModalBody>
                     {chargementPieces ? (
                         <div className="text-center py-3"><Spinner /></div>

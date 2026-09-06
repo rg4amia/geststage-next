@@ -23,11 +23,14 @@ import {
     NavLink,
     Row,
     Spinner,
-    TabContent,
-    TabPane,
+    Table,
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
+import ServerPagination, { normalizePagination } from '../../../Components/Common/ServerPagination';
+
+/* ═══════════════════════════════════════════════════════════
+   TYPES
+   ═══════════════════════════════════════════════════════════ */
 
 type RenewalTab = 'attente' | 'anticipe' | 'ajourne' | 'chef_validation';
 
@@ -122,6 +125,40 @@ const DEFAULT_FILTERS: FilterState = {
     date_fin: '',
 };
 
+/* ═══════════════════════════════════════════════════════════
+   CONSTANTES ONGLETS
+   ═══════════════════════════════════════════════════════════ */
+
+const ONGLETS: { id: RenewalTab; label: string; compteur: RenewalTab; color: string; icon: string }[] = [
+    { id: 'attente', label: 'À renouveler', compteur: 'attente', color: 'warning', icon: 'ri-time-line' },
+    { id: 'anticipe', label: 'Renouvellement anticipé', compteur: 'anticipe', color: 'info', icon: 'ri-calendar-event-line' },
+    { id: 'ajourne', label: 'Ajourné / Chef agence', compteur: 'ajourne', color: 'danger', icon: 'ri-arrow-go-back-line' },
+    { id: 'chef_validation', label: "Validation Chef d'agence", compteur: 'chef_validation', color: 'primary', icon: 'ri-shield-check-line' },
+];
+
+const MESSAGES_ONGLET: Record<RenewalTab, { color: string; icon: string; message: string }> = {
+    attente: { color: 'warning', icon: 'ri-time-line', message: "Stagiaires arrivés à terme et disponibles pour renouvellement." },
+    anticipe: { color: 'info', icon: 'ri-calendar-event-line', message: "Stagiaires dont le contrat peut être anticipé avant échéance (≤ 10 jours)." },
+    ajourne: { color: 'danger', icon: 'ri-arrow-go-back-line', message: "Renouvellements retournés par le Chef d'agence pour correction CIP." },
+    chef_validation: { color: 'primary', icon: 'ri-shield-check-line', message: "Renouvellements soumis par les CIP en attente de décision Chef d'agence." },
+};
+
+/* ═══════════════════════════════════════════════════════════
+   HELPERS
+   ═══════════════════════════════════════════════════════════ */
+
+const formatDateFr = (dateStr: string | null | undefined) => {
+    if (!dateStr) {
+        return '-';
+    }
+
+    try {
+        return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+    } catch {
+        return dateStr;
+    }
+};
+
 const formatInputDate = (date: string | null | undefined): string => {
     if (!date) {
         return '';
@@ -170,6 +207,10 @@ const statusBadge = (statut: string | null, fallbackTab: RenewalTab) => {
     return <span className={`badge bg-${item.color}-subtle text-${item.color}`}>{item.label}</span>;
 };
 
+/* ═══════════════════════════════════════════════════════════
+   COMPOSANT PRINCIPAL
+   ═══════════════════════════════════════════════════════════ */
+
 const CipRenouvellementsIndex = ({
     onglet = 'attente',
     stages,
@@ -198,6 +239,7 @@ const CipRenouvellementsIndex = ({
     });
     const [selectedIds, setSelectedIds] = useState<number[]>([]);
 
+    /* ─── Modale renouvellement ─── */
     const [aRenouveler, setARenouveler] = useState<LigneStage | null>(null);
     const [dureeMois, setDureeMois] = useState('6');
     const [dateDebutAvenant, setDateDebutAvenant] = useState('');
@@ -209,70 +251,27 @@ const CipRenouvellementsIndex = ({
     const [contratAvenantError, setContratAvenantError] = useState('');
     const [enCours, setEnCours] = useState(false);
 
+    /* ─── Modale ajournement ─── */
     const [aAjourner, setAAjourner] = useState<LigneStage | null>(null);
     const [isAjournementGroupe, setIsAjournementGroupe] = useState(false);
     const [motifAjournement, setMotifAjournement] = useState('');
     const [ajournementError, setAjournementError] = useState('');
+
+    /* ─── Modale détail ─── */
     const [detailStage, setDetailStage] = useState<LigneStage | null>(null);
 
-    const tabs = useMemo(() => {
-        const items = [
-            {
-                key: 'attente' as RenewalTab,
-                label: 'À RENOUVELER',
-                count: compteurs?.attente ?? 0,
-                color: 'warning',
-                icon: 'ri-time-line',
-            },
-            {
-                key: 'anticipe' as RenewalTab,
-                label: 'RENOUVELLEMENT ANTICIPÉ',
-                count: compteurs?.anticipe ?? 0,
-                color: 'info',
-                icon: 'ri-calendar-event-line',
-            },
-            {
-                key: 'ajourne' as RenewalTab,
-                label: 'AJOURNÉ / CHEF AGENCE',
-                count: compteurs?.ajourne ?? 0,
-                color: 'danger',
-                icon: 'ri-arrow-go-back-line',
-            },
-        ];
-
-        if (peutValiderCa) {
-            items.push({
-                key: 'chef_validation' as RenewalTab,
-                label: "VALIDATION CHEF D'AGENCE",
-                count: compteurs?.chef_validation ?? 0,
-                color: 'primary',
-                icon: 'ri-shield-check-line',
-            });
-        }
-
-        return items;
-    }, [compteurs, peutValiderCa]);
-
-    const selectableIds = useMemo(
-        () => (stages?.data ?? [])
-            .map((stage) => (currentTab === 'chef_validation' ? stage.avenant_id : stage.id))
-            .filter((id): id is number => Boolean(id)),
-        [currentTab, stages?.data],
+    /* ─── Onglets filtrés (seulement les autorisés) ─── */
+    const ongletsVisibles = useMemo(
+        () => ONGLETS.filter((o) => peutValiderCa || o.id !== 'chef_validation'),
+        [peutValiderCa],
     );
 
-    const navigate = (tab: RenewalTab, currentFilters: FilterState, extra: Record<string, string | number> = {}) => {
+    /* ─── Navigation / Filtres ─── */
+    const naviguer = (tab: RenewalTab, filtres: FilterState, extra: Record<string, string | number> = {}) => {
         router.get(
             '/cip/renouvellements',
-            {
-                onglet: tab,
-                ...nonEmptyParams(currentFilters),
-                ...extra,
-            },
-            {
-                preserveState: true,
-                preserveScroll: true,
-                replace: true,
-            },
+            { onglet: tab, ...nonEmptyParams(filtres), ...extra },
+            { preserveState: true, preserveScroll: true, replace: true },
         );
     };
 
@@ -283,31 +282,31 @@ const CipRenouvellementsIndex = ({
 
         setCurrentTab(tab);
         setSelectedIds([]);
-        navigate(tab, selectedFilters, { page: 1 });
+        naviguer(tab, selectedFilters, { page: 1 });
     };
 
-    const handleFilterChange = (field: keyof FilterState, value: string, autoApply = false) => {
-        const nextFilters = { ...selectedFilters, [field]: value };
-
-        setSelectedFilters(nextFilters);
-
-        if (autoApply) {
-            setSelectedIds([]);
-            navigate(currentTab, nextFilters, { page: 1 });
-        }
+    const handleFilterChange = (field: keyof FilterState, value: string) => {
+        setSelectedFilters((prev) => ({ ...prev, [field]: value }));
     };
 
-    const applyFilters = () => {
+    const appliquerFiltres = () => {
         setSelectedIds([]);
-        navigate(currentTab, selectedFilters, { page: 1 });
+        naviguer(currentTab, selectedFilters, { page: 1 });
     };
 
-    const resetFilters = () => {
+    const reinitialiser = () => {
         setSelectedFilters(DEFAULT_FILTERS);
         setSelectedIds([]);
-        navigate(currentTab, DEFAULT_FILTERS, { page: 1 });
+        naviguer(currentTab, DEFAULT_FILTERS, { page: 1 });
     };
 
+    const exporter = () => {
+        const params = new URLSearchParams({ onglet: currentTab, ...nonEmptyParams(selectedFilters) });
+
+        window.location.href = `/cip/renouvellements/export?${params.toString()}`;
+    };
+
+    /* ─── Actions CIP ─── */
     const calculerDateFin = (dateDebutStr: string, mois: number): string => {
         if (!dateDebutStr) {
             return '';
@@ -375,17 +374,7 @@ const CipRenouvellementsIndex = ({
         }
 
         return true;
-    }, [
-        aRenouveler,
-        contratAvenant,
-        dateDebutAvenant,
-        isBudgetAej,
-        isC2dOrPejedec,
-        isJourCohorteValide,
-        observation,
-        prime,
-        typeStructureId,
-    ]);
+    }, [aRenouveler, contratAvenant, dateDebutAvenant, isBudgetAej, isC2dOrPejedec, isJourCohorteValide, observation, prime, typeStructureId]);
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
@@ -591,6 +580,15 @@ const CipRenouvellementsIndex = ({
         window.open(`/cip/renouvellements/avenant/generer-pdf?${params.toString()}`, '_blank');
     };
 
+    /* ─── Sélection ─── */
+    const selectableIds = useMemo(
+        () =>
+            (stages?.data ?? [])
+                .map((stage) => (currentTab === 'chef_validation' ? stage.avenant_id : stage.id))
+                .filter((id): id is number => Boolean(id)),
+        [currentTab, stages?.data],
+    );
+
     const toggleSelectAll = (e: React.ChangeEvent<HTMLInputElement>) => {
         setSelectedIds(e.target.checked ? selectableIds : []);
     };
@@ -600,242 +598,17 @@ const CipRenouvellementsIndex = ({
             return;
         }
 
-        setSelectedIds((prev) => (
-            prev.includes(targetId)
-                ? prev.filter((id) => id !== targetId)
-                : [...prev, targetId]
-        ));
+        setSelectedIds((prev) => (prev.includes(targetId) ? prev.filter((id) => id !== targetId) : [...prev, targetId]));
     };
 
-    const columns = (() => {
-        const items: any[] = [
-            {
-                header: (
-                    <div className="form-check">
-                        <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={selectableIds.length > 0 && selectedIds.length === selectableIds.length}
-                            onChange={toggleSelectAll}
-                        />
-                    </div>
-                ),
-                accessorKey: 'selection',
-                enableSorting: false,
-                size: 50,
-                cell: (cell: any) => {
-                    const row = cell.row.original as LigneStage;
-                    const rowId = currentTab === 'chef_validation' ? row.avenant_id : row.id;
+    const exportParams = useMemo(
+        () => new URLSearchParams({ onglet: currentTab, ...nonEmptyParams(selectedFilters) }).toString(),
+        [currentTab, selectedFilters],
+    );
 
-                    return (
-                        <div className="form-check">
-                            <input
-                                type="checkbox"
-                                className="form-check-input"
-                                disabled={!rowId}
-                                checked={Boolean(rowId && selectedIds.includes(rowId))}
-                                onChange={() => toggleSelectRow(rowId)}
-                            />
-                        </div>
-                    );
-                },
-            },
-            {
-                header: 'Bénéficiaire',
-                accessorKey: 'beneficiaire.nom',
-                cell: (cell: any) => {
-                    const row = cell.row.original as LigneStage;
-                    const beneficiaire = row.beneficiaire;
-
-                    return (
-                        <div>
-                            <span className="fw-semibold text-dark">
-                                {beneficiaire?.nom} {beneficiaire?.prenoms}
-                            </span>
-                            <div className="text-muted small">
-                                <span>AEJ: {beneficiaire?.matricule || '-'}</span>
-                                <span className="mx-1">•</span>
-                                <span>{beneficiaire?.sexe || '-'}</span>
-                            </div>
-                        </div>
-                    );
-                },
-            },
-            {
-                header: 'Dates',
-                accessorKey: 'date_debut',
-                cell: (cell: any) => {
-                    const row = cell.row.original as LigneStage;
-
-                    return (
-                        <div className="small">
-                            <div>
-                                <span className="text-muted">Début :</span> {row.date_debut || '-'}
-                            </div>
-                            <div>
-                                <span className="text-muted">Fin :</span> {row.date_fin_prevue || '-'}
-                            </div>
-                            {row.nouvelle_date_fin && (
-                                <div className="text-success fw-semibold">Avenant : {row.nouvelle_date_fin}</div>
-                            )}
-                            {currentTab === 'anticipe' && row.jours_restants !== null && (
-                                <Badge color="info" pill className="mt-1">
-                                    J-{row.jours_restants}
-                                </Badge>
-                            )}
-                        </div>
-                    );
-                },
-            },
-            {
-                header: 'Entreprise / Agence',
-                accessorKey: 'entreprise',
-                cell: (cell: any) => {
-                    const row = cell.row.original as LigneStage;
-
-                    return (
-                        <div>
-                            <div className="fw-semibold text-truncate" style={{ maxWidth: 220 }} title={row.entreprise}>
-                                {row.entreprise || '-'}
-                            </div>
-                            <div className="text-muted small">{row.agence || '-'}</div>
-                        </div>
-                    );
-                },
-            },
-            {
-                header: 'Financement',
-                accessorKey: 'source_financement',
-                cell: (cell: any) => {
-                    const row = cell.row.original as LigneStage;
-
-                    return (
-                        <div>
-                            <div>{row.source_financement || '-'}</div>
-                            <div className="text-muted small">{row.type_stage || '-'}</div>
-                        </div>
-                    );
-                },
-            },
-            {
-                header: 'Structure',
-                accessorKey: 'type_structure.nom',
-                cell: (cell: any) => {
-                    const structure = (cell.row.original as LigneStage).type_structure;
-
-                    return (
-                        <Badge color={structure?.badge_couleur || 'secondary'} pill>
-                            {structure?.nom || 'Non renseigné'}
-                        </Badge>
-                    );
-                },
-            },
-            {
-                header: 'Paiement',
-                accessorKey: 'beneficiaire.type_paiement',
-                cell: (cell: any) => {
-                    const beneficiaire = (cell.row.original as LigneStage).beneficiaire;
-
-                    return (
-                        <div className="small">
-                            <span className="badge bg-light text-dark mb-1">{beneficiaire?.type_paiement || '-'}</span>
-                            {beneficiaire?.numero_tresor_money && beneficiaire.numero_tresor_money !== '-' && (
-                                <div>TM: {beneficiaire.numero_tresor_money}</div>
-                            )}
-                            {beneficiaire?.numero_wave && beneficiaire.numero_wave !== '-' && (
-                                <div>Wave: {beneficiaire.numero_wave}</div>
-                            )}
-                        </div>
-                    );
-                },
-            },
-            {
-                header: 'Statut',
-                accessorKey: 'statut_renouvellement',
-                cell: (cell: any) => statusBadge((cell.row.original as LigneStage).statut_renouvellement, currentTab),
-            },
-        ];
-
-        if (currentTab === 'ajourne') {
-            items.push({
-                header: 'Motif CA',
-                accessorKey: 'motif_ajournement',
-                cell: (cell: any) => (
-                    <span className="text-danger fw-semibold small">
-                        {(cell.row.original as LigneStage).motif_ajournement || '-'}
-                    </span>
-                ),
-            });
-        }
-
-        if (currentTab === 'chef_validation') {
-            items.push({
-                header: 'Demande',
-                accessorKey: 'date_demande',
-                cell: (cell: any) => {
-                    const row = cell.row.original as LigneStage;
-
-                    return (
-                        <div className="small">
-                            <div>{row.date_demande || row.created_at || '-'}</div>
-                            {row.motif && <div className="text-muted text-truncate" style={{ maxWidth: 180 }}>{row.motif}</div>}
-                        </div>
-                    );
-                },
-            });
-        }
-
-        items.push({
-            header: 'Actions',
-            enableSorting: false,
-            cell: (cell: any) => {
-                const row = cell.row.original as LigneStage;
-
-                if (currentTab === 'chef_validation') {
-                    return (
-                        <div className="d-flex gap-1">
-                            <Button color="soft-info" size="sm" title="Voir les détails" onClick={() => setDetailStage(row)}>
-                                <i className="ri-eye-line align-bottom"></i>
-                            </Button>
-                            <Button color="success" size="sm" onClick={() => validerParChefAgence(row)}>
-                                <i className="ri-check-line me-1"></i>Valider
-                            </Button>
-                            <Button color="danger" size="sm" onClick={() => ouvrirModalAjourner(row)}>
-                                <i className="ri-close-line me-1"></i>Ajourner
-                            </Button>
-                        </div>
-                    );
-                }
-
-                if (currentTab === 'ajourne') {
-                    return (
-                        <Button color="primary" size="sm" onClick={() => renvoyerAuChefAgence(row)}>
-                            <i className="ri-send-plane-line me-1"></i>Renvoyer au CA
-                        </Button>
-                    );
-                }
-
-                return (
-                    <Button color="success" size="sm" onClick={() => ouvrirModalRenouveler(row)}>
-                        <i className="ri-loop-right-line me-1"></i>Renouveler
-                    </Button>
-                );
-            },
-        });
-
-        return items;
-    })();
-
-    const tableData = useMemo(() => stages?.data ?? [], [stages?.data]);
-
-    const exportParams = useMemo(() => {
-        const params = new URLSearchParams({
-            onglet: currentTab,
-            ...nonEmptyParams(selectedFilters),
-        });
-
-        return params.toString();
-    }, [currentTab, selectedFilters]);
+    /* ═══════════════════════════════════════════════════════════
+       RENDU
+       ═══════════════════════════════════════════════════════════ */
 
     return (
         <React.Fragment>
@@ -857,285 +630,354 @@ const CipRenouvellementsIndex = ({
                         </Alert>
                     )}
 
-                    <Row className="g-3 mb-4">
-                        {tabs.map((tab) => (
-                            <Col lg={3} md={6} key={tab.key}>
-                                <Card
-                                    className="mb-0 shadow-sm border-0"
-                                    onClick={() => toggleTab(tab.key)}
-                                    style={{
-                                        cursor: 'pointer',
-                                        borderLeft: currentTab === tab.key
-                                            ? `4px solid var(--vz-${tab.color})`
-                                            : '4px solid transparent',
-                                        transition: 'border-left-color 0.2s ease',
-                                    }}
-                                >
-                                    <CardBody className="py-3">
-                                        <div className="d-flex align-items-center">
-                                            <div className="avatar-sm flex-shrink-0 me-3">
-                                                <span className={`avatar-title bg-${tab.color}-subtle text-${tab.color} rounded-circle fs-20`}>
-                                                    <i className={tab.icon}></i>
-                                                </span>
-                                            </div>
-                                            <div className="flex-grow-1">
-                                                <p className="text-muted text-uppercase fw-medium fs-12 mb-1">{tab.label.split('/')[0].trim()}</p>
-                                                <h3 className={`mb-0 text-${tab.color}`}>{tab.count}</h3>
-                                            </div>
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
-
-                    <Card className="shadow-sm border-0">
-                        <CardHeader className="bg-transparent border-bottom-0 pb-0">
-                            <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-                                <h4 className="card-title mb-0">
-                                    <i className="ri-loop-right-line me-2 text-primary"></i>
-                                    Espace de renouvellement de contrat
-                                </h4>
-                                <div className="d-flex gap-2">
-                                    <a href={`/cip/renouvellements/export?${exportParams}`} className="btn btn-soft-secondary btn-sm">
-                                        <i className="ri-file-excel-2-line me-1"></i>Exporter
-                                    </a>
-                                    <Button color="soft-secondary" size="sm" onClick={resetFilters}>
-                                        <i className="ri-refresh-line me-1"></i>Réinitialiser les filtres
-                                    </Button>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardBody>
-                            <Row className="g-3 mb-4">
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Agence</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.agence_id}
-                                        onChange={(e) => handleFilterChange('agence_id', e.target.value, true)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {Object.entries(agences).map(([id, nom]) => (
-                                            <option key={id} value={id}>{nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Entreprise</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.entreprise_id}
-                                        onChange={(e) => handleFilterChange('entreprise_id', e.target.value, true)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {Object.entries(entreprises).map(([id, nom]) => (
-                                            <option key={id} value={id}>{nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Financement</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.source_financement_id}
-                                        onChange={(e) => handleFilterChange('source_financement_id', e.target.value, true)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {Object.entries(typesfinancements).map(([id, nom]) => (
-                                            <option key={id} value={id}>{nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Type de stage</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.type_stage_id}
-                                        onChange={(e) => handleFilterChange('type_stage_id', e.target.value, true)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {Object.entries(typestages).map(([id, nom]) => (
-                                            <option key={id} value={id}>{nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Type structure</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.type_structure_id}
-                                        onChange={(e) => handleFilterChange('type_structure_id', e.target.value, true)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {Object.entries(typesstructures).map(([id, nom]) => (
-                                            <option key={id} value={id}>{nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Date début</Label>
-                                    <Input
-                                        type="date"
-                                        bsSize="sm"
-                                        value={selectedFilters.date_debut}
-                                        onChange={(e) => handleFilterChange('date_debut', e.target.value)}
-                                    />
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Date fin</Label>
-                                    <Input
-                                        type="date"
-                                        bsSize="sm"
-                                        value={selectedFilters.date_fin}
-                                        onChange={(e) => handleFilterChange('date_fin', e.target.value)}
-                                    />
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Recherche</Label>
-                                    <div className="d-flex gap-2">
-                                        <Input
-                                            bsSize="sm"
-                                            placeholder="Nom, AEJ, entreprise..."
-                                            value={selectedFilters.recherche}
-                                            onChange={(e) => handleFilterChange('recherche', e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    applyFilters();
-                                                }
-                                            }}
-                                        />
-                                        <Button color="primary" size="sm" onClick={applyFilters}>
-                                            <i className="ri-search-line"></i>
-                                        </Button>
-                                    </div>
-                                </Col>
-                            </Row>
-
-                            <Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
-                                {tabs.map((tab) => (
-                                    <NavItem key={tab.key}>
+                    <Card>
+                        {/* ─── Onglets dans le CardHeader (style Visas) ─── */}
+                        <CardHeader className="border-0 pb-0">
+                            <Nav tabs className="nav-tabs-custom nav-success flex-wrap">
+                                {ongletsVisibles.map((item) => (
+                                    <NavItem key={item.id}>
                                         <NavLink
-                                            className={classnames({ active: currentTab === tab.key }, 'fw-semibold py-3')}
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => toggleTab(tab.key)}
+                                            href="#"
+                                            className={classnames({ active: currentTab === item.id }, 'cursor-pointer')}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                toggleTab(item.id);
+                                            }}
                                         >
-                                            <i className={`${tab.icon} me-1`}></i>
-                                            {tab.label}
-                                            <Badge color={tab.color} pill className="ms-2">
-                                                {tab.count}
+                                            <i className={`${item.icon} me-1`}></i>
+                                            {item.label}
+                                            <Badge color="light" className="text-body ms-1">
+                                                {compteurs[item.compteur] ?? 0}
                                             </Badge>
                                         </NavLink>
                                     </NavItem>
                                 ))}
                             </Nav>
+                        </CardHeader>
 
-                            <TabContent activeTab={currentTab} className="pt-4">
-                                <TabPane tabId={currentTab}>
-                                    <Row className="mb-3 align-items-center">
-                                        <Col md={7}>
-                                            {currentTab === 'attente' && (
-                                                <Alert color="warning" className="border-0 mb-md-0">
-                                                    <i className="ri-time-line me-1"></i>
-                                                    Stagiaires arrivés à terme et disponibles pour renouvellement.
-                                                </Alert>
-                                            )}
-                                            {currentTab === 'anticipe' && (
-                                                <Alert color="info" className="border-0 mb-md-0">
-                                                    <i className="ri-calendar-event-line me-1"></i>
-                                                    Stagiaires dont le contrat peut être anticipé avant échéance.
-                                                </Alert>
-                                            )}
-                                            {currentTab === 'ajourne' && (
-                                                <Alert color="danger" className="border-0 mb-md-0">
-                                                    <i className="ri-arrow-go-back-line me-1"></i>
-                                                    Renouvellements retournés par le Chef d’agence pour correction CIP.
-                                                </Alert>
-                                            )}
-                                            {currentTab === 'chef_validation' && (
-                                                <Alert color="primary" className="border-0 mb-md-0">
-                                                    <i className="ri-shield-check-line me-1"></i>
-                                                    Renouvellements soumis par les CIP en attente de décision Chef d’agence.
-                                                </Alert>
-                                            )}
-                                        </Col>
-                                        <Col md={5} className="text-md-end">
-                                            {currentTab === 'chef_validation' ? (
-                                                <div className="d-inline-flex gap-2">
-                                                    <Button
-                                                        color="success"
-                                                        className="btn-label waves-effect waves-light"
-                                                        disabled={selectedIds.length === 0}
-                                                        onClick={validerSelectionGroupe}
-                                                    >
-                                                        <i className="ri-check-double-line label-icon align-middle fs-16 me-2"></i>
-                                                        Valider la sélection
-                                                    </Button>
-                                                    <Button
-                                                        color="danger"
-                                                        outline
-                                                        disabled={selectedIds.length === 0}
-                                                        onClick={ouvrirModalAjournementGroupe}
-                                                    >
-                                                        <i className="ri-close-circle-line me-1"></i>Ajourner
-                                                    </Button>
-                                                </div>
-                                            ) : (
-                                                <Button
-                                                    color="primary"
-                                                    className="btn-label waves-effect waves-light"
-                                                    disabled={selectedIds.length === 0 || currentTab === 'ajourne'}
-                                                    onClick={renouvelerSelectionGroupe}
-                                                >
-                                                    <i className="ri-loop-right-line label-icon align-middle fs-16 me-2"></i>
-                                                    Renouveler la sélection
-                                                </Button>
-                                            )}
-                                        </Col>
-                                    </Row>
-                                </TabPane>
-                            </TabContent>
+                        {/* ─── Filtres (CardBody dédié, style Visas) ─── */}
+                        <CardBody className="border-bottom">
+                            <Row className="g-2">
+                                <Col md={3}>
+                                    <Label className="form-label">Agence</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.agence_id}
+                                        onChange={(e) => handleFilterChange('agence_id', e.target.value)}
+                                    >
+                                        <option value="">Toutes</option>
+                                        {Object.entries(agences).map(([id, nom]) => (
+                                            <option key={id} value={id}>{nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Entreprise</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.entreprise_id}
+                                        onChange={(e) => handleFilterChange('entreprise_id', e.target.value)}
+                                    >
+                                        <option value="">Toutes</option>
+                                        {Object.entries(entreprises).map(([id, nom]) => (
+                                            <option key={id} value={id}>{nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Financement</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.source_financement_id}
+                                        onChange={(e) => handleFilterChange('source_financement_id', e.target.value)}
+                                    >
+                                        <option value="">Tous</option>
+                                        {Object.entries(typesfinancements).map(([id, nom]) => (
+                                            <option key={id} value={id}>{nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Type de stage</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.type_stage_id}
+                                        onChange={(e) => handleFilterChange('type_stage_id', e.target.value)}
+                                    >
+                                        <option value="">Tous</option>
+                                        {Object.entries(typestages).map(([id, nom]) => (
+                                            <option key={id} value={id}>{nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Type de structure</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.type_structure_id}
+                                        onChange={(e) => handleFilterChange('type_structure_id', e.target.value)}
+                                    >
+                                        <option value="">Tous</option>
+                                        {Object.entries(typesstructures).map(([id, nom]) => (
+                                            <option key={id} value={id}>{nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Date début (à partir du)</Label>
+                                    <Input
+                                        type="date"
+                                        value={selectedFilters.date_debut}
+                                        onChange={(e) => handleFilterChange('date_debut', e.target.value)}
+                                    />
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Date fin (jusqu'au)</Label>
+                                    <Input
+                                        type="date"
+                                        value={selectedFilters.date_fin}
+                                        onChange={(e) => handleFilterChange('date_fin', e.target.value)}
+                                    />
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Recherche</Label>
+                                    <Input
+                                        type="text"
+                                        value={selectedFilters.recherche}
+                                        onChange={(e) => handleFilterChange('recherche', e.target.value)}
+                                        placeholder="Nom, AEJ, entreprise…"
+                                    />
+                                </Col>
+                                <Col md={6} className="d-flex align-items-end gap-2">
+                                    <Button color="primary" onClick={appliquerFiltres}>
+                                        <i className="ri-search-line align-bottom me-1" /> Filtrer
+                                    </Button>
+                                    <Button color="light" onClick={reinitialiser}>Réinitialiser</Button>
+                                    <Button color="success" outline onClick={exporter}>
+                                        <i className="ri-download-2-line align-bottom me-1" /> Export CSV
+                                    </Button>
+                                </Col>
+                            </Row>
+                        </CardBody>
 
+                        {/* ─── Tableau (CardBody dédié, style Visas) ─── */}
+                        <CardBody>
                             {selectedIds.length > 0 && (
-                                <Alert color="info" className="border-0 d-flex align-items-center justify-content-between py-2">
+                                <Alert color="info" className="border-0 d-flex align-items-center justify-content-between py-2 mb-3">
                                     <span className="fw-semibold">
                                         <i className="ri-checkbox-line me-1"></i>
                                         {selectedIds.length} dossier(s) sélectionné(s)
                                     </span>
-                                    <Button color="soft-secondary" size="sm" onClick={() => setSelectedIds([])}>
-                                        Désélectionner
-                                    </Button>
+                                    <div className="d-flex gap-2">
+                                        {(currentTab === 'attente' || currentTab === 'anticipe') && (
+                                            <Button color="success" size="sm" onClick={renouvelerSelectionGroupe}>
+                                                <i className="ri-loop-right-line me-1"></i>Renouveler la sélection
+                                            </Button>
+                                        )}
+                                        {currentTab === 'chef_validation' && (
+                                            <>
+                                                <Button color="success" size="sm" onClick={validerSelectionGroupe}>
+                                                    <i className="ri-check-double-line me-1"></i>Valider la sélection
+                                                </Button>
+                                                <Button color="danger" size="sm" outline onClick={ouvrirModalAjournementGroupe}>
+                                                    <i className="ri-close-circle-line me-1"></i>Ajourner la sélection
+                                                </Button>
+                                            </>
+                                        )}
+                                        <Button color="soft-secondary" size="sm" onClick={() => setSelectedIds([])}>
+                                            Désélectionner
+                                        </Button>
+                                    </div>
                                 </Alert>
                             )}
 
-                            <TableContainerReactTable
-                                columns={columns}
-                                data={tableData}
-                                isGlobalFilter={false}
-                                customPageSize={stages?.data?.length || 20}
-                                divClass="table-responsive table-card mt-1 mb-1"
-                                tableClass="align-middle table-nowrap table-hover"
-                                theadClass={currentTab === 'attente' ? 'table-success' : 'table-light'}
-                                SearchPlaceholder="Recherche..."
-                                isServerPagination={true}
-                                serverPagination={stages}
-                                onPageChange={(page: number) => navigate(currentTab, selectedFilters, { page })}
-                            />
-                            <div className="d-flex justify-content-between align-items-center text-muted small mt-2">
-                                <span>
-                                    Affichage {stages?.from ?? 0} à {stages?.to ?? 0} sur {stages?.total ?? 0} dossier(s)
-                                </span>
+                            <div className="table-responsive">
+                                <Table className="table-sm align-middle table-nowrap mb-0">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th style={{ width: 40 }}>
+                                                <div className="form-check">
+                                                    <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        checked={selectableIds.length > 0 && selectedIds.length === selectableIds.length}
+                                                        onChange={toggleSelectAll}
+                                                    />
+                                                </div>
+                                            </th>
+                                            <th>Bénéficiaire</th>
+                                            <th>N° AEJ</th>
+                                            <th>Début</th>
+                                            <th>Fin prévue</th>
+                                            {currentTab === 'ajourne' && <th>Nouvelle fin</th>}
+                                            {currentTab === 'anticipe' && <th>Jours restants</th>}
+                                            <th>Entreprise</th>
+                                            <th>Agence</th>
+                                            <th>Financement</th>
+                                            <th>Type stage</th>
+                                            <th>Structure</th>
+                                            <th>Paiement</th>
+                                            <th>Statut</th>
+                                            {currentTab === 'ajourne' && <th>Motif CA</th>}
+                                            {currentTab === 'chef_validation' && <th>Demande</th>}
+                                            <th className="text-end">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(stages?.data ?? []).map((row) => {
+                                            const rowId = currentTab === 'chef_validation' ? row.avenant_id : row.id;
+
+                                            return (
+                                                <tr key={row.id}>
+                                                    <td>
+                                                        <div className="form-check">
+                                                            <input
+                                                                type="checkbox"
+                                                                className="form-check-input"
+                                                                disabled={!rowId}
+                                                                checked={Boolean(rowId && selectedIds.includes(rowId))}
+                                                                onChange={() => toggleSelectRow(rowId)}
+                                                            />
+                                                        </div>
+                                                    </td>
+                                                    <td>
+                                                        <div className="fw-semibold text-dark">
+                                                            {row.beneficiaire?.nom} {row.beneficiaire?.prenoms}
+                                                        </div>
+                                                        <div className="text-muted small">{row.beneficiaire?.sexe || '-'}</div>
+                                                    </td>
+                                                    <td>{row.beneficiaire?.matricule || '-'}</td>
+                                                    <td className="text-nowrap">{formatDateFr(row.date_debut)}</td>
+                                                    <td className="text-nowrap">{formatDateFr(row.date_fin_prevue)}</td>
+                                                    {currentTab === 'ajourne' && (
+                                                        <td className="text-nowrap text-success fw-semibold">
+                                                            {row.nouvelle_date_fin ? formatDateFr(row.nouvelle_date_fin) : '-'}
+                                                        </td>
+                                                    )}
+                                                    {currentTab === 'anticipe' && (
+                                                        <td>
+                                                            {row.jours_restants !== null ? (
+                                                                <Badge color="info" pill>J-{row.jours_restants}</Badge>
+                                                            ) : (
+                                                                '-'
+                                                            )}
+                                                        </td>
+                                                    )}
+                                                    <td>
+                                                        <div className="text-truncate" style={{ maxWidth: 180 }} title={row.entreprise}>
+                                                            {row.entreprise || '-'}
+                                                        </div>
+                                                    </td>
+                                                    <td>{row.agence || '-'}</td>
+                                                    <td>{row.source_financement || '-'}</td>
+                                                    <td>{row.type_stage || '-'}</td>
+                                                    <td>
+                                                        <Badge color={row.type_structure?.badge_couleur || 'secondary'} pill>
+                                                            {row.type_structure?.nom || 'Non renseigné'}
+                                                        </Badge>
+                                                    </td>
+                                                    <td>
+                                                        <span className="badge bg-light text-dark">{row.beneficiaire?.type_paiement || '-'}</span>
+                                                        {row.beneficiaire?.numero_tresor_money && row.beneficiaire.numero_tresor_money !== '-' && (
+                                                            <div className="text-muted small">TM: {row.beneficiaire.numero_tresor_money}</div>
+                                                        )}
+                                                        {row.beneficiaire?.numero_wave && row.beneficiaire.numero_wave !== '-' && (
+                                                            <div className="text-muted small">Wave: {row.beneficiaire.numero_wave}</div>
+                                                        )}
+                                                    </td>
+                                                    <td>{statusBadge(row.statut_renouvellement, currentTab)}</td>
+                                                    {currentTab === 'ajourne' && (
+                                                        <td>
+                                                            <span className="text-danger fw-semibold small">
+                                                                {row.motif_ajournement || '-'}
+                                                            </span>
+                                                        </td>
+                                                    )}
+                                                    {currentTab === 'chef_validation' && (
+                                                        <td>
+                                                            <div className="small">
+                                                                <div>{row.date_demande || row.created_at || '-'}</div>
+                                                                {row.motif && (
+                                                                    <div className="text-muted text-truncate" style={{ maxWidth: 180 }}>
+                                                                        {row.motif}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                    <td className="text-end">
+                                                        <div className="d-flex gap-1 justify-content-end">
+                                                            {currentTab === 'chef_validation' && (
+                                                                <>
+                                                                    <Button
+                                                                        color="light"
+                                                                        size="sm"
+                                                                        title="Voir les détails"
+                                                                        onClick={() => setDetailStage(row)}
+                                                                    >
+                                                                        <i className="ri-eye-line align-bottom"></i>
+                                                                    </Button>
+                                                                    <Button
+                                                                        color="success"
+                                                                        size="sm"
+                                                                        onClick={() => validerParChefAgence(row)}
+                                                                    >
+                                                                        <i className="ri-check-line me-1"></i>Valider
+                                                                    </Button>
+                                                                    <Button
+                                                                        color="danger"
+                                                                        size="sm"
+                                                                        onClick={() => ouvrirModalAjourner(row)}
+                                                                    >
+                                                                        <i className="ri-close-line me-1"></i>Ajourner
+                                                                    </Button>
+                                                                </>
+                                                            )}
+                                                            {currentTab === 'ajourne' && (
+                                                                <Button
+                                                                    color="primary"
+                                                                    size="sm"
+                                                                    onClick={() => renvoyerAuChefAgence(row)}
+                                                                >
+                                                                    <i className="ri-send-plane-line me-1"></i>Renvoyer au CA
+                                                                </Button>
+                                                            )}
+                                                            {(currentTab === 'attente' || currentTab === 'anticipe') && (
+                                                                <Button
+                                                                    color="success"
+                                                                    size="sm"
+                                                                    onClick={() => ouvrirModalRenouveler(row)}
+                                                                >
+                                                                    <i className="ri-loop-right-line me-1"></i>Renouveler
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                        {(stages?.data ?? []).length === 0 && (
+                                            <tr>
+                                                <td colSpan={14} className="text-center">
+                                                    Aucun dossier dans cette corbeille.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </Table>
                             </div>
+
+                            {stages && (
+                                <ServerPagination pagination={normalizePagination(stages)} itemLabel="dossiers" />
+                            )}
                         </CardBody>
                     </Card>
                 </Container>
             </div>
 
+            {/* ═══════════════════════════════════════════
+                MODALE 1 — Renouvellement de contrat
+               ═══════════════════════════════════════════ */}
             <Modal isOpen={aRenouveler !== null} toggle={fermerModalRenouveler} size="lg" centered>
                 <ModalHeader toggle={fermerModalRenouveler}>
                     <i className="ri-loop-right-line me-2 text-success"></i>
@@ -1326,7 +1168,7 @@ const CipRenouvellementsIndex = ({
                                     </>
                                 ) : (
                                     <>
-                                        <i className="ri-send-plane-line me-1"></i>Soumettre au chef d’agence
+                                        <i className="ri-send-plane-line me-1"></i>Soumettre au chef d'agence
                                     </>
                                 )}
                             </Button>
@@ -1335,6 +1177,9 @@ const CipRenouvellementsIndex = ({
                 </form>
             </Modal>
 
+            {/* ═══════════════════════════════════════════
+                MODALE 2 — Ajourner le renouvellement
+               ═══════════════════════════════════════════ */}
             <Modal isOpen={aAjourner !== null || isAjournementGroupe} toggle={fermerModalAjournement} centered>
                 <ModalHeader toggle={fermerModalAjournement} className="bg-danger-subtle">
                     <i className="ri-error-warning-line me-2 text-danger"></i>
@@ -1376,6 +1221,9 @@ const CipRenouvellementsIndex = ({
                 </ModalFooter>
             </Modal>
 
+            {/* ═══════════════════════════════════════════
+                MODALE 3 — Détails du renouvellement
+               ═══════════════════════════════════════════ */}
             <Modal isOpen={detailStage !== null} toggle={() => setDetailStage(null)} size="lg" centered>
                 <ModalHeader toggle={() => setDetailStage(null)}>
                     <i className="ri-eye-line me-2 text-primary"></i>
@@ -1383,55 +1231,51 @@ const CipRenouvellementsIndex = ({
                 </ModalHeader>
                 <ModalBody>
                     {detailStage && (
-                        <>
-                            <Row className="mb-3">
-                                <Col md={6}>
-                                    <h6 className="text-primary border-bottom pb-1">Bénéficiaire</h6>
-                                    <div><strong>Nom & prénoms :</strong> {detailStage.beneficiaire.nom} {detailStage.beneficiaire.prenoms}</div>
-                                    <div><strong>Matricule AEJ :</strong> {detailStage.beneficiaire.matricule || '-'}</div>
-                                    <div><strong>Date de naissance :</strong> {detailStage.beneficiaire.date_naissance || '-'}</div>
-                                    <div><strong>Sexe :</strong> {detailStage.beneficiaire.sexe || '-'}</div>
-                                    <div><strong>Moyen paiement :</strong> {detailStage.beneficiaire.type_paiement || '-'}</div>
-                                </Col>
-                                <Col md={6}>
-                                    <h6 className="text-primary border-bottom pb-1">Stage & entreprise</h6>
-                                    <div><strong>Entreprise :</strong> {detailStage.entreprise || '-'}</div>
-                                    <div><strong>Agence :</strong> {detailStage.agence || '-'}</div>
-                                    <div><strong>Financement :</strong> {detailStage.source_financement || '-'}</div>
-                                    <div><strong>Type stage :</strong> {detailStage.type_stage || '-'}</div>
-                                    <div><strong>Type structure :</strong> {detailStage.type_structure?.nom || 'Non renseigné'}</div>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col md={12}>
-                                    <h6 className="text-primary border-bottom pb-1">Dates & avenant</h6>
-                                    <div><strong>Période initiale :</strong> Du {detailStage.date_debut || '-'} au {detailStage.date_fin_prevue || '-'}</div>
-                                    {detailStage.nouvelle_date_fin && (
-                                        <div className="text-success fw-bold">
-                                            <strong>Nouvelle date fin demandée :</strong> {detailStage.nouvelle_date_fin}
-                                        </div>
-                                    )}
-                                    {detailStage.motif && (
-                                        <div className="mt-2">
-                                            <strong>Motif proposé :</strong> {detailStage.motif}
-                                        </div>
-                                    )}
-                                    {detailStage.document_avenant_path && (
-                                        <div className="mt-2">
-                                            <strong>Fichier joint :</strong>
-                                            <a
-                                                href={`/storage/${detailStage.document_avenant_path}`}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="btn btn-sm btn-outline-primary ms-2"
-                                            >
-                                                <i className="ri-attachment-line me-1"></i>Télécharger le document joint
-                                            </a>
-                                        </div>
-                                    )}
-                                </Col>
-                            </Row>
-                        </>
+                        <Row className="g-3">
+                            <Col md={6}>
+                                <h6 className="text-primary border-bottom pb-1">Bénéficiaire</h6>
+                                <div><strong>Nom & prénoms :</strong> {detailStage.beneficiaire.nom} {detailStage.beneficiaire.prenoms}</div>
+                                <div><strong>Matricule AEJ :</strong> {detailStage.beneficiaire.matricule || '-'}</div>
+                                <div><strong>Date de naissance :</strong> {detailStage.beneficiaire.date_naissance || '-'}</div>
+                                <div><strong>Sexe :</strong> {detailStage.beneficiaire.sexe || '-'}</div>
+                                <div><strong>Moyen paiement :</strong> {detailStage.beneficiaire.type_paiement || '-'}</div>
+                            </Col>
+                            <Col md={6}>
+                                <h6 className="text-primary border-bottom pb-1">Stage & entreprise</h6>
+                                <div><strong>Entreprise :</strong> {detailStage.entreprise || '-'}</div>
+                                <div><strong>Agence :</strong> {detailStage.agence || '-'}</div>
+                                <div><strong>Financement :</strong> {detailStage.source_financement || '-'}</div>
+                                <div><strong>Type stage :</strong> {detailStage.type_stage || '-'}</div>
+                                <div><strong>Type structure :</strong> {detailStage.type_structure?.nom || 'Non renseigné'}</div>
+                            </Col>
+                            <Col md={12}>
+                                <h6 className="text-primary border-bottom pb-1">Dates & avenant</h6>
+                                <div><strong>Période initiale :</strong> Du {detailStage.date_debut || '-'} au {detailStage.date_fin_prevue || '-'}</div>
+                                {detailStage.nouvelle_date_fin && (
+                                    <div className="text-success fw-bold">
+                                        <strong>Nouvelle date fin demandée :</strong> {detailStage.nouvelle_date_fin}
+                                    </div>
+                                )}
+                                {detailStage.motif && (
+                                    <div className="mt-2">
+                                        <strong>Motif proposé :</strong> {detailStage.motif}
+                                    </div>
+                                )}
+                                {detailStage.document_avenant_path && (
+                                    <div className="mt-2">
+                                        <strong>Fichier joint :</strong>
+                                        <a
+                                            href={`/storage/${detailStage.document_avenant_path}`}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="btn btn-sm btn-outline-primary ms-2"
+                                        >
+                                            <i className="ri-attachment-line me-1"></i>Télécharger le document joint
+                                        </a>
+                                    </div>
+                                )}
+                            </Col>
+                        </Row>
                     )}
                 </ModalBody>
                 <ModalFooter>
@@ -1449,7 +1293,7 @@ const CipRenouvellementsIndex = ({
                             <i className="ri-file-pdf-line me-1"></i>Aperçu avenant PDF
                         </Button>
                     )}
-                    <Button color="secondary" onClick={() => setDetailStage(null)}>
+                    <Button color="light" onClick={() => setDetailStage(null)}>
                         Fermer
                     </Button>
                 </ModalFooter>

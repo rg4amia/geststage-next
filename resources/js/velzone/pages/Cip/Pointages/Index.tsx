@@ -21,11 +21,10 @@ import {
     NavLink,
     Row,
     Spinner,
-    TabContent,
-    TabPane,
+    Table,
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
+import ServerPagination, { normalizePagination } from '../../../Components/Common/ServerPagination';
 
 /* ─── Types ─── */
 interface PageProps {
@@ -38,15 +37,24 @@ interface PageProps {
     typesStage: { id: number; nom: string }[];
     periodes: { id: number; code: string }[];
     periode: { id: number; code: string } | null;
-    counts: { attente: number; effectue: number; ajourne_ca: number; ajourne_dmg: number };
+    counts: { attente: number; attente_pejedec: number; effectue: number; ajourne_ca: number; ajourne_dmg: number };
     situationsStage: { id: number; code: string; nom: string }[];
 }
+
+/* ─── Constantes onglets ─── */
+const ONGLETS = [
+    { id: 'attente', label: 'ATTENTE POINTAGE', compteur: 'attente' as const, color: 'warning', icon: 'ri-time-line' },
+    { id: 'attente_pejedec', label: 'ATTENTE PEJEDEC', compteur: 'attente_pejedec' as const, color: 'info', icon: 'ri-file-text-line' },
+    { id: 'effectue', label: 'POINTAGE EFFECTUÉ', compteur: 'effectue' as const, color: 'success', icon: 'ri-check-double-line' },
+    { id: 'ajourne_ca', label: 'AJOURNÉ / CHEF AGENCE', compteur: 'ajourne_ca' as const, color: 'danger', icon: 'ri-arrow-go-back-line' },
+    { id: 'ajourne_dmg', label: 'AJOURNÉ / DMG', compteur: 'ajourne_dmg' as const, color: 'secondary', icon: 'ri-arrow-go-back-fill' },
+];
 
 /* ─── Helpers ─── */
 const formatDateFr = (dateStr: string | null | undefined) => {
     if (!dateStr) {
-return '-';
-}
+        return '-';
+    }
 
     try {
         return new Date(dateStr).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -67,6 +75,14 @@ const statusBadge = (statut: string) => {
     const s = map[statut] || { color: 'secondary', label: statut || '-' };
 
     return <span className={`badge bg-${s.color}-subtle text-${s.color}`}>{s.label}</span>;
+};
+
+const MESSAGES_ONGLET: Record<string, { color: string; icon: string; message: string }> = {
+    attente: { color: 'warning', icon: 'ri-time-line', message: 'Stagiaires en attente de pointage de présence pour la période sélectionnée.' },
+    attente_pejedec: { color: 'info', icon: 'ri-file-text-line', message: 'Stagiaires PEJEDEC en attente de pointage de présence.' },
+    effectue: { color: 'success', icon: 'ri-check-double-line', message: 'Pointages de présence déjà soumis pour la période sélectionnée.' },
+    ajourne_ca: { color: 'danger', icon: 'ri-arrow-go-back-line', message: 'Pointages retournés par le Chef d\'Agence pour correction.' },
+    ajourne_dmg: { color: 'secondary', icon: 'ri-arrow-go-back-fill', message: 'Pointages ajournés par la DMG pour correction.' },
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -127,13 +143,13 @@ const PointagesIndex = (props: PageProps) => {
     const [corrigerJours, setCorrigerJours] = useState(30);
 
     /* ─── Navigation / Filtres ─── */
-    const applyFilters = useCallback(
+    const naviguer = useCallback(
         (activeTab: string, currentFilters: typeof selectedFilters) => {
             const params: Record<string, string> = { tab: activeTab };
             Object.entries(currentFilters).forEach(([key, val]) => {
                 if (val) {
-params[key] = val;
-}
+                    params[key] = val;
+                }
             });
             router.get('/cip/pointages', params, {
                 preserveState: true,
@@ -146,17 +162,19 @@ params[key] = val;
     const toggleTab = (t: string) => {
         if (currentTab !== t) {
             setCurrentTab(t);
-            applyFilters(t, selectedFilters);
+            naviguer(t, selectedFilters);
         }
     };
 
     const handleFilterChange = (field: string, value: string) => {
-        const newFilters = { ...selectedFilters, [field]: value };
-        setSelectedFilters(newFilters);
-        applyFilters(currentTab, newFilters);
+        setSelectedFilters((prev) => ({ ...prev, [field]: value }));
     };
 
-    const resetFilters = () => {
+    const appliquerFiltres = () => {
+        naviguer(currentTab, selectedFilters);
+    };
+
+    const reinitialiser = () => {
         const defaultFilters = {
             mois: '',
             agence_id: '',
@@ -166,22 +184,22 @@ params[key] = val;
             search: '',
         };
         setSelectedFilters(defaultFilters);
-        applyFilters(currentTab, defaultFilters);
+        naviguer(currentTab, defaultFilters);
     };
 
     /* ─── Pointage Batch ─── */
     const handleBatchSubmit = () => {
         if (!data?.data || data.data.length === 0) {
-return;
-}
+            return;
+        }
 
         setBatchModalOpen(true);
     };
 
     const confirmBatchSubmit = () => {
         if (isProcessing) {
-return;
-}
+            return;
+        }
 
         setIsProcessing(true);
 
@@ -217,8 +235,8 @@ return;
 
     const confirmAbandon = () => {
         if (isProcessing) {
-return;
-}
+            return;
+        }
 
         setIsProcessing(true);
 
@@ -246,8 +264,8 @@ return;
                 setAbandonData({ stage_id: 0, stage_name: '', situation_stage_code: '', observation: '' });
 
                 if (justificatifRef.current) {
-justificatifRef.current.value = '';
-}
+                    justificatifRef.current.value = '';
+                }
             },
             onFinish: () => setIsProcessing(false),
         });
@@ -265,8 +283,8 @@ justificatifRef.current.value = '';
 
     const confirmAnnuler = () => {
         if (!annulerTarget || isProcessing) {
-return;
-}
+            return;
+        }
 
         setIsProcessing(true);
         router.delete(`/cip/pointages/${annulerTarget.id}/annuler`, {
@@ -289,8 +307,8 @@ return;
 
     const confirmCorrigerDmg = () => {
         if (!corrigerTarget || isProcessing) {
-return;
-}
+            return;
+        }
 
         setIsProcessing(true);
         router.post(`/cip/pointages/corriger-ajournement-dmg/${corrigerTarget.id}`, {
@@ -305,344 +323,20 @@ return;
         });
     };
 
-    /* ─── Colonnes du tableau ─── */
+    /* ─── Données helper ─── */
     const getStageData = useCallback(
         (row: any) => ((currentTab === 'attente' || currentTab === 'attente_pejedec') ? row : row.stage || row),
         [currentTab],
     );
-
-    const columnsAttente = useMemo(
-        () => [
-            {
-                header: '#',
-                cell: (cell: any) => cell.row.index + 1,
-                size: 50,
-            },
-            {
-                header: 'Agent Saisie',
-                cell: () => <span className="text-muted">CIP</span>,
-            },
-            {
-                header: 'Agence',
-                cell: (cell: any) => getStageData(cell.row.original)?.agence?.nom || '-',
-            },
-            {
-                header: 'Entreprise',
-                cell: (cell: any) => getStageData(cell.row.original)?.entreprise?.raison_sociale || '-',
-            },
-            {
-                header: 'Financement',
-                cell: (cell: any) => getStageData(cell.row.original)?.sourceFinancement?.nom || getStageData(cell.row.original)?.source_financement?.nom || '-',
-            },
-            {
-                header: 'Type Stage',
-                cell: (cell: any) => getStageData(cell.row.original)?.typeStage?.nom || getStageData(cell.row.original)?.type_stage?.nom || 'Stage de qualification',
-            },
-            {
-                header: 'Date début',
-                cell: (cell: any) => formatDateFr(getStageData(cell.row.original)?.date_debut),
-            },
-            {
-                header: 'Date fin',
-                cell: (cell: any) => formatDateFr(getStageData(cell.row.original)?.date_fin_prevue),
-            },
-            {
-                header: 'N° AEJ',
-                cell: (cell: any) => getStageData(cell.row.original)?.beneficiaire?.numero_aej || '-',
-            },
-            {
-                header: 'Nom et prénoms',
-                cell: (cell: any) => {
-                    const stage = getStageData(cell.row.original);
-                    const nom = stage?.beneficiaire?.nom || '';
-                    const prenoms = stage?.beneficiaire?.prenoms || '';
-
-                    return <span className="fw-medium">{nom} {prenoms}</span>;
-                },
-            },
-            {
-                header: 'Date naissance',
-                cell: (cell: any) => formatDateFr(getStageData(cell.row.original)?.beneficiaire?.date_naissance),
-            },
-            {
-                header: 'Sexe',
-                cell: (cell: any) => getStageData(cell.row.original)?.beneficiaire?.sexe || '-',
-            },
-            {
-                header: 'Actions',
-                cell: (cell: any) => {
-                    const row = cell.row.original;
-
-                    return (
-                        <div className="d-flex gap-1">
-                            <Button color="success" size="sm" outline onClick={() => openAbandonModal(row)} title="Pointage individuel / Status">
-                                <i className="ri-check-line me-1"></i>Status
-                            </Button>
-                        </div>
-                    );
-                },
-            },
-        ],
-        [getStageData],
-    );
-
-    const columnsEffectue = useMemo(
-        () => [
-            {
-                header: '#',
-                cell: (cell: any) => cell.row.index + 1,
-                size: 50,
-            },
-            {
-                header: 'Agent Saisie',
-                cell: (cell: any) => {
-                    const ver = cell.row.original.versionCourante || cell.row.original.version_courante;
-                    const agent = ver?.saisi_par || ver?.saisiPar;
-
-                    return agent?.name || agent?.nom || '-';
-                },
-            },
-            {
-                header: 'Mois',
-                cell: (cell: any) => (
-                    <span className="badge bg-info text-white">{cell.row.original.periode?.code || '-'}</span>
-                ),
-            },
-            {
-                header: 'Agence',
-                cell: (cell: any) => getStageData(cell.row.original)?.agence?.nom || '-',
-            },
-            {
-                header: 'Entreprise',
-                cell: (cell: any) => getStageData(cell.row.original)?.entreprise?.raison_sociale || '-',
-            },
-            {
-                header: 'Financement',
-                cell: (cell: any) => {
-                    const stage = getStageData(cell.row.original);
-
-                    return stage?.sourceFinancement?.nom || stage?.source_financement?.nom || '-';
-                },
-            },
-            {
-                header: 'Type de stage',
-                cell: (cell: any) => {
-                    const stage = getStageData(cell.row.original);
-
-                    return stage?.typeStage?.nom || stage?.type_stage?.nom || '-';
-                },
-            },
-            {
-                header: 'N° AEJ',
-                cell: (cell: any) => getStageData(cell.row.original)?.beneficiaire?.numero_aej || '-',
-            },
-            {
-                header: 'Nom et prénoms',
-                cell: (cell: any) => {
-                    const stage = getStageData(cell.row.original);
-
-                    return `${stage?.beneficiaire?.nom || ''} ${stage?.beneficiaire?.prenoms || ''}`;
-                },
-            },
-            {
-                header: 'Statut',
-                cell: (cell: any) => statusBadge(cell.row.original.statut),
-            },
-            {
-                header: 'Actions',
-                cell: (cell: any) => {
-                    const row = cell.row.original;
-                    const canCancel = row.statut === 'SOUMIS';
-
-                    return (
-                        <div className="d-flex gap-1">
-                            {canCancel && (
-                                <Button color="warning" size="sm" outline onClick={() => openAnnulerModal(row)} title="Annuler le pointage">
-                                    <i className="ri-close-circle-line me-1"></i>Annuler
-                                </Button>
-                            )}
-                        </div>
-                    );
-                },
-            },
-        ],
-        [getStageData],
-    );
-
-    const columnsAjourneCA = useMemo(
-        () => [
-            {
-                header: '#',
-                cell: (cell: any) => cell.row.index + 1,
-                size: 50,
-            },
-            {
-                header: 'Agent Saisie',
-                cell: (cell: any) => {
-                    const ver = cell.row.original.versionCourante || cell.row.original.version_courante;
-
-                    return ver?.saisi_par?.name || ver?.saisiPar?.name || 'CIP';
-                },
-            },
-            {
-                header: 'Mois',
-                cell: (cell: any) => (
-                    <span className="badge bg-warning text-dark">{cell.row.original.periode?.code || '-'}</span>
-                ),
-            },
-            {
-                header: 'Agence',
-                cell: (cell: any) => getStageData(cell.row.original)?.agence?.nom || '-',
-            },
-            {
-                header: 'Entreprise',
-                cell: (cell: any) => getStageData(cell.row.original)?.entreprise?.raison_sociale || '-',
-            },
-            {
-                header: 'N° AEJ',
-                cell: (cell: any) => getStageData(cell.row.original)?.beneficiaire?.numero_aej || '-',
-            },
-            {
-                header: 'Nom et prénoms',
-                cell: (cell: any) => {
-                    const stage = getStageData(cell.row.original);
-
-                    return `${stage?.beneficiaire?.nom || ''} ${stage?.beneficiaire?.prenoms || ''}`;
-                },
-            },
-            {
-                header: 'Motif ajournement',
-                cell: (cell: any) => {
-                    const decisions = cell.row.original.decisions || [];
-                    const lastDecision = decisions[decisions.length - 1];
-
-                    return (
-                        <span className="text-warning">
-                            <i className="ri-error-warning-line me-1"></i>
-                            {lastDecision?.motif || 'Ajourné par le Chef d\'Agence'}
-                        </span>
-                    );
-                },
-            },
-            {
-                header: 'Statut',
-                cell: (cell: any) => statusBadge(cell.row.original.statut),
-            },
-        ],
-        [getStageData],
-    );
-
-    const columnsAjourneDMG = useMemo(
-        () => [
-            {
-                header: '#',
-                cell: (cell: any) => cell.row.index + 1,
-                size: 50,
-            },
-            {
-                header: 'Date ajournement',
-                cell: (cell: any) => {
-                    if (cell.row.original.date_ajournement) {
-                        return formatDateFr(cell.row.original.date_ajournement);
-                    }
-
-                    const decisions = cell.row.original.decisions || [];
-                    const lastDecision = decisions[decisions.length - 1];
-
-                    return formatDateFr(lastDecision?.decide_le || lastDecision?.created_at);
-                },
-            },
-            {
-                header: 'Observation DMG',
-                cell: (cell: any) => {
-                    if (cell.row.original.observation_dmg) {
-                        return (
-                            <span className="text-danger">
-                                <i className="ri-error-warning-line me-1"></i>
-                                {cell.row.original.observation_dmg}
-                            </span>
-                        );
-                    }
-
-                    const decisions = cell.row.original.decisions || [];
-                    const lastDecision = decisions[decisions.length - 1];
-
-                    return (
-                        <span className="text-danger">
-                            <i className="ri-error-warning-line me-1"></i>
-                            {lastDecision?.motif || 'Ajourné par la DMG'}
-                        </span>
-                    );
-                },
-            },
-            {
-                header: 'Agence',
-                cell: (cell: any) => getStageData(cell.row.original)?.agence?.nom || '-',
-            },
-            {
-                header: 'Entreprise',
-                cell: (cell: any) => getStageData(cell.row.original)?.entreprise?.raison_sociale || '-',
-            },
-            {
-                header: 'N° AEJ',
-                cell: (cell: any) => getStageData(cell.row.original)?.beneficiaire?.numero_aej || '-',
-            },
-            {
-                header: 'Nom et prénoms',
-                cell: (cell: any) => {
-                    const stage = getStageData(cell.row.original);
-
-                    return `${stage?.beneficiaire?.nom || ''} ${stage?.beneficiaire?.prenoms || ''}`;
-                },
-            },
-            {
-                header: 'Statut',
-                cell: (cell: any) => statusBadge(cell.row.original.statut),
-            },
-            {
-                header: 'Actions',
-                cell: (cell: any) => {
-                    const row = cell.row.original;
-                    const stageId = row.stage_id || getStageData(row).id;
-                    const editHref = `/cip/pointages/edit-stagiaire/${stageId}?return_tab=ajourne_dmg&mois=${encodeURIComponent(selectedFilters.mois || '')}`;
-                    const canCorrigerPointage = !row.stage_id;
-
-                    return (
-                        <div className="d-flex gap-2">
-                            <Button color="dark" size="sm" href={editHref}>
-                                <i className="ri-user-settings-line me-1"></i>Traiter le stagiaire
-                            </Button>
-                            {canCorrigerPointage && (
-                                <Button color="primary" size="sm" onClick={() => openCorrigerDmgModal(row)}>
-                                    <i className="ri-edit-line me-1"></i>Corriger
-                                </Button>
-                            )}
-                        </div>
-                    );
-                },
-            },
-        ],
-        [getStageData, selectedFilters.mois],
-    );
-
-    const currentColumns = useMemo(() => {
-        switch (currentTab) {
-            case 'effectue': return columnsEffectue;
-            case 'ajourne_ca': return columnsAjourneCA;
-            case 'ajourne_dmg': return columnsAjourneDMG;
-            default: return columnsAttente;
-        }
-    }, [currentTab, columnsAttente, columnsEffectue, columnsAjourneCA, columnsAjourneDMG]);
 
     /* ─── Données du tableau avec détection de la ligne rouge (démarrage manquant) ─── */
     const tableData = useMemo(() => {
         const items = data?.data || [];
 
         if (currentTab !== 'attente') {
-return items;
-}
+            return items;
+        }
 
-        // Marquer visuellement les lignes sans pointage de démarrage
         return items.map((item: any) => ({
             ...item,
             _rowClassName: item.has_pointage_demarrage === false && item.is_demarrage === false
@@ -651,14 +345,7 @@ return items;
         }));
     }, [data, currentTab]);
 
-    /* ─── Onglets config ─── */
-    const tabs = [
-        { key: 'attente', label: 'ATTENTE POINTAGE', count: counts.attente, color: 'warning', icon: 'ri-time-line' },
-        { key: 'attente_pejedec', label: 'ATTENTE PEJEDEC', count: counts.attente_pejedec, color: 'info', icon: 'ri-file-text-line' },
-        { key: 'effectue', label: 'POINTAGE EFFECTUÉ', count: counts.effectue, color: 'success', icon: 'ri-check-double-line' },
-        { key: 'ajourne_ca', label: 'AJOURNÉ / CHEF AGENCE', count: counts.ajourne_ca, color: 'danger', icon: 'ri-arrow-go-back-line' },
-        { key: 'ajourne_dmg', label: 'AJOURNÉ / DMG', count: counts.ajourne_dmg, color: 'secondary', icon: 'ri-arrow-go-back-fill' },
-    ];
+    const estOngletPaiement = currentTab === 'ajourne_dmg';
 
     return (
         <React.Fragment>
@@ -667,7 +354,6 @@ return items;
                 <Container fluid>
                     <BreadCrumb title="Espace de pointage de présence" pageTitle="Stagiaires" />
 
-                    {/* ─── Flash Messages ─── */}
                     {flash?.success && (
                         <Alert color="success" className="border-0 alert-dismissible fade show" role="alert">
                             <i className="ri-check-double-line me-2 align-middle"></i>{flash.success}
@@ -679,321 +365,340 @@ return items;
                         </Alert>
                     )}
 
-                    {/* ─── Cartes Statistiques ─── */}
-                    <Row className="g-3 mb-4">
-                        {tabs.map((t) => (
-                            <Col lg={3} md={6} key={t.key}>
-                                <Card
-                                    className={classnames('mb-0 shadow-sm border-0 cursor-pointer', {
-                                        'ring-2': currentTab === t.key,
-                                    })}
-                                    onClick={() => toggleTab(t.key)}
-                                    style={{
-                                        cursor: 'pointer',
-                                        borderLeft: currentTab === t.key ? `4px solid var(--vz-${t.color})` : '4px solid transparent',
-                                        transition: 'border-left-color 0.2s ease',
-                                    }}
-                                >
-                                    <CardBody className="py-3">
-                                        <div className="d-flex align-items-center">
-                                            <div className={`avatar-sm flex-shrink-0 me-3`}>
-                                                <span className={`avatar-title bg-${t.color}-subtle text-${t.color} rounded-circle fs-20`}>
-                                                    <i className={t.icon}></i>
-                                                </span>
-                                            </div>
-                                            <div className="flex-grow-1">
-                                                <p className="text-muted text-uppercase fw-medium fs-12 mb-1">{t.label.split('/')[0].trim()}</p>
-                                                <h3 className={`mb-0 text-${t.color}`}>{t.count}</h3>
-                                            </div>
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
-
-                    {/* ─── Carte principale ─── */}
-                    <Card className="shadow-sm border-0">
-                        <CardHeader className="bg-transparent border-bottom-0 pb-0">
-                            <div className="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center gap-3">
-                                <h4 className="card-title mb-0">
-                                    <i className="ri-calendar-check-line me-2 text-primary"></i>
-                                    Espace de pointage de présence
-                                </h4>
-                                <Button color="soft-secondary" size="sm" onClick={resetFilters}>
-                                    <i className="ri-refresh-line me-1"></i>Réinitialiser les filtres
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardBody>
-                            {/* ─── Filtres ─── */}
-                            <Row className="g-3 mb-4">
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Agence</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.agence_id}
-                                        onChange={(e) => handleFilterChange('agence_id', e.target.value)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {agences.map((a) => (
-                                            <option key={a.id} value={a.id}>{a.nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Entreprise</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.entreprise_id}
-                                        onChange={(e) => handleFilterChange('entreprise_id', e.target.value)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {entreprises.map((e) => (
-                                            <option key={e.id} value={e.id}>{e.raison_sociale}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Financement</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.source_financement_id}
-                                        onChange={(e) => handleFilterChange('source_financement_id', e.target.value)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {sourcesFinancement.map((sf) => (
-                                            <option key={sf.id} value={sf.id}>{sf.nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                                <Col md={3} sm={6}>
-                                    <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Type de stage</Label>
-                                    <Input
-                                        type="select"
-                                        bsSize="sm"
-                                        value={selectedFilters.type_stage_id}
-                                        onChange={(e) => handleFilterChange('type_stage_id', e.target.value)}
-                                    >
-                                        <option value="">Tout</option>
-                                        {typesStage.map((ts) => (
-                                            <option key={ts.id} value={ts.id}>{ts.nom}</option>
-                                        ))}
-                                    </Input>
-                                </Col>
-                            </Row>
-
-                            {/* ─── Onglets ─── */}
-                            <Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
-                                {tabs.map((t) => (
-                                    <NavItem key={t.key}>
+                    <Card>
+                        {/* ─── Onglets dans le CardHeader (style Visas) ─── */}
+                        <CardHeader className="border-0 pb-0">
+                            <Nav tabs className="nav-tabs-custom nav-success flex-wrap">
+                                {ONGLETS.map((item) => (
+                                    <NavItem key={item.id}>
                                         <NavLink
-                                            className={classnames({ active: currentTab === t.key }, 'fw-semibold py-3')}
-                                            style={{ cursor: 'pointer' }}
-                                            onClick={() => toggleTab(t.key)}
+                                            href="#"
+                                            className={classnames({ active: currentTab === item.id }, 'cursor-pointer')}
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                toggleTab(item.id);
+                                            }}
                                         >
-                                            <i className={`${t.icon} me-1`}></i>
-                                            {t.label}
-                                            <Badge color={t.color} pill className="ms-2">
-                                                {t.count}
+                                            <i className={`${item.icon} me-1`}></i>
+                                            {item.label}
+                                            <Badge color="light" className="text-body ms-1">
+                                                {counts[item.compteur] ?? 0}
                                             </Badge>
                                         </NavLink>
                                     </NavItem>
                                 ))}
                             </Nav>
+                        </CardHeader>
 
-                            <TabContent activeTab={currentTab} className="pt-4">
-                                {/* ─── Contenu Attente (Autre) ─── */}
-                                <TabPane tabId="attente">
-                                    <Row className="mb-3 align-items-end">
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>
-                                            <Input
-                                                type="select"
-                                                value={selectedFilters.mois}
-                                                onChange={(e) => handleFilterChange('mois', e.target.value)}
-                                            >
-                                                <option value="">Sélectionner une période</option>
-                                                {periodes.map((p) => (
-                                                    <option key={p.id} value={p.code}>{p.code}</option>
-                                                ))}
-                                            </Input>
-                                        </Col>
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Recherche</Label>
-                                            <Input
-                                                type="text"
-                                                placeholder="Nom, prénom, N° AEJ..."
-                                                value={selectedFilters.search}
-                                                onChange={(e) => handleFilterChange('search', e.target.value)}
-                                            />
-                                        </Col>
-                                        <Col md={6} className="text-md-end">
-                                            <Button
-                                                color="primary"
-                                                className="btn-label waves-effect waves-light"
-                                                onClick={handleBatchSubmit}
-                                                disabled={!data?.data || data.data.length === 0 || !periode}
-                                            >
-                                                <i className="ri-check-double-line label-icon align-middle fs-16 me-2"></i>
-                                                Effectuer pointage {periode ? `(${periode.code})` : ''}
-                                            </Button>
-                                        </Col>
-                                    </Row>
+                        {/* ─── Filtres (CardBody dédié, style Visas) ─── */}
+                        <CardBody className="border-bottom">
+                            <Row className="g-2">
+                                <Col md={3}>
+                                    <Label className="form-label">Agence</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.agence_id}
+                                        onChange={(e) => handleFilterChange('agence_id', e.target.value)}
+                                    >
+                                        <option value="">Toutes</option>
+                                        {agences.map((a) => (
+                                            <option key={a.id} value={a.id}>{a.nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Entreprise</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.entreprise_id}
+                                        onChange={(e) => handleFilterChange('entreprise_id', e.target.value)}
+                                    >
+                                        <option value="">Toutes</option>
+                                        {entreprises.map((e) => (
+                                            <option key={e.id} value={e.id}>{e.raison_sociale}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Financement</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.source_financement_id}
+                                        onChange={(e) => handleFilterChange('source_financement_id', e.target.value)}
+                                    >
+                                        <option value="">Tous</option>
+                                        {sourcesFinancement.map((sf) => (
+                                            <option key={sf.id} value={sf.id}>{sf.nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Type de stage</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.type_stage_id}
+                                        onChange={(e) => handleFilterChange('type_stage_id', e.target.value)}
+                                    >
+                                        <option value="">Tous</option>
+                                        {typesStage.map((ts) => (
+                                            <option key={ts.id} value={ts.id}>{ts.nom}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Période</Label>
+                                    <Input
+                                        type="select"
+                                        value={selectedFilters.mois}
+                                        onChange={(e) => handleFilterChange('mois', e.target.value)}
+                                    >
+                                        <option value="">Toutes</option>
+                                        {periodes.map((p) => (
+                                            <option key={p.id} value={p.code}>{p.code}</option>
+                                        ))}
+                                    </Input>
+                                </Col>
+                                <Col md={3}>
+                                    <Label className="form-label">Recherche</Label>
+                                    <Input
+                                        type="text"
+                                        placeholder="Nom, prénom, N° AEJ…"
+                                        value={selectedFilters.search}
+                                        onChange={(e) => handleFilterChange('search', e.target.value)}
+                                    />
+                                </Col>
+                                <Col md={6} className="d-flex align-items-end gap-2">
+                                    <Button color="primary" onClick={appliquerFiltres}>
+                                        <i className="ri-search-line align-bottom me-1" /> Filtrer
+                                    </Button>
+                                    <Button color="light" onClick={reinitialiser}>Réinitialiser</Button>
+                                </Col>
+                            </Row>
+                        </CardBody>
 
-                                    <Alert color="warning" className="border-0 mb-3">
-                                        <div className="d-flex align-items-center">
-                                            <div className="d-inline-block me-2" style={{ width: 16, height: 16, backgroundColor: '#f84343', border: '1px solid #999' }}></div>
-                                            <div>
-                                                <strong>Stagiaires en attente :</strong> Les lignes en rouge indiquent des stagiaires dont le pointage de démarrage n'a pas encore été validé.
-                                                Ils ne seront pas pris en compte lors du pointage groupé.
-                                            </div>
+                        {/* ─── Tableau (CardBody dédié, style Visas) ─── */}
+                        <CardBody>
+                            {currentTab === 'attente' && (
+                                <Alert color="warning" className="border-0 mb-3">
+                                    <div className="d-flex align-items-center">
+                                        <div className="d-inline-block me-2" style={{ width: 16, height: 16, backgroundColor: '#f84343', border: '1px solid #999' }}></div>
+                                        <div>
+                                            <strong>Stagiaires en attente :</strong> Les lignes en rouge indiquent des stagiaires dont le pointage de démarrage n'a pas encore été validé.
+                                            Ils ne seront pas pris en compte lors du pointage groupé.
                                         </div>
-                                    </Alert>
-                                </TabPane>
+                                    </div>
+                                </Alert>
+                            )}
 
-                                {/* ─── Contenu Attente PEJEDEC ─── */}
-                                <TabPane tabId="attente_pejedec">
-                                    <Row className="mb-3 align-items-end">
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>
-                                            <Input
-                                                type="select"
-                                                value={selectedFilters.mois}
-                                                onChange={(e) => handleFilterChange('mois', e.target.value)}
-                                            >
-                                                <option value="">Sélectionner une période</option>
-                                                {periodes.map((p) => (
-                                                    <option key={p.id} value={p.code}>{p.code}</option>
-                                                ))}
-                                            </Input>
-                                        </Col>
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Recherche</Label>
-                                            <Input
-                                                type="text"
-                                                placeholder="Nom, prénom, N° AEJ..."
-                                                value={selectedFilters.search}
-                                                onChange={(e) => handleFilterChange('search', e.target.value)}
-                                            />
-                                        </Col>
-                                        <Col md={6} className="text-md-end">
-                                            <Button
-                                                color="primary"
-                                                className="btn-label waves-effect waves-light"
-                                                onClick={handleBatchSubmit}
-                                                disabled={!data?.data || data.data.length === 0 || !periode}
-                                            >
-                                                <i className="ri-check-double-line label-icon align-middle fs-16 me-2"></i>
-                                                Effectuer pointage {periode ? `(${periode.code})` : ''}
-                                            </Button>
-                                        </Col>
-                                    </Row>
+                            {(currentTab === 'attente' || currentTab === 'attente_pejedec') && (
+                                <div className="d-flex justify-content-end mb-3">
+                                    <Button
+                                        color="primary"
+                                        className="btn-label waves-effect waves-light"
+                                        onClick={handleBatchSubmit}
+                                        disabled={!data?.data || data.data.length === 0 || !periode}
+                                    >
+                                        <i className="ri-check-double-line label-icon align-middle fs-16 me-2"></i>
+                                        Effectuer pointage {periode ? `(${periode.code})` : ''}
+                                    </Button>
+                                </div>
+                            )}
 
-                                    <Alert color="warning" className="border-0 mb-3">
-                                        <div className="d-flex align-items-center">
-                                            <div className="d-inline-block me-2" style={{ width: 16, height: 16, backgroundColor: '#f84343', border: '1px solid #999' }}></div>
-                                            <div>
-                                                <strong>Stagiaires en attente :</strong> Les lignes en rouge indiquent des stagiaires dont le pointage de démarrage n'a pas encore été validé.
-                                                Ils ne seront pas pris en compte lors du pointage groupé.
-                                            </div>
-                                        </div>
-                                    </Alert>
-                                </TabPane>
+                            <div className="table-responsive">
+                                <Table className="table-sm align-middle table-nowrap mb-0">
+                                    <thead className={currentTab === 'attente' ? 'table-success' : 'table-light'}>
+                                        {currentTab === 'ajourne_dmg' ? (
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Date ajournement</th>
+                                                <th>Observation DMG</th>
+                                                <th>Agence</th>
+                                                <th>Entreprise</th>
+                                                <th>N° AEJ</th>
+                                                <th>Nom et prénoms</th>
+                                                <th>Statut</th>
+                                                <th className="text-end">Actions</th>
+                                            </tr>
+                                        ) : currentTab === 'ajourne_ca' ? (
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Agent Saisie</th>
+                                                <th>Mois</th>
+                                                <th>Agence</th>
+                                                <th>Entreprise</th>
+                                                <th>N° AEJ</th>
+                                                <th>Nom et prénoms</th>
+                                                <th>Motif ajournement</th>
+                                                <th>Statut</th>
+                                            </tr>
+                                        ) : currentTab === 'effectue' ? (
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Agent Saisie</th>
+                                                <th>Mois</th>
+                                                <th>Agence</th>
+                                                <th>Entreprise</th>
+                                                <th>Financement</th>
+                                                <th>Type de stage</th>
+                                                <th>N° AEJ</th>
+                                                <th>Nom et prénoms</th>
+                                                <th>Statut</th>
+                                                <th className="text-end">Actions</th>
+                                            </tr>
+                                        ) : (
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Agent Saisie</th>
+                                                <th>Agence</th>
+                                                <th>Entreprise</th>
+                                                <th>Financement</th>
+                                                <th>Type Stage</th>
+                                                <th>Date début</th>
+                                                <th>Date fin</th>
+                                                <th>N° AEJ</th>
+                                                <th>Nom et prénoms</th>
+                                                <th>Date naissance</th>
+                                                <th>Sexe</th>
+                                                <th className="text-end">Actions</th>
+                                            </tr>
+                                        )}
+                                    </thead>
+                                    <tbody>
+                                        {tableData.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={currentTab === 'ajourne_dmg' ? 9 : currentTab === 'ajourne_ca' ? 9 : currentTab === 'effectue' ? 11 : 13} className="text-center">
+                                                    Aucun dossier dans cette corbeille.
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            tableData.map((row: any, index: number) => (
+                                                <tr key={row.id} className={row._rowClassName || ''}>
+                                                    {/* ─── Lignes ATTENTE / ATTENTE_PEJEDEC ─── */}
+                                                    {(currentTab === 'attente' || currentTab === 'attente_pejedec') && (
+                                                        <>
+                                                            <td>{index + 1}</td>
+                                                            <td><span className="text-muted">CIP</span></td>
+                                                            <td>{getStageData(row)?.agence?.nom || '-'}</td>
+                                                            <td>{getStageData(row)?.entreprise?.raison_sociale || '-'}</td>
+                                                            <td>{getStageData(row)?.sourceFinancement?.nom || getStageData(row)?.source_financement?.nom || '-'}</td>
+                                                            <td>{getStageData(row)?.typeStage?.nom || getStageData(row)?.type_stage?.nom || 'Stage de qualification'}</td>
+                                                            <td className="text-nowrap">{formatDateFr(getStageData(row)?.date_debut)}</td>
+                                                            <td className="text-nowrap">{formatDateFr(getStageData(row)?.date_fin_prevue)}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.numero_aej || '-'}</td>
+                                                            <td>
+                                                                <span className="fw-medium">
+                                                                    {getStageData(row)?.beneficiaire?.nom} {getStageData(row)?.beneficiaire?.prenoms}
+                                                                </span>
+                                                            </td>
+                                                            <td>{formatDateFr(getStageData(row)?.beneficiaire?.date_naissance)}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.sexe || '-'}</td>
+                                                            <td className="text-end">
+                                                                <Button color="success" size="sm" outline onClick={() => openAbandonModal(row)} title="Pointage individuel / Status">
+                                                                    <i className="ri-check-line me-1"></i>Status
+                                                                </Button>
+                                                            </td>
+                                                        </>
+                                                    )}
 
-                                {/* ─── Contenu Effectué ─── */}
-                                <TabPane tabId="effectue">
-                                    <Row className="mb-3 align-items-end">
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>
-                                            <Input
-                                                type="select"
-                                                value={selectedFilters.mois}
-                                                onChange={(e) => handleFilterChange('mois', e.target.value)}
-                                            >
-                                                <option value="">Sélectionner une période</option>
-                                                {periodes.map((p) => (
-                                                    <option key={p.id} value={p.code}>{p.code}</option>
-                                                ))}
-                                            </Input>
-                                        </Col>
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Recherche</Label>
-                                            <Input
-                                                type="text"
-                                                placeholder="Nom, prénom, N° AEJ..."
-                                                value={selectedFilters.search}
-                                                onChange={(e) => handleFilterChange('search', e.target.value)}
-                                            />
-                                        </Col>
-                                    </Row>
-                                </TabPane>
+                                                    {/* ─── Lignes EFFECTUE ─── */}
+                                                    {currentTab === 'effectue' && (
+                                                        <>
+                                                            <td>{index + 1}</td>
+                                                            <td>{(row.versionCourante || row.version_courante)?.saisi_par?.name || (row.versionCourante || row.version_courante)?.saisiPar?.name || '-'}</td>
+                                                            <td><Badge color="info" className="text-white">{row.periode?.code || '-'}</Badge></td>
+                                                            <td>{getStageData(row)?.agence?.nom || '-'}</td>
+                                                            <td>{getStageData(row)?.entreprise?.raison_sociale || '-'}</td>
+                                                            <td>{getStageData(row)?.sourceFinancement?.nom || getStageData(row)?.source_financement?.nom || '-'}</td>
+                                                            <td>{getStageData(row)?.typeStage?.nom || getStageData(row)?.type_stage?.nom || '-'}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.numero_aej || '-'}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.nom} {getStageData(row)?.beneficiaire?.prenoms}</td>
+                                                            <td>{statusBadge(row.statut)}</td>
+                                                            <td className="text-end">
+                                                                {row.statut === 'SOUMIS' && (
+                                                                    <Button color="warning" size="sm" outline onClick={() => openAnnulerModal(row)} title="Annuler le pointage">
+                                                                        <i className="ri-close-circle-line me-1"></i>Annuler
+                                                                    </Button>
+                                                                )}
+                                                            </td>
+                                                        </>
+                                                    )}
 
-                                {/* ─── Contenu Ajourné CA ─── */}
-                                <TabPane tabId="ajourne_ca">
-                                    <Row className="mb-3 align-items-end">
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>
-                                            <Input
-                                                type="select"
-                                                value={selectedFilters.mois}
-                                                onChange={(e) => handleFilterChange('mois', e.target.value)}
-                                            >
-                                                <option value="">Sélectionner une période</option>
-                                                {periodes.map((p) => (
-                                                    <option key={p.id} value={p.code}>{p.code}</option>
-                                                ))}
-                                            </Input>
-                                        </Col>
-                                    </Row>
-                                </TabPane>
+                                                    {/* ─── Lignes AJOURNE_CA ─── */}
+                                                    {currentTab === 'ajourne_ca' && (
+                                                        <>
+                                                            <td>{index + 1}</td>
+                                                            <td>{(row.versionCourante || row.version_courante)?.saisi_par?.name || (row.versionCourante || row.version_courante)?.saisiPar?.name || 'CIP'}</td>
+                                                            <td><Badge color="warning" className="text-dark">{row.periode?.code || '-'}</Badge></td>
+                                                            <td>{getStageData(row)?.agence?.nom || '-'}</td>
+                                                            <td>{getStageData(row)?.entreprise?.raison_sociale || '-'}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.numero_aej || '-'}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.nom} {getStageData(row)?.beneficiaire?.prenoms}</td>
+                                                            <td>
+                                                                <span className="text-warning">
+                                                                    <i className="ri-error-warning-line me-1"></i>
+                                                                    {(row.decisions || [])[(row.decisions || []).length - 1]?.motif || "Ajourné par le Chef d'Agence"}
+                                                                </span>
+                                                            </td>
+                                                            <td>{statusBadge(row.statut)}</td>
+                                                        </>
+                                                    )}
 
-                                {/* ─── Contenu Ajourné DMG ─── */}
-                                <TabPane tabId="ajourne_dmg">
-                                    <Row className="mb-3 align-items-end">
-                                        <Col md={3}>
-                                            <Label className="form-label text-uppercase fs-12 text-muted fw-semibold">Période</Label>
-                                            <Input
-                                                type="select"
-                                                value={selectedFilters.mois}
-                                                onChange={(e) => handleFilterChange('mois', e.target.value)}
-                                            >
-                                                <option value="">Sélectionner une période</option>
-                                                {periodes.map((p) => (
-                                                    <option key={p.id} value={p.code}>{p.code}</option>
-                                                ))}
-                                            </Input>
-                                        </Col>
-                                    </Row>
-                                </TabPane>
-                            </TabContent>
+                                                    {/* ─── Lignes AJOURNE_DMG ─── */}
+                                                    {currentTab === 'ajourne_dmg' && (
+                                                        <>
+                                                            <td>{index + 1}</td>
+                                                            <td className="text-nowrap">
+                                                                {row.date_ajournement
+                                                                    ? formatDateFr(row.date_ajournement)
+                                                                    : formatDateFr((row.decisions || [])[(row.decisions || []).length - 1]?.decide_le || (row.decisions || [])[(row.decisions || []).length - 1]?.created_at)}
+                                                            </td>
+                                                            <td>
+                                                                <span className="text-danger">
+                                                                    <i className="ri-error-warning-line me-1"></i>
+                                                                    {row.observation_dmg || (row.decisions || [])[(row.decisions || []).length - 1]?.motif || 'Ajourné par la DMG'}
+                                                                </span>
+                                                            </td>
+                                                            <td>{getStageData(row)?.agence?.nom || '-'}</td>
+                                                            <td>{getStageData(row)?.entreprise?.raison_sociale || '-'}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.numero_aej || '-'}</td>
+                                                            <td>{getStageData(row)?.beneficiaire?.nom} {getStageData(row)?.beneficiaire?.prenoms}</td>
+                                                            <td>{statusBadge(row.statut)}</td>
+                                                            <td className="text-end">
+                                                                <div className="d-flex gap-1 justify-content-end">
+                                                                    <Button color="dark" size="sm" href={`/cip/pointages/edit-stagiaire/${row.stage_id || getStageData(row).id}?return_tab=ajourne_dmg&mois=${encodeURIComponent(selectedFilters.mois || '')}`}>
+                                                                        <i className="ri-user-settings-line me-1"></i>Traiter
+                                                                    </Button>
+                                                                    {!row.stage_id && (
+                                                                        <Button color="primary" size="sm" onClick={() => openCorrigerDmgModal(row)}>
+                                                                            <i className="ri-edit-line me-1"></i>Corriger
+                                                                        </Button>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                        </>
+                                                    )}
+                                                </tr>
+                                            ))
+                                        )}
+                                    </tbody>
+                                </Table>
+                            </div>
 
-                            {/* ─── Tableau (partagé entre tous les onglets) ─── */}
-                            <TableContainerReactTable
-                                columns={currentColumns}
-                                data={tableData}
-                                isGlobalFilter={false}
-                                customPageSize={data?.data?.length || 20}
-                                divClass="table-responsive table-card mt-1 mb-1"
-                                tableClass="align-middle table-nowrap table-hover"
-                                theadClass={currentTab === 'attente' ? 'table-success' : 'table-light'}
-                                trClass={(row: any) => row?.original?._rowClassName || ''}
-                                SearchPlaceholder="Recherche..."
-                                isServerPagination={true}
-                                serverPagination={data}
-                                onPageChange={(page) => {
-                                    const params: Record<string, string> = { tab: currentTab, page: String(page) };
-                                    Object.entries(selectedFilters).forEach(([k, v]) => {
- if (v) {
-params[k] = v;
-} 
-});
-                                    router.get('/cip/pointages', params, { preserveState: true, preserveScroll: true });
-                                }}
-                            />
+                            {data && (
+                                <ServerPagination
+                                    pagination={normalizePagination(data)}
+                                    itemLabel="dossiers"
+                                    onPageChange={(page) => {
+                                        const params: Record<string, string> = { tab: currentTab, page: String(page) };
+                                        Object.entries(selectedFilters).forEach(([k, v]) => {
+                                            if (v) {
+                                                params[k] = v;
+                                            }
+                                        });
+                                        router.get('/cip/pointages', params, { preserveState: true, preserveScroll: true });
+                                    }}
+                                />
+                            )}
                         </CardBody>
                     </Card>
                 </Container>
