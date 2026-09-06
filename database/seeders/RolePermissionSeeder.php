@@ -46,6 +46,12 @@ class RolePermissionSeeder extends Seeder
             'reporting' => [
                 'voir_reporting',
             ],
+            // Supervision régionale : consultation de l'écran des visas (toutes corbeilles,
+            // statistiques, pièces) et pouvoir de trancher le visa DESSE.
+            'supervision_regionale' => [
+                'voir_visas_ar',
+                'viser_visas_ar',
+            ],
             'workflow' => [
                 'valider_chef_agence',
                 'valider_desse',
@@ -128,6 +134,7 @@ class RolePermissionSeeder extends Seeder
             'gerer_contrats',
             'voir_pointages',
             'gerer_pointages',
+            'voir_visas_ar',
         ]);
 
         $chefAgence = Role::findByName('chef_agence');
@@ -138,12 +145,15 @@ class RolePermissionSeeder extends Seeder
             'voir_contrats',
             'voir_pointages',
             'valider_chef_agence',
+            'voir_visas_ar',
         ]);
 
         $desse = Role::findByName('desse');
         $desse->givePermissionTo([
             'voir_beneficiaires',
             'valider_desse',
+            'voir_visas_ar',
+            'viser_visas_ar',
         ]);
 
         $dmg = Role::findByName('dmg');
@@ -204,10 +214,13 @@ class RolePermissionSeeder extends Seeder
             'valider_aaf',
         ]);
 
+        // La DAICG contrôle : elle voit l'écran de supervision régionale et ses exports,
+        // sans jamais trancher un visa.
         $daicg = Role::findByName('daicg');
         $daicg->givePermissionTo([
             'voir_beneficiaires',
             'voir_contrats',
+            'voir_visas_ar',
         ]);
 
         foreach (['cip', 'chef_agence', 'desse', 'daicg', 'dmg', 'cb', 'agent_comptable', 'pejedec', 'aaf'] as $roleName) {

@@ -15,6 +15,7 @@ use App\Models\Reference\Conseiller;
 use App\Models\Reference\Programme;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
+use App\Models\User;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -55,6 +56,7 @@ class Stage extends Model
         'date_entree_portefeuille' => 'date',
         'visa_desse' => VisaDesseEnum::class,
         'visa_desse_le' => 'datetime',
+        'date_validation_ar' => 'datetime',
     ];
 
     /**
@@ -143,5 +145,13 @@ class Stage extends Model
     public function instanceParcours(): HasOne
     {
         return $this->hasOne(InstanceParcours::class);
+    }
+
+    /**
+     * L'agent ayant tranché le visa DESSE (accordé ou refusé).
+     */
+    public function visaDessePar(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'visa_desse_par_id');
     }
 }

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgenceRegionale\VisaRegionalController;
 use App\Http\Controllers\AgentCompt\PaiementAcController;
 use App\Http\Controllers\Cb\PaiementCbController;
 use App\Http\Controllers\ChefAgence\HistoriqueGenerationController;
@@ -13,7 +14,6 @@ use App\Http\Controllers\Company\EntrepriseController;
 use App\Http\Controllers\Company\OffreEmploiController;
 use App\Http\Controllers\Daicg\StagiaireDaicgController;
 use App\Http\Controllers\Desse\StagiaireDesseController;
-use App\Http\Controllers\Desse\VisaDesseController;
 use App\Http\Controllers\Dmg\AjournementPaiementDmgController;
 use App\Http\Controllers\Dmg\AttentePaiementDmgController;
 use App\Http\Controllers\Dmg\DossierPaiementDmgController;
@@ -27,6 +27,7 @@ use App\Http\Controllers\Dmg\ValidationDmgController;
 use App\Http\Controllers\Pejedec\AafController;
 use App\Http\Controllers\Registration\InscriptionController;
 use App\Http\Controllers\Reporting\TableauDeBordController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard')->name('home');
@@ -200,12 +201,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/desse/stagiaires/retour-agence/{id}/historique', [StagiaireDesseController::class, 'historiqueRetourAgence'])->name('desse.stagiaires.retour-agence.historique');
     Route::post('/desse/stagiaires/ajourner/{id}', [StagiaireDesseController::class, 'ajourner'])->name('desse.stagiaires.ajourner');
     Route::post('/desse/stagiaires/doublons/{id}/traiter', [StagiaireDesseController::class, 'traiterDoublon'])->name('desse.stagiaires.doublons.traiter');
-    Route::get('/desse/visas', [VisaDesseController::class, 'index'])->name('desse.visas.index');
-    Route::post('/desse/visas/{id}/viser', [VisaDesseController::class, 'viser'])->name('desse.visas.viser');
-    Route::post('/desse/visas/{id}/rejeter', [VisaDesseController::class, 'rejeter'])->name('desse.visas.rejeter');
-    Route::post('/desse/visas/{id}/remettre-en-attente', [VisaDesseController::class, 'remettreEnAttente'])->name('desse.visas.remettre-en-attente');
 
     Route::get('/daicg/stagiaires', [StagiaireDaicgController::class, 'index'])->name('daicg.stagiaires.index');
+
+    // Supervision régionale : visa DESSE, dossiers validés AR, différés AC, extractions de
+    // suivi, tableau statistique et pièces justificatives, regroupés en un seul écran.
+    Route::prefix('agence-regionale/visas')->name('agence-regionale.visas.')->middleware('can:voir_visas_ar')->group(function () {
+        Route::get('/', [VisaRegionalController::class, 'index'])->name('index');
+        Route::get('/export', [VisaRegionalController::class, 'export'])->name('export');
+        Route::post('/export', [VisaRegionalController::class, 'exportAsynchrone'])->name('export.async');
+        Route::get('/export/{batch}/progress', [VisaRegionalController::class, 'exportProgression'])->name('export.progress');
+        Route::get('/export/{batch}/download', [VisaRegionalController::class, 'exportTelechargement'])->name('export.download');
+        Route::get('/{stage}/pieces', [VisaRegionalController::class, 'piecesStage'])->name('pieces');
+        Route::get('/{stage}/pieces/archive', [VisaRegionalController::class, 'archivePieces'])->name('pieces.archive');
+        Route::get('/{stage}/pieces/{cle}', [VisaRegionalController::class, 'piece'])->name('piece');
+        Route::post('/{stage}/viser', [VisaRegionalController::class, 'viser'])->middleware('can:viser_visas_ar')->name('viser');
+        Route::post('/{stage}/rejeter', [VisaRegionalController::class, 'rejeter'])->middleware('can:viser_visas_ar')->name('rejeter');
+        Route::post('/{stage}/remettre-en-attente', [VisaRegionalController::class, 'remettreEnAttente'])->middleware('can:viser_visas_ar')->name('remettre_en_attente');
+    });
+
+    // Alias historique : l'écran a d'abord été livré sous /desse/visas, des liens et des
+    // favoris circulent déjà. La redirection conserve les paramètres d'onglet et de filtre.
+    Route::get('/desse/visas', fn (Request $request) => redirect()->route(
+        'agence-regionale.visas.index',
+        $request->query()
+    ))->name('desse.visas.index');
 
     // Phase 9 : PEJEDEC / AAF
     Route::get('/pejedec/af', [AafController::class, 'index'])->name('pejedec.af.index');

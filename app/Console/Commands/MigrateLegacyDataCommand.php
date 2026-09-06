@@ -69,7 +69,7 @@ class MigrateLegacyDataCommand extends Command
      * @var string
      */
     protected $signature = 'migrate:legacy-data
-        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_retour_chefagence, backfill_paiements_dmg, backfill_avenants_renouvellement, fix_statut_paiements_legacy, fix_pointage_revisions, backfill_corbeilles_dmg, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
+        {--step=all : Phase à exécuter (references, users, entreprises, offres, beneficiaires, stages, pointages, paiements, dossiers_paiement, dossiers_groupes, operations, bordereaux, evenements, desse_doublons, backfill_adp_nature, backfill_corbeilles_ca, backfill_retour_chefagence, backfill_paiements_dmg, backfill_avenants_renouvellement, backfill_visa_desse, backfill_validation_ar, fix_statut_paiements_legacy, fix_pointage_revisions, backfill_corbeilles_dmg, fix_etat_chef_agence_100, fix_legacy_ca_validation, update_missing_data, remaining, all)}
         {--dry-run : Exécute toutes les transformations puis annule les écritures PostgreSQL}
         {--chunk=1000 : Nombre maximal de lignes chargées et validées par transaction (1 à 5000)}
         {--with-model-audits : Conserve les journaux Eloquent ligne par ligne (beaucoup plus lent)}
@@ -133,7 +133,7 @@ class MigrateLegacyDataCommand extends Command
             'backfill_adp_nature', 'backfill_corbeilles_ca', 'backfill_retour_chefagence', 'backfill_paiements_dmg', 'backfill_presence_payments',
             'backfill_situation_pointage', 'backfill_droits_pointage', 'backfill_corbeilles_dmg',
             'fix_statut_paiements_legacy', 'fix_pointage_revisions', 'backfill_avenants_renouvellement',
-            'backfill_visa_desse', 'backfill_stagiaires_differes_ac',
+            'backfill_visa_desse', 'backfill_validation_ar', 'backfill_stagiaires_differes_ac',
             'fix_etat_chef_agence_100', 'fix_legacy_ca_validation', 'update_missing_data',
             'remaining',
         ];
@@ -282,6 +282,10 @@ class MigrateLegacyDataCommand extends Command
 
             if ($step === 'all' || $step === 'backfill_visa_desse') {
                 $this->runPhase('backfill_visa_desse', fn () => $this->backfillVisaDesse($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_validation_ar') {
+                $this->runPhase('backfill_validation_ar', fn () => $this->backfillValidationAr($dryRun));
             }
 
             if ($step === 'all' || $step === 'fix_statut_paiements_legacy') {
@@ -4581,6 +4585,84 @@ class MigrateLegacyDataCommand extends Command
         }
 
         $this->info(($dryRun ? '[DRY-RUN] ' : '')."Visas DESSE repris : {$misAJour}");
+    }
+
+    /**
+     * Étape backfill_validation_ar : reprend `contrats_pae.date_chef_agence` sur
+     * `stages.date_validation_ar`.
+     *
+     * C'est la borne temporelle de tous les écrans régionaux legacy : le tableau
+     * statistique par agence comme la liste `liste-stagiaire-pae` filtrent sur
+     * `date(date_chef_agence)`, jamais sur la date de début de stage. La date n'est
+     * reprise que si le chef d'agence a réellement statué (`etat_chef_agence = 2`) :
+     * le legacy conserve la date de la passe précédente sur un dossier ajourné puis
+     * re-soumis, cf. LegacyMapperService::mapChefAgenceCorbeille.
+     */
+    private function backfillValidationAr(bool $dryRun): void
+    {
+        $query = DB::connection('legacy')->table('contrats_pae')
+            ->whereNull('deleted_at')
+            ->where('etat_chef_agence', 2)
+            ->whereNotNull('date_chef_agence')
+            ->select(['id', 'date_chef_agence']);
+
+        $total = $query->count();
+        $this->info("Contrats legacy validés par le chef d'agence : {$total}");
+
+        $bar = $this->output->createProgressBar($total);
+        $bar->start();
+
+        $misAJour = 0;
+        $sansStage = 0;
+        $sansDate = 0;
+
+        $this->processInChunks($query, 1000, function ($contrats) use (&$misAJour, &$sansStage, &$sansDate, $dryRun, $bar) {
+            $stagesMap = Stage::whereIn('ancien_id', collect($contrats)->pluck('id')->all())
+                ->pluck('id', 'ancien_id');
+
+            foreach ($contrats as $legacyContrat) {
+                $bar->advance();
+
+                $stageId = $stagesMap[$legacyContrat->id] ?? null;
+
+                if (! $stageId) {
+                    $sansStage++;
+
+                    continue;
+                }
+
+                $date = $this->mapper->normalizeLegacyDate($legacyContrat->date_chef_agence);
+
+                if (! $date) {
+                    $sansDate++;
+
+                    continue;
+                }
+
+                $misAJour++;
+
+                if ($dryRun) {
+                    continue;
+                }
+
+                DB::table('stages')->where('id', $stageId)->update([
+                    'date_validation_ar' => $date,
+                ]);
+            }
+        });
+
+        $bar->finish();
+        $this->newLine();
+
+        if ($sansStage > 0) {
+            $this->warn("Contrats legacy sans stage cible : {$sansStage}");
+        }
+
+        if ($sansDate > 0) {
+            $this->warn("Contrats legacy à date de validation illisible : {$sansDate}");
+        }
+
+        $this->info(($dryRun ? '[DRY-RUN] ' : '')."Dates de validation AR reprises : {$misAJour}");
     }
 
     /**

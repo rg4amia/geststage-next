@@ -1120,6 +1120,51 @@ class MigrateLegacyDataCommandTest extends TestCase
     }
 
     /**
+     * `contrats_pae.date_chef_agence` est la seule trace de la date de validation par
+     * l'agence régionale : c'est elle qui bornait le tableau statistique legacy. Sans cette
+     * reprise, l'écran de supervision régionale afficherait un tableau vide sur l'historique.
+     */
+    public function test_it_backfills_the_regional_validation_date_from_the_agency_head_decision(): void
+    {
+        Schema::connection('legacy')->table('contrats_pae', function (Blueprint $table): void {
+            $table->timestamp('date_chef_agence')->nullable();
+            $table->timestamp('deleted_at')->nullable();
+        });
+
+        $lignes = [
+            // [ancien_id, etat_chef_agence, date_chef_agence, date attendue]
+            [4001, 2, '2026-03-10 09:00:00', '2026-03-10 09:00:00'],
+            // Pas validé par le chef d'agence : aucune date, même si la colonne est remplie.
+            [4002, 1, '2026-03-11 09:00:00', null],
+            // Date illisible : la ligne est comptée à part et le stage reste vierge.
+            [4003, 2, '0000-00-00 00:00:00', null],
+        ];
+
+        foreach ($lignes as [$ancienId, $etatCa, $dateCa]) {
+            DB::connection('legacy')->table('contrats_pae')->insert([
+                'id' => $ancienId,
+                'etat_chef_agence' => $etatCa,
+                'date_chef_agence' => $dateCa,
+            ]);
+
+            Stage::factory()->create(['ancien_id' => $ancienId]);
+        }
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'backfill_validation_ar'])
+            ->assertExitCode(0);
+
+        foreach ($lignes as [$ancienId, , , $attendue]) {
+            $stage = Stage::where('ancien_id', $ancienId)->firstOrFail();
+
+            $this->assertSame(
+                $attendue,
+                $stage->date_validation_ar?->format('Y-m-d H:i:s'),
+                "Date de validation AR inattendue pour le contrat legacy {$ancienId}"
+            );
+        }
+    }
+
+    /**
      * Le legacy laisse un stagiaire différé par l'AC en `status_ac = 'processed'` et ne le
      * distingue que par `user_differed`. Sans reprise, il réapparaît dans l'onglet
      * « OP en attente » de l'écran AC au lieu de l'onglet « OP différé ».

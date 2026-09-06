@@ -409,7 +409,7 @@
                         {{ strtolower($stagiaire->sexe) === 'homme' ? 'au' : 'à la' }} stagiaire, une prime de stage
                         d'un
                         Montant
-                        de&nbsp;<strong>{{ format_number($prime, 0, ' ', ' ') ?? '....................................' }}
+                        de&nbsp;<strong>{{ isset($prime) ? number_format($prime, 0, ',', ' ') : '....................................' }}
                             F CFA</strong>&nbsp;;</span>
                 </li>
                 <li class="list-item-standard">

@@ -36,7 +36,7 @@ export const businessMenuSections: BusinessMenuSection[] = [
             'cip-renouvellements',
             'ca-validations',
             'desse-stagiaires',
-            'desse-visas',
+            'agence-regionale-visas',
             'daicg-stagiaires',
         ],
     },
@@ -187,10 +187,10 @@ export const menuItems: MenuItem[] = [
         actor: 'DESSE',
     },
     {
-        id: 'desse-visas',
-        label: 'Visa des dossiers',
-        icon: 'ri-shield-star-line',
-        link: '/desse/visas',
+        id: 'agence-regionale-visas',
+        label: 'Supervision régionale',
+        icon: 'ri-shield-check-line',
+        link: '/agence-regionale/visas',
         actor: 'DESSE',
     },
     {
