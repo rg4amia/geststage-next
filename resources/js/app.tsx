@@ -40,6 +40,7 @@ const pages = import.meta.glob<{ default: ComponentType }>([
     './velzone/pages/Daicg/**/*.tsx',
     './velzone/pages/Desse/**/*.tsx',
     './velzone/pages/Dmg/**/*.tsx',
+    './velzone/pages/ParametreAides/**/*.tsx',
     './velzone/pages/Pejedec/**/*.tsx',
     './velzone/pages/Reporting/**/*.tsx',
     './old/pages/**/*.tsx',

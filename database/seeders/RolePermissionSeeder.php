@@ -26,6 +26,16 @@ class RolePermissionSeeder extends Seeder
             'referentiels' => [
                 'voir_referentiels',
                 'gerer_referentiels',
+                // Édition du réseau d'agences : volontairement laissée à
+                // l'administrateur seul (aucun rôle métier ne la reçoit), le
+                // legacy la réservait déjà à un profil unique.
+                'gerer_agences',
+            ],
+            'administration' => [
+                'voir_parametres_systeme',
+                'gerer_parametres_systeme',
+                'voir_journaux_audit',
+                'usurper_identite',
             ],
             'entreprises_offres' => [
                 'voir_entreprises',

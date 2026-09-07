@@ -247,4 +247,5 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/pejedec/af/droits-paiement/{id}/generer', [AafController::class, 'genererPaiement'])->name('pejedec.af.droits.generer_paiement');
 });
 
+require __DIR__.'/parametre-aides.php';
 require __DIR__.'/settings.php';

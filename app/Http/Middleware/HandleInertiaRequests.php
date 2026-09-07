@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Http\Controllers\ParametreAides\UtilisateurController;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -43,6 +44,11 @@ class HandleInertiaRequests extends Middleware
                     'roles' => $request->user()->getRoleNames(),
                 ]) : null,
             ],
+            // Usurpation d'identité en cours : la bannière de retour doit rester
+            // visible sur tous les écrans, y compris ceux du compte usurpé.
+            'usurpation' => $request->session()->has(UtilisateurController::CLE_USURPATION)
+                ? ['utilisateur' => $request->user()?->nom]
+                : null,
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),

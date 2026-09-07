@@ -5,6 +5,7 @@ import { createSelector } from 'reselect';
 
 //import Components
 import RightSidebar from '../Components/Common/RightSidebar';
+import UsurpationBanner from '../Components/Common/UsurpationBanner';
 import {
     changeLayout,
     changeSidebarTheme,
@@ -171,6 +172,7 @@ const Layout = (props: any) => {
                 />
                 <Sidebar layoutType={layoutType} />
                 <div className="main-content">
+                    <UsurpationBanner />
                     {props.children}
                     <Footer />
                 </div>
