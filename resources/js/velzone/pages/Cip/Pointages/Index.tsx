@@ -1,6 +1,7 @@
 import { Head, router, usePage } from '@inertiajs/react';
 import classnames from 'classnames';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
+import Select from 'react-select';
 import {
     Alert,
     Badge,
@@ -75,6 +76,19 @@ const statusBadge = (statut: string) => {
     const s = map[statut] || { color: 'secondary', label: statut || '-' };
 
     return <span className={`badge bg-${s.color}-subtle text-${s.color}`}>{s.label}</span>;
+};
+
+const MOIS_FR: Record<number, string> = {
+    1: 'Janvier', 2: 'Février', 3: 'Mars', 4: 'Avril',
+    5: 'Mai', 6: 'Juin', 7: 'Juillet', 8: 'Août',
+    9: 'Septembre', 10: 'Octobre', 11: 'Novembre', 12: 'Décembre',
+};
+
+const formatPeriode = (code: string): string => {
+    const [year, month] = code.split('-');
+    const m = parseInt(month, 10);
+
+    return `${MOIS_FR[m] || month} ${year}`;
 };
 
 const MESSAGES_ONGLET: Record<string, { color: string; icon: string; message: string }> = {
@@ -392,71 +406,76 @@ const PointagesIndex = (props: PageProps) => {
 
                         {/* ─── Filtres (CardBody dédié, style Visas) ─── */}
                         <CardBody className="border-bottom">
-                            <Row className="g-2">
+                            <Row className="g-2 align-items-end">
                                 <Col md={3}>
                                     <Label className="form-label">Agence</Label>
-                                    <Input
-                                        type="select"
-                                        value={selectedFilters.agence_id}
-                                        onChange={(e) => handleFilterChange('agence_id', e.target.value)}
-                                    >
-                                        <option value="">Toutes</option>
-                                        {agences.map((a) => (
-                                            <option key={a.id} value={a.id}>{a.nom}</option>
-                                        ))}
-                                    </Input>
+                                    <Select
+                                        isSearchable
+                                        placeholder="Toutes"
+                                        noOptionsMessage={() => 'Aucune agence'}
+                                        options={agences.map((a) => ({ value: String(a.id), label: a.nom }))}
+                                        value={selectedFilters.agence_id
+                                            ? { value: selectedFilters.agence_id, label: agences.find((a) => String(a.id) === selectedFilters.agence_id)?.nom || '' }
+                                            : null}
+                                        onChange={(selected) => handleFilterChange('agence_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col md={3}>
                                     <Label className="form-label">Entreprise</Label>
-                                    <Input
-                                        type="select"
-                                        value={selectedFilters.entreprise_id}
-                                        onChange={(e) => handleFilterChange('entreprise_id', e.target.value)}
-                                    >
-                                        <option value="">Toutes</option>
-                                        {entreprises.map((e) => (
-                                            <option key={e.id} value={e.id}>{e.raison_sociale}</option>
-                                        ))}
-                                    </Input>
+                                    <Select
+                                        isSearchable
+                                        placeholder="Toutes"
+                                        noOptionsMessage={() => 'Aucune entreprise'}
+                                        options={entreprises.map((e) => ({ value: String(e.id), label: e.raison_sociale }))}
+                                        value={selectedFilters.entreprise_id
+                                            ? { value: selectedFilters.entreprise_id, label: entreprises.find((e) => String(e.id) === selectedFilters.entreprise_id)?.raison_sociale || '' }
+                                            : null}
+                                        onChange={(selected) => handleFilterChange('entreprise_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col md={3}>
                                     <Label className="form-label">Financement</Label>
-                                    <Input
-                                        type="select"
-                                        value={selectedFilters.source_financement_id}
-                                        onChange={(e) => handleFilterChange('source_financement_id', e.target.value)}
-                                    >
-                                        <option value="">Tous</option>
-                                        {sourcesFinancement.map((sf) => (
-                                            <option key={sf.id} value={sf.id}>{sf.nom}</option>
-                                        ))}
-                                    </Input>
+                                    <Select
+                                        isSearchable
+                                        placeholder="Tous"
+                                        noOptionsMessage={() => 'Aucun financement'}
+                                        options={sourcesFinancement.map((sf) => ({ value: String(sf.id), label: sf.nom }))}
+                                        value={selectedFilters.source_financement_id
+                                            ? { value: selectedFilters.source_financement_id, label: sourcesFinancement.find((sf) => String(sf.id) === selectedFilters.source_financement_id)?.nom || '' }
+                                            : null}
+                                        onChange={(selected) => handleFilterChange('source_financement_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col md={3}>
                                     <Label className="form-label">Type de stage</Label>
-                                    <Input
-                                        type="select"
-                                        value={selectedFilters.type_stage_id}
-                                        onChange={(e) => handleFilterChange('type_stage_id', e.target.value)}
-                                    >
-                                        <option value="">Tous</option>
-                                        {typesStage.map((ts) => (
-                                            <option key={ts.id} value={ts.id}>{ts.nom}</option>
-                                        ))}
-                                    </Input>
+                                    <Select
+                                        isSearchable
+                                        placeholder="Tous"
+                                        noOptionsMessage={() => 'Aucun type'}
+                                        options={typesStage.map((ts) => ({ value: String(ts.id), label: ts.nom }))}
+                                        value={selectedFilters.type_stage_id
+                                            ? { value: selectedFilters.type_stage_id, label: typesStage.find((ts) => String(ts.id) === selectedFilters.type_stage_id)?.nom || '' }
+                                            : null}
+                                        onChange={(selected) => handleFilterChange('type_stage_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col md={3}>
                                     <Label className="form-label">Période</Label>
-                                    <Input
-                                        type="select"
-                                        value={selectedFilters.mois}
-                                        onChange={(e) => handleFilterChange('mois', e.target.value)}
-                                    >
-                                        <option value="">Toutes</option>
-                                        {periodes.map((p) => (
-                                            <option key={p.id} value={p.code}>{p.code}</option>
-                                        ))}
-                                    </Input>
+                                    <Select
+                                        isSearchable
+                                        placeholder="Toutes"
+                                        noOptionsMessage={() => 'Aucune période'}
+                                        options={periodes.map((p) => ({ value: p.code, label: formatPeriode(p.code) }))}
+                                        value={selectedFilters.mois
+                                            ? { value: selectedFilters.mois, label: formatPeriode(selectedFilters.mois) }
+                                            : null}
+                                        onChange={(selected) => handleFilterChange('mois', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col md={3}>
                                     <Label className="form-label">Recherche</Label>

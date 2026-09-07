@@ -117,7 +117,7 @@ class ReportingDashboardService
         $montantPaiementsATraiter = $paiementsATraiterAgg->montant ?? 0;
 
         $journalActivite = JournalAudit::query()
-            ->with(['user:id,name,email'])
+            ->with(['user:id,nom,email'])
             ->latest()
             ->limit(8)
             ->get()

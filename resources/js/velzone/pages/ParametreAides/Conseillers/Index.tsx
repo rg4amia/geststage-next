@@ -47,6 +47,13 @@ const Index = ({ conseillers, agences, filters, peutGerer, peutGererComptes }: P
 
     const soumettreCompte = (e: React.FormEvent) => {
         e.preventDefault();
+
+        // Garde-fou : la modale peut recevoir un submit résiduel (ex. touche
+        // Entrée) pendant sa fermeture, une fois `conseillerCible` déjà remis à null.
+        if (!conseillerCible) {
+            return;
+        }
+
         compte.post(`/parametre-aides/conseillers/${conseillerCible.id}/compte`, {
             preserveScroll: true,
             onSuccess: () => setConseillerCible(null),

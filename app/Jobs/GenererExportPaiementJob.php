@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 
 /**
@@ -49,7 +50,10 @@ class GenererExportPaiementJob implements ShouldQueue
         // En file d'attente il n'y a pas de session : on ré-authentifie le demandeur pour que
         // l'export soit généré avec son périmètre exact (cf. ExporterVisasRegionauxJob).
         if ($this->demandeParId !== null) {
-            Auth::loginUsingId($this->demandeParId);
+            $user = User::find($this->demandeParId);
+            if ($user) {
+                Auth::login($user);
+            }
         }
 
         $paiements = $service->paiementsPour($this->nature, $this->mois, $this->filtres, $this->ids);

@@ -153,3 +153,20 @@ $value in $theme-colors {
         }
     }
 }
+
+// Staggered fade-in for card grids
+@keyframes cardFadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(12px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card-stagger-fade {
+    opacity: 0;
+    animation: cardFadeInUp 0.35s ease-out forwards;
+}

@@ -11,6 +11,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 
@@ -46,7 +47,10 @@ class ExporterVisasRegionauxJob implements ShouldQueue
         // d'attente il n'y a pas de session, on ré-authentifie donc le demandeur pour que
         // l'export ne puisse pas déborder de son périmètre.
         if ($this->demandeParId !== null) {
-            Auth::loginUsingId($this->demandeParId);
+            $user = User::find($this->demandeParId);
+            if ($user) {
+                Auth::login($user);
+            }
         }
 
         $query = $service->queryPourOnglet($this->onglet, $this->filtres);
