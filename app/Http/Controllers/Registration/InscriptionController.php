@@ -24,6 +24,10 @@ use App\Models\Reference\TypePaiement;
 use App\Models\Reference\TypeStage;
 use App\Models\Reference\TypeStructure;
 use App\Models\Workflow\InstanceParcours;
+use App\Models\Contract\Contrat;
+use App\Models\Document\Document;
+use App\Models\Document\VersionDocument;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -53,57 +57,119 @@ class InscriptionController extends Controller
 
     public function create()
     {
-        // Données pour remplir les selects du formulaire
-        $offres = OffreEmploi::with(['entreprise', 'agence', 'typeStage', 'sourceFinancement'])
-            ->where('statut', 'PUBLIEE')
-            ->get();
+        return Inertia::render('Inscriptions/Create', $this->formData());
+    }
 
-        $agences = Agence::where('actif', true)->get();
-        $communes = Commune::where('actif', true)->get();
-        $typesStage = TypeStage::where('actif', true)->get();
-        $originesStagiaire = OrigineStagiaire::where('actif', true)->get();
-        $liensParente = LienParente::where('actif', true)->get();
-        $niveauxEtude = NiveauEtude::where('actif', true)->get();
-        $diplomes = Diplome::where('actif', true)->get();
-        $typesEnseignement = TypeEnseignement::where('actif', true)->get();
-        $handicaps = Handicap::where('actif', true)->get();
-        $typesHandicap = TypeHandicap::where('actif', true)->get();
-        $typesPaiement = TypePaiement::where('actif', true)->get();
-        $sourcesFinancement = SourceFinancement::where('actif', true)->get();
-        $statutsStage = DB::table('statuts_stage')->get();
-        $situationsStage = DB::table('situations_stage')->get();
-        $typesStructure = TypeStructure::where('actif', true)->get();
+    public function edit(InstanceParcours $inscription)
+    {
+        $this->assertCanEdit($inscription);
+        $inscription->load(['stage.beneficiaire', 'stage.contrats']);
+        $stage = $inscription->stage;
+        $beneficiaire = $stage->beneficiaire;
+        $contrat = $stage->contrats->sortByDesc('id')->first();
 
-        // Conseillers avec leur agence
-        $conseillers = Conseiller::with('agence')
-            ->where('actif', true)
-            ->orderBy('nom')
-            ->get();
+        return Inertia::render('Inscriptions/Create', array_merge($this->formData(), [
+            'mode' => 'edit',
+            'inscriptionId' => $inscription->id,
+            'initialData' => [
+                'beneficiaire' => $beneficiaire->toArray(),
+                'stage' => $stage->toArray(),
+                'contrat' => $contrat?->toArray(),
+            ],
+        ]));
+    }
 
-        // Périmètres d'agences de l'utilisateur connecté
-        $user = Auth::user();
-        $authUserAgenceIds = $user->perimetresAgences()->pluck('agences.id')->toArray();
-
-        return Inertia::render('Inscriptions/Create', [
-            'offres' => $offres,
-            'agences' => $agences,
-            'communes' => $communes,
-            'typesStage' => $typesStage,
-            'originesStagiaire' => $originesStagiaire,
-            'liensParente' => $liensParente,
-            'niveauxEtude' => $niveauxEtude,
-            'diplomes' => $diplomes,
-            'typesEnseignement' => $typesEnseignement,
-            'handicaps' => $handicaps,
-            'typesHandicap' => $typesHandicap,
-            'typesPaiement' => $typesPaiement,
-            'sourcesFinancement' => $sourcesFinancement,
-            'statutsStage' => $statutsStage,
-            'situationsStage' => $situationsStage,
-            'typesStructure' => $typesStructure,
-            'conseillers' => $conseillers,
-            'authUserAgenceIds' => $authUserAgenceIds,
+    public function update(Request $request, InstanceParcours $inscription)
+    {
+        $this->assertCanEdit($inscription);
+        $validated = $request->validate([
+            'beneficiaire' => 'required|array',
+            'stage' => 'required|array',
+            'contrat' => 'nullable|array',
+            'documents' => 'nullable|array',
+            'documents.*' => 'nullable|file|max:10240',
         ]);
+
+        DB::transaction(function () use ($validated, $request, $inscription): void {
+            $stage = $inscription->stage()->with('beneficiaire')->firstOrFail();
+            $stage->beneficiaire->update($this->onlyKnown($validated['beneficiaire'], [
+                'numero_aej', 'nom', 'prenoms', 'date_naissance', 'lieu_naissance', 'sous_prefecture_naissance',
+                'sexe', 'telephone_principal', 'telephone_secondaire', 'email', 'commune_residence_id',
+                'sous_prefecture_residence', 'nature_piece_identite', 'numero_piece_identite', 'numero_cmu',
+                'personne_urgence', 'lien_parente_id', 'contact_urgence_1', 'contact_urgence_2', 'niveau_etude_id',
+                'diplome_id', 'autre_diplome', 'specialite', 'annee_diplome', 'etablissement_frequente',
+                'type_enseignement_id', 'handicap_id', 'type_handicap_id', 'autre_handicap', 'type_paiement_id',
+                'numero_tresor_money', 'numero_wave',
+            ]));
+            $stage->update($this->onlyKnown($validated['stage'], [
+                'agence_id', 'conseiller_id', 'origine_stagiaire_id', 'date_entree_portefeuille', 'type_stage_id',
+                'source_financement_id', 'programme_id', 'service_affectation', 'intitule_poste', 'localite_stage',
+                'commune_stage', 'sous_prefecture_stage', 'nom_encadreur', 'fonction_encadreur', 'contact_encadreur',
+                'statut_stage', 'situation_stage', 'nbr_mois_capitaliser', 'date_demarrage_capitalisation',
+                'date_demarrage_capitalisation_sans_financiere', 'observations', 'date_debut', 'date_fin_prevue',
+                'offre_emploi_id', 'entreprise_id',
+            ]));
+            $contrat = $stage->contrats()->latest('id')->first();
+            if ($contrat) {
+                $contrat->update($this->onlyKnown($validated['contrat'] ?? [], ['numero', 'date_debut', 'date_fin', 'prime_mensuelle']));
+            }
+            $this->storeDocuments($request->file('documents', []), $stage, $contrat, Auth::user());
+        });
+
+        return redirect()->route('inscriptions.show', $inscription)->with('success', 'Dossier stagiaire mis à jour.');
+    }
+
+    private function assertCanEdit(InstanceParcours $inscription): void
+    {
+        abort_unless(Auth::user()->hasAnyRole(['administrateur', 'chef_agence']), 403);
+        abort_unless($inscription->stage()->exists(), 404);
+    }
+
+    private function onlyKnown(array $data, array $keys): array
+    {
+        return collect($data)->only($keys)->all();
+    }
+
+    private function storeDocuments(array $documents, $stage, ?Contrat $contrat, $auteur): void
+    {
+        if (! $contrat) return;
+        foreach ($documents as $key => $file) {
+            if (! $file instanceof UploadedFile || ! $file->isValid()) continue;
+            $type = DB::table('types_document')->where('code', strtoupper($key))->first();
+            $typeId = $type?->id ?? DB::table('types_document')->insertGetId([
+                'code' => strtoupper($key), 'nom' => ucfirst(str_replace('_', ' ', $key)),
+                'actif' => true, 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            $path = $file->store('dossiers_stagiaires/'.$stage->beneficiaire_id);
+            $document = Document::create([
+                'type_document_id' => $typeId, 'beneficiaire_id' => $stage->beneficiaire_id,
+                'stage_id' => $stage->id, 'contrat_id' => $contrat->id, 'cree_par_id' => $auteur->id,
+                'nom' => $file->getClientOriginalName(), 'statut' => 'VALIDE', 'prive' => true,
+            ]);
+            VersionDocument::create([
+                'document_id' => $document->id, 'depose_par_id' => $auteur->id, 'numero_version' => 1,
+                'disque' => config('filesystems.default'), 'chemin' => $path,
+                'nom_original' => $file->getClientOriginalName(), 'type_mime' => $file->getMimeType(),
+                'taille_octets' => $file->getSize(), 'empreinte_sha256' => hash_file('sha256', $file->getRealPath()),
+            ]);
+        }
+    }
+
+    private function formData(): array
+    {
+        $user = Auth::user();
+        return [
+            'offres' => OffreEmploi::with(['entreprise', 'agence', 'typeStage', 'sourceFinancement'])->where('statut', 'PUBLIEE')->get(),
+            'agences' => Agence::where('actif', true)->get(), 'communes' => Commune::where('actif', true)->get(),
+            'typesStage' => TypeStage::where('actif', true)->get(), 'originesStagiaire' => OrigineStagiaire::where('actif', true)->get(),
+            'liensParente' => LienParente::where('actif', true)->get(), 'niveauxEtude' => NiveauEtude::where('actif', true)->get(),
+            'diplomes' => Diplome::where('actif', true)->get(), 'typesEnseignement' => TypeEnseignement::where('actif', true)->get(),
+            'handicaps' => Handicap::where('actif', true)->get(), 'typesHandicap' => TypeHandicap::where('actif', true)->get(),
+            'typesPaiement' => TypePaiement::where('actif', true)->get(), 'sourcesFinancement' => SourceFinancement::where('actif', true)->get(),
+            'statutsStage' => DB::table('statuts_stage')->get(), 'situationsStage' => DB::table('situations_stage')->get(),
+            'typesStructure' => TypeStructure::where('actif', true)->get(), 'conseillers' => Conseiller::with('agence')->where('actif', true)->orderBy('nom')->get(),
+            'authUserAgenceIds' => $user->perimetresAgences()->pluck('agences.id')->toArray(),
+        ];
     }
 
     /**

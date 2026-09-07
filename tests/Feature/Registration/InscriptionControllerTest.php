@@ -140,4 +140,45 @@ class InscriptionControllerTest extends TestCase
                 ->has('doublons')
             );
     }
+
+    public function test_un_chef_agence_peut_ouvrir_et_enregistrer_le_formulaire_edition(): void
+    {
+        $chefAgence = User::factory()->create();
+        $chefAgence->assignRole(Role::firstOrCreate(['name' => 'chef_agence']));
+
+        $this->actingAs($this->cip)->post('/inscriptions', [
+            'beneficiaire' => [
+                'numero_aej' => 'AEJ-817350', 'nom' => 'Initial', 'prenoms' => 'Awa',
+                'date_naissance' => '2000-01-01', 'sexe' => 'F',
+            ],
+            'stage' => [
+                'entreprise_id' => $this->offre->entreprise_id, 'agence_id' => $this->offre->agence_id,
+                'type_stage_id' => $this->offre->type_stage_id, 'source_financement_id' => $this->offre->source_financement_id,
+                'offre_emploi_id' => $this->offre->id, 'intitule_poste' => 'Développeuse',
+                'date_debut' => '2026-09-01', 'date_fin_prevue' => '2027-02-28',
+            ],
+            'contrat' => ['numero' => 'CTR-EDIT-1', 'date_debut' => '2026-09-01', 'date_fin' => '2027-02-28'],
+        ]);
+
+        $instance = InstanceParcours::whereHas('stage.beneficiaire', fn ($q) => $q->where('numero_aej', 'AEJ-817350'))->firstOrFail();
+
+        $this->actingAs($chefAgence)->get("/inscriptions/{$instance->id}/edit")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Inscriptions/Create')
+                ->where('mode', 'edit')
+                ->where('inscriptionId', $instance->id)
+                ->has('initialData.beneficiaire')
+                ->has('initialData.stage')
+            );
+
+        $this->actingAs($chefAgence)->put("/inscriptions/{$instance->id}", [
+            'beneficiaire' => ['nom' => 'Modifie'],
+            'stage' => ['intitule_poste' => 'Poste modifie'],
+            'contrat' => [],
+        ])->assertRedirect("/inscriptions/{$instance->id}");
+
+        $this->assertDatabaseHas('beneficiaires', ['id' => $instance->stage->beneficiaire_id, 'nom' => 'Modifie']);
+        $this->assertDatabaseHas('stages', ['id' => $instance->stage_id, 'intitule_poste' => 'Poste modifie']);
+    }
 }

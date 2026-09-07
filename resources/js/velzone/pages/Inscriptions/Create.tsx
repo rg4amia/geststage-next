@@ -72,6 +72,13 @@ interface Props {
     typesStructure: RefItem[];
     conseillers: ConseillerItem[];
     authUserAgenceIds: number[];
+    mode?: 'create' | 'edit';
+    inscriptionId?: number;
+    initialData?: {
+        beneficiaire?: Record<string, unknown>;
+        stage?: Record<string, unknown>;
+        contrat?: Record<string, unknown> | null;
+    };
 }
 
 interface DemandeurAej {
@@ -642,6 +649,7 @@ const Create = ({
     handicaps, typesHandicap, typesPaiement, sourcesFinancement,
     statutsStage, situationsStage, typesStructure,
     conseillers, authUserAgenceIds,
+    mode = 'create', inscriptionId, initialData,
 }: Props) => {
     const { flash, auth } = usePage<{ flash: { success?: string; error?: string }; auth: { user?: { type_user_id?: number } } }>().props;
 
@@ -677,6 +685,15 @@ const Create = ({
 
     const [contrat, setContrat] = useState({ numero: '', date_debut: '', date_fin: '', prime_mensuelle: '' });
     const [documents, setDocuments] = useState<Record<string, File | null>>({});
+
+    // Le même formulaire sert à la création et à la reprise d'un dossier existant.
+    // Les effets métier ci-dessous restent actifs afin de recalculer les champs dérivés.
+    useEffect(() => {
+        if (mode !== 'edit' || !initialData) return;
+        setBeneficiaire(b => ({ ...b, ...(initialData.beneficiaire || {}) }));
+        setStage(s => ({ ...s, ...(initialData.stage || {}) }));
+        setContrat(c => ({ ...c, ...(initialData.contrat || {}) }));
+    }, []);
 
     /* ─── Wizard stepper ─── */
     const STEPS = [
@@ -757,12 +774,12 @@ const Create = ({
     );
 
     const filteredDiplomes = useMemo(() => {
-        if (!stage.niveau_etude_id) {
+        if (!beneficiaire.niveau_etude_id) {
 return diplomes;
 }
 
-        return diplomes.filter(d => !d.niveau_id || String(d.niveau_id) === stage.niveau_etude_id);
-    }, [diplomes, stage.niveau_etude_id]);
+        return diplomes.filter(d => !d.niveau_id || String(d.niveau_id) === beneficiaire.niveau_etude_id);
+    }, [diplomes, beneficiaire.niveau_etude_id]);
 
     const entrepriseOptions = useMemo(() => {
         if (!stage.agence_id) {
@@ -788,7 +805,7 @@ unique.set(o.entreprise_id, o);
     const pieceMaxLength = getPieceMaxLength(beneficiaire.nature_piece_identite);
     const pieceNumberDisplay = beneficiaire.numero_piece_identite.replace(new RegExp(`^${piecePrefix}`), '');
 
-    const isNiveauAucun = String(stage.niveau_etude_id) === '1';
+    const isNiveauAucun = String(beneficiaire.niveau_etude_id) === '1';
     const isDiplomeAutre = String(beneficiaire.diplome_id) === '42';
 
     /* ═══════════════════════════════════════════════════════════════════════
@@ -895,7 +912,7 @@ unique.set(o.entreprise_id, o);
                 annee_diplome: '',
             }));
         }
-    }, [stage.niveau_etude_id]);
+    }, [beneficiaire.niveau_etude_id]);
 
     /** Capitalisation PEJEDEC → calcul date_demarrage */
     useEffect(() => {
@@ -1520,7 +1537,9 @@ formData.append(`documents[${k}]`, v);
 }
             });
 
-            const resp = await fetch('/inscriptions', {
+            const endpoint = mode === 'edit' && inscriptionId ? `/inscriptions/${inscriptionId}` : '/inscriptions';
+            if (mode === 'edit') formData.append('_method', 'PUT');
+            const resp = await fetch(endpoint, {
                 method: 'POST',
                 body: formData,
                 credentials: 'same-origin',
@@ -1528,7 +1547,7 @@ formData.append(`documents[${k}]`, v);
             });
 
             if (resp.redirected || resp.ok) {
-                window.location.href = '/cip/mes-stagiaires';
+                window.location.href = mode === 'edit' && inscriptionId ? `/inscriptions/${inscriptionId}` : '/cip/mes-stagiaires';
             } else {
                 const text = await resp.text();
 
@@ -2087,9 +2106,9 @@ formData.append(`documents[${k}]`, v);
                                                 <Col lg={6}>
                                                     <Label className="fw-semibold">Niveau d'études <span className="text-danger">*</span></Label>
                                                     <RsSelect
-                                                        value={stage.niveau_etude_id}
+                                                        value={beneficiaire.niveau_etude_id}
                                                         options={niveauxEtude.map(n => ({ value: String(n.id), label: n.nom }))}
-                                                        onChange={v => setStage(s => ({ ...s, niveau_etude_id: v }))}
+                                                        onChange={v => setBeneficiaire(b => ({ ...b, niveau_etude_id: v }))}
                                                         placeholder="Sélectionner"
                                                         className={fieldError('niveau_etude_id') ? 'is-invalid' : ''}
                                                     />
