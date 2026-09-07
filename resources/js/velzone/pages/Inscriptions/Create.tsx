@@ -1,5 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useState } from 'react';
 import Select from 'react-select';
 import {
     Alert,
@@ -145,6 +145,31 @@ const ALLOWED_DOC_EXTENSIONS = ['pdf', 'doc', 'docx'];
 const ALLOWED_IMAGE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
 const MAX_FILE_SIZE_KB = 10240; // 10 MB
 
+/**
+ * Le backend renvoie les champs d'un dossier existant avec leurs types Eloquent natifs
+ * (int pour les FK, null pour les colonnes vides), alors que l'état du formulaire attend
+ * des chaînes (contrôlés par des <select>/<input> texte) pour rester cohérent avec le mode
+ * création. Sans cette normalisation, un champ numérique venant du serveur casse les appels
+ * `.trim()` de la validation côté client.
+ */
+const normalizeInitialData = <T extends Record<string, unknown>>(
+    defaults: T,
+    incoming?: Record<string, unknown>,
+): Partial<T> => {
+    if (!incoming) return {};
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(incoming)) {
+        if (!(key in defaults)) continue;
+        const isNumericField = typeof defaults[key] === 'number';
+        if (value === null || value === undefined) {
+            result[key] = isNumericField ? 0 : '';
+        } else {
+            result[key] = isNumericField ? Number(value) : String(value);
+        }
+    }
+    return result as Partial<T>;
+};
+
 /** Valider l'extension d'un fichier */
 const validateFileExtension = (file: File, allowedExts: string[]): boolean => {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
@@ -178,9 +203,16 @@ const RsSelect = ({
     id?: string;
 }) => {
     const selected = options.find(o => o.value === value) || null;
+    // react-select génère par défaut des ids via un compteur global incrémental,
+    // qui diverge entre le rendu serveur (SSR, process long-vivant) et le rendu client
+    // (qui repart de zéro) → mismatch d'hydratation React. useId() est stable pour une
+    // même position dans l'arbre entre serveur et client, contrairement à ce compteur.
+    const autoId = useId();
+    const instanceId = id || autoId;
 
     return (
         <Select<RsSelectOption>
+            instanceId={instanceId}
             inputId={id}
             className={className}
             classNamePrefix="select2"
@@ -690,9 +722,9 @@ const Create = ({
     // Les effets métier ci-dessous restent actifs afin de recalculer les champs dérivés.
     useEffect(() => {
         if (mode !== 'edit' || !initialData) return;
-        setBeneficiaire(b => ({ ...b, ...(initialData.beneficiaire || {}) }));
-        setStage(s => ({ ...s, ...(initialData.stage || {}) }));
-        setContrat(c => ({ ...c, ...(initialData.contrat || {}) }));
+        setBeneficiaire(b => ({ ...b, ...normalizeInitialData(b, initialData.beneficiaire) }));
+        setStage(s => ({ ...s, ...normalizeInitialData(s, initialData.stage) }));
+        setContrat(c => ({ ...c, ...normalizeInitialData(c, initialData.contrat || undefined) }));
     }, []);
 
     /* ─── Wizard stepper ─── */
