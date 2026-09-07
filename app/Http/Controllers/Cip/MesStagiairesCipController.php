@@ -306,7 +306,7 @@ class MesStagiairesCipController extends Controller
                     ->whereHas('pointage', fn ($p) => $p->where('statut', 'VALIDE'));
             })
             ->whereHas('droitPaiement.pointage.stage', function ($q) use ($user) {
-                if ($user?->agence_id) {
+                if ($user?->agence_id && ! $user->hasRole('administrateur')) {
                     $q->where('agence_id', $user->agence_id);
                 }
             });

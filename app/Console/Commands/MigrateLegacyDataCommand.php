@@ -27,6 +27,7 @@ use App\Models\Payment\OrdrePaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Commune;
+use App\Models\Reference\Conseiller;
 use App\Models\Reference\Diplome;
 use App\Models\Reference\Handicap;
 use App\Models\Reference\LienParente;
@@ -1105,6 +1106,9 @@ class MigrateLegacyDataCommand extends Command
         // pluck('id', 'code') ne matchait donc quasiment jamais et retombait sur le défaut.
         $sourcesFinancementMap = SourceFinancement::pluck('id', 'ancien_id')->toArray();
         $origineStagiaireMap = OrigineStagiaire::pluck('id', 'ancien_id')->toArray();
+        // contrats_pae.conseiller_id référence conseiller.id_conseiller côté legacy ; le
+        // conseiller cible n'existe que si legacy:migrer-referentiels a déjà tourné.
+        $conseillersMap = Conseiller::pluck('id', 'ancien_id')->toArray();
         // situation_stage / statut_stage restent des colonnes texte dénormalisées sur stages
         // (comme en legacy), mais on y stocke désormais le vrai code du référentiel migré par
         // legacy:migrer-referentiels au lieu d'un code fabriqué ("SS-001") qui ne correspondait
@@ -1114,7 +1118,7 @@ class MigrateLegacyDataCommand extends Command
 
         $this->processInChunks($query, 500, function ($contrats) use (
             &$bar, $agencesMap, $typesStageMap, $entreprisesMap, $sourcesFinancementMap,
-            $origineStagiaireMap, $situationsStageMap, $statutsStageMap
+            $origineStagiaireMap, $situationsStageMap, $statutsStageMap, $conseillersMap
         ): void {
             $aejNums = $contrats->pluck('numero_aej')->filter()->unique()->toArray();
             $beneficiairesMap = Beneficiaire::whereIn('numero_aej', $aejNums)->pluck('id', 'numero_aej')->toArray();
@@ -1140,6 +1144,7 @@ class MigrateLegacyDataCommand extends Command
                 $type_stage_id = $typesStageMap[$legacyContrat->id_type_stage] ?? null;
                 $source_financement_id = $sourcesFinancementMap[$legacyContrat->source_financement] ?? null;
                 $origine_stagiaire_id = isset($legacyContrat->originestagiaire_id) ? ($origineStagiaireMap[$legacyContrat->originestagiaire_id] ?? null) : null;
+                $conseiller_id = isset($legacyContrat->conseiller_id) ? ($conseillersMap[$legacyContrat->conseiller_id] ?? null) : null;
                 $situation_stage = isset($legacyContrat->id_situation_stage) ? ($situationsStageMap[$legacyContrat->id_situation_stage] ?? null) : null;
                 $statut_stage = isset($legacyContrat->id_statut_stage) ? ($statutsStageMap[$legacyContrat->id_statut_stage] ?? null) : null;
 
@@ -1222,7 +1227,7 @@ class MigrateLegacyDataCommand extends Command
                     'agence_id' => $agence_id,
                     'type_stage_id' => $type_stage_id,
                     'source_financement_id' => $source_financement_id,
-                    'conseiller_id' => null, // conseiller mapping needs conseillers table populated
+                    'conseiller_id' => $conseiller_id,
                     'origine_stagiaire_id' => $origine_stagiaire_id,
                     'date_entree_portefeuille' => $date_entree,
 

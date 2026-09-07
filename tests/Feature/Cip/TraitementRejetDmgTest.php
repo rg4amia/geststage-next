@@ -8,14 +8,18 @@ use App\Models\Internship\Stage;
 use App\Models\Payment\DecisionPaiement;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SituationStage;
 use App\Models\Reference\TypePaiement;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -70,7 +74,7 @@ class TraitementRejetDmgTest extends TestCase
         ['user' => $user, 'stage' => $stage, 'pointage' => $pointage, 'paiement' => $paiement] = $this->scenarioRejetDmg();
 
         $this->actingAs($user)
-            ->post("/cip/pointages/update-stagiaire/{$stage->id}", $this->payload([
+            ->post("/cip/pointages/update-stagiaire/{$stage->id}", $this->payloadComplet([
                 'action' => 'enregistrer_transmettre',
                 'motif' => 'Numéro Trésor Money rectifié',
             ]))
@@ -105,6 +109,74 @@ class TraitementRejetDmgTest extends TestCase
 
         $this->assertDatabaseHas('pointages', ['id' => $pointage->id, 'statut' => 'CORRIGE_CIP']);
         $this->assertDatabaseHas('decisions_pointages', ['pointage_id' => $pointage->id, 'decision' => 'CORRIGE_CIP']);
+    }
+
+    public function test_un_cip_dune_autre_agence_ne_peut_ni_ouvrir_ni_modifier_la_fiche(): void
+    {
+        ['stage' => $stage] = $this->scenarioRejetDmg();
+        $intrus = User::factory()->create();
+        $intrus->perimetresAgences()->attach(Agence::factory()->create()->id);
+
+        $this->actingAs($intrus)
+            ->get("/cip/pointages/edit-stagiaire/{$stage->id}")
+            ->assertForbidden();
+
+        $this->actingAs($intrus)
+            ->post("/cip/pointages/update-stagiaire/{$stage->id}", $this->payload())
+            ->assertForbidden();
+
+        $this->actingAs($intrus)
+            ->post("/cip/pointages/transmettre-correction-dmg/{$stage->id}", ['motif' => 'Tentative'])
+            ->assertForbidden();
+    }
+
+    public function test_un_administrateur_accede_a_la_fiche_hors_de_tout_perimetre(): void
+    {
+        ['stage' => $stage] = $this->scenarioRejetDmg();
+
+        // L'administrateur a une visibilité nationale : aucun périmètre agence ne lui est attaché.
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'administrateur', 'guard_name' => 'web']));
+
+        $this->actingAs($admin)
+            ->get("/cip/pointages/edit-stagiaire/{$stage->id}")
+            ->assertOk();
+    }
+
+    public function test_la_transmission_est_refusee_quand_aucun_pointage_nest_ajourne(): void
+    {
+        ['user' => $user, 'stage' => $stage, 'pointage' => $pointage, 'paiement' => $paiement] = $this->scenarioRejetDmg();
+
+        // Le paiement n'est plus ajourné : il n'y a donc plus rien à corriger côté CIP.
+        $paiement->update(['statut' => 'A_TRAITER']);
+
+        $this->actingAs($user)
+            ->post("/cip/pointages/transmettre-correction-dmg/{$stage->id}", ['motif' => 'Tentative'])
+            ->assertRedirect()
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseHas('pointages', ['id' => $pointage->id, 'statut' => 'VALIDE']);
+        $this->assertDatabaseMissing('decisions_pointages', ['pointage_id' => $pointage->id, 'decision' => 'CORRIGE_CIP']);
+    }
+
+    public function test_la_correction_seule_reste_possible_sur_une_fiche_incomplete(): void
+    {
+        ['user' => $user, 'stage' => $stage, 'pointage' => $pointage] = $this->scenarioRejetDmg();
+
+        // Correction en plusieurs passes : le CIP n'a encore rectifié que le canal de paiement.
+        $this->actingAs($user)
+            ->post("/cip/pointages/update-stagiaire/{$stage->id}", $this->payload())
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        // Mais la même fiche partielle ne peut pas repartir chez le Chef d'Agence.
+        $this->actingAs($user)
+            ->post("/cip/pointages/update-stagiaire/{$stage->id}", $this->payload([
+                'action' => 'enregistrer_transmettre',
+            ]))
+            ->assertSessionHasErrors(['observations', 'situation_stage', 'nom_encadreur']);
+
+        $this->assertDatabaseHas('pointages', ['id' => $pointage->id, 'statut' => 'VALIDE']);
     }
 
     public function test_le_redepot_dune_piece_ajoute_une_version_au_document(): void
@@ -145,8 +217,10 @@ class TraitementRejetDmgTest extends TestCase
      */
     private function scenarioRejetDmg(): array
     {
-        $user = User::factory()->create();
         $stage = Stage::factory()->create();
+        // Le CIP doit relever de l'agence du stagiaire, sinon le périmètre le renvoie en 403.
+        $user = User::factory()->create();
+        $user->perimetresAgences()->attach($stage->agence_id);
         $periode = Periode::create([
             'code' => '2026-08',
             'date_debut' => '2026-08-01',
@@ -226,5 +300,75 @@ class TraitementRejetDmgTest extends TestCase
             'return_tab' => 'ajourne_dmg',
             'mois' => '2026-08',
         ], $surcharges);
+    }
+
+    /**
+     * Payload complet exigé par la transmission : contrairement à la correction seule, le
+     * renvoi au Chef d'Agence n'accepte pas une fiche partielle.
+     *
+     * @param  array<string, mixed>  $surcharges
+     * @return array<string, mixed>
+     */
+    private function payloadComplet(array $surcharges = []): array
+    {
+        $stage = Stage::with('beneficiaire')->latest('id')->firstOrFail();
+
+        return $this->payload(array_merge([
+            'agence_id' => $stage->agence_id,
+            'source_financement_id' => $stage->source_financement_id,
+
+            'sexe' => 'M',
+            'date_naissance' => '1998-04-12',
+            'lieu_naissance' => 'Abidjan',
+            'sous_prefecture_naissance' => 'Abidjan',
+            'sous_prefecture_residence' => 'Cocody',
+            'nature_piece_identite' => 'CNI',
+            'numero_piece_identite' => 'CI0012345678',
+            'numero_cmu' => 'CMU0012345',
+
+            'personne_urgence' => 'Kouassi Aya',
+            'lien_parente_id' => $this->referenceId('liens_parente', 'LP-MERE', 'Mère'),
+            'contact_urgence_1' => '0501020304',
+
+            'niveau_etude_id' => $this->referenceId('niveaux_etude', 'NE-BAC', 'Baccalauréat'),
+            'diplome_id' => $this->referenceId('diplomes', 'DIP-BTS', 'BTS'),
+            'specialite' => 'Comptabilité',
+            'etablissement_frequente' => 'INP-HB',
+            'type_enseignement_id' => $this->referenceId('types_enseignement', 'TE-GENERAL', 'Général'),
+            'handicap_id' => $this->referenceId('handicaps', 'HD-AUCUN', 'Aucun'),
+
+            'service_affectation' => 'Comptabilité',
+            'localite_stage' => 'Abidjan',
+            'commune_stage' => 'Plateau',
+            'sous_prefecture_stage' => 'Abidjan',
+            'nom_encadreur' => 'Traoré Salif',
+            'fonction_encadreur' => 'Chef comptable',
+            'contact_encadreur' => '0708091011',
+            'situation_stage' => $this->referenceCode('situations_stage', SituationStage::CODE_EN_COURS, 'En cours'),
+            'observations' => 'Numéro Trésor Money corrigé.',
+        ], $surcharges));
+    }
+
+    /**
+     * Les référentiels à code (`code`/`nom`/`actif`) partagent le même schéma.
+     */
+    private function referenceCode(string $table, string $code, string $nom): string
+    {
+        $this->referenceId($table, $code, $nom);
+
+        return $code;
+    }
+
+    private function referenceId(string $table, string $code, string $nom): int
+    {
+        $existant = DB::table($table)->where('code', $code)->value('id');
+
+        return (int) ($existant ?? DB::table($table)->insertGetId([
+            'code' => $code,
+            'nom' => $nom,
+            'actif' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]));
     }
 }

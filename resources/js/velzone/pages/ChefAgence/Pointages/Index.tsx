@@ -409,11 +409,20 @@ throw new Error('Erreur lors de la génération');
             },
             {
                 header: 'Financement',
-                cell: (cell: any) => cell.row.original.stage?.sourceFinancement?.nom || '-',
+                cell: (cell: any) => cell.row.original.stage?.sourceFinancement?.nom || cell.row.original.stage?.source_financement?.nom || '-',
             },
             {
                 header: 'Type Stage',
-                cell: (cell: any) => cell.row.original.stage?.typeStage?.nom || '-',
+                cell: (cell: any) => cell.row.original.stage?.typeStage?.nom || cell.row.original.stage?.type_stage?.nom || '-',
+            },
+            {
+                header: 'CIP',
+                cell: (cell: any) => {
+                    const v = cell.row.original.versionCourante || cell.row.original.version_courante;
+                    const cp = v?.saisiPar || v?.saisi_par;
+
+                    return cp?.nom || cp?.name || '-';
+                },
             },
             {
                 header: 'N° AEJ',
@@ -426,6 +435,10 @@ throw new Error('Erreur lors de la génération');
 
                     return <span className="fw-medium">{b?.nom} {b?.prenoms}</span>;
                 },
+            },
+            {
+                header: 'Téléphone',
+                cell: (cell: any) => cell.row.original.stage?.beneficiaire?.telephone || '-',
             },
             {
                 header: 'Date début',
@@ -489,8 +502,21 @@ throw new Error('Erreur lors de la génération');
                 },
             },
             {
+                header: 'Téléphone',
+                cell: (cell: any) => cell.row.original.stage?.beneficiaire?.telephone || '-',
+            },
+            {
                 header: 'Financement',
-                cell: (cell: any) => cell.row.original.stage?.sourceFinancement?.nom || '-',
+                cell: (cell: any) => cell.row.original.stage?.sourceFinancement?.nom || cell.row.original.stage?.source_financement?.nom || '-',
+            },
+            {
+                header: 'CIP',
+                cell: (cell: any) => {
+                    const v = cell.row.original.versionCourante || cell.row.original.version_courante;
+                    const cp = v?.saisiPar || v?.saisi_par;
+
+                    return cp?.nom || cp?.name || '-';
+                },
             },
             {
                 header: 'Jours Présents',

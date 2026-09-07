@@ -228,7 +228,8 @@ class PointageCipController extends Controller
             })
             ->whereHas('droitPaiement.pointage.stage', function ($query) use ($filters, $user) {
 
-                if ($user?->agence_id) {
+                // L'administrateur conserve la visibilité nationale du legacy.
+                if ($user?->agence_id && ! $user->hasRole('administrateur')) {
                     $query->where('agence_id', $user->agence_id);
                 }
 
@@ -423,6 +424,8 @@ class PointageCipController extends Controller
             'documents.versions',
         ])->findOrFail($id);
 
+        $this->assertDansLePerimetre($stage);
+
         $paiement = $rejetDmg->paiementAjourne($stage);
         $decisionDmg = $paiement?->decisions
             ->where('decision', 'AJOURNE_DMG')
@@ -504,6 +507,8 @@ class PointageCipController extends Controller
     {
         $stage = Stage::with('beneficiaire')->findOrFail($id);
 
+        $this->assertDansLePerimetre($stage);
+
         $validated = $request->validate($this->reglesTraitementRejetDmg($request));
 
         $fichiers = collect(RejetDmgService::TYPES_DOCUMENT)
@@ -532,6 +537,8 @@ class PointageCipController extends Controller
     {
         $stage = Stage::findOrFail($id);
 
+        $this->assertDansLePerimetre($stage);
+
         $validated = $request->validate([
             'motif' => 'nullable|string|max:500',
             'return_tab' => 'nullable|string',
@@ -548,11 +555,41 @@ class PointageCipController extends Controller
     }
 
     /**
+     * Le legacy n'appliquait le périmètre agence que sur la liste, laissant les URL de détail et
+     * d'écriture ouvertes à tout utilisateur authentifié. On aligne ici les trois points d'entrée
+     * du traitement de rejet DMG sur le filtrage déjà appliqué à `buildLegacyAjourneDmgQuery()`.
+     */
+    private function assertDansLePerimetre(Stage $stage): void
+    {
+        $user = Auth::user();
+
+        if ($user?->hasRole('administrateur')) {
+            return;
+        }
+
+        // Le périmètre est porté par le pivot `perimetres_agences_utilisateurs` : `users` n'a
+        // pas de colonne `agence_id` (cf. InscriptionController, même mécanisme).
+        $agencesAutorisees = $user?->perimetresAgences()->pluck('agences.id')->all() ?? [];
+
+        if (! in_array($stage->agence_id, $agencesAutorisees)) {
+            abort(403, "Ce stagiaire ne relève pas de votre périmètre d'agence.");
+        }
+    }
+
+    /**
      * @return array<string, mixed>
      */
     private function reglesTraitementRejetDmg(Request $request): array
     {
         $typePaiement = TypePaiement::find($request->input('type_paiement_id'));
+
+        // Le legacy n'avait qu'un seul bouton : tout enregistrement valait transmission, d'où
+        // des règles `required` sur l'ensemble de la fiche. Ici la correction seule doit rester
+        // reprenable en plusieurs passes, donc la complétude n'est exigée qu'au moment où la
+        // fiche repart chez le Chef d'Agence. Les champs restés `required` ci-dessous sont ceux
+        // sans lesquels la fiche n'identifie plus le stagiaire ni son stage.
+        $exigeCompletude = $request->input('action') === 'enregistrer_transmettre';
+        $requis = fn (string $suite): string => ($exigeCompletude ? 'required' : 'nullable').'|'.$suite;
 
         $regles = [
             'action' => ['required', Rule::in(['enregistrer', 'enregistrer_transmettre'])],
@@ -561,45 +598,45 @@ class PointageCipController extends Controller
             'mois' => ['nullable', 'regex:/^\d{4}-\d{2}$/'],
 
             // Structure du stage (aligné sur Inscriptions/Create)
-            'agence_id' => 'required|exists:agences,id',
+            'agence_id' => $requis('exists:agences,id'),
             'conseiller_id' => 'nullable|exists:conseillers,id',
             'origine_stagiaire_id' => 'nullable|exists:origines_stagiaire,id',
             'offre_emploi_id' => 'nullable|exists:offres_emploi,id',
-            'source_financement_id' => 'required|exists:sources_financement,id',
+            'source_financement_id' => $requis('exists:sources_financement,id'),
             'type_structure_id' => 'nullable|exists:types_structure,id',
             'date_entree_portefeuille' => 'nullable|date',
 
             // Bénéficiaire — identité
             'nom' => 'required|string|max:150',
             'prenoms' => 'required|string|max:255',
-            'sexe' => 'required|string|max:20',
-            'date_naissance' => 'required|date|before:today',
-            'lieu_naissance' => 'required|string|max:150',
-            'sous_prefecture_naissance' => 'required|string|max:150',
+            'sexe' => $requis('string|max:20'),
+            'date_naissance' => $requis('date|before:today'),
+            'lieu_naissance' => $requis('string|max:150'),
+            'sous_prefecture_naissance' => $requis('string|max:150'),
             'commune_residence_id' => 'nullable|exists:communes,id',
-            'sous_prefecture_residence' => 'required|string|max:150',
-            'nature_piece_identite' => 'required|string|max:100',
-            'numero_piece_identite' => 'required|string|max:100',
-            'numero_cmu' => 'required|string|max:100',
+            'sous_prefecture_residence' => $requis('string|max:150'),
+            'nature_piece_identite' => $requis('string|max:100'),
+            'numero_piece_identite' => $requis('string|max:100'),
+            'numero_cmu' => $requis('string|max:100'),
 
             // Bénéficiaire — contacts
             'telephone_principal' => 'required|string|size:10',
             'telephone_secondaire' => 'nullable|string|size:10',
             'email' => 'nullable|email|max:255',
-            'personne_urgence' => 'required|string|max:255',
-            'lien_parente_id' => 'required|exists:liens_parente,id',
-            'contact_urgence_1' => 'required|string|size:10',
+            'personne_urgence' => $requis('string|max:255'),
+            'lien_parente_id' => $requis('exists:liens_parente,id'),
+            'contact_urgence_1' => $requis('string|size:10'),
             'contact_urgence_2' => ['nullable', 'string', 'max:20'],
 
             // Bénéficiaire — formation
-            'niveau_etude_id' => 'required|exists:niveaux_etude,id',
-            'diplome_id' => 'required|exists:diplomes,id',
+            'niveau_etude_id' => $requis('exists:niveaux_etude,id'),
+            'diplome_id' => $requis('exists:diplomes,id'),
             'autre_diplome' => 'nullable|string|max:255',
-            'specialite' => 'required|string|max:255',
+            'specialite' => $requis('string|max:255'),
             'annee_diplome' => 'nullable|integer|min:1950|max:'.(int) date('Y'),
-            'etablissement_frequente' => 'required|string|max:255',
-            'type_enseignement_id' => 'required|exists:types_enseignement,id',
-            'handicap_id' => 'required|exists:handicaps,id',
+            'etablissement_frequente' => $requis('string|max:255'),
+            'type_enseignement_id' => $requis('exists:types_enseignement,id'),
+            'handicap_id' => $requis('exists:handicaps,id'),
             'type_handicap_id' => 'nullable|exists:types_handicap,id',
             'autre_handicap' => 'nullable|string|max:255',
 
@@ -617,22 +654,22 @@ class PointageCipController extends Controller
             // Stage
             'entreprise_id' => 'required|exists:entreprises,id',
             'type_stage_id' => 'required|exists:types_stage,id',
-            'service_affectation' => 'required|string|max:255',
+            'service_affectation' => $requis('string|max:255'),
             'intitule_poste' => 'nullable|string|max:255',
-            'localite_stage' => 'required|string|max:150',
-            'commune_stage' => 'required|string|max:150',
-            'sous_prefecture_stage' => 'required|string|max:150',
-            'nom_encadreur' => 'required|string|max:255',
-            'fonction_encadreur' => 'required|string|max:255',
-            'contact_encadreur' => 'required|string|size:10',
+            'localite_stage' => $requis('string|max:150'),
+            'commune_stage' => $requis('string|max:150'),
+            'sous_prefecture_stage' => $requis('string|max:150'),
+            'nom_encadreur' => $requis('string|max:255'),
+            'fonction_encadreur' => $requis('string|max:255'),
+            'contact_encadreur' => $requis('string|size:10'),
             'statut_stage' => 'nullable|exists:statuts_stage,code',
-            'situation_stage' => 'required|exists:situations_stage,code',
+            'situation_stage' => $requis('exists:situations_stage,code'),
             'date_debut' => 'required|date',
             'date_fin_prevue' => 'required|date|after_or_equal:date_debut',
             'nbr_mois_capitaliser' => 'nullable|integer|min:0|max:60',
             'date_demarrage_capitalisation' => 'nullable|date',
             'date_demarrage_capitalisation_sans_financiere' => 'nullable|date',
-            'observations' => 'required|string|max:2000',
+            'observations' => $requis('string|max:2000'),
         ];
 
         foreach (array_keys(RejetDmgService::TYPES_DOCUMENT) as $code) {
