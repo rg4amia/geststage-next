@@ -8,6 +8,7 @@ use App\Enums\VisaDesseEnum;
 use App\Models\Attendance\Pointage;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\Entreprise;
+use App\Models\Company\OffreEmploi;
 use App\Models\Contract\Contrat;
 use App\Models\Document\Document;
 use App\Models\Reference\Agence;
@@ -58,6 +59,14 @@ class Stage extends Model
         'visa_desse_le' => 'datetime',
         'date_validation_ar' => 'datetime',
     ];
+
+    /**
+     * L'offre d'emploi à l'origine du stage, le cas échéant.
+     */
+    public function offreEmploi(): BelongsTo
+    {
+        return $this->belongsTo(OffreEmploi::class);
+    }
 
     /**
      * L'entreprise d'accueil.

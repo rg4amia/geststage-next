@@ -198,6 +198,9 @@ return 'N/A';
                                                         <i className="ri-inbox-line align-bottom me-1"></i> {corbeilleActuelle.label}
                                                     </Badge>
                                                 )}
+                                                <Link href={`/inscriptions/${instance.id}/edit`} className="btn btn-sm btn-soft-primary">
+                                                    <i className="ri-edit-2-line align-bottom me-1"></i> Modifier
+                                                </Link>
                                             </div>
                                         </div>
                                     </Row>

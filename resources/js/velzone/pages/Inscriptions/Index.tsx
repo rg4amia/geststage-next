@@ -64,7 +64,7 @@ const Index = ({ instances }: Props) => {
                                                             )}
                                                         </td>
                                                         <td>
-                                                            <Link href={`/instances/${instance.id}`} className="btn btn-sm btn-soft-secondary">
+                                                            <Link href={`/inscriptions/${instance.id}`} className="btn btn-sm btn-soft-secondary">
                                                                 <i className="ri-eye-fill align-bottom" /> Voir dossier
                                                             </Link>
                                                         </td>

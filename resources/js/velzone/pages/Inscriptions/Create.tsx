@@ -1519,14 +1519,14 @@ return;
             // 2. Soumission
             const formData = new FormData();
             Object.entries(beneficiaire).forEach(([k, v]) => {
- if (v) {
-formData.append(`beneficiaire[${k}]`, String(v));
-} 
-});
+                if (v !== undefined && v !== null) {
+                    formData.append(`beneficiaire[${k}]`, String(v));
+                }
+            });
             Object.entries(stage).forEach(([k, v]) => {
-                if (v !== '' && v !== 0) {
-formData.append(`stage[${k}]`, String(v));
-}
+                if (v !== undefined && v !== null) {
+                    formData.append(`stage[${k}]`, String(v));
+                }
             });
             formData.append('contrat[date_debut]', stage.date_debut || todayString());
             formData.append('contrat[date_fin]', stage.date_fin_prevue || '');

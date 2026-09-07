@@ -145,6 +145,7 @@ class InscriptionControllerTest extends TestCase
     {
         $chefAgence = User::factory()->create();
         $chefAgence->assignRole(Role::firstOrCreate(['name' => 'chef_agence']));
+        $chefAgence->perimetresAgences()->attach($this->offre->agence_id);
 
         $this->actingAs($this->cip)->post('/inscriptions', [
             'beneficiaire' => [
@@ -170,15 +171,100 @@ class InscriptionControllerTest extends TestCase
                 ->where('inscriptionId', $instance->id)
                 ->has('initialData.beneficiaire')
                 ->has('initialData.stage')
+                ->has('initialData.contrat')
+                ->has('initialData.documents')
+                ->has('initialData.tachesOuvertes')
+                ->has('initialData.evenements')
             );
 
         $this->actingAs($chefAgence)->put("/inscriptions/{$instance->id}", [
             'beneficiaire' => ['nom' => 'Modifie'],
             'stage' => ['intitule_poste' => 'Poste modifie'],
-            'contrat' => [],
+            'contrat' => ['prime_mensuelle' => 55000],
         ])->assertRedirect("/inscriptions/{$instance->id}");
 
         $this->assertDatabaseHas('beneficiaires', ['id' => $instance->stage->beneficiaire_id, 'nom' => 'Modifie']);
         $this->assertDatabaseHas('stages', ['id' => $instance->stage_id, 'intitule_poste' => 'Poste modifie']);
+        $this->assertDatabaseHas('contrats', ['stage_id' => $instance->stage_id, 'prime_mensuelle' => 55000]);
+    }
+
+    public function test_edition_refusee_hors_perimetre_agence(): void
+    {
+        $chefAgence = User::factory()->create();
+        $chefAgence->assignRole(Role::firstOrCreate(['name' => 'chef_agence']));
+        $autreAgence = Agence::factory()->create();
+        $chefAgence->perimetresAgences()->attach($autreAgence->id);
+
+        $instance = $this->creerInscription('AEJ-403000');
+
+        $this->actingAs($chefAgence)->get("/inscriptions/{$instance->id}/edit")->assertForbidden();
+        $this->actingAs($chefAgence)->put("/inscriptions/{$instance->id}", [
+            'beneficiaire' => ['nom' => 'Interdit'],
+            'stage' => [],
+            'contrat' => [],
+        ])->assertForbidden();
+
+        $this->assertDatabaseHas('beneficiaires', ['id' => $instance->stage->beneficiaire_id, 'nom' => 'Initial']);
+    }
+
+    public function test_depot_document_lors_edition(): void
+    {
+        $chefAgence = User::factory()->create();
+        $chefAgence->assignRole(Role::firstOrCreate(['name' => 'chef_agence']));
+        $chefAgence->perimetresAgences()->attach($this->offre->agence_id);
+
+        $instance = $this->creerInscription('AEJ-DOC0001');
+
+        $this->actingAs($chefAgence)->put("/inscriptions/{$instance->id}", [
+            'beneficiaire' => [],
+            'stage' => [],
+            'contrat' => [],
+            'documents' => [
+                'piece_identite' => \Illuminate\Http\UploadedFile::fake()->create('cni.pdf', 100, 'application/pdf'),
+            ],
+        ])->assertRedirect("/inscriptions/{$instance->id}");
+
+        $this->assertDatabaseHas('documents', ['stage_id' => $instance->stage_id, 'nom' => 'cni.pdf']);
+    }
+
+    public function test_rollback_transactionnel_si_erreur_lors_edition(): void
+    {
+        $chefAgence = User::factory()->create();
+        $chefAgence->assignRole(Role::firstOrCreate(['name' => 'chef_agence']));
+        $chefAgence->perimetresAgences()->attach($this->offre->agence_id);
+
+        $autreInstance = $this->creerInscription('AEJ-ROLLBACK-A');
+        $instance = $this->creerInscription('AEJ-ROLLBACK-B');
+
+        // Le numéro de contrat de l'autre dossier viole la contrainte unique('numero')
+        // en base : la mise à jour du contrat échoue après celle du bénéficiaire, dans
+        // la même transaction. Rien ne doit être persisté.
+        $response = $this->actingAs($chefAgence)->put("/inscriptions/{$instance->id}", [
+            'beneficiaire' => ['nom' => 'NePasPersister'],
+            'stage' => [],
+            'contrat' => ['numero' => $autreInstance->stage->contrats()->first()->numero],
+        ]);
+
+        $response->assertStatus(500);
+        $this->assertDatabaseHas('beneficiaires', ['id' => $instance->stage->beneficiaire_id, 'nom' => 'Initial']);
+    }
+
+    private function creerInscription(string $numeroAej): InstanceParcours
+    {
+        $this->actingAs($this->cip)->post('/inscriptions', [
+            'beneficiaire' => [
+                'numero_aej' => $numeroAej, 'nom' => 'Initial', 'prenoms' => 'Awa',
+                'date_naissance' => '2000-01-01', 'sexe' => 'F',
+            ],
+            'stage' => [
+                'entreprise_id' => $this->offre->entreprise_id, 'agence_id' => $this->offre->agence_id,
+                'type_stage_id' => $this->offre->type_stage_id, 'source_financement_id' => $this->offre->source_financement_id,
+                'offre_emploi_id' => $this->offre->id, 'intitule_poste' => 'Développeuse',
+                'date_debut' => '2026-09-01', 'date_fin_prevue' => '2027-02-28',
+            ],
+            'contrat' => ['numero' => 'CTR-'.$numeroAej, 'date_debut' => '2026-09-01', 'date_fin' => '2027-02-28'],
+        ]);
+
+        return InstanceParcours::whereHas('stage.beneficiaire', fn ($q) => $q->where('numero_aej', $numeroAej))->firstOrFail();
     }
 }

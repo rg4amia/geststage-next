@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers\Registration;
 
+use App\Domain\Registration\Services\DureeStageCalculator;
 use App\Domain\Registration\Services\InscriptionStagiaireService;
 use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Domain\Workflow\Services\SuiviPointageService;
 use App\Enums\DoublonTypeEnum;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Registration\UpdateInscriptionRequest;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\OffreEmploi;
 use App\Models\Reference\Agence;
@@ -63,7 +65,7 @@ class InscriptionController extends Controller
     public function edit(InstanceParcours $inscription)
     {
         $this->assertCanEdit($inscription);
-        $inscription->load(['stage.beneficiaire', 'stage.contrats']);
+        $inscription->load($this->inscriptionRelations());
         $stage = $inscription->stage;
         $beneficiaire = $stage->beneficiaire;
         $contrat = $stage->contrats->sortByDesc('id')->first();
@@ -75,24 +77,55 @@ class InscriptionController extends Controller
                 'beneficiaire' => $beneficiaire->toArray(),
                 'stage' => $stage->toArray(),
                 'contrat' => $contrat?->toArray(),
+                'documents' => $stage->documents->toArray(),
+                'tachesOuvertes' => $inscription->taches_ouvertes->toArray(),
+                'evenements' => $inscription->evenements->toArray(),
             ],
         ]));
     }
 
-    public function update(Request $request, InstanceParcours $inscription)
+    /**
+     * Relations chargées pour l'affichage complet d'un dossier (show et edit), reprises
+     * du périmètre legacy StagiaireViewService::prepareModifierViewData.
+     *
+     * @return array<int, string>
+     */
+    private function inscriptionRelations(): array
+    {
+        return [
+            'stage.beneficiaire.communeResidence',
+            'stage.beneficiaire.typePaiement',
+            'stage.beneficiaire.niveauEtude',
+            'stage.beneficiaire.handicap',
+            'stage.beneficiaire.typeHandicap',
+            'stage.beneficiaire.diplome',
+            'stage.typeStage',
+            'stage.sourceFinancement',
+            'stage.programme',
+            'stage.entreprise',
+            'stage.agence',
+            'stage.conseiller',
+            'stage.offreEmploi',
+            'stage.contrats',
+            'stage.documents.versions',
+            'stage.documents.typeDocument',
+            'etapeCourante',
+            'evenements.acteur',
+            'evenements.etapeSource',
+            'evenements.etapeCible',
+            'taches_ouvertes',
+            ...SuiviPointageService::relationsStage(),
+        ];
+    }
+
+    public function update(UpdateInscriptionRequest $request, InstanceParcours $inscription)
     {
         $this->assertCanEdit($inscription);
-        $validated = $request->validate([
-            'beneficiaire' => 'required|array',
-            'stage' => 'required|array',
-            'contrat' => 'nullable|array',
-            'documents' => 'nullable|array',
-            'documents.*' => 'nullable|file|max:10240',
-        ]);
+        $validated = $request->validated();
 
         DB::transaction(function () use ($validated, $request, $inscription): void {
             $stage = $inscription->stage()->with('beneficiaire')->firstOrFail();
-            $stage->beneficiaire->update($this->onlyKnown($validated['beneficiaire'], [
+            $stage->beneficiaire->update($this->onlyKnown($validated['beneficiaire'] ?? [], [
                 'numero_aej', 'nom', 'prenoms', 'date_naissance', 'lieu_naissance', 'sous_prefecture_naissance',
                 'sexe', 'telephone_principal', 'telephone_secondaire', 'email', 'commune_residence_id',
                 'sous_prefecture_residence', 'nature_piece_identite', 'numero_piece_identite', 'numero_cmu',
@@ -101,14 +134,24 @@ class InscriptionController extends Controller
                 'type_enseignement_id', 'handicap_id', 'type_handicap_id', 'autre_handicap', 'type_paiement_id',
                 'numero_tresor_money', 'numero_wave',
             ]));
-            $stage->update($this->onlyKnown($validated['stage'], [
+
+            $stageData = $this->onlyKnown($validated['stage'] ?? [], [
                 'agence_id', 'conseiller_id', 'origine_stagiaire_id', 'date_entree_portefeuille', 'type_stage_id',
                 'source_financement_id', 'programme_id', 'service_affectation', 'intitule_poste', 'localite_stage',
                 'commune_stage', 'sous_prefecture_stage', 'nom_encadreur', 'fonction_encadreur', 'contact_encadreur',
                 'statut_stage', 'situation_stage', 'nbr_mois_capitaliser', 'date_demarrage_capitalisation',
                 'date_demarrage_capitalisation_sans_financiere', 'observations', 'date_debut', 'date_fin_prevue',
                 'offre_emploi_id', 'entreprise_id',
-            ]));
+            ]);
+
+            // Ne fait pas confiance à la date de fin envoyée par le client si une durée
+            // (en mois) est fournie : recalcule côté serveur comme le legacy (getDateFin).
+            $dureeMois = $validated['stage']['duree_mois'] ?? null;
+            if ($dureeMois !== null && ! empty($stageData['date_debut'])) {
+                $stageData['date_fin_prevue'] = DureeStageCalculator::dateFin($stageData['date_debut'], (float) $dureeMois)->format('Y-m-d');
+            }
+
+            $stage->update($stageData);
             $contrat = $stage->contrats()->latest('id')->first();
             if ($contrat) {
                 $contrat->update($this->onlyKnown($validated['contrat'] ?? [], ['numero', 'date_debut', 'date_fin', 'prime_mensuelle']));
@@ -121,8 +164,17 @@ class InscriptionController extends Controller
 
     private function assertCanEdit(InstanceParcours $inscription): void
     {
-        abort_unless(Auth::user()->hasAnyRole(['administrateur', 'chef_agence']), 403);
+        $user = Auth::user();
+        abort_unless($user->hasAnyRole(['administrateur', 'chef_agence']), 403);
         abort_unless($inscription->stage()->exists(), 404);
+
+        if ($user->hasRole('administrateur')) {
+            return;
+        }
+
+        $agenceId = $inscription->stage()->value('agence_id');
+        $perimetre = $user->perimetresAgences()->pluck('agences.id')->toArray();
+        abort_unless(in_array($agenceId, $perimetre, true), 403);
     }
 
     private function onlyKnown(array $data, array $keys): array
@@ -229,28 +281,7 @@ class InscriptionController extends Controller
 
     public function show($id, DesseDoublonService $doublons, SuiviPointageService $suivi)
     {
-        $instance = InstanceParcours::with([
-            'stage.beneficiaire.communeResidence',
-            'stage.beneficiaire.typePaiement',
-            'stage.beneficiaire.niveauEtude',
-            'stage.beneficiaire.handicap',
-            'stage.beneficiaire.typeHandicap',
-            'stage.typeStage',
-            'stage.sourceFinancement',
-            'stage.programme',
-            'stage.beneficiaire.diplome',
-            'stage.entreprise',
-            'stage.agence',
-            'stage.contrats',
-            'stage.documents.versions',
-            'stage.documents.typeDocument',
-            'etapeCourante',
-            'evenements.acteur',
-            'evenements.etapeSource',
-            'evenements.etapeCible',
-            'taches_ouvertes',
-            ...SuiviPointageService::relationsStage(),
-        ])->findOrFail($id);
+        $instance = InstanceParcours::with($this->inscriptionRelations())->findOrFail($id);
 
         return Inertia::render('Inscriptions/Show', [
             'instance' => $instance,
