@@ -38,9 +38,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/reporting/export/kpi.csv', [TableauDeBordController::class, 'exportCsv'])->middleware('can:voir_reporting')->name('reporting.export.kpi');
 
     Route::resource('entreprises', EntrepriseController::class);
+    Route::redirect('/Offres_create', '/offres/create')->name('offres.create.legacy');
     Route::resource('offres', OffreEmploiController::class)->parameters([
         'offres' => 'offre_emploi',
     ]);
+    Route::get('/offres/reference/{reference}', [OffreEmploiController::class, 'lookupByReference'])
+        ->name('offres.lookup-reference');
     Route::resource('inscriptions', InscriptionController::class);
     Route::get('/api/stagiaires/demandeur/{matricule}', [InscriptionController::class, 'demandeur'])->name('inscriptions.demandeur');
 

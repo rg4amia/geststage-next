@@ -24,6 +24,11 @@ class AideController extends Controller
                     'titre' => 'Espace CIP',
                     'icone' => 'ri-team-line',
                     'resume' => 'Inscrire un demandeur, monter son dossier de stage, saisir les pointages mensuels.',
+                    'details' => [
+                        ['titre' => 'Dossier stagiaire', 'description' => 'Créer ou retrouver un bénéficiaire, rattacher son stage à une offre et suivre les pièces attendues.'],
+                        ['titre' => 'Contrat et transmission', 'description' => 'Générer le contrat, déposer les documents et transmettre le dossier au chef d’agence.'],
+                        ['titre' => 'Pointage et corrections', 'description' => 'Soumettre le pointage mensuel, consulter les retours DMG et redéposer les pièces corrigées.'],
+                    ],
                     'etapes' => [
                         'Inscrire le demandeur puis lui rattacher une offre et une entreprise d’accueil.',
                         'Générer le contrat, téléverser les pièces, puis transmettre au chef d’agence.',
@@ -41,6 +46,11 @@ class AideController extends Controller
                     'titre' => 'Espace Chef d’agence',
                     'icone' => 'ri-checkbox-circle-line',
                     'resume' => 'Valider les démarrages de stage et les pointages transmis par les CIP.',
+                    'details' => [
+                        ['titre' => 'Contrôle du périmètre', 'description' => 'Les dossiers affichés sont limités aux agences rattachées au chef d’agence.'],
+                        ['titre' => 'Décision individuelle ou groupée', 'description' => 'Valider plusieurs dossiers à la fois ou ajourner une ligne avec un motif de correction obligatoire.'],
+                        ['titre' => 'Documents et historique', 'description' => 'Générer les attestations et retrouver les documents produits dans l’historique.'],
+                    ],
                     'etapes' => [
                         'Contrôler les dossiers en attente de validation, individuellement ou en groupe.',
                         'Valider ou ajourner les pointages du mois en motivant chaque ajournement.',
@@ -56,6 +66,11 @@ class AideController extends Controller
                     'titre' => 'Chaîne financière (DMG, CB, AC)',
                     'icone' => 'ri-money-dollar-circle-line',
                     'resume' => 'Constituer les dossiers de paiement, élaborer les OP puis viser les bordereaux.',
+                    'details' => [
+                        ['titre' => 'DMG : préparation', 'description' => 'Contrôler les droits et paiements, traiter les ajournements et générer les dossiers de paiement.'],
+                        ['titre' => 'Bordereau et OP', 'description' => 'Regrouper les dossiers en ordres de paiement, créer le bordereau et le transmettre à l’agent comptable.'],
+                        ['titre' => 'CB et AC : décisions', 'description' => 'Valider, différer ou rejeter les dossiers et ordres de paiement selon le rôle habilité.'],
+                    ],
                     'etapes' => [
                         'DMG : contrôler les paiements en attente, ajourner ou générer les dossiers.',
                         'DMG : élaborer les ordres de paiement, créer le bordereau et le transmettre.',
@@ -73,6 +88,11 @@ class AideController extends Controller
                     'titre' => 'Supervision (DESSE, agence régionale, DAICG)',
                     'icone' => 'ri-shield-check-line',
                     'resume' => 'Viser les dossiers, trancher les doublons et suivre la vue globale.',
+                    'details' => [
+                        ['titre' => 'Détection des doublons', 'description' => 'Examiner les correspondances signalées et décider du traitement du dossier concerné.'],
+                        ['titre' => 'Visa régional', 'description' => 'Filtrer les dossiers du périmètre régional, viser ou rejeter et exporter les états utiles.'],
+                        ['titre' => 'Consultation globale', 'description' => 'Consulter les stagiaires et leur état d’avancement sans modifier les décisions métier.'],
+                    ],
                     'etapes' => [
                         'DESSE : traiter les doublons signalés et valider les dossiers.',
                         'Agence régionale : viser ou rejeter les dossiers de son périmètre, exporter les états.',
@@ -89,6 +109,11 @@ class AideController extends Controller
                     'titre' => 'Administration',
                     'icone' => 'ri-settings-4-line',
                     'resume' => 'Gérer les comptes, les référentiels et les paramètres de calcul.',
+                    'details' => [
+                        ['titre' => 'Comptes et habilitations', 'description' => 'Créer, activer ou désactiver un compte, lui affecter un rôle et définir son périmètre d’agence.'],
+                        ['titre' => 'Référentiels', 'description' => 'Administrer les agences, entreprises et conseillers utilisés dans les parcours de stage.'],
+                        ['titre' => 'Paramètres et traçabilité', 'description' => 'Gérer les règles CMU et consulter les journaux d’activité pour retrouver les modifications.'],
+                    ],
                     'etapes' => [
                         'Créer un compte, lui affecter un rôle et un périmètre d’agence.',
                         'Créer un conseiller puis lui rattacher un compte utilisateur.',

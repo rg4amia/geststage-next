@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row, Button, Input, Label, Form } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
 
@@ -25,8 +25,53 @@ const Edit = ({ offre, entreprises, agences, typesStage, sourcesFinancement, pro
         nombre_places: offre.nombre_places || 1,
         valide_du: offre.valide_du || '',
         valide_au: offre.valide_au || '',
+        publiee_le: offre.publiee_le || '',
         statut: offre.statut || 'BROUILLON',
     });
+    const [lookupLoading, setLookupLoading] = useState(false);
+    const [lookupError, setLookupError] = useState('');
+
+    const chargerOffre = async () => {
+        const reference = data.numero.trim();
+        if (!reference) {
+            setLookupError("Saisissez d'abord le numero de l'offre.");
+            return;
+        }
+
+        setLookupLoading(true);
+        setLookupError('');
+        try {
+            const response = await fetch(`/offres/reference/${encodeURIComponent(reference)}`, {
+                headers: { Accept: 'application/json' },
+            });
+            const payload = await response.json();
+            if (!response.ok) throw new Error(payload.message || 'Offre introuvable.');
+
+            const offreAej = payload.data;
+            const typeStage = typesStage.find((type) =>
+                String(type.nom || '').trim().toUpperCase() === String(offreAej.type_stage || '').trim().toUpperCase()
+                || (String(offreAej.type_stage || '').toUpperCase().includes('ECOLE') && String(type.nom || '').toUpperCase().includes('ECOLE'))
+            );
+            const entreprise = entreprises.find((item) =>
+                String(item.raison_sociale || '').trim().toUpperCase() === String(offreAej.entreprise || '').trim().toUpperCase()
+            );
+
+            setData((current) => ({
+                ...current,
+                numero: offreAej.reference || current.numero,
+                intitule: offreAej.intitule || current.intitule,
+                nombre_places: Number(offreAej.nombre_places) || current.nombre_places,
+                type_stage_id: typeStage ? String(typeStage.id) : current.type_stage_id,
+                entreprise_id: entreprise ? String(entreprise.id) : current.entreprise_id,
+                publiee_le: offreAej.publiee_le ? String(offreAej.publiee_le).slice(0, 10) : current.publiee_le,
+                valide_au: offreAej.valide_au ? String(offreAej.valide_au).slice(0, 10) : current.valide_au,
+            }));
+        } catch (error) {
+            setLookupError(error instanceof Error ? error.message : "Impossible de charger l'offre.");
+        } finally {
+            setLookupLoading(false);
+        }
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -53,6 +98,10 @@ const Edit = ({ offre, entreprises, agences, typesStage, sourcesFinancement, pro
                                                 <Label htmlFor="numero" className="form-label">Numéro Offre <span className="text-danger">*</span></Label>
                                                 <Input type="text" id="numero" value={data.numero} onChange={e => setData('numero', e.target.value)} invalid={!!errors.numero} />
                                                 {errors.numero && <div className="invalid-feedback">{errors.numero}</div>}
+                                                <Button type="button" color="success" outline size="sm" className="mt-2" onClick={chargerOffre} disabled={lookupLoading}>
+                                                    {lookupLoading ? 'Chargement...' : "Charger l'offre AEJ"}
+                                                </Button>
+                                                {lookupError && <div className="text-danger small mt-1">{lookupError}</div>}
                                             </Col>
                                             <Col md={6}>
                                                 <Label htmlFor="intitule" className="form-label">Intitulé <span className="text-danger">*</span></Label>
@@ -106,6 +155,11 @@ const Edit = ({ offre, entreprises, agences, typesStage, sourcesFinancement, pro
                                                 <Label htmlFor="nombre_places" className="form-label">Nombre de Places <span className="text-danger">*</span></Label>
                                                 <Input type="number" min="1" id="nombre_places" value={data.nombre_places} onChange={e => setData('nombre_places', parseInt(e.target.value) || 1)} invalid={!!errors.nombre_places} />
                                                 {errors.nombre_places && <div className="invalid-feedback">{errors.nombre_places}</div>}
+                                            </Col>
+                                            <Col md={4}>
+                                                <Label htmlFor="publiee_le" className="form-label">Date de publication</Label>
+                                                <Input type="date" id="publiee_le" value={data.publiee_le} onChange={e => setData('publiee_le', e.target.value)} invalid={!!errors.publiee_le} />
+                                                {errors.publiee_le && <div className="invalid-feedback">{errors.publiee_le}</div>}
                                             </Col>
                                             <Col md={4}>
                                                 <Label htmlFor="valide_du" className="form-label">Valide Du</Label>

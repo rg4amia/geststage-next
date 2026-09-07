@@ -59,6 +59,18 @@ export const businessMenuSections: BusinessMenuSection[] = [
         itemIds: ['dmg-paiements', 'cb-paiements', 'ac-paiements'],
     },
     {
+        id: 'pejedec-aaf',
+        label: 'PEJEDEC / AAF',
+        icon: 'ri-stack-line',
+        itemIds: [
+            'pejedec-aaf-dashboard',
+            'pejedec-aaf-validation',
+            'pejedec-aaf-ajournes',
+            'pejedec-aaf-corrections',
+            'pejedec-aaf-paiement',
+        ],
+    },
+    {
         id: 'parametre-aides',
         label: 'Parametre & Aides',
         icon: 'ri-settings-4-line',
@@ -73,19 +85,7 @@ export const businessMenuSections: BusinessMenuSection[] = [
             'parametre-aides-journaux',
             'parametre-aides-aide',
         ],
-    },
-    {
-        id: 'pejedec-aaf',
-        label: 'PEJEDEC / AAF',
-        icon: 'ri-stack-line',
-        itemIds: [
-            'pejedec-aaf-dashboard',
-            'pejedec-aaf-validation',
-            'pejedec-aaf-ajournes',
-            'pejedec-aaf-corrections',
-            'pejedec-aaf-paiement',
-        ],
-    },
+    }
 ];
 
 export const menuItems: MenuItem[] = [

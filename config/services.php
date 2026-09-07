@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'agence_emploi_jeunes' => [
+        'offers_url' => env('AEJ_OFFERS_URL', 'https://agenceemploijeunes.ci/offreemplois-by-reference'),
+        'offers_token' => env('AEJ_OFFERS_TOKEN'),
+    ],
+
 ];

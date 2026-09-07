@@ -11,7 +11,9 @@ use App\Models\Reference\Agence;
 use App\Models\Reference\Programme;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 
 class OffreEmploiController extends Controller
@@ -52,6 +54,47 @@ class OffreEmploiController extends Controller
             'sourcesFinancement' => SourceFinancement::all(),
             'programmes' => Programme::all(),
         ]);
+    }
+
+    /** Pre-remplit une offre a partir de sa reference AEJ, comme dans le legacy. */
+    public function lookupByReference(string $reference): JsonResponse
+    {
+        $this->authorize('create', OffreEmploi::class);
+
+        $reference = trim($reference);
+        if ($reference === '') {
+            return response()->json(['message' => "La reference de l'offre est obligatoire."], 422);
+        }
+
+        $url = rtrim((string) config('services.agence_emploi_jeunes.offers_url'), '/');
+        $token = config('services.agence_emploi_jeunes.offers_token');
+        if ($url === '' || ! is_string($token) || trim($token) === '') {
+            return response()->json(['message' => 'Le service de reference AEJ n’est pas configure.'], 503);
+        }
+
+        try {
+            $response = Http::acceptJson()
+                ->timeout(10)
+                ->get($url.'/'.rawurlencode($reference).'/'.rawurlencode($token));
+
+            if ($response->failed()) {
+                return response()->json(['message' => 'Offre introuvable ou service AEJ indisponible.'], $response->status() ?: 502);
+            }
+
+            $data = $response->json('data') ?? $response->json();
+
+            return response()->json(['data' => [
+                'reference' => $data['noreference'] ?? $reference,
+                'intitule' => $data['intitule'] ?? null,
+                'nombre_places' => $data['nombreposte'] ?? null,
+                'type_stage' => $data['typestage'] ?? null,
+                'entreprise' => $data['nomentreprise'] ?? null,
+                'publiee_le' => $data['datepublication'] ?? null,
+                'valide_au' => $data['dateexpiration'] ?? null,
+            ]]);
+        } catch (\Throwable) {
+            return response()->json(['message' => 'Erreur lors de la recuperation de l’offre AEJ.'], 502);
+        }
     }
 
     /**

@@ -719,6 +719,7 @@ class MigrateLegacyDataCommand extends Command
 
         $legacyIds = $offres->pluck('id_offre')->toArray();
         $offresExistantes = OffreEmploi::withTrashed()->whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
+        $referencesUtilisees = [];
 
         foreach ($offres as $legacyOffre) {
             $entreprise_id = $entreprisesMap[$legacyOffre->entreprise_id] ?? null;
@@ -732,13 +733,23 @@ class MigrateLegacyDataCommand extends Command
                     $publiee_le = null;
                 }
 
+                $numero = trim((string) ($legacyOffre->numero_offre ?? ''))
+                    ?: 'OFR-'.str_pad($legacyOffre->id_offre, 5, '0', STR_PAD_LEFT);
+
+                // PostgreSQL impose l'unicite, alors que quelques doublons existent dans le legacy.
+                if (isset($referencesUtilisees[$numero])) {
+                    $numero .= '-LEGACY-'.$legacyOffre->id_offre;
+                }
+                $referencesUtilisees[$numero] = $legacyOffre->id_offre;
+
                 $offre = $offresExistantes[$legacyOffre->id_offre] ?? new OffreEmploi(['ancien_id' => $legacyOffre->id_offre]);
                 $offre->fill([
                     'entreprise_id' => $entreprise_id,
                     'agence_id' => $agence_id,
                     'type_stage_id' => $type_stage_id,
                     'source_financement_id' => $source_financement_id,
-                    'numero' => 'OFR-'.str_pad($legacyOffre->id_offre, 5, '0', STR_PAD_LEFT),
+                    // Preserve the business reference used by the legacy screens.
+                    'numero' => $numero,
                     'intitule' => $legacyOffre->intitule_offre ?? 'Offre non spécifiée',
                     'nombre_places' => max(1, (int) ($legacyOffre->nombre_de_place ?? 1)),
                     'publiee_le' => $publiee_le,

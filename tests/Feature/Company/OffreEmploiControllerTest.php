@@ -9,6 +9,7 @@ use App\Models\Reference\TypeStage;
 use App\Models\User;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class OffreEmploiControllerTest extends TestCase
@@ -59,5 +60,33 @@ class OffreEmploiControllerTest extends TestCase
             'numero' => 'OFFRE-TEST-001',
             'intitule' => 'Développeur Fullstack',
         ]);
+    }
+
+    public function test_cip_can_load_an_aej_offer_by_reference(): void
+    {
+        Http::fake([
+            'https://agenceemploijeunes.ci/*' => Http::response([
+                'data' => [
+                    'noreference' => 'AEJ-001',
+                    'intitule' => 'Assistant développeur',
+                    'nombreposte' => 4,
+                    'typestage' => 'STAGE ECOLE',
+                    'nomentreprise' => 'Entreprise test',
+                    'datepublication' => '2026-09-01',
+                    'dateexpiration' => '2026-10-01',
+                ],
+            ]),
+        ]);
+        config()->set('services.agence_emploi_jeunes.offers_token', 'test-token');
+
+        $cip = User::factory()->create();
+        $cip->assignRole('cip');
+
+        $this->actingAs($cip)
+            ->getJson('/offres/reference/AEJ-001')
+            ->assertOk()
+            ->assertJsonPath('data.reference', 'AEJ-001')
+            ->assertJsonPath('data.nombre_places', 4)
+            ->assertJsonPath('data.publiee_le', '2026-09-01');
     }
 }

@@ -35,6 +35,7 @@ class UpdateOffreEmploiRequest extends FormRequest
             'nombre_places' => ['required', 'integer', 'min:1'],
             'valide_du' => ['nullable', 'date'],
             'valide_au' => ['nullable', 'date', 'after_or_equal:valide_du'],
+            'publiee_le' => ['nullable', 'date'],
             'statut' => ['nullable', 'string', 'in:BROUILLON,PUBLIEE,CLOTUREE,ANNULEE'],
         ];
     }
