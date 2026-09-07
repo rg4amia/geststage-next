@@ -9,6 +9,10 @@ interface Props {
         id: number;
         code: string;
         nom: string;
+        contact_agence: string | null;
+        chef_agence_nom: string | null;
+        longitude: number | null;
+        latitude: number | null;
         region_id: number | null;
         commune_id: number | null;
         adresse: string | null;
@@ -22,6 +26,10 @@ const Edit = ({ agence, regions, communes }: Props) => {
     const { data, setData, put, processing, errors } = useForm<DonneesAgence>({
         code: agence.code,
         nom: agence.nom,
+        contact_agence: agence.contact_agence || '',
+        chef_agence_nom: agence.chef_agence_nom || '',
+        longitude: agence.longitude ?? '',
+        latitude: agence.latitude ?? '',
         region_id: agence.region_id ?? '',
         commune_id: agence.commune_id ?? '',
         adresse: agence.adresse || '',

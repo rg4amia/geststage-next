@@ -45,12 +45,26 @@ class ConseillerController extends Controller
             ->paginate(15)
             ->withQueryString();
 
+        // La liste des utilisateurs dépend du périmètre : admin → tous,
+        // chef d'agence → utilisateurs de son périmètre.
+        $user = $request->user();
+        $utilisateursDisponibles = $user->hasRole('administrateur')
+            ? User::query()->where('actif', true)->orderBy('nom')->get(['id', 'nom', 'email', 'telephone'])
+            : User::query()->where('actif', true)
+                ->whereHas('perimetresAgences', fn ($q) => $q->whereIn(
+                    'agences.id',
+                    $user->perimetresAgences()->pluck('agences.id'),
+                ))
+                ->orderBy('nom')
+                ->get(['id', 'nom', 'email', 'telephone']);
+
         return Inertia::render('ParametreAides/Conseillers/Index', [
             'conseillers' => $conseillers,
             'agences' => Agence::query()->where('actif', true)->orderBy('nom')->get(['id', 'nom']),
+            'utilisateursDisponibles' => $utilisateursDisponibles,
             'filters' => $request->only(['search', 'agence_id', 'actif']),
-            'peutGerer' => $request->user()->can('gerer_referentiels'),
-            'peutGererComptes' => $request->user()->can('gerer_utilisateurs'),
+            'peutGerer' => $user->can('gerer_referentiels'),
+            'peutGererComptes' => $user->can('gerer_utilisateurs'),
         ]);
     }
 

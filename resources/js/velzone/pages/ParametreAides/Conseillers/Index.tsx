@@ -1,5 +1,6 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
 import React, { useState } from 'react';
+import Select from 'react-select';
 import {
     Button, Card, CardBody, CardHeader, Col, Container, Form, Input, Label, Modal, ModalBody,
     ModalFooter, ModalHeader, Row, Table,
@@ -10,12 +11,13 @@ import ServerPagination, { normalizePagination } from '../../../Components/Commo
 interface Props {
     conseillers: any;
     agences: { id: number; nom: string }[];
+    utilisateursDisponibles: { id: number; nom: string; email: string; telephone?: string }[];
     filters: Record<string, string | undefined>;
     peutGerer: boolean;
     peutGererComptes: boolean;
 }
 
-const Index = ({ conseillers, agences, filters, peutGerer, peutGererComptes }: Props) => {
+const Index = ({ conseillers, agences, utilisateursDisponibles = [], filters, peutGerer, peutGererComptes }: Props) => {
     const [search, setSearch] = useState(filters.search || '');
     const [agenceId, setAgenceId] = useState(filters.agence_id || '');
     const [actif, setActif] = useState(filters.actif ?? '');
@@ -92,19 +94,29 @@ const Index = ({ conseillers, agences, filters, peutGerer, peutGererComptes }: P
                                                 />
                                             </Col>
                                             <Col md={3}>
-                                                <select className="form-select" value={agenceId} onChange={(e) => setAgenceId(e.target.value)}>
-                                                    <option value="">Toutes les agences</option>
-                                                    {agences.map((a) => (
-                                                        <option key={a.id} value={a.id}>{a.nom}</option>
-                                                    ))}
-                                                </select>
+                                                <Select
+                                                    isSearchable
+                                                    placeholder="Toutes les agences"
+                                                    noOptionsMessage={() => 'Aucune agence'}
+                                                    options={agences.map((a) => ({ value: String(a.id), label: a.nom }))}
+                                                    value={agenceId ? { value: agenceId, label: agences.find((a) => String(a.id) === agenceId)?.nom || '' } : null}
+                                                    onChange={(selected) => setAgenceId(selected?.value || '')}
+                                                    classNamePrefix="react-select"
+                                                />
                                             </Col>
                                             <Col md={3}>
-                                                <select className="form-select" value={actif} onChange={(e) => setActif(e.target.value)}>
-                                                    <option value="">Tous les statuts</option>
-                                                    <option value="1">Actifs</option>
-                                                    <option value="0">Inactifs</option>
-                                                </select>
+                                                <Select
+                                                    isSearchable={false}
+                                                    placeholder="Tous les statuts"
+                                                    noOptionsMessage={() => 'Aucun statut'}
+                                                    options={[
+                                                        { value: '1', label: 'Actifs' },
+                                                        { value: '0', label: 'Inactifs' },
+                                                    ]}
+                                                    value={actif !== '' ? { value: actif, label: actif === '1' ? 'Actifs' : 'Inactifs' } : null}
+                                                    onChange={(selected) => setActif(selected?.value || '')}
+                                                    classNamePrefix="react-select"
+                                                />
                                             </Col>
                                             <Col md={1}>
                                                 <Button color="primary" type="submit" className="w-100">
@@ -199,30 +211,65 @@ const Index = ({ conseillers, agences, filters, peutGerer, peutGererComptes }: P
                 <Form onSubmit={soumettreCompte}>
                     <ModalBody>
                         <Label className="form-label">Mode</Label>
-                        <select
-                            className="form-select mb-3"
-                            value={compte.data.mode}
-                            onChange={(e) => compte.setData('mode', e.target.value)}
-                        >
-                            <option value="creer">Créer un nouveau compte</option>
-                            <option value="rattacher">Rattacher un compte existant</option>
-                        </select>
+                        <Select
+                            isSearchable
+                            className="mb-3"
+                            classNamePrefix="react-select"
+                            placeholder="Sélectionner le mode"
+                            noOptionsMessage={() => 'Aucun mode'}
+                            options={[
+                                { value: 'creer', label: 'Créer un nouveau compte' },
+                                { value: 'rattacher', label: 'Rattacher un compte existant' },
+                            ]}
+                            value={
+                                compte.data.mode
+                                    ? {
+                                        value: compte.data.mode,
+                                        label: compte.data.mode === 'creer'
+                                            ? 'Créer un nouveau compte'
+                                            : 'Rattacher un compte existant',
+                                    }
+                                    : null
+                            }
+                            onChange={(selected) => compte.setData('mode', selected?.value || 'creer')}
+                        />
 
                         {compte.data.mode === 'rattacher' ? (
                             <>
-                                <Label htmlFor="user_id" className="form-label">
-                                    Identifiant du compte <span className="text-danger">*</span>
+                                <Label className="form-label">
+                                    Compte utilisateur <span className="text-danger">*</span>
                                 </Label>
-                                <Input
-                                    type="number"
-                                    id="user_id"
-                                    value={compte.data.user_id}
-                                    onChange={(e) => compte.setData('user_id', e.target.value)}
-                                    invalid={!!compte.errors.user_id}
+                                <Select
+                                    isSearchable
+                                    classNamePrefix="react-select"
+                                    placeholder="Rechercher un utilisateur..."
+                                    noOptionsMessage={() => 'Aucun utilisateur disponible'}
+                                    options={utilisateursDisponibles.map((u) => ({
+                                        value: String(u.id),
+                                        label: `${u.nom} — ${u.email}`,
+                                    }))}
+                                    value={
+                                        compte.data.user_id
+                                            ? {
+                                                value: compte.data.user_id,
+                                                label: utilisateursDisponibles.find((u) => String(u.id) === compte.data.user_id)
+                                                    ? `${utilisateursDisponibles.find((u) => String(u.id) === compte.data.user_id)!.nom} — ${utilisateursDisponibles.find((u) => String(u.id) === compte.data.user_id)!.email}`
+                                                    : `ID ${compte.data.user_id}`,
+                                            }
+                                            : null
+                                    }
+                                    onChange={(selected) => compte.setData('user_id', selected?.value || '')}
+                                    className={compte.errors.user_id ? 'is-invalid' : ''}
                                 />
-                                {compte.errors.user_id && <div className="invalid-feedback">{compte.errors.user_id}</div>}
+                                {compte.errors.user_id && (
+                                    <div className="text-danger small mt-1">{compte.errors.user_id}</div>
+                                )}
                                 <small className="text-muted">
-                                    Identifiant visible depuis la liste des comptes utilisateurs.
+                                    {compte.data.mode === 'rattacher' && (
+                                        <>
+                                            {utilisateursDisponibles.length} compte(s) disponible(s) dans votre périmètre.
+                                        </>
+                                    )}
                                 </small>
                             </>
                         ) : (

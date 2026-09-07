@@ -110,8 +110,8 @@ const Index = ({ agences, regions, filters, peutGerer }: Props) => {
                                                                 <span className="badge bg-danger-subtle text-danger">Inactive</span>
                                                             )}
                                                         </td>
-                                                        <td>{agence.chef_agence}</td>
-                                                        <td>{agence.adresse || '-'}</td>
+                                                        <td>{agence.chef_agence_nom || agence.chef_agence || '-'}</td>
+                                                        <td>{agence.contact_agence || agence.adresse || '-'}</td>
                                                         <td>{agence.region?.nom || '-'}</td>
                                                         {peutGerer && (
                                                             <td>

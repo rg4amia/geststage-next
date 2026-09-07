@@ -20,6 +20,10 @@ class StoreAgenceRequest extends FormRequest
         return [
             'code' => ['required', 'string', 'max:50', 'unique:agences,code'],
             'nom' => ['required', 'string', 'max:255'],
+            'contact_agence' => ['nullable', 'string', 'max:255'],
+            'chef_agence_nom' => ['nullable', 'string', 'max:255'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'region_id' => ['nullable', 'integer', 'exists:regions,id'],
             'commune_id' => ['nullable', 'integer', 'exists:communes,id'],
             'adresse' => ['nullable', 'string', 'max:255'],

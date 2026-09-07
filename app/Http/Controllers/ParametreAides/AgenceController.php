@@ -47,6 +47,8 @@ class AgenceController extends Controller
             'id' => $agence->id,
             'code' => $agence->code,
             'nom' => $agence->nom,
+            'contact_agence' => $agence->contact_agence,
+            'chef_agence_nom' => $agence->chef_agence_nom,
             'adresse' => $agence->adresse,
             'actif' => $agence->actif,
             'region' => $agence->region?->only(['id', 'nom']),
@@ -81,7 +83,7 @@ class AgenceController extends Controller
         abort_unless($request->user()->can('gerer_agences'), 403);
 
         return Inertia::render('ParametreAides/Agences/Edit', [
-            'agence' => $agence->only(['id', 'code', 'nom', 'region_id', 'commune_id', 'adresse', 'actif']),
+            'agence' => $agence->only(['id', 'code', 'nom', 'contact_agence', 'chef_agence_nom', 'longitude', 'latitude', 'region_id', 'commune_id', 'adresse', 'actif']),
             ...$this->referentiels(),
         ]);
     }

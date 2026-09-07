@@ -1,10 +1,15 @@
 import { Link } from '@inertiajs/react';
 import React from 'react';
+import Select from 'react-select';
 import { Button, Col, Form, Input, Label, Row } from 'reactstrap';
 
 export interface DonneesAgence {
     code: string;
     nom: string;
+    contact_agence: string;
+    chef_agence_nom: string;
+    longitude: string | number;
+    latitude: string | number;
     region_id: string | number;
     commune_id: string | number;
     adresse: string;
@@ -45,7 +50,7 @@ const FormulaireAgence = ({ data, setData, errors, processing, onSubmit, regions
                 </Col>
                 <Col md={8}>
                     <Label htmlFor="nom" className="form-label">
-                        Nom de l’agence <span className="text-danger">*</span>
+                        Nom de l'agence <span className="text-danger">*</span>
                     </Label>
                     <Input
                         type="text"
@@ -57,37 +62,85 @@ const FormulaireAgence = ({ data, setData, errors, processing, onSubmit, regions
                     {errors.nom && <div className="invalid-feedback">{errors.nom}</div>}
                 </Col>
                 <Col md={6}>
-                    <Label htmlFor="region_id" className="form-label">Région</Label>
-                    <select
-                        className={`form-select ${errors.region_id ? 'is-invalid' : ''}`}
-                        id="region_id"
-                        value={data.region_id}
-                        onChange={(e) => {
-                            setData('region_id', e.target.value);
-                            setData('commune_id', '');
-                        }}
-                    >
-                        <option value="">Sélectionner une région</option>
-                        {regions.map((region) => (
-                            <option key={region.id} value={region.id}>{region.nom}</option>
-                        ))}
-                    </select>
-                    {errors.region_id && <div className="invalid-feedback">{errors.region_id}</div>}
+                    <Label htmlFor="chef_agence_nom" className="form-label">Nom du chef d'agence</Label>
+                    <Input
+                        type="text"
+                        id="chef_agence_nom"
+                        placeholder="Nom complet du chef d'agence"
+                        value={data.chef_agence_nom}
+                        onChange={(e) => setData('chef_agence_nom', e.target.value)}
+                        invalid={!!errors.chef_agence_nom}
+                    />
+                    {errors.chef_agence_nom && <div className="invalid-feedback">{errors.chef_agence_nom}</div>}
                 </Col>
                 <Col md={6}>
-                    <Label htmlFor="commune_id" className="form-label">Commune</Label>
-                    <select
-                        className={`form-select ${errors.commune_id ? 'is-invalid' : ''}`}
-                        id="commune_id"
-                        value={data.commune_id}
-                        onChange={(e) => setData('commune_id', e.target.value)}
-                    >
-                        <option value="">Sélectionner une commune</option>
-                        {communesFiltrees.map((commune) => (
-                            <option key={commune.id} value={commune.id}>{commune.nom}</option>
-                        ))}
-                    </select>
-                    {errors.commune_id && <div className="invalid-feedback">{errors.commune_id}</div>}
+                    <Label htmlFor="contact_agence" className="form-label">Contact de l'agence</Label>
+                    <Input
+                        type="text"
+                        id="contact_agence"
+                        placeholder="Téléphone, email ou autre contact"
+                        value={data.contact_agence}
+                        onChange={(e) => setData('contact_agence', e.target.value)}
+                        invalid={!!errors.contact_agence}
+                    />
+                    {errors.contact_agence && <div className="invalid-feedback">{errors.contact_agence}</div>}
+                </Col>
+                <Col md={6}>
+                    <Label htmlFor="longitude" className="form-label">Longitude</Label>
+                    <Input
+                        type="number"
+                        step="0.0000001"
+                        id="longitude"
+                        placeholder="-5.6781234"
+                        value={data.longitude}
+                        onChange={(e) => setData('longitude', e.target.value)}
+                        invalid={!!errors.longitude}
+                    />
+                    {errors.longitude && <div className="invalid-feedback">{errors.longitude}</div>}
+                </Col>
+                <Col md={6}>
+                    <Label htmlFor="latitude" className="form-label">Latitude</Label>
+                    <Input
+                        type="number"
+                        step="0.0000001"
+                        id="latitude"
+                        placeholder="6.3674215"
+                        value={data.latitude}
+                        onChange={(e) => setData('latitude', e.target.value)}
+                        invalid={!!errors.latitude}
+                    />
+                    {errors.latitude && <div className="invalid-feedback">{errors.latitude}</div>}
+                </Col>
+                <Col md={6}>
+                    <Label className="form-label">Région</Label>
+                    <Select
+                        isSearchable
+                        placeholder="Sélectionner une région"
+                        noOptionsMessage={() => 'Aucune région'}
+                        options={regions.map((r) => ({ value: String(r.id), label: r.nom }))}
+                        value={data.region_id ? { value: String(data.region_id), label: regions.find((r) => String(r.id) === String(data.region_id))?.nom || '' } : null}
+                        onChange={(selected) => {
+                            setData('region_id', selected?.value || '');
+                            setData('commune_id', '');
+                        }}
+                        classNamePrefix="react-select"
+                        className={errors.region_id ? 'is-invalid' : ''}
+                    />
+                    {errors.region_id && <div className="text-danger small mt-1">{errors.region_id}</div>}
+                </Col>
+                <Col md={6}>
+                    <Label className="form-label">Commune</Label>
+                    <Select
+                        isSearchable
+                        placeholder="Sélectionner une commune"
+                        noOptionsMessage={() => 'Aucune commune'}
+                        options={communesFiltrees.map((c) => ({ value: String(c.id), label: c.nom }))}
+                        value={data.commune_id ? { value: String(data.commune_id), label: communes.find((c) => String(c.id) === String(data.commune_id))?.nom || '' } : null}
+                        onChange={(selected) => setData('commune_id', selected?.value || '')}
+                        classNamePrefix="react-select"
+                        className={errors.commune_id ? 'is-invalid' : ''}
+                    />
+                    {errors.commune_id && <div className="text-danger small mt-1">{errors.commune_id}</div>}
                 </Col>
                 <Col md={12}>
                     <Label htmlFor="adresse" className="form-label">Adresse / contact</Label>

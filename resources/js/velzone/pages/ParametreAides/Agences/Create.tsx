@@ -13,6 +13,10 @@ const Create = ({ regions, communes }: Props) => {
     const { data, setData, post, processing, errors } = useForm<DonneesAgence>({
         code: '',
         nom: '',
+        contact_agence: '',
+        chef_agence_nom: '',
+        longitude: '',
+        latitude: '',
         region_id: '',
         commune_id: '',
         adresse: '',
