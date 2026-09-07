@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
+use App\Domain\Workflow\Services\SuiviPointageService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
@@ -679,6 +680,24 @@ class MesStagiairesCipController extends Controller
         $workflow->submitToChefAgence($instance);
 
         return back()->with('success', 'Dossier transmis au Chef d\'Agence avec succès.');
+    }
+
+    /**
+     * JSON : position de chaque pointage du dossier dans le circuit complet
+     * (CIP → CA → visa DESSE → DMG → CB → OP → bordereau → AC → paiement).
+     *
+     * Chargé à l'ouverture de la modale « Analyse du Pointage » plutôt que dans la liste :
+     * la chaîne de paiement représente une demi-douzaine de relations par mois, inutiles
+     * pour les 50 lignes paginées de l'écran.
+     */
+    public function suiviPointages($id, SuiviPointageService $suivi)
+    {
+        $instance = InstanceParcours::with(SuiviPointageService::relationsStage())->findOrFail($id);
+
+        return response()->json([
+            'corbeille_actuelle' => $suivi->corbeille($instance->corbeille_actuelle),
+            'pointages' => $suivi->pourStage($instance->stage),
+        ]);
     }
 
     /**

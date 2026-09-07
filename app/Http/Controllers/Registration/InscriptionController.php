@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Registration;
 
 use App\Domain\Registration\Services\InscriptionStagiaireService;
+use App\Domain\Workflow\Services\DesseDoublonService;
+use App\Domain\Workflow\Services\SuiviPointageService;
+use App\Enums\DoublonTypeEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Company\OffreEmploi;
@@ -158,7 +161,7 @@ class InscriptionController extends Controller
         return redirect()->route('inscriptions.index')->with('success', 'Stagiaire inscrit et dossier initié avec succès.');
     }
 
-    public function show($id)
+    public function show($id, DesseDoublonService $doublons, SuiviPointageService $suivi)
     {
         $instance = InstanceParcours::with([
             'stage.beneficiaire.communeResidence',
@@ -180,10 +183,36 @@ class InscriptionController extends Controller
             'evenements.etapeSource',
             'evenements.etapeCible',
             'taches_ouvertes',
+            ...SuiviPointageService::relationsStage(),
         ])->findOrFail($id);
 
         return Inertia::render('Inscriptions/Show', [
             'instance' => $instance,
+            'corbeilleActuelle' => $suivi->corbeille($instance->corbeille_actuelle),
+            'suiviPointages' => $suivi->pourStage($instance->stage),
+            'doublons' => $this->doublonsPourStage($instance->stage, $doublons),
         ]);
+    }
+
+    /**
+     * Types de doublons DESSE (pare-feu) dans lesquels ce stage est actuellement impliqué.
+     * Réutilise DesseDoublonService pour ne pas dupliquer la logique de détection.
+     *
+     * @return array<int, array{type: string, label: string, cle: string}>
+     */
+    private function doublonsPourStage($stage, DesseDoublonService $service): array
+    {
+        $duplicateKeysByType = collect(DoublonTypeEnum::cases())
+            ->mapWithKeys(fn (DoublonTypeEnum $type) => [$type->value => $service->computeDuplicateKeys($type)])
+            ->all();
+
+        return collect($service->matchingTypesForStage($stage, $duplicateKeysByType))
+            ->map(fn ($cle, $type) => [
+                'type' => $type,
+                'label' => DoublonTypeEnum::from($type)->label(),
+                'cle' => $cle,
+            ])
+            ->values()
+            ->all();
     }
 }

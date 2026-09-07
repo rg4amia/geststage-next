@@ -10,7 +10,9 @@ use App\Models\Reference\TypeStage;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
+use App\Models\Workflow\InstanceParcours;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
@@ -97,5 +99,45 @@ class InscriptionControllerTest extends TestCase
 
         $response->assertRedirect('/inscriptions');
         $this->assertDatabaseHas('beneficiaires', ['nom' => 'Doe']);
+    }
+
+    public function test_le_detail_du_dossier_expose_la_corbeille_actuelle(): void
+    {
+        $this->actingAs($this->cip)->post('/inscriptions', [
+            'beneficiaire' => [
+                'numero_aej' => 'AEJ-999999',
+                'nom' => 'Kouassi',
+                'prenoms' => 'Awa',
+                'date_naissance' => '2000-01-01',
+                'sexe' => 'F',
+            ],
+            'stage' => [
+                'entreprise_id' => $this->offre->entreprise_id,
+                'agence_id' => $this->offre->agence_id,
+                'type_stage_id' => $this->offre->type_stage_id,
+                'source_financement_id' => $this->offre->source_financement_id,
+                'offre_emploi_id' => $this->offre->id,
+                'intitule_poste' => 'Développeur Web',
+                'date_debut' => '2026-09-01',
+                'date_fin_prevue' => '2027-02-28',
+            ],
+            'contrat' => [
+                'numero' => 'CTR-2026-0002',
+                'date_debut' => '2026-09-01',
+                'date_fin' => '2027-02-28',
+                'prime_mensuelle' => 45000,
+            ],
+        ]);
+
+        $instance = InstanceParcours::whereHas('stage.beneficiaire', fn ($q) => $q->where('numero_aej', 'AEJ-999999'))->firstOrFail();
+
+        $this->actingAs($this->cip)->get("/inscriptions/{$instance->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Inscriptions/Show')
+                ->has('corbeilleActuelle')
+                ->has('suiviPointages')
+                ->has('doublons')
+            );
     }
 }

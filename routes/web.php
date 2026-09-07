@@ -77,6 +77,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/cip/mes-stagiaires/{id}/generer-tresor-money/json', [MesStagiairesCipController::class, 'genererTresorMoneyJson'])->name('cip.mes-stagiaires.generer-tresor-money-json');
     Route::post('/cip/mes-stagiaires/{id}/upload-tresor-money', [MesStagiairesCipController::class, 'uploadTresorMoney'])->name('cip.mes-stagiaires.upload-tresor-money');
     Route::post('/cip/mes-stagiaires/{id}/transmettre-chef-agence', [MesStagiairesCipController::class, 'transmettreChefAgence'])->name('cip.mes-stagiaires.transmettre-chef-agence');
+    Route::get('/cip/mes-stagiaires/{id}/suivi-pointages', [MesStagiairesCipController::class, 'suiviPointages'])->name('cip.mes-stagiaires.suivi-pointages');
     Route::delete('/cip/mes-stagiaires/{id}', [MesStagiairesCipController::class, 'destroy'])->name('cip.mes-stagiaires.destroy');
 
     // Phase 5 : Chef d'Agence (Démarrage & Omis)

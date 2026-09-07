@@ -5,6 +5,7 @@ namespace App\Models\Attendance;
 use App\Domain\Audit\Traits\Auditable;
 use App\Domain\Shared\Traits\HasPublicUuid;
 use App\Models\Internship\Stage;
+use App\Models\Payment\DroitPaiement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SituationStage;
 use App\Models\Workflow\InstanceParcours;
@@ -82,6 +83,14 @@ class Pointage extends Model
     public function decisions(): HasMany
     {
         return $this->hasMany(DecisionPointage::class);
+    }
+
+    /**
+     * Les droits au paiement générés par ce pointage (démarrage ou présence mensuelle).
+     */
+    public function droitsPaiement(): HasMany
+    {
+        return $this->hasMany(DroitPaiement::class);
     }
 
     /**

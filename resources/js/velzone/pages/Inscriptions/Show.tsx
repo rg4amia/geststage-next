@@ -1,13 +1,129 @@
 import { Head, Link } from '@inertiajs/react';
 import React from 'react';
-import { Container, Row, Col, Card, CardBody, CardHeader, Table, Badge, Button } from 'reactstrap';
+import { Container, Row, Col, Card, CardBody, CardHeader, Table, Badge, Button, Alert } from 'reactstrap';
 import BreadCrumb from '../../Components/Common/BreadCrumb';
+
+interface CorbeilleInfo {
+    code: string | null;
+    label: string | null;
+}
+
+interface SuiviPaiement {
+    montant: number | string;
+    statut: string | null;
+    statut_label: string | null;
+    statut_dossier_physique: string | null;
+}
+
+interface MaillonPaiement {
+    numero: string;
+    statut: string;
+    statut_label: string | null;
+}
+
+// Une étape du circuit, telle que renvoyée par SuiviPointageService::etapes().
+interface EtapeCircuit {
+    code: string;
+    label: string;
+    acteur: string;
+    etat: 'terminee' | 'en_cours' | 'ajournee' | 'a_venir' | 'sans_objet';
+}
+
+interface SuiviPointage {
+    pointage_id: number;
+    mois: string | null;
+    nature: string | null;
+    statut_pointage: string | null;
+    corbeille: CorbeilleInfo;
+    visa_desse: { code: string | null; label: string | null; motif: string | null; date: string | null };
+    paiement: SuiviPaiement | null;
+    dossier: MaillonPaiement | null;
+    groupe: { numero: string; statut: string } | null;
+    ordre_paiement: MaillonPaiement | null;
+    bordereau: MaillonPaiement | null;
+    etat_paiement: { code: string; label: string; paye: boolean };
+    dernier_retour: { origine: string; decision: string; motif: string | null; auteur: string | null; date: string | null } | null;
+    etapes: EtapeCircuit[];
+}
+
+interface DoublonMatch {
+    type: string;
+    label: string;
+    cle: string;
+}
 
 interface ShowProps {
     instance: any;
+    corbeilleActuelle?: CorbeilleInfo;
+    suiviPointages?: SuiviPointage[];
+    doublons?: DoublonMatch[];
 }
 
-const Show = ({ instance }: ShowProps) => {
+// Couleur du badge de corbeille selon le rôle propriétaire (préfixe du code).
+const corbeilleBadgeColor = (code: string | null): string => {
+    if (!code) {
+return 'light';
+}
+    if (code.startsWith('cip_')) {
+return 'info';
+}
+    if (code.startsWith('ca_') || code === 'en_stage') {
+return 'primary';
+}
+    if (code.startsWith('dmg_')) {
+return 'warning';
+}
+    if (code.startsWith('cb_')) {
+return 'dark';
+}
+    if (code.startsWith('ac_')) {
+return 'success';
+}
+    if (code.startsWith('desse_')) {
+return 'danger';
+}
+    if (code.startsWith('daicg_')) {
+return 'secondary';
+}
+
+    return 'light';
+};
+
+// Couleur du badge de statut de paiement (Paiement.statut / DossierPaiement.statut / etc.).
+const statutPaiementBadgeColor = (statut: string | null): string => {
+    switch (statut) {
+        case 'A_TRAITER':
+        case 'BROUILLON':
+            return 'warning';
+        case 'AJOURNE_DMG':
+        case 'AJOURNE_CB':
+        case 'AJOURNE_AC':
+            return 'danger';
+        case 'EN_DOSSIER':
+        case 'TRANSMIS_CB':
+        case 'TRANSMIS_AC':
+        case 'EN_OP':
+        case 'EN_BORDEREAU':
+            return 'info';
+        case 'VALIDE_CB':
+        case 'VISE_AC':
+        case 'PAYE':
+            return 'success';
+        default:
+            return 'secondary';
+    }
+};
+
+// Rendu d'une étape du circuit (cf. constantes ETAT_* de SuiviPointageService).
+const ETAT_ETAPE: Record<string, { color: string; icone: string; label: string }> = {
+    terminee: { color: 'success', icone: 'ri-check-line', label: 'Franchie' },
+    en_cours: { color: 'primary', icone: 'ri-time-line', label: 'En cours' },
+    ajournee: { color: 'danger', icone: 'ri-arrow-go-back-line', label: 'Retour / ajournement' },
+    a_venir: { color: 'light', icone: 'ri-more-line', label: 'À venir' },
+    sans_objet: { color: 'light', icone: 'ri-subtract-line', label: 'Sans objet' },
+};
+
+const Show = ({ instance, corbeilleActuelle, suiviPointages = [], doublons = [] }: ShowProps) => {
     const { stage, etapeCourante, evenements, taches_ouvertes } = instance;
     const beneficiaire = stage?.beneficiaire;
     const entreprise = stage?.entreprise;
@@ -77,6 +193,11 @@ return 'N/A';
                                                 <Badge color="info" className="fs-14 px-3 py-2">
                                                     <i className="ri-loader-4-line align-bottom me-1"></i> {etapeCourante?.nom || 'Initialisation'}
                                                 </Badge>
+                                                {corbeilleActuelle?.label && (
+                                                    <Badge color={corbeilleBadgeColor(corbeilleActuelle.code)} className="fs-14 px-3 py-2">
+                                                        <i className="ri-inbox-line align-bottom me-1"></i> {corbeilleActuelle.label}
+                                                    </Badge>
+                                                )}
                                             </div>
                                         </div>
                                     </Row>
@@ -84,6 +205,25 @@ return 'N/A';
                             </Card>
                         </Col>
                     </Row>
+
+                    {doublons.length > 0 && (
+                        <Row>
+                            <Col lg={12}>
+                                <Alert color="danger" className="d-flex align-items-start gap-2">
+                                    <i className="ri-error-warning-line fs-18 align-middle"></i>
+                                    <div>
+                                        <h6 className="alert-heading mb-1">Pare-feu doublons DESSE — dossier concerné</h6>
+                                        <div className="mb-1">Ce stagiaire partage un ou plusieurs critères avec un autre bénéficiaire, encore non tranché par la DESSE :</div>
+                                        <div className="hstack gap-2 flex-wrap">
+                                            {doublons.map((d) => (
+                                                <Badge key={d.type} color="danger" className="fs-12">{d.label}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </Alert>
+                            </Col>
+                        </Row>
+                    )}
 
                     <Row>
                         {/* LEFT COLUMN: INFO & DOCS */}
@@ -225,6 +365,129 @@ return 'N/A';
                                     </Row>
                                 </CardBody>
                             </Card>
+
+                            {/* SUIVI CORBEILLES & PAIEMENT CARD */}
+                            {suiviPointages.length > 0 && (
+                                <Card>
+                                    <CardHeader>
+                                        <h5 className="card-title mb-0"><i className="ri-inbox-line align-middle me-1 text-muted"></i> Positionnement dans le Workflow (Corbeilles &amp; Paiement)</h5>
+                                    </CardHeader>
+                                    <CardBody>
+                                        <div className="table-responsive">
+                                            <Table className="table-nowrap align-middle mb-0">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Mois</th>
+                                                        <th>Nature</th>
+                                                        <th>Statut Pointage</th>
+                                                        <th>Corbeille</th>
+                                                        <th>Visa DESSE</th>
+                                                        <th>Paiement</th>
+                                                        <th>Dossier / OP / Bordereau</th>
+                                                        <th>État</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {suiviPointages.map((p) => (
+                                                        <React.Fragment key={p.pointage_id}>
+                                                        <tr>
+                                                            <td className="fw-medium">{p.mois || 'N/A'}</td>
+                                                            <td>{p.nature || 'N/A'}</td>
+                                                            <td><Badge color="light" className="text-body">{p.statut_pointage || 'N/A'}</Badge></td>
+                                                            <td>
+                                                                {p.corbeille?.label ? (
+                                                                    <Badge color={corbeilleBadgeColor(p.corbeille.code)}>{p.corbeille.label}</Badge>
+                                                                ) : (
+                                                                    <span className="text-muted">—</span>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                {p.visa_desse?.code ? (
+                                                                    <Badge color={p.visa_desse.code === 'VISE' ? 'success' : p.visa_desse.code === 'REJETE' ? 'danger' : 'warning'}>
+                                                                        {p.visa_desse.label}
+                                                                    </Badge>
+                                                                ) : (
+                                                                    <span className="text-muted">Non soumis</span>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                {p.paiement ? (
+                                                                    <div className="hstack gap-1 flex-wrap">
+                                                                        <Badge color={statutPaiementBadgeColor(p.paiement.statut)}>{p.paiement.statut_label || p.paiement.statut}</Badge>
+                                                                        {p.paiement.statut_dossier_physique && (
+                                                                            <Badge color="light" className="text-body">Physique : {p.paiement.statut_dossier_physique}</Badge>
+                                                                        )}
+                                                                        <span className="text-muted fs-12">{Number(p.paiement.montant).toLocaleString('fr-FR')} FCFA</span>
+                                                                    </div>
+                                                                ) : (
+                                                                    <span className="text-muted">Aucun paiement généré</span>
+                                                                )}
+                                                            </td>
+                                                            <td>
+                                                                <div className="hstack gap-1 flex-wrap">
+                                                                    {p.dossier && (
+                                                                        <Badge color={statutPaiementBadgeColor(p.dossier.statut)} className="fs-11">
+                                                                            Dossier {p.dossier.numero} ({p.dossier.statut})
+                                                                        </Badge>
+                                                                    )}
+                                                                    {p.groupe && (
+                                                                        <Badge color="secondary" className="fs-11">Multi-dossier {p.groupe.numero}</Badge>
+                                                                    )}
+                                                                    {p.ordre_paiement && (
+                                                                        <Badge color={statutPaiementBadgeColor(p.ordre_paiement.statut)} className="fs-11">
+                                                                            OP {p.ordre_paiement.numero} ({p.ordre_paiement.statut})
+                                                                        </Badge>
+                                                                    )}
+                                                                    {p.bordereau && (
+                                                                        <Badge color={statutPaiementBadgeColor(p.bordereau.statut)} className="fs-11">
+                                                                            Bordereau {p.bordereau.numero} ({p.bordereau.statut})
+                                                                        </Badge>
+                                                                    )}
+                                                                    {!p.dossier && !p.ordre_paiement && !p.bordereau && (
+                                                                        <span className="text-muted">—</span>
+                                                                    )}
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <Badge color={p.etat_paiement?.paye ? 'success' : p.etat_paiement?.code === 'EN_COURS' ? 'info' : p.etat_paiement?.code === 'SANS_PAIEMENT' ? 'light' : 'danger'}>
+                                                                    {p.etat_paiement?.label}
+                                                                </Badge>
+                                                            </td>
+                                                        </tr>
+                                                        <tr className="bg-light">
+                                                            <td colSpan={8} className="text-wrap">
+                                                                {p.dernier_retour && (
+                                                                    <Alert color="warning" className="py-2 mb-2 fs-13">
+                                                                        <strong>Dernier retour — {p.dernier_retour.decision}</strong> : {p.dernier_retour.motif}
+                                                                        <span className="text-muted"> ({p.dernier_retour.auteur || 'auteur inconnu'})</span>
+                                                                    </Alert>
+                                                                )}
+                                                                <div className="hstack gap-1 flex-wrap">
+                                                                    {p.etapes?.map((etape) => {
+                                                                        const etat = ETAT_ETAPE[etape.etat] ?? ETAT_ETAPE.a_venir;
+
+                                                                        return (
+                                                                            <Badge
+                                                                                key={etape.code}
+                                                                                color={etat.color}
+                                                                                className={`fs-11 ${etat.color === 'light' ? 'text-body' : ''}`}
+                                                                                title={`${etat.label} — ${etape.acteur}`}
+                                                                            >
+                                                                                <i className={`${etat.icone} me-1`}></i>{etape.label}
+                                                                            </Badge>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                        </React.Fragment>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
+                                        </div>
+                                    </CardBody>
+                                </Card>
+                            )}
 
                             {/* DOCUMENTS CARD */}
                             <Card>

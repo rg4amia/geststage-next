@@ -219,9 +219,93 @@ e.preventDefault();
         });
     };
 
+    // Suivi détaillé des pointages : chargé à la demande à l'ouverture de la modale, car la
+    // chaîne de paiement (dossier → OP → bordereau → AC) représente une demi-douzaine de
+    // relations par mois, inutiles pour les 50 lignes paginées de la liste.
+    const [suiviPointages, setSuiviPointages] = useState<any[]>([]);
+    const [suiviLoading, setSuiviLoading] = useState(false);
+    const [suiviError, setSuiviError] = useState('');
+    const [ligneDetaillee, setLigneDetaillee] = useState<number | null>(null);
+
+    const chargerSuivi = async (instanceId: number) => {
+        setSuiviLoading(true);
+        setSuiviError('');
+        setSuiviPointages([]);
+
+        try {
+            const response = await fetch(`/cip/mes-stagiaires/${instanceId}/suivi-pointages`, {
+                method: 'GET',
+                credentials: 'same-origin',
+                headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            });
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || `Erreur ${response.status}`);
+            }
+
+            setSuiviPointages(data.pointages || []);
+        } catch (err: any) {
+            setSuiviError(err.message || 'Impossible de charger le suivi des pointages.');
+        } finally {
+            setSuiviLoading(false);
+        }
+    };
+
     const toggleAnalyse = (stagiaire: any = null) => {
         setSelectedStagiaire(stagiaire);
+        setLigneDetaillee(null);
         setModalAnalyse(!modalAnalyse);
+
+        if (stagiaire) {
+            chargerSuivi(stagiaire.id);
+        }
+    };
+
+    // Couleurs des états d'étape renvoyés par SuiviPointageService.
+    const ETAT_ETAPE: Record<string, { color: string; icone: string; label: string }> = {
+        terminee: { color: 'success', icone: 'ri-check-line', label: 'Franchie' },
+        en_cours: { color: 'primary', icone: 'ri-time-line', label: 'En cours' },
+        ajournee: { color: 'danger', icone: 'ri-arrow-go-back-line', label: 'Retour / ajournement' },
+        a_venir: { color: 'light', icone: 'ri-more-line', label: 'À venir' },
+        sans_objet: { color: 'light', icone: 'ri-subtract-line', label: 'Sans objet' },
+    };
+
+    const badgeStatutPointage = (statut?: string | null) => {
+        if (!statut) return 'secondary';
+        if (statut.startsWith('AJOURNE') || statut.startsWith('REJETE')) return 'danger';
+        if (statut === 'VALIDE') return 'success';
+        if (statut === 'BROUILLON') return 'light';
+        return 'info';
+    };
+
+    const badgeEtatPaiement = (code?: string | null) => {
+        switch (code) {
+            case 'PAYE':
+                return 'success';
+            case 'AJOURNE':
+            case 'DIFFERE':
+            case 'REJETE':
+            case 'NON_PAYE':
+                return 'danger';
+            case 'EN_COURS':
+                return 'info';
+            default:
+                return 'light';
+        }
+    };
+
+    const badgeVisaDesse = (code?: string | null) => {
+        switch (code) {
+            case 'VISE':
+                return 'success';
+            case 'REJETE':
+                return 'danger';
+            case 'EN_ATTENTE':
+                return 'warning';
+            default:
+                return 'light';
+        }
     };
 
     // Étapes principales du circuit d'une instance de parcours (cf. WorkflowTransitionService)
@@ -906,44 +990,124 @@ e.preventDefault();
                                 <table className="table align-middle table-nowrap table-striped mb-0">
                                     <thead className="table-light text-muted fs-12">
                                         <tr>
+                                            <th style={{ width: 32 }}></th>
                                             <th>Mois</th>
-                                            <th>Étape Traitement</th>
+                                            <th>Nature</th>
+                                            <th>Pointage</th>
+                                            <th>Corbeille</th>
                                             <th>Étape DESSE</th>
+                                            <th>Dossier</th>
                                             <th>N° OP</th>
                                             <th>N° Bordereau</th>
-                                            <th>Dossier</th>
+                                            <th>État paiement</th>
                                             <th>Position</th>
                                             <th>Situation</th>
                                             <th>Date Pointage</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {/* Example empty state row */}
-                                        {selectedStagiaire?.stage?.pointages?.length > 0 ? (
-                                            selectedStagiaire.stage.pointages.map((pointage: any, index: number) => (
-                                                <tr key={index}>
-                                                    <td>{pointage.periode?.code || '-'}</td>
-                                                    <td><Badge color="info">{pointage.statut || '-'}</Badge></td>
-                                                    <td>-</td>
-                                                    <td>-</td>
-                                                    <td>-</td>
-                                                    <td>-</td>
-                                                    <td>
-                                                        {pointage.version_courante?.jours_presents !== undefined
-                                                            ? `${pointage.version_courante.jours_presents} J`
-                                                            : '-'}
-                                                    </td>
-                                                    <td>{pointage.version_courante?.presence || '-'}</td>
-                                                    <td>
-                                                        {pointage.version_courante?.saisi_le
-                                                            ? new Date(pointage.version_courante.saisi_le).toLocaleDateString('fr-FR')
-                                                            : '-'}
-                                                    </td>
-                                                </tr>
-                                            ))
-                                        ) : (
+                                        {suiviLoading && (
                                             <tr>
-                                                <td colSpan={9} className="text-center text-muted py-5">
+                                                <td colSpan={13} className="text-center text-muted py-5">
+                                                    <Spinner size="sm" className="me-2" /> Chargement du suivi…
+                                                </td>
+                                            </tr>
+                                        )}
+
+                                        {!suiviLoading && suiviError && (
+                                            <tr>
+                                                <td colSpan={13} className="text-center text-danger py-5">{suiviError}</td>
+                                            </tr>
+                                        )}
+
+                                        {!suiviLoading && !suiviError && suiviPointages.map((ligne: any) => (
+                                            <React.Fragment key={ligne.pointage_id}>
+                                                <tr>
+                                                    <td>
+                                                        <Button
+                                                            color="light"
+                                                            size="sm"
+                                                            className="btn-icon"
+                                                            title="Détail du circuit"
+                                                            onClick={() => setLigneDetaillee(ligneDetaillee === ligne.pointage_id ? null : ligne.pointage_id)}
+                                                        >
+                                                            <i className={ligneDetaillee === ligne.pointage_id ? 'ri-arrow-up-s-line' : 'ri-arrow-down-s-line'}></i>
+                                                        </Button>
+                                                    </td>
+                                                    <td className="fw-medium">{ligne.mois || '-'}</td>
+                                                    <td className="fs-12">{ligne.nature || '-'}</td>
+                                                    <td><Badge color={badgeStatutPointage(ligne.statut_pointage)}>{ligne.statut_pointage || '-'}</Badge></td>
+                                                    <td className="fs-12">{ligne.corbeille?.label || '-'}</td>
+                                                    <td>
+                                                        {ligne.visa_desse?.code
+                                                            ? <Badge color={badgeVisaDesse(ligne.visa_desse.code)}>{ligne.visa_desse.label}</Badge>
+                                                            : <span className="text-muted">Non soumis</span>}
+                                                    </td>
+                                                    <td className="fs-12">
+                                                        {ligne.dossier ? (
+                                                            <>
+                                                                <div>{ligne.dossier.numero}</div>
+                                                                <small className="text-muted">{ligne.dossier.statut_label}</small>
+                                                                {ligne.groupe && (
+                                                                    <div><Badge color="secondary" className="mt-1">Multi-dossier {ligne.groupe.numero}</Badge></div>
+                                                                )}
+                                                            </>
+                                                        ) : '-'}
+                                                    </td>
+                                                    <td className="fs-12">{ligne.ordre_paiement?.numero || '-'}</td>
+                                                    <td className="fs-12">{ligne.bordereau?.numero || '-'}</td>
+                                                    <td><Badge color={badgeEtatPaiement(ligne.etat_paiement?.code)}>{ligne.etat_paiement?.label}</Badge></td>
+                                                    <td>{ligne.position !== null && ligne.position !== undefined ? `${ligne.position} J` : '-'}</td>
+                                                    <td>{ligne.situation || '-'}</td>
+                                                    <td>{ligne.date_pointage ? new Date(ligne.date_pointage).toLocaleDateString('fr-FR') : '-'}</td>
+                                                </tr>
+
+                                                {ligneDetaillee === ligne.pointage_id && (
+                                                    <tr>
+                                                        <td colSpan={13} className="bg-light">
+                                                            {ligne.dernier_retour && (
+                                                                <div className="alert alert-warning d-flex mb-3">
+                                                                    <i className="ri-arrow-go-back-line me-2 mt-1"></i>
+                                                                    <div>
+                                                                        <strong>Dernier retour — {ligne.dernier_retour.decision}</strong>
+                                                                        <div className="fs-13">{ligne.dernier_retour.motif}</div>
+                                                                        <small className="text-muted">
+                                                                            {ligne.dernier_retour.auteur || 'Auteur inconnu'}
+                                                                            {ligne.dernier_retour.date ? ` — ${new Date(ligne.dernier_retour.date).toLocaleDateString('fr-FR')}` : ''}
+                                                                        </small>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            <div className="d-flex flex-wrap gap-2 text-wrap">
+                                                                {(ligne.etapes || []).map((etape: any) => {
+                                                                    const etat = ETAT_ETAPE[etape.etat] || ETAT_ETAPE.a_venir;
+                                                                    const estimee = etape.etat === 'a_venir' || etape.etat === 'sans_objet';
+
+                                                                    return (
+                                                                        <div
+                                                                            key={etape.code}
+                                                                            className={`border border-${etat.color} rounded p-2 bg-white`}
+                                                                            style={{ minWidth: 180, opacity: estimee ? 0.6 : 1 }}
+                                                                        >
+                                                                            <div className={`fs-12 fw-semibold text-${etat.color === 'light' ? 'muted' : etat.color}`}>
+                                                                                <i className={`${etat.icone} me-1`}></i>{etat.label}
+                                                                            </div>
+                                                                            <div className="fs-13">{etape.label}</div>
+                                                                            <small className="text-muted">{etape.acteur}</small>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </React.Fragment>
+                                        ))}
+
+                                        {!suiviLoading && !suiviError && suiviPointages.length === 0 && (
+                                            <tr>
+                                                <td colSpan={13} className="text-center text-muted py-5">
                                                     <div className="d-flex flex-column align-items-center justify-content-center">
                                                         <i className="ri-file-search-line display-5 text-muted opacity-50 mb-3"></i>
                                                         <h6>Aucun pointage disponible</h6>
