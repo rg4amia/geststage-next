@@ -81,6 +81,7 @@ class MigrateLegacyDataCommandTest extends TestCase
         Schema::connection('legacy')->create('pointage_models', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('stagiaire_id')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->date('date_pointage')->nullable();
             $table->string('mois')->nullable();
             $table->text('commentaire')->nullable();
@@ -122,9 +123,13 @@ class MigrateLegacyDataCommandTest extends TestCase
 
         Schema::connection('legacy')->create('users', function (Blueprint $table): void {
             $table->id();
+            $table->unsignedBigInteger('type_user_id')->nullable();
+            $table->unsignedBigInteger('agence_id')->nullable();
             $table->string('nom')->nullable();
             $table->string('pseudo')->nullable();
             $table->string('email')->nullable();
+            $table->string('password')->nullable();
+            $table->timestamp('deleted_at')->nullable();
             $table->timestamps();
         });
 
@@ -189,6 +194,85 @@ class MigrateLegacyDataCommandTest extends TestCase
         }
 
         parent::tearDown();
+    }
+
+    public function test_users_migration_creates_active_agency_perimeter_from_legacy_agence(): void
+    {
+        $regionId = DB::table('regions')->insertGetId([
+            'ancien_id' => 4,
+            'code' => 'REG-4',
+            'nom' => 'Region 4',
+            'actif' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $agence = Agence::factory()->create(['ancien_id' => 12, 'region_id' => $regionId]);
+
+        DB::connection('legacy')->table('users')->insert([
+            'id' => 353,
+            'type_user_id' => 3,
+            'agence_id' => 12,
+            'nom' => 'CIP TEST',
+            'pseudo' => 'cip.test',
+            'email' => 'cip.test@example.test',
+            'password' => bcrypt('legacy-password'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'users'])->assertExitCode(0);
+
+        $user = User::query()->where('email', 'cip.test@example.test')->firstOrFail();
+
+        $this->assertDatabaseHas('perimetres_agences_utilisateurs', [
+            'user_id' => $user->id,
+            'agence_id' => $agence->id,
+            'valide_au' => null,
+        ]);
+    }
+
+    public function test_pointage_migration_recovers_the_legacy_cip_who_created_the_pointage(): void
+    {
+        $agence = Agence::factory()->create(['ancien_id' => 12]);
+        $source = SourceFinancement::factory()->create(['ancien_id' => 3]);
+        Stage::factory()->create([
+            'ancien_id' => 506,
+            'agence_id' => $agence->id,
+            'source_financement_id' => $source->id,
+            'date_debut' => '2026-04-01',
+        ]);
+
+        DB::connection('legacy')->table('users')->insert([
+            'id' => 353,
+            'type_user_id' => 3,
+            'agence_id' => 12,
+            'nom' => 'CIP POINTAGE',
+            'pseudo' => 'cip.pointage',
+            'email' => 'cip.pointage@example.test',
+            'password' => bcrypt('legacy-password'),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        DB::connection('legacy')->table('pointage_models')->insert([
+            'id' => 9301,
+            'stagiaire_id' => 506,
+            'user_id' => 353,
+            'mois' => '2026-08',
+            'status_cip' => 1,
+            'status_ca' => 1,
+            'status_dmg' => 0,
+            'date_pointage' => '2026-08-25',
+            'created_at' => '2026-08-25 08:00:00',
+            'updated_at' => '2026-08-25 08:00:00',
+        ]);
+
+        $this->artisan('migrate:legacy-data', ['--step' => 'pointages'])->assertExitCode(0);
+
+        $user = User::query()->where('email', 'cip.pointage@example.test')->firstOrFail();
+        $version = VersionPointage::query()->where('ancien_id', 9301)->firstOrFail();
+
+        $this->assertSame($user->id, $version->saisi_par_id);
     }
 
     public function test_it_backfills_open_legacy_dossiers_into_dossiers_paiement(): void

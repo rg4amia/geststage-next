@@ -355,21 +355,31 @@ class LegacyMapperService
     }
 
     /**
-     * Mapping des types d'utilisateurs legacy vers les rôles Spatie.
+     * Mapping des types d'utilisateurs legacy vers les rôles Spatie du projet cible.
+     *
+     * @return list<string>
+     */
+    public function mapTypeUserToRoles(int $typeUserId): array
+    {
+        return match ($typeUserId) {
+            1, 14, 15, 81 => ['administrateur'],
+            2 => ['chef_agence'],
+            3, 17 => ['cip'],
+            4, 8, 85 => ['daicg'],
+            5, 76, 77, 78, 79, 80, 82 => ['dmg'],
+            11, 74, 75 => ['desse'],
+            83 => ['pejedec'],
+            84 => ['cb', 'agent_comptable'],
+            default => [],
+        };
+    }
+
+    /**
+     * Mapping historique conservé pour les appels qui attendent un rôle unique.
      */
     public function mapTypeUserToRole(int $typeUserId): ?string
     {
-        return match ($typeUserId) {
-            1 => 'administrateur',
-            2 => 'agent_comptable',
-            3 => 'chef_agence',
-            4 => 'cip',
-            5 => 'dmg',
-            6 => 'desse',
-            7 => 'daicg',
-            8 => 'cb',
-            default => null,
-        };
+        return $this->mapTypeUserToRoles($typeUserId)[0] ?? null;
     }
 
     /**

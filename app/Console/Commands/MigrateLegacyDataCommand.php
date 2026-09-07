@@ -57,6 +57,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Throwable;
@@ -546,40 +547,194 @@ class MigrateLegacyDataCommand extends Command
         $bar->start();
 
         foreach ($users as $legacyUser) {
-            $email = $this->mapper->sanitizeEmail($legacyUser->email, $legacyUser->nom ?? 'User', $legacyUser->pseudo ?? '', $legacyUser->id);
-
-            $user = User::updateOrCreate(
-                ['email' => $email],
-                [
-                    'nom' => $legacyUser->nom ?? 'Inconnu',
-                    'prenoms' => $legacyUser->pseudo ?? '',
-                    'password' => $legacyUser->password, // On garde l'ancien hash
-                    // Champ reporté tel quel : le modèle User n'a pas (encore) le trait SoftDeletes,
-                    // donc ceci ne bloque pas la connexion, ça garde juste l'info pour plus tard.
-                    'deleted_at' => $this->mapper->normalizeLegacyDate($legacyUser->deleted_at ?? null),
-                ]
-            );
-
-            // Assigner le rôle Spatie
-            $roleName = $this->mapper->mapTypeUserToRole($legacyUser->type_user_id);
-            if ($roleName !== null && Role::where('name', $roleName)->exists() && ! $user->hasRole($roleName)) {
-                $user->syncRoles([$roleName]);
-            }
-
-            $this->recorder->correspondence(
-                $this->executionId,
-                'users',
-                $legacyUser->id,
-                'users',
-                $user->id,
-                (array) $legacyUser,
-            );
+            $this->migrateLegacyUser($legacyUser);
 
             $bar->advance();
         }
 
         $bar->finish();
         $this->newLine();
+    }
+
+    private function migrateLegacyUser(object $legacyUser): User
+    {
+        $email = $this->mapper->sanitizeEmail($legacyUser->email ?? null, $legacyUser->nom ?? 'User', $legacyUser->pseudo ?? '', (int) $legacyUser->id);
+
+        $user = User::updateOrCreate(
+            ['email' => $email],
+            [
+                'nom' => $legacyUser->nom ?? 'Inconnu',
+                'prenoms' => $legacyUser->pseudo ?? '',
+                'password' => $legacyUser->password ?? bcrypt(Str::random(32)),
+                // Champ reporté tel quel : le modèle User n'a pas (encore) le trait SoftDeletes,
+                // donc ceci ne bloque pas la connexion, ça garde juste l'info pour plus tard.
+                'deleted_at' => $this->mapper->normalizeLegacyDate($legacyUser->deleted_at ?? null),
+            ]
+        );
+
+        // Assigner les rôles Spatie du projet cible.
+        $roleNames = $this->mapper->mapTypeUserToRoles((int) ($legacyUser->type_user_id ?? 0));
+        $existingRoleNames = $roleNames === []
+            ? []
+            : Role::query()
+                ->whereIn('name', $roleNames)
+                ->pluck('name')
+                ->all();
+
+        if ($existingRoleNames !== []) {
+            $user->syncRoles($existingRoleNames);
+        }
+
+        $this->migrateLegacyUserAgencePerimeter($legacyUser, $user);
+
+        $this->recorder->correspondence(
+            $this->executionId,
+            'users',
+            $legacyUser->id,
+            'users',
+            $user->id,
+            (array) $legacyUser,
+        );
+
+        return $user;
+    }
+
+    private function migrateLegacyUserAgencePerimeter(object $legacyUser, User $user): void
+    {
+        $legacyAgenceId = $legacyUser->agence_id ?? null;
+
+        if ($legacyAgenceId === null) {
+            return;
+        }
+
+        $agenceId = DB::table('agences')
+            ->where('ancien_id', (int) $legacyAgenceId)
+            ->value('id');
+
+        if ($agenceId === null) {
+            $this->recorder->anomaly(
+                $this->executionId,
+                'USER_AGENCE_INTROUVABLE',
+                'users',
+                $legacyUser->id,
+                "L'utilisateur legacy {$legacyUser->id} référence l'agence legacy {$legacyAgenceId}, introuvable côté cible.",
+                ['ancien_agence_id' => $legacyAgenceId],
+                'NON_BLOQUANTE',
+            );
+
+            return;
+        }
+
+        $exists = DB::table('perimetres_agences_utilisateurs')
+            ->where('user_id', $user->id)
+            ->where('agence_id', $agenceId)
+            ->whereNull('valide_au')
+            ->exists();
+
+        if (! $exists) {
+            DB::table('perimetres_agences_utilisateurs')->insert([
+                'user_id' => $user->id,
+                'agence_id' => $agenceId,
+                'valide_du' => now(),
+                'valide_au' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    /**
+     * @param  array<int, int|string|null>  $legacyUserIds
+     * @return array<int, int>
+     */
+    private function ensureLegacyUsersMigrated(array $legacyUserIds): array
+    {
+        $legacyUserIds = collect($legacyUserIds)
+            ->filter(fn ($id): bool => $id !== null && $id !== '')
+            ->map(fn ($id): int => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        if ($legacyUserIds === []) {
+            return [];
+        }
+
+        $usersMap = DB::table('correspondances_ancien_systeme')
+            ->where('table_source', 'users')
+            ->where('table_cible', 'users')
+            ->whereIn('id_source', $legacyUserIds)
+            ->pluck('id_cible', 'id_source')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $missingIds = array_values(array_diff($legacyUserIds, array_map('intval', array_keys($usersMap))));
+
+        if ($missingIds !== []) {
+            DB::connection('legacy')->table('users')
+                ->whereIn('id', $missingIds)
+                ->orderBy('id')
+                ->get()
+                ->each(function (object $legacyUser) use (&$usersMap): void {
+                    $user = $this->migrateLegacyUser($legacyUser);
+                    $usersMap[(int) $legacyUser->id] = $user->id;
+                });
+        }
+
+        return $usersMap;
+    }
+
+    /**
+     * @param  Collection<int, object>  $pointages
+     * @return array<int, int>
+     */
+    private function legacyPointageAuteurIds(Collection $pointages): array
+    {
+        $pointageIds = $pointages->pluck('id')
+            ->filter(fn ($id): bool => $id !== null && $id !== '')
+            ->map(fn ($id): int => (int) $id)
+            ->values()
+            ->all();
+
+        if ($pointageIds === []) {
+            return [];
+        }
+
+        $auteurs = [];
+
+        if (Schema::connection('legacy')->hasColumn('pointage_models', 'user_id')) {
+            foreach ($pointages as $pointage) {
+                $legacyUserId = $pointage->user_id ?? null;
+
+                if ($legacyUserId !== null && $legacyUserId !== '') {
+                    $auteurs[(int) $pointage->id] = (int) $legacyUserId;
+                }
+            }
+        }
+
+        $missingPointageIds = array_values(array_diff($pointageIds, array_keys($auteurs)));
+
+        if (
+            $missingPointageIds !== []
+            && Schema::connection('legacy')->hasTable('contrat_etape')
+            && Schema::connection('legacy')->hasColumn('contrat_etape', 'pointage_id')
+            && Schema::connection('legacy')->hasColumn('contrat_etape', 'user_id')
+        ) {
+            $fallbackAuteurs = DB::connection('legacy')->table('contrat_etape')
+                ->whereIn('pointage_id', $missingPointageIds)
+                ->whereNotNull('user_id')
+                ->orderBy('id')
+                ->get(['pointage_id', 'user_id'])
+                ->groupBy('pointage_id')
+                ->map(fn (Collection $rows): int => (int) $rows->last()->user_id)
+                ->all();
+
+            foreach ($fallbackAuteurs as $pointageId => $legacyUserId) {
+                $auteurs[(int) $pointageId] = (int) $legacyUserId;
+            }
+        }
+
+        return $auteurs;
     }
 
     private function migrateEntreprises(): void
@@ -1193,14 +1348,8 @@ class MigrateLegacyDataCommand extends Command
 
             // L'agent de saisie du pointage legacy (`pointage_models.user_id`, souvent le CIP)
             // est conservé sur chaque version pour alimenter la colonne « Agent Saisie ».
-            $legacyUserIds = $pointages->pluck('user_id')->filter()->unique()->toArray();
-            $saisisParMap = DB::table('correspondances_ancien_systeme')
-                ->where('table_source', 'users')
-                ->where('table_cible', 'users')
-                ->whereIn('id_source', $legacyUserIds)
-                ->pluck('id_cible', 'id_source')
-                ->map(fn ($id): int => (int) $id)
-                ->all();
+            $legacyAuteurIdsParPointage = $this->legacyPointageAuteurIds($pointages);
+            $saisisParMap = $this->ensureLegacyUsersMigrated(array_values($legacyAuteurIdsParPointage));
 
             $versionsMap = VersionPointage::whereIn('ancien_id', $legacyIds)->get()->keyBy('ancien_id');
             $stageIdsFilter = array_filter(array_values($stagesMap));
@@ -1325,7 +1474,7 @@ class MigrateLegacyDataCommand extends Command
                         $pointagesMap["{$stage_id}_{$periodeId}_{$naturePointage}"] = $pointage;
 
                         $versionExistante->update([
-                            'saisi_par_id' => $saisisParMap[$legacyPointage->user_id] ?? null,
+                            'saisi_par_id' => $saisisParMap[$legacyAuteurIdsParPointage[(int) $legacyPointage->id] ?? null] ?? null,
                             'observation' => $legacyPointage->commentaire,
                             'saisi_le' => $date,
                         ]);
@@ -1368,7 +1517,7 @@ class MigrateLegacyDataCommand extends Command
 
                         VersionPointage::create([
                             'ancien_id' => $legacyPointage->id,
-                            'saisi_par_id' => $saisisParMap[$legacyPointage->user_id] ?? null,
+                            'saisi_par_id' => $saisisParMap[$legacyAuteurIdsParPointage[(int) $legacyPointage->id] ?? null] ?? null,
                             'pointage_id' => $pointage->id,
                             'numero_version' => $numeroVersion,
                             'presence' => 'PRESENT',

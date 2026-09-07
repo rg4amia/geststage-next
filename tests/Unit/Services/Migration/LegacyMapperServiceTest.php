@@ -216,9 +216,24 @@ class LegacyMapperServiceTest extends TestCase
         $mapper = new LegacyMapperService;
 
         $this->assertSame('administrateur', $mapper->mapTypeUserToRole(1));
-        $this->assertSame('agent_comptable', $mapper->mapTypeUserToRole(2));
-        $this->assertSame('chef_agence', $mapper->mapTypeUserToRole(3));
-        $this->assertSame('cip', $mapper->mapTypeUserToRole(4));
+        $this->assertSame('chef_agence', $mapper->mapTypeUserToRole(2));
+        $this->assertSame('cip', $mapper->mapTypeUserToRole(3));
+        $this->assertSame('daicg', $mapper->mapTypeUserToRole(4));
+        $this->assertSame('dmg', $mapper->mapTypeUserToRole(76));
+        $this->assertSame('desse', $mapper->mapTypeUserToRole(11));
+        $this->assertSame('pejedec', $mapper->mapTypeUserToRole(83));
+        $this->assertSame('cb', $mapper->mapTypeUserToRole(84));
+    }
+
+    public function test_map_type_user_to_roles_preserves_composite_legacy_profiles(): void
+    {
+        $mapper = new LegacyMapperService;
+
+        $this->assertSame(['administrateur'], $mapper->mapTypeUserToRoles(81));
+        $this->assertSame(['cip'], $mapper->mapTypeUserToRoles(17));
+        $this->assertSame(['dmg'], $mapper->mapTypeUserToRoles(82));
+        $this->assertSame(['cb', 'agent_comptable'], $mapper->mapTypeUserToRoles(84));
+        $this->assertSame([], $mapper->mapTypeUserToRoles(999));
     }
 
     public function test_map_chef_agence_corbeille_ignores_zero_validation_dates(): void
