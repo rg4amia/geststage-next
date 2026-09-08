@@ -36,6 +36,7 @@ export const businessMenuSections: BusinessMenuSection[] = [
             'cip-renouvellements',
             'ca-validations',
             'desse-stagiaires',
+            'desse-suivi',
             'agence-regionale-visas',
             'daicg-stagiaires',
         ],
@@ -85,19 +86,13 @@ export const businessMenuSections: BusinessMenuSection[] = [
             'parametre-aides-journaux',
             'parametre-aides-aide',
         ],
-    }
+    },
 ];
 
 export const menuItems: MenuItem[] = [
     {
         label: 'Menu Principal',
         isHeader: true,
-    },
-    {
-        id: 'dashboard',
-        label: 'Tableau de bord',
-        icon: 'ri-dashboard-2-line',
-        link: '/dashboard',
     },
     {
         id: 'reporting',
@@ -203,8 +198,15 @@ export const menuItems: MenuItem[] = [
         actor: 'DESSE',
     },
     {
+        id: 'desse-suivi',
+        label: 'Suivi des stagiaires',
+        icon: 'ri-folder-open-line',
+        link: '/desse/suivi',
+        actor: 'DESSE',
+    },
+    {
         id: 'agence-regionale-visas',
-        label: 'Supervision régionale',
+        label: 'Suivi Agence Régionale',
         icon: 'ri-shield-check-line',
         link: '/agence-regionale/visas',
         actor: 'DESSE',

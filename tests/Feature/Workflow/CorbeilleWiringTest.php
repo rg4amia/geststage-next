@@ -41,7 +41,7 @@ class CorbeilleWiringTest extends TestCase
             '/cb/paiements' => ['Cb/Paiements/Index', ['dossiersControle', 'etatsAjournes']],
             '/agent-comptable/paiements' => ['AgentComptable/Paiements/Index', ['bordereauxAttente', 'ordresRejetes', 'statutPaiements']],
             '/desse/stagiaires' => ['Desse/Stagiaires/Index', ['data', 'counts', 'doublonCounts']],
-            '/daicg/stagiaires' => ['Daicg/Stagiaires/Index', ['validesCA', 'validesDESSE', 'sansContrat']],
+            '/daicg/stagiaires' => ['Daicg/Stagiaires/Index', ['onglet', 'filters', 'stages']],
             '/cip/suivi' => ['Cip/Suivi/Index', ['differesAC', 'doublonsDESSE', 'renouvellements', 'suspensionsAbandons']],
             '/cip/pointages' => ['Cip/Pointages/Index', ['tab', 'counts', 'data', 'filters']],
             '/pejedec/af' => ['Pejedec/Aaf/Index', ['attenteValidation', 'paiementsAjournes', 'correctionsAValider', 'attentePaiement', 'statistiques', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],

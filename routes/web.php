@@ -30,10 +30,10 @@ use App\Http\Controllers\Reporting\TableauDeBordController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
-Route::redirect('/', '/dashboard')->name('home');
+Route::redirect('/', '/reporting')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::get('/dashboard', [TableauDeBordController::class, 'index'])->middleware('can:voir_reporting')->name('dashboard');
+    Route::redirect('/dashboard', '/reporting')->name('dashboard');
     Route::get('/reporting', [TableauDeBordController::class, 'index'])->middleware('can:voir_reporting')->name('reporting.index');
     Route::get('/reporting/export/kpi.csv', [TableauDeBordController::class, 'exportCsv'])->middleware('can:voir_reporting')->name('reporting.export.kpi');
 
@@ -214,7 +214,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/desse/stagiaires/ajourner/{id}', [StagiaireDesseController::class, 'ajourner'])->middleware('can:valider_desse')->name('desse.stagiaires.ajourner');
     Route::post('/desse/stagiaires/doublons/{id}/traiter', [StagiaireDesseController::class, 'traiterDoublon'])->middleware('can:valider_desse')->name('desse.stagiaires.doublons.traiter');
 
-    Route::get('/daicg/stagiaires', [StagiaireDaicgController::class, 'index'])->name('daicg.stagiaires.index');
+    Route::get('/daicg/stagiaires', [StagiaireDaicgController::class, 'index'])->middleware('can:voir_visas_ar')->name('daicg.stagiaires.index');
 
     // Supervision régionale : visa DESSE, dossiers validés AR, différés AC, extractions de
     // suivi, tableau statistique et pièces justificatives, regroupés en un seul écran.
@@ -238,6 +238,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         'agence-regionale.visas.index',
         $request->query()
     ))->name('desse.visas.index');
+
+    // Alias menu « Suivi des stagiaires » (Espace DESSE) : redirige vers les onglets
+    // d'extraction de /agence-regionale/visas (legacy `desse/suivie/stagiaire-saved`),
+    // en conservant les filtres déjà saisis. Sans paramètre `onglet`, l'écran cible
+    // retombe sur l'onglet « attente » de VisaRegionalController::onglet() ; on force donc
+    // `suivi_enregistres` par défaut ici.
+    Route::get('/desse/suivi', fn (Request $request) => redirect()->route(
+        'agence-regionale.visas.index',
+        ['onglet' => 'suivi_enregistres'] + $request->query()
+    ))->middleware('can:voir_visas_ar')->name('desse.suivi.index');
 
     // Phase 9 : PEJEDEC / AAF
     Route::get('/pejedec/af', [AafController::class, 'index'])->name('pejedec.af.index');

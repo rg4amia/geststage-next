@@ -60,9 +60,9 @@
     "semantic_hash": ""
   },
   "app/Console/Commands/MigrateLegacyDataCommand.php": {
-    "mtime": 1788598169.238485,
-    "seen": 1788598238.6117141,
-    "ast_hash": "84b2460ba6254092993a2e5ec9e6d329",
+    "mtime": 1788798247.79104,
+    "seen": 1788877770.4755142,
+    "ast_hash": "d620b400183ca3cec89f8bd104a92fa0",
     "semantic_hash": ""
   },
   "app/Domain/Attendance/Services/PointageChefAgenceService.php": {
@@ -102,9 +102,9 @@
     "semantic_hash": ""
   },
   "app/Domain/Contract/Services/RenouvellementService.php": {
-    "mtime": 1788507799.0733948,
-    "seen": 1788529679.8007,
-    "ast_hash": "c94ae6665007f5eda386cff0f8c9679f",
+    "mtime": 1788617990.8936002,
+    "seen": 1788877770.4764721,
+    "ast_hash": "4255b25b72d18ba7ab8713814a1127d5",
     "semantic_hash": ""
   },
   "app/Domain/Payment/Services/AgentComptableService.php": {
@@ -114,15 +114,15 @@
     "semantic_hash": ""
   },
   "app/Domain/Payment/Services/DmgService.php": {
-    "mtime": 1788516842.254478,
-    "seen": 1788529679.800701,
-    "ast_hash": "0204d2b7f7850ec35b96af6995c571e4",
+    "mtime": 1788700581.7768197,
+    "seen": 1788877770.476595,
+    "ast_hash": "5fa4786f4439f3c4ad7b01f98d11445c",
     "semantic_hash": ""
   },
   "app/Domain/Payment/Services/MultiDossierPdfService.php": {
-    "mtime": 1788598851.4362552,
-    "seen": 1788599370.676693,
-    "ast_hash": "759678f823c0e1023b84343ba5b51530",
+    "mtime": 1788700718.275156,
+    "seen": 1788877770.476599,
+    "ast_hash": "ca517db8571c1fb824f2678174f60701",
     "semantic_hash": ""
   },
   "app/Domain/Payment/Services/PejedecAafService.php": {
@@ -138,21 +138,15 @@
     "semantic_hash": ""
   },
   "app/Domain/Reporting/Services/ReportingDashboardService.php": {
-    "mtime": 1787481162.4666848,
-    "seen": 1788529679.800705,
-    "ast_hash": "75df3a36f473e0382a7f4fc7072b95de",
+    "mtime": 1788877432.0174146,
+    "seen": 1788877770.476691,
+    "ast_hash": "6f2a4918def7e9611d20429dce853a7f",
     "semantic_hash": ""
   },
   "app/Domain/Shared/Traits/HasPublicUuid.php": {
     "mtime": 1786803180.5982373,
     "seen": 1788529679.800705,
     "ast_hash": "cd7379f28f31dd220191b8f419bc1b8c",
-    "semantic_hash": ""
-  },
-  "app/Domain/Supervision/Services/VisaDesseService.php": {
-    "mtime": 1788508743.3081505,
-    "seen": 1788529679.8007061,
-    "ast_hash": "a7cbd80531926e52bcc44d378e28a816",
     "semantic_hash": ""
   },
   "app/Domain/Validation/Services/ValidationChefAgenceService.php": {
@@ -162,9 +156,9 @@
     "semantic_hash": ""
   },
   "app/Domain/Workflow/Services/CorbeilleParcoursQueryService.php": {
-    "mtime": 1787302245.1835706,
-    "seen": 1788529679.800707,
-    "ast_hash": "8aa1cba75777e7dade7ffd99df391986",
+    "mtime": 1788700627.6691022,
+    "seen": 1788877770.476788,
+    "ast_hash": "28daa9ee31a9a40cf89bfc1b47f88181",
     "semantic_hash": ""
   },
   "app/Domain/Workflow/Services/DesseDoublonService.php": {
@@ -180,9 +174,9 @@
     "semantic_hash": ""
   },
   "app/Enums/CorbeilleEnum.php": {
-    "mtime": 1788416936.371021,
-    "seen": 1788529679.800709,
-    "ast_hash": "8a552112acc944fc7bd98bf3cc5df3c8",
+    "mtime": 1788868937.5024183,
+    "seen": 1788877770.4768791,
+    "ast_hash": "07775cd92527ea7bceb53ba4888aa160",
     "semantic_hash": ""
   },
   "app/Enums/DoublonTypeEnum.php": {
@@ -204,9 +198,9 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/AgentCompt/PaiementAcController.php": {
-    "mtime": 1788599122.659953,
-    "seen": 1788599370.6774678,
-    "ast_hash": "8341e64ba116db4793b6ae3c0b169e56",
+    "mtime": 1788866746.7395651,
+    "seen": 1788877770.477241,
+    "ast_hash": "2c9099218c8dcced220318562cf5c7b8",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Cb/PaiementCbController.php": {
@@ -234,21 +228,21 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/Cip/MesStagiairesCipController.php": {
-    "mtime": 1788433596.4032588,
-    "seen": 1788529679.800715,
-    "ast_hash": "8c6baaab1b47625de3302519654b2b44",
+    "mtime": 1788871734.312175,
+    "seen": 1788877770.477459,
+    "ast_hash": "642b5f5009574ed97138c0e5fdd817bf",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Cip/PointageCipController.php": {
-    "mtime": 1788509263.3331714,
-    "seen": 1788529679.800716,
-    "ast_hash": "47cd8b22e94a7837ed92a9015cadffd6",
+    "mtime": 1788797004.6802444,
+    "seen": 1788877770.47746,
+    "ast_hash": "74097f169862a5918f1796041b276231",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Cip/RenouvellementCipController.php": {
-    "mtime": 1788507531.5458577,
-    "seen": 1788529679.800717,
-    "ast_hash": "2f5f7b19e519104139b2e50958e8095e",
+    "mtime": 1788618030.7539525,
+    "seen": 1788877770.477461,
+    "ast_hash": "00ce1158b2b584665cac56046e672052",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Cip/SituationStagiaireCipController.php": {
@@ -264,9 +258,9 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/Company/OffreEmploiController.php": {
-    "mtime": 1786956590.5715249,
-    "seen": 1788529679.800719,
-    "ast_hash": "681c2e005acadaec7bc3f7ed238771c3",
+    "mtime": 1788780895.5310283,
+    "seen": 1788877770.477547,
+    "ast_hash": "985fc8e08d567e5a0f3918008c793e46",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Controller.php": {
@@ -287,12 +281,6 @@
     "ast_hash": "2c637696d814b3f546aff90ce7b0c119",
     "semantic_hash": ""
   },
-  "app/Http/Controllers/Desse/VisaDesseController.php": {
-    "mtime": 1788508761.589891,
-    "seen": 1788529679.800721,
-    "ast_hash": "195b478e848abce38854002bc3a00737",
-    "semantic_hash": ""
-  },
   "app/Http/Controllers/Dmg/AjournementPaiementDmgController.php": {
     "mtime": 1788598851.5672514,
     "seen": 1788599370.6779819,
@@ -300,21 +288,21 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/Dmg/AttentePaiementDmgController.php": {
-    "mtime": 1788450664.8658178,
-    "seen": 1788529679.8007228,
-    "ast_hash": "9807c11141a5cf9f4ac4c2cc857a74e2",
+    "mtime": 1788700588.2069957,
+    "seen": 1788877770.47773,
+    "ast_hash": "9cf09a9283d6e2e2e872ee3aed49de83",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Dmg/DossierPaiementDmgController.php": {
-    "mtime": 1788450664.8660793,
-    "seen": 1788529679.8007228,
-    "ast_hash": "67787938a2822c8d2af05e88d33ea234",
+    "mtime": 1788700727.842404,
+    "seen": 1788877770.477731,
+    "ast_hash": "ad892476c4157962fdecae400ff17355",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Dmg/ExportPaiementDmgController.php": {
-    "mtime": 1788450664.8663688,
-    "seen": 1788529679.800724,
-    "ast_hash": "27c1508d9f228a276617fc8f455acf48",
+    "mtime": 1788703707.8072748,
+    "seen": 1788877770.4777322,
+    "ast_hash": "1f0d7528cadaa98880d2df576110ec6c",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Dmg/MultiDossierController.php": {
@@ -336,9 +324,9 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/Dmg/PaiementDmgController.php": {
-    "mtime": 1788459195.4695246,
-    "seen": 1788529679.800726,
-    "ast_hash": "0c2194c75331f684749333fc53ee1246",
+    "mtime": 1788700619.5937495,
+    "seen": 1788877770.477855,
+    "ast_hash": "6f9ee00decb20872dd07e09a3ae95a9f",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Dmg/RejetDmgController.php": {
@@ -360,15 +348,15 @@
     "semantic_hash": ""
   },
   "app/Http/Controllers/Registration/InscriptionController.php": {
-    "mtime": 1788598849.4834638,
-    "seen": 1788599370.67916,
-    "ast_hash": "2faf8fc093721ebd149f9561eb59974d",
+    "mtime": 1788793526.2830753,
+    "seen": 1788877770.4779918,
+    "ast_hash": "d24cf734aa2b8bf458217edb2efc38ca",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Reporting/TableauDeBordController.php": {
-    "mtime": 1786828906.0266461,
-    "seen": 1788529679.800729,
-    "ast_hash": "9cfdf4f96e8ce11a32cf76c519ab76ad",
+    "mtime": 1788877222.7771208,
+    "seen": 1788877770.477993,
+    "ast_hash": "88f17b8c7d0cb80a290aea9dada69e62",
     "semantic_hash": ""
   },
   "app/Http/Controllers/Settings/ProfileController.php": {
@@ -396,9 +384,9 @@
     "semantic_hash": ""
   },
   "app/Http/Middleware/HandleInertiaRequests.php": {
-    "mtime": 1787133890.7096808,
-    "seen": 1788529679.8007329,
-    "ast_hash": "f4dc2c1b63ad7e5588761030d71c98b9",
+    "mtime": 1788776253.1588957,
+    "seen": 1788877770.478163,
+    "ast_hash": "227e8ab28029e2913e865983dfa7d7cb",
     "semantic_hash": ""
   },
   "app/Http/Requests/Settings/PasswordUpdateRequest.php": {
@@ -432,9 +420,9 @@
     "semantic_hash": ""
   },
   "app/Http/Requests/StoreOffreEmploiRequest.php": {
-    "mtime": 1786956590.2109456,
-    "seen": 1788529679.800736,
-    "ast_hash": "fd2831636e5eb24fc4aa18f4d7d6da8e",
+    "mtime": 1788780828.3790686,
+    "seen": 1788877770.478399,
+    "ast_hash": "70df2e5cbd44203a0638ba93a019cc8c",
     "semantic_hash": ""
   },
   "app/Http/Requests/UpdateEntrepriseRequest.php": {
@@ -444,9 +432,9 @@
     "semantic_hash": ""
   },
   "app/Http/Requests/UpdateOffreEmploiRequest.php": {
-    "mtime": 1786956590.1923237,
-    "seen": 1788529679.800738,
-    "ast_hash": "c1caafe204784136d9cf1a698feb5465",
+    "mtime": 1788782247.6075716,
+    "seen": 1788877770.478438,
+    "ast_hash": "8ebe8ba85b47c3d3aa359740f8eae79e",
     "semantic_hash": ""
   },
   "app/Models/Adjournment/Ajournement.php": {
@@ -462,9 +450,9 @@
     "semantic_hash": ""
   },
   "app/Models/Attendance/Pointage.php": {
-    "mtime": 1788378809.2850707,
-    "seen": 1788529679.80074,
-    "ast_hash": "fd90f3342151709db37e6f290e776a37",
+    "mtime": 1788762085.3380435,
+    "seen": 1788877770.4785311,
+    "ast_hash": "e75e281e4ed27616467d5029b429b925",
     "semantic_hash": ""
   },
   "app/Models/Attendance/VersionPointage.php": {
@@ -480,9 +468,9 @@
     "semantic_hash": ""
   },
   "app/Models/Beneficiary/Beneficiaire.php": {
-    "mtime": 1787154719.8240833,
-    "seen": 1788529679.800742,
-    "ast_hash": "d740300d9101259ea3eee51a32fca59b",
+    "mtime": 1788871673.1911316,
+    "seen": 1788877770.4786172,
+    "ast_hash": "45d2da0c6cedb01bbeaefc19682acdc8",
     "semantic_hash": ""
   },
   "app/Models/Company/Entreprise.php": {
@@ -504,9 +492,9 @@
     "semantic_hash": ""
   },
   "app/Models/Contract/AvenantContrat.php": {
-    "mtime": 1788506447.2717927,
-    "seen": 1788529679.8007438,
-    "ast_hash": "6c424d265bb764c2085e872a3481b210",
+    "mtime": 1788612238.0434885,
+    "seen": 1788877770.478739,
+    "ast_hash": "d9c5f83332c951948cd220b34d9e9e04",
     "semantic_hash": ""
   },
   "app/Models/Contract/Contrat.php": {
@@ -534,9 +522,9 @@
     "semantic_hash": ""
   },
   "app/Models/Internship/Stage.php": {
-    "mtime": 1788508734.993781,
-    "seen": 1788529679.800748,
-    "ast_hash": "3c62a309c5f0f44054e3463fff4db22c",
+    "mtime": 1788792909.9194474,
+    "seen": 1788877770.478899,
+    "ast_hash": "57e91f00c2ea751a8eaf33f280e4e61c",
     "semantic_hash": ""
   },
   "app/Models/Offer/OffreEmploi.php": {
@@ -708,9 +696,9 @@
     "semantic_hash": ""
   },
   "app/Models/User.php": {
-    "mtime": 1788598848.361784,
-    "seen": 1788599370.682362,
-    "ast_hash": "563bc27d15b004807e3a6f6923802797",
+    "mtime": 1788776253.1647723,
+    "seen": 1788877770.480146,
+    "ast_hash": "d4e733e3382c9d7be3a9bc25617ed923",
     "semantic_hash": ""
   },
   "app/Models/Workflow/DefinitionParcours.php": {
@@ -756,9 +744,9 @@
     "semantic_hash": ""
   },
   "app/Policies/InstanceParcoursPolicy.php": {
-    "mtime": 1786956590.1324272,
-    "seen": 1788529679.8007722,
-    "ast_hash": "92290def501deabe927b766b4386e151",
+    "mtime": 1788869201.9252748,
+    "seen": 1788877770.480406,
+    "ast_hash": "a24fe7a396449cf8238203abad503e8e",
     "semantic_hash": ""
   },
   "app/Policies/OffreEmploiPolicy.php": {
@@ -798,9 +786,9 @@
     "semantic_hash": ""
   },
   "app/Services/Migration/LegacyMapperService.php": {
-    "mtime": 1788445656.7677033,
-    "seen": 1788529679.800776,
-    "ast_hash": "b6ca3f3851cc4bc462f8a8e297281a3d",
+    "mtime": 1788785969.598277,
+    "seen": 1788877770.4806678,
+    "ast_hash": "d7e3ad4ea3110402b7171a1a8424780b",
     "semantic_hash": ""
   },
   "app/Services/Migration/LegacyMigrationRecorder.php": {
@@ -936,9 +924,9 @@
     "semantic_hash": ""
   },
   "config/services.php": {
-    "mtime": 1786534226.0,
-    "seen": 1788529679.80079,
-    "ast_hash": "918f5aa09663e375f4570301a91548f9",
+    "mtime": 1788780828.378594,
+    "seen": 1788877770.481396,
+    "ast_hash": "654bab349f2d6b2f0212ca9efc8a3b32",
     "semantic_hash": ""
   },
   "config/session.php": {
@@ -1140,9 +1128,9 @@
     "semantic_hash": ""
   },
   "database/seeders/DatabaseSeeder.php": {
-    "mtime": 1786802613.5861456,
-    "seen": 1788529679.800813,
-    "ast_hash": "a6b16cb2083a9b34cd88c1624449dc31",
+    "mtime": 1788868268.732026,
+    "seen": 1788877770.482668,
+    "ast_hash": "1595b86d5a2a4ad8a6691bf9ed8ee547",
     "semantic_hash": ""
   },
   "database/seeders/NiveauxEtudeSeeder.php": {
@@ -1152,9 +1140,9 @@
     "semantic_hash": ""
   },
   "database/seeders/RolePermissionSeeder.php": {
-    "mtime": 1788598849.429708,
-    "seen": 1788599370.6865869,
-    "ast_hash": "63bb17f7dc62f3ad484465919606e803",
+    "mtime": 1788776253.1656885,
+    "seen": 1788877770.4827058,
+    "ast_hash": "b8a068acf84bb98dfb8847dd2f259299",
     "semantic_hash": ""
   },
   "eslint.config.js": {
@@ -1362,9 +1350,9 @@
     "semantic_hash": ""
   },
   "resources/js/app.tsx": {
-    "mtime": 1786965280.4739397,
-    "seen": 1788529679.800836,
-    "ast_hash": "395dff1008c50c514032eea6df88bc85",
+    "mtime": 1788776253.1661804,
+    "seen": 1788877770.4837859,
+    "ast_hash": "feea74fe6a8207aac76d6d1f361befdf",
     "semantic_hash": ""
   },
   "resources/js/old/components/alert-error.tsx": {
@@ -2106,9 +2094,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/Layouts/LayoutMenuData.tsx": {
-    "mtime": 1788508822.9844341,
-    "seen": 1788529679.800918,
-    "ast_hash": "d890e06396cdfe13ec1cd66365856922",
+    "mtime": 1788877586.136721,
+    "seen": 1788877770.4906812,
+    "ast_hash": "d2b8b934f76e9a6fa67a343b685a5063",
     "semantic_hash": ""
   },
   "resources/js/velzone/Layouts/NonAuthLayout.tsx": {
@@ -2136,9 +2124,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/Layouts/index.tsx": {
-    "mtime": 1786965280.4742742,
-    "seen": 1788529679.8009212,
-    "ast_hash": "fe039d3b020a51564f9384133268edc6",
+    "mtime": 1788776253.1692321,
+    "seen": 1788877770.490852,
+    "ast_hash": "6b7e3f0947f73ea7e01a864154466ea6",
     "semantic_hash": ""
   },
   "resources/js/velzone/common/data/LandingNFT.ts": {
@@ -2514,9 +2502,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/AgentComptable/Paiements/Index.tsx": {
-    "mtime": 1788599268.3156507,
-    "seen": 1788599370.696744,
-    "ast_hash": "046e855f64a44d6e9da3edaf14961160",
+    "mtime": 1788866753.0218213,
+    "seen": 1788877770.4940212,
+    "ast_hash": "2f9dd50fff4d4c0759654e6b49f7a992",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Authentication/ForgetPassword.tsx": {
@@ -3312,9 +3300,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/ChefAgence/Pointages/Index.tsx": {
-    "mtime": 1788598928.2216563,
-    "seen": 1788599370.706879,
-    "ast_hash": "dc901d11780614a0fac3d245695b23d8",
+    "mtime": 1788796956.809736,
+    "seen": 1788877770.501135,
+    "ast_hash": "39b4ec9149688dd1473b35e4e7f87447",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/ChefAgence/ValidationDemarrage/Index.tsx": {
@@ -3330,9 +3318,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Cip/MesStagiaires/Index.tsx": {
-    "mtime": 1787300992.787991,
-    "seen": 1788529679.8010519,
-    "ast_hash": "f6982431d7fe825391f10783fa8878f7",
+    "mtime": 1788875992.3184576,
+    "seen": 1788877770.501248,
+    "ast_hash": "eb12f98e275530cd931aaa2271c0038b",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Cip/Pointages/AjourneDmg.tsx": {
@@ -3348,9 +3336,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Cip/Pointages/Index.tsx": {
-    "mtime": 1788509245.2855885,
-    "seen": 1788529679.801054,
-    "ast_hash": "a4b80271a363d488a899b97fb10bfddf",
+    "mtime": 1788780009.11072,
+    "seen": 1788877770.501345,
+    "ast_hash": "17288934e30e753c40d654a47805a4de",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Cip/Pointages/Pejedec.tsx": {
@@ -3360,9 +3348,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Cip/Renouvellements/Index.tsx": {
-    "mtime": 1788598928.2217648,
-    "seen": 1788599370.707288,
-    "ast_hash": "0e7d82c9596817fe0373d30a3d0e6b81",
+    "mtime": 1788697111.505901,
+    "seen": 1788877770.501395,
+    "ast_hash": "de8f6bce34c0a85513f52582c9f418b2",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Cip/Situations/Index.tsx": {
@@ -4019,12 +4007,6 @@
     "ast_hash": "cddce40b7dea7c939a1b5f9c74b80f14",
     "semantic_hash": ""
   },
-  "resources/js/velzone/pages/Desse/Visas/Index.tsx": {
-    "mtime": 1788598928.2218647,
-    "seen": 1788599370.716869,
-    "ast_hash": "45ebd908d38dc52bcdb841d9212e54f5",
-    "semantic_hash": ""
-  },
   "resources/js/velzone/pages/Dmg/MultiDossier/Index.tsx": {
     "mtime": 1788598928.221912,
     "seen": 1788599370.716872,
@@ -4038,9 +4020,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Dmg/Paiements/Index.tsx": {
-    "mtime": 1788598928.221985,
-    "seen": 1788599370.716971,
-    "ast_hash": "2f2edd8e34a5f4bf9954020b6c18b817",
+    "mtime": 1788711711.3569655,
+    "seen": 1788877770.5066571,
+    "ast_hash": "71dd809344b27fccb3e536e84583d2af",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Dmg/Paiements/components/AjournesTab.tsx": {
@@ -4422,21 +4404,21 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Inscriptions/Create.tsx": {
-    "mtime": 1788598928.222041,
-    "seen": 1788599370.721282,
-    "ast_hash": "20bda4b124b5faa043f28172d212f6d8",
+    "mtime": 1788793871.9907281,
+    "seen": 1788877770.5108962,
+    "ast_hash": "e7b5307a1a310def0b4987cdd9cc5a30",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Inscriptions/Index.tsx": {
-    "mtime": 1786965280.49202,
-    "seen": 1788529679.801175,
-    "ast_hash": "33a397e5bcf94f966d8a0d7d20c90c6f",
+    "mtime": 1788793557.8673415,
+    "seen": 1788877770.510897,
+    "ast_hash": "d2e59ff6b94d56e15c945cdbd77fba92",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Inscriptions/Show.tsx": {
-    "mtime": 1787133952.6696389,
-    "seen": 1788529679.801175,
-    "ast_hash": "022a0cfe185a0211a770574a18d81f79",
+    "mtime": 1788793579.4095364,
+    "seen": 1788877770.5108979,
+    "ast_hash": "9a354a1c2d92f471634e050be990f2e4",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Invoices/InvoiceCreate.tsx": {
@@ -4860,15 +4842,15 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Offres/Create.tsx": {
-    "mtime": 1786965280.5045278,
-    "seen": 1788529679.801315,
-    "ast_hash": "33ffb5c6bb79449a02a1d9f9c8e44d0f",
+    "mtime": 1788781211.0892334,
+    "seen": 1788877770.516007,
+    "ast_hash": "0a0746089610a610900f3028a49a9051",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Offres/Edit.tsx": {
-    "mtime": 1786965280.5045285,
-    "seen": 1788529679.801316,
-    "ast_hash": "e0ba31e1f222620b5cae1988b3b88d81",
+    "mtime": 1788782247.6082406,
+    "seen": 1788877770.516008,
+    "ast_hash": "c4bc819e0055cc54b9407b5f9e23fdd1",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Offres/Index.tsx": {
@@ -5082,9 +5064,9 @@
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/Reporting/Index.tsx": {
-    "mtime": 1786965280.5051339,
-    "seen": 1788529679.801339,
-    "ast_hash": "314540ff2ca3e74089ac6f5df6129539",
+    "mtime": 1788877585.9063895,
+    "seen": 1788877770.518786,
+    "ast_hash": "3a72c44e233bbc1d098c03b9b884b2d3",
     "semantic_hash": ""
   },
   "resources/js/velzone/pages/SupportTickets/ListView/TicketCol.tsx": {
@@ -5964,9 +5946,9 @@
     "semantic_hash": ""
   },
   "routes/web.php": {
-    "mtime": 1788599069.1574807,
-    "seen": 1788599370.74314,
-    "ast_hash": "d57004481c86014d77eb9e8b9487d732",
+    "mtime": 1788877596.3648982,
+    "seen": 1788877770.529941,
+    "ast_hash": "2b63ccc6c223ec70eeffb8e1e0aa70a4",
     "semantic_hash": ""
   },
   "run_sql.php": {
@@ -6216,9 +6198,9 @@
     "semantic_hash": ""
   },
   "tests/Feature/AgentCompt/PaiementAcWorkflowTest.php": {
-    "mtime": 1788599251.8313925,
-    "seen": 1788599370.743329,
-    "ast_hash": "74f8675e9c58bfd7adf7e0f615d60089",
+    "mtime": 1788866782.1970565,
+    "seen": 1788877770.533049,
+    "ast_hash": "24acf822115a63e864b1ed03d5e06f66",
     "semantic_hash": ""
   },
   "tests/Feature/Auth/AuthenticationTest.php": {
@@ -6282,9 +6264,9 @@
     "semantic_hash": ""
   },
   "tests/Feature/Cip/TraitementRejetDmgTest.php": {
-    "mtime": 1788437508.7016993,
-    "seen": 1788529679.8014688,
-    "ast_hash": "2493e47fdd814bff18447b9e805f4e15",
+    "mtime": 1788797042.2256477,
+    "seen": 1788877770.533469,
+    "ast_hash": "2d03c35991437715d76b9fff6b47e477",
     "semantic_hash": ""
   },
   "tests/Feature/Company/EntrepriseControllerTest.php": {
@@ -6294,33 +6276,27 @@
     "semantic_hash": ""
   },
   "tests/Feature/Company/OffreEmploiControllerTest.php": {
-    "mtime": 1786956590.6398692,
-    "seen": 1788529679.80147,
-    "ast_hash": "1b7f120df66776791ff614d6bf62e78f",
+    "mtime": 1788780961.061831,
+    "seen": 1788877770.533508,
+    "ast_hash": "438e1b1249ba74743858de59190da638",
     "semantic_hash": ""
   },
   "tests/Feature/Console/MigrateLegacyDataCommandTest.php": {
-    "mtime": 1788598169.3015122,
-    "seen": 1788598238.6799,
-    "ast_hash": "8de34c3bd2efdbaca443b08f7c16928e",
+    "mtime": 1788796401.8224251,
+    "seen": 1788877770.533509,
+    "ast_hash": "db7cdfa40098df4626041c9fa97e8e00",
     "semantic_hash": ""
   },
   "tests/Feature/DashboardTest.php": {
-    "mtime": 1787482361.5635798,
-    "seen": 1788529679.801472,
-    "ast_hash": "da56f0bebcd0342b26ae332d7d84757b",
+    "mtime": 1788877551.825185,
+    "seen": 1788877770.53351,
+    "ast_hash": "0da82c18d87b2f45ca652b1a8dbf3d03",
     "semantic_hash": ""
   },
   "tests/Feature/Database/InitialSchemaTest.php": {
     "mtime": 1787481618.4064763,
     "seen": 1788529679.801472,
     "ast_hash": "ba215fd05b24bd9e01793b9f219d88a4",
-    "semantic_hash": ""
-  },
-  "tests/Feature/Desse/VisaDesseTest.php": {
-    "mtime": 1788508899.6708024,
-    "seen": 1788529679.8014731,
-    "ast_hash": "ef21536144046ce57b8b92cb08fd0892",
     "semantic_hash": ""
   },
   "tests/Feature/Dmg/PaiementsDmgWorkflowTest.php": {
@@ -6360,21 +6336,21 @@
     "semantic_hash": ""
   },
   "tests/Feature/ExampleTest.php": {
-    "mtime": 1786800979.4390483,
-    "seen": 1788529679.8014772,
-    "ast_hash": "1a4d57ddd675e6b62d3d40d17212d1a8",
+    "mtime": 1788877551.9272957,
+    "seen": 1788877770.5377128,
+    "ast_hash": "d516f9d0ad828f96785dc9c139198274",
     "semantic_hash": ""
   },
   "tests/Feature/Registration/InscriptionControllerTest.php": {
-    "mtime": 1786956590.63981,
-    "seen": 1788529679.801478,
-    "ast_hash": "9c5f4ca38b5e2ca0588c67cfa54e089b",
+    "mtime": 1788793477.8232813,
+    "seen": 1788877770.5377228,
+    "ast_hash": "83e3f5d6da71e42f5cdfd03380662f83",
     "semantic_hash": ""
   },
   "tests/Feature/Reporting/ReportingDashboardTest.php": {
-    "mtime": 1786956590.5898838,
-    "seen": 1788529679.8014789,
-    "ast_hash": "0791dbcbfa60cf6e6d1629484c9b48d9",
+    "mtime": 1788877585.619158,
+    "seen": 1788877770.537726,
+    "ast_hash": "d7026333d89ee4f4ff530a4ccaf388b1",
     "semantic_hash": ""
   },
   "tests/Feature/Services/Migration/LegacyMigrationRecorderTest.php": {
@@ -6402,9 +6378,9 @@
     "semantic_hash": ""
   },
   "tests/Feature/Workflow/CorbeilleWiringTest.php": {
-    "mtime": 1788452399.1382701,
-    "seen": 1788529679.801482,
-    "ast_hash": "5ca5816bde943d2252d405608374adda",
+    "mtime": 1788873265.9475296,
+    "seen": 1788877770.538275,
+    "ast_hash": "37970b57644bfab0cbc78d1f3bbdcd84",
     "semantic_hash": ""
   },
   "tests/Feature/Workflow/PejedecPointageActionsTest.php": {
@@ -6426,9 +6402,9 @@
     "semantic_hash": ""
   },
   "tests/Unit/Services/Migration/LegacyMapperServiceTest.php": {
-    "mtime": 1788445680.3733726,
-    "seen": 1788529679.801485,
-    "ast_hash": "96496623bd531aeb8d14d10519523aff",
+    "mtime": 1788785986.4208903,
+    "seen": 1788877770.538826,
+    "ast_hash": "5839e9c3ec736a3cc03260d34a808234",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -6468,9 +6444,9 @@
     "semantic_hash": ""
   },
   "vite.config.ts": {
-    "mtime": 1786897214.4183125,
-    "seen": 1788529679.8014898,
-    "ast_hash": "0d7a8bb4553a77b455c31c251e0e2868",
+    "mtime": 1788859121.6857111,
+    "seen": 1788877770.539556,
+    "ast_hash": "9f75b00a9ac1cd4edabacf39f075dbbc",
     "semantic_hash": ""
   },
   ".github/dependabot.yml": {
@@ -12519,6 +12495,480 @@
     "mtime": 1788599063.9684746,
     "seen": 1788599370.7401989,
     "ast_hash": "0c58ca4214e31139c8b30d281618ccaf",
+    "semantic_hash": ""
+  },
+  "app/Domain/Contract/Services/AvenantPdfService.php": {
+    "mtime": 1788612597.6067154,
+    "seen": 1788877770.4763541,
+    "ast_hash": "fefa8904171b6015c27352eb2d174573",
+    "semantic_hash": ""
+  },
+  "app/Domain/Payment/Services/ExportPaiementDmgService.php": {
+    "mtime": 1788703658.2416682,
+    "seen": 1788877770.476597,
+    "ast_hash": "cfbd1567b69bafac9aaee85feadc083f",
+    "semantic_hash": ""
+  },
+  "app/Domain/Registration/Services/DureeStageCalculator.php": {
+    "mtime": 1788792880.6201143,
+    "seen": 1788877770.4766421,
+    "ast_hash": "afd63706ae8d7deedf31b420ae2c9f3a",
+    "semantic_hash": ""
+  },
+  "app/Domain/Supervision/Services/PiecesStageService.php": {
+    "mtime": 1788694562.483359,
+    "seen": 1788877770.4767392,
+    "ast_hash": "72ec0883658402c04ef7fb52afdedcb2",
+    "semantic_hash": ""
+  },
+  "app/Domain/Supervision/Services/VisaRegionalService.php": {
+    "mtime": 1788877570.5681539,
+    "seen": 1788877770.476741,
+    "ast_hash": "0401bb76a471aca8707520322285dd0b",
+    "semantic_hash": ""
+  },
+  "app/Domain/Workflow/Services/SuiviPointageService.php": {
+    "mtime": 1788762085.3757243,
+    "seen": 1788877770.476835,
+    "ast_hash": "8c9bea43358b15f1247b6d7992554f62",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/AgenceRegionale/VisaRegionalController.php": {
+    "mtime": 1788694391.5793,
+    "seen": 1788877770.4772391,
+    "ast_hash": "533f642ea38a60abf43b39e1bb155c64",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/ParametreAides/AgenceController.php": {
+    "mtime": 1788790140.7288802,
+    "seen": 1788877770.477938,
+    "ast_hash": "ca92c95af8d72d797e72338bc900aa1e",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/ParametreAides/AideController.php": {
+    "mtime": 1788784543.2134323,
+    "seen": 1788877770.477939,
+    "ast_hash": "1c383dbfad4d80f83073006194f09962",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/ParametreAides/ConseillerController.php": {
+    "mtime": 1788789344.4422803,
+    "seen": 1788877770.477941,
+    "ast_hash": "3623984e90e686bfe62d88b7a7486c48",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/ParametreAides/JournalAuditController.php": {
+    "mtime": 1788776253.1571202,
+    "seen": 1788877770.477943,
+    "ast_hash": "30fe2acb5aa8524c31f1dd42a6f75f22",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/ParametreAides/ParametreAidesController.php": {
+    "mtime": 1788776253.1578689,
+    "seen": 1788877770.4779441,
+    "ast_hash": "a6078ddd52ae79a7ad1a32e0e2330237",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/ParametreAides/ParametreSystemeController.php": {
+    "mtime": 1788776253.1581461,
+    "seen": 1788877770.477945,
+    "ast_hash": "c77c4d0c9796f32a4d31b983ae267a0d",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/ParametreAides/UtilisateurController.php": {
+    "mtime": 1788776253.1584198,
+    "seen": 1788877770.477946,
+    "ast_hash": "803fb75dad3c89190f2e278c9f927bec",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/StoreAgenceRequest.php": {
+    "mtime": 1788790083.1587157,
+    "seen": 1788877770.478164,
+    "ast_hash": "9645c0e8322e3b9612dee10fd98bf55b",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/StoreConseillerRequest.php": {
+    "mtime": 1788776253.159578,
+    "seen": 1788877770.478165,
+    "ast_hash": "cc873be39fde2ff0c56c292d07f0d0b3",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/StoreReglePrelevementRequest.php": {
+    "mtime": 1788776253.1602404,
+    "seen": 1788877770.478167,
+    "ast_hash": "42a1acf1e707011beee64b99ed80a284",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/StoreUtilisateurRequest.php": {
+    "mtime": 1788776253.1609004,
+    "seen": 1788877770.478168,
+    "ast_hash": "6aafc21606b4309042e035766cd9f1e2",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/UpdateAgenceRequest.php": {
+    "mtime": 1788790091.816296,
+    "seen": 1788877770.4781702,
+    "ast_hash": "6676daa871b57f1c3b948d93067a5756",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/UpdateConseillerRequest.php": {
+    "mtime": 1788776253.162152,
+    "seen": 1788877770.4781709,
+    "ast_hash": "702bbe8cf4f0072715585a3494d60999",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/UpdateReglePrelevementRequest.php": {
+    "mtime": 1788776253.1624763,
+    "seen": 1788877770.4781718,
+    "ast_hash": "63ecce691d7fce5f20db7008a11c92ef",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/ParametreAides/UpdateUtilisateurRequest.php": {
+    "mtime": 1788776253.1628387,
+    "seen": 1788877770.478173,
+    "ast_hash": "ba3d2c2bfd5397048e5a6debe576cadc",
+    "semantic_hash": ""
+  },
+  "app/Http/Requests/Registration/UpdateInscriptionRequest.php": {
+    "mtime": 1788793467.0196102,
+    "seen": 1788877770.478174,
+    "ast_hash": "39b5f4009c8327e7d24fce80dc167c08",
+    "semantic_hash": ""
+  },
+  "app/Jobs/DecideRenewalAvenantsJob.php": {
+    "mtime": 1788612690.3567073,
+    "seen": 1788877770.47844,
+    "ast_hash": "c2afc80d26af59754f7717c2e738aff0",
+    "semantic_hash": ""
+  },
+  "app/Jobs/ExporterVisasRegionauxJob.php": {
+    "mtime": 1788780385.4019296,
+    "seen": 1788877770.478441,
+    "ast_hash": "0e9ca98af66d6b15a8d7c892f14afaeb",
+    "semantic_hash": ""
+  },
+  "app/Jobs/GenererExportPaiementJob.php": {
+    "mtime": 1788780373.2824452,
+    "seen": 1788877770.478442,
+    "ast_hash": "31860e85f063b05747c93eb427295ef5",
+    "semantic_hash": ""
+  },
+  "app/Jobs/RenewStagesJob.php": {
+    "mtime": 1788612606.2975736,
+    "seen": 1788877770.478443,
+    "ast_hash": "0d3cb4a73ee356704f3374e8b8ec9977",
+    "semantic_hash": ""
+  },
+  "app/Models/Payment/ReglePrelevement.php": {
+    "mtime": 1788776253.1633928,
+    "seen": 1788877770.479247,
+    "ast_hash": "a42b91ac78bdfef22ccb2241d5be52eb",
+    "semantic_hash": ""
+  },
+  "app/Models/Reference/ParametreSysteme.php": {
+    "mtime": 1788776253.163919,
+    "seen": 1788877770.479718,
+    "ast_hash": "c83fd429d84dc3f54a90f8a77d5ac605",
+    "semantic_hash": ""
+  },
+  "app/Rules/AgeStageAutorise.php": {
+    "mtime": 1788792834.40302,
+    "seen": 1788877770.480556,
+    "ast_hash": "b997d445f51d4c0d58292f8c7c660fef",
+    "semantic_hash": ""
+  },
+  "app/Rules/JourAutoriseDebutStage.php": {
+    "mtime": 1788792841.311777,
+    "seen": 1788877770.4805582,
+    "ast_hash": "826d80f2a4fd6e6e15b616db0f84fa52",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_09_07_140329_add_contact_and_coordinates_to_agences_table.php": {
+    "mtime": 1788790077.3185773,
+    "seen": 1788877770.48249,
+    "ast_hash": "126d7622131e827e83da2eb4a132475b",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_09_15_000001_add_renewal_fields_to_avenants_contrats_table.php": {
+    "mtime": 1788612223.9948347,
+    "seen": 1788877770.4826171,
+    "ast_hash": "5829ce80a2516cc9b3c900f62d2a2379",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_09_20_000000_add_date_validation_ar_to_stages_table.php": {
+    "mtime": 1788693257.4829867,
+    "seen": 1788877770.48262,
+    "ast_hash": "b1b0b6abaf6a730916cf7c5c4604e62c",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_09_25_000000_create_parametres_systeme_tables.php": {
+    "mtime": 1788776253.1651819,
+    "seen": 1788877770.482622,
+    "ast_hash": "651caa7fc4f5fcf01615fb00cb86d206",
+    "semantic_hash": ""
+  },
+  "database/seeders/AdminUserSeeder.php": {
+    "mtime": 1788868102.7716715,
+    "seen": 1788877770.4826229,
+    "ast_hash": "8326e8cd0ca21d3a8a1fd1033a0a3f3e",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/Components/Common/UsurpationBanner.tsx": {
+    "mtime": 1788776253.1681063,
+    "seen": 1788877770.490276,
+    "ast_hash": "f58160f1d3c97998c1e6f8a032bdbc66",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/AgenceRegionale/Visas/Index.tsx": {
+    "mtime": 1788698813.7926865,
+    "seen": 1788877770.494018,
+    "ast_hash": "449a9abc436a877d6ba77dd2ee52fa97",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Agences/Create.tsx": {
+    "mtime": 1788790111.7567635,
+    "seen": 1788877770.5172439,
+    "ast_hash": "08a40057d84a74e5adeceb3f17774cb5",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Agences/Edit.tsx": {
+    "mtime": 1788790119.1906905,
+    "seen": 1788877770.5172448,
+    "ast_hash": "97f85a13572f1daf27416e171a23f1fb",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Agences/FormulaireAgence.tsx": {
+    "mtime": 1788790104.1375725,
+    "seen": 1788877770.517247,
+    "ast_hash": "11727074f32fbf2441924bfed32e9c4e",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Agences/Index.tsx": {
+    "mtime": 1788790132.7370036,
+    "seen": 1788877770.517249,
+    "ast_hash": "a97b6d2388a4cd745c6a6473468c95b2",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Aide/Index.tsx": {
+    "mtime": 1788784682.9791915,
+    "seen": 1788877770.51725,
+    "ast_hash": "4b8e2e80843b3b96a34d776c3e4f6720",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Comptes/Create.tsx": {
+    "mtime": 1788776253.1728952,
+    "seen": 1788877770.517251,
+    "ast_hash": "28b99261d0411deef059dc1e28238fa9",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Comptes/Edit.tsx": {
+    "mtime": 1788776253.173185,
+    "seen": 1788877770.5172532,
+    "ast_hash": "ec78e3be53579a7d13e207560ab50cc7",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Comptes/FormulaireCompte.tsx": {
+    "mtime": 1788776253.173405,
+    "seen": 1788877770.5172548,
+    "ast_hash": "1d3c3288f2fd44094ef64080fb37c4c4",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Comptes/Index.tsx": {
+    "mtime": 1788776253.1737092,
+    "seen": 1788877770.517256,
+    "ast_hash": "bd4184e67088cb0b4a3ed8308ba38970",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Conseillers/Create.tsx": {
+    "mtime": 1788776253.174128,
+    "seen": 1788877770.517257,
+    "ast_hash": "8bf824ab9f53d27a0aa0e4305e131693",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Conseillers/Edit.tsx": {
+    "mtime": 1788776253.1745372,
+    "seen": 1788877770.517258,
+    "ast_hash": "5110a5cb1ef1dfd0c9a5c341362b6303",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Conseillers/FormulaireConseiller.tsx": {
+    "mtime": 1788776253.1750803,
+    "seen": 1788877770.5172591,
+    "ast_hash": "4cc5680d0b611d3b08784ae5ca7f1093",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Conseillers/Index.tsx": {
+    "mtime": 1788789403.41109,
+    "seen": 1788877770.51726,
+    "ast_hash": "890af76cd9e0e4c5d84267d73b479dc7",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Index.tsx": {
+    "mtime": 1788779174.7375267,
+    "seen": 1788877770.517261,
+    "ast_hash": "9f8a28976a2a38358156b87ea4e3a281",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/Journaux/Index.tsx": {
+    "mtime": 1788776253.1758387,
+    "seen": 1788877770.517262,
+    "ast_hash": "98b4064456b741a8279e163261a09165",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/ParametreAides/ParametresSysteme/Index.tsx": {
+    "mtime": 1788776253.1778028,
+    "seen": 1788877770.5172632,
+    "ast_hash": "d88ff44b3de8b668c92929feee92499b",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/Reporting/components/ReportingChart.tsx": {
+    "mtime": 1788877585.9436166,
+    "seen": 1788877770.5187871,
+    "ast_hash": "410192f1c884cde979ec65f323173470",
+    "semantic_hash": ""
+  },
+  "resources/js/velzone/pages/Reporting/components/ReportingChartsGrid.tsx": {
+    "mtime": 1788877585.971717,
+    "seen": 1788877770.518788,
+    "ast_hash": "825062a540cde8cf7f430ce802373079",
+    "semantic_hash": ""
+  },
+  "resources/views/pdf/dmg-attestation-presence.blade.php": {
+    "mtime": 1788700691.1237001,
+    "seen": 1788877770.525416,
+    "ast_hash": "25e4bb1e9ea6b939911b5072f2ea28d3",
+    "semantic_hash": ""
+  },
+  "resources/views/pdf/dmg-etat-paiement.blade.php": {
+    "mtime": 1788701008.9822369,
+    "seen": 1788877770.52542,
+    "ast_hash": "b333ff5f6b330561040d0f040a8a0600",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/budget-aej/body.blade.php": {
+    "mtime": 1788612339.25936,
+    "seen": 1788877770.525685,
+    "ast_hash": "669cf2500b6589207891437346d3040d",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/budget-aej/header.blade.php": {
+    "mtime": 1788612248.903581,
+    "seen": 1788877770.5256891,
+    "ast_hash": "36c75f7787bcf167434e6a9e4eadc9e7",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/c2d/body.blade.php": {
+    "mtime": 1788631797.6623006,
+    "seen": 1788877770.525695,
+    "ast_hash": "55044e8a270910ed0d83884a3dd064a5",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/c2d/header.blade.php": {
+    "mtime": 1788612248.9046383,
+    "seen": 1788877770.5256991,
+    "ast_hash": "2ffbd535cd750bf49fa35f1e370e0b55",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/footer.blade.php": {
+    "mtime": 1788612248.905547,
+    "seen": 1788877770.525702,
+    "ast_hash": "75df895cd3a6019e03c70d37dd106974",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/paps-gouv/body.blade.php": {
+    "mtime": 1788612478.1801558,
+    "seen": 1788877770.525706,
+    "ast_hash": "c879f2fafece49cf0ba516fb672eac27",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/paps-gouv/header.blade.php": {
+    "mtime": 1788612248.9062564,
+    "seen": 1788877770.5257092,
+    "ast_hash": "c7f67cba110fdcf3488c49206e5e4ccb",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/pejedec/body.blade.php": {
+    "mtime": 1788631797.661707,
+    "seen": 1788877770.525711,
+    "ast_hash": "c3fd3b5a56fe27b8a09d9f9186646806",
+    "semantic_hash": ""
+  },
+  "resources/views/stage/contrat/avenants/pejedec/header.blade.php": {
+    "mtime": 1788612274.0768354,
+    "seen": 1788877770.525717,
+    "ast_hash": "19b3f70a8ef539dbbcad682a7fd6d18c",
+    "semantic_hash": ""
+  },
+  "routes/parametre-aides.php": {
+    "mtime": 1788776253.1791542,
+    "seen": 1788877770.529871,
+    "ast_hash": "f604d46b592e88f69ee9adb4701d2078",
+    "semantic_hash": ""
+  },
+  "tests/Feature/AgenceRegionale/VisaRegionalTest.php": {
+    "mtime": 1788694501.7699058,
+    "seen": 1788877770.533046,
+    "ast_hash": "acf8f43e5e2aecbc5605b94673b5b1f5",
+    "semantic_hash": ""
+  },
+  "tests/Feature/ChefAgence/RenouvellementValidationTest.php": {
+    "mtime": 1788614162.5258408,
+    "seen": 1788877770.533391,
+    "ast_hash": "d8de2b92d669b58c9d5bf338ba8f17fb",
+    "semantic_hash": ""
+  },
+  "tests/Feature/Cip/MesStagiairesCipTest.php": {
+    "mtime": 1788876082.0077772,
+    "seen": 1788877770.533393,
+    "ast_hash": "96681fdde58c8e9afebbafda490acbc7",
+    "semantic_hash": ""
+  },
+  "tests/Feature/Dmg/PresencePariteTest.php": {
+    "mtime": 1788703969.283125,
+    "seen": 1788877770.533588,
+    "ast_hash": "6fd30f88cf7c6ac9cac436bb54b67301",
+    "semantic_hash": ""
+  },
+  "tests/Feature/ParametreAides/ParametreAidesTest.php": {
+    "mtime": 1788776253.2071373,
+    "seen": 1788877770.537717,
+    "ast_hash": "3b62ec9ef04fd2796372bf05035ab8c6",
+    "semantic_hash": ""
+  },
+  "tests/Feature/ParametreAides/ParametreAidesTestCase.php": {
+    "mtime": 1788776253.207423,
+    "seen": 1788877770.53772,
+    "ast_hash": "f919649e1b723ac4184e5c9758d7b153",
+    "semantic_hash": ""
+  },
+  "tests/Feature/Workflow/SuiviPointageServiceTest.php": {
+    "mtime": 1788762085.3761988,
+    "seen": 1788877770.5384371,
+    "ast_hash": "bc0ee99412ea73ead34c727b8f22df2f",
+    "semantic_hash": ""
+  },
+  "public/contrat-edition/avenant/budget-aej/partials/header.png": {
+    "mtime": 1788612240.2735133,
+    "seen": 1788877770.541653,
+    "ast_hash": "193eabb9832a709352fed6816000d7c5",
+    "semantic_hash": ""
+  },
+  "public/contrat-edition/avenant/c2d/partials/header.png": {
+    "mtime": 1788612240.278143,
+    "seen": 1788877770.541656,
+    "ast_hash": "768020558f4267ebe02e5af8adeec64e",
+    "semantic_hash": ""
+  },
+  "public/contrat-edition/avenant/papsgouv/partials/header.png": {
+    "mtime": 1788612240.276333,
+    "seen": 1788877770.5416582,
+    "ast_hash": "e0518ca1a1bfef130a5d960f806cc562",
+    "semantic_hash": ""
+  },
+  "public/contrat-edition/avenant/papsgouv/partials/header_c2d.png": {
+    "mtime": 1788612240.2750218,
+    "seen": 1788877770.5416598,
+    "ast_hash": "768020558f4267ebe02e5af8adeec64e",
     "semantic_hash": ""
   }
 }
