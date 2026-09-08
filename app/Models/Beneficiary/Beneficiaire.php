@@ -46,6 +46,11 @@ class Beneficiaire extends Model
     ];
 
     /**
+     * @var array<int, string>
+     */
+    protected $appends = ['requiert_tresor_money'];
+
+    /**
      * Les stages du bénéficiaire.
      */
     public function stages(): HasMany
@@ -69,6 +74,15 @@ class Beneficiaire extends Model
     public function typePaiement(): BelongsTo
     {
         return $this->belongsTo(TypePaiement::class);
+    }
+
+    /**
+     * Le dossier ne peut être transmis au Chef d'Agence sans fiche Trésor Money que si le
+     * bénéficiaire est payé par ce canal (cf. `TypePaiement::estTresorMoney()`).
+     */
+    public function getRequiertTresorMoneyAttribute(): bool
+    {
+        return $this->typePaiement?->estTresorMoney() ?? false;
     }
 
     public function niveauEtude(): BelongsTo

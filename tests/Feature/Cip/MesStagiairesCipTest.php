@@ -159,6 +159,32 @@ class MesStagiairesCipTest extends TestCase
             ->assertSessionHasErrors('tresor_money_file');
     }
 
+    public function test_le_json_expose_lexigence_de_fiche_tresor_money_pour_le_bouton_generer_du_frontend(): void
+    {
+        $tresorMoney = TypePaiement::firstOrCreate(
+            ['code' => TypePaiement::CODE_TRESOR_MONEY],
+            ['nom' => 'TRESOR MONEY', 'actif' => true]
+        );
+        ['user' => $user, 'instance' => $instancePaiementTresorMoney] = $this->creerDossier();
+        $instancePaiementTresorMoney->stage->beneficiaire->update(['type_paiement_id' => $tresorMoney->id]);
+
+        $this->actingAs($user)
+            ->get('/cip/mes-stagiaires')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('instances.data.0.stage.beneficiaire.requiert_tresor_money', true)
+            );
+
+        ['user' => $autreUser, 'instance' => $instanceSansTresorMoney] = $this->creerDossier();
+
+        $this->actingAs($autreUser)
+            ->get('/cip/mes-stagiaires')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('instances.data.0.stage.beneficiaire.requiert_tresor_money', false)
+            );
+    }
+
     public function test_transmission_bloquee_tant_que_le_contrat_signe_manque(): void
     {
         ['user' => $user, 'instance' => $instance] = $this->creerDossier();

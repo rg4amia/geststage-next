@@ -193,7 +193,7 @@ class MesStagiairesCipController extends Controller
         $agencesAutorisees = $this->agencesAutorisees();
 
         $query = InstanceParcours::with([
-            'stage.beneficiaire',
+            'stage.beneficiaire.typePaiement',
             'stage.entreprise.typeStructure',
             'stage.agence',
             'stage.sourceFinancement',
@@ -723,7 +723,7 @@ class MesStagiairesCipController extends Controller
         $documents = $instance->stage->documents;
         $aContrat = $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_CONTRAT);
 
-        $requiertTresorMoney = $instance->stage->beneficiaire?->typePaiement?->estTresorMoney() ?? false;
+        $requiertTresorMoney = $instance->stage->beneficiaire?->requiert_tresor_money ?? false;
         $aTresorMoney = ! $requiertTresorMoney
             || $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_TRESOR_MONEY);
 

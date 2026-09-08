@@ -166,7 +166,7 @@ const MesStagiaires = () => {
     const getDocument = (row: any, code: string) =>
         (row?.stage?.documents || []).find((d: any) => d.type_document?.code === code);
 
-    const isTresorMoneyRequis = (row: any) => row?.stage?.beneficiaire?.type_paiement?.code === 'TRESOR_MONEY';
+    const isTresorMoneyRequis = (row: any) => !!row?.stage?.beneficiaire?.requiert_tresor_money;
 
     const peutTransmettreChefAgence = (row: any) => {
         const aContrat = !!getDocument(row, 'CONTRAT');
