@@ -27,24 +27,13 @@ use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
 class MesStagiairesCipController extends Controller
 {
-    /**
-     * Corbeilles CIP dans lesquelles un dossier n'a pas encore été (ou plus) transmis
-     * au Chef d'Agence : soumission initiale ou retour d'ajournement à corriger.
-     */
-    private const CORBEILLES_NON_TRANSMISES = [
-        CorbeilleEnum::CIP_MES_STAGIAIRES->value,
-        CorbeilleEnum::CIP_AJOURNE_CA->value,
-        CorbeilleEnum::CIP_AJOURNE_DESSE->value,
-        CorbeilleEnum::CIP_AJOURNE_DMG->value,
-        CorbeilleEnum::CIP_AJOURNE_AAF->value,
-    ];
-
     private const CODE_DOCUMENT_CONTRAT = 'CONTRAT';
 
     private const CODE_DOCUMENT_TRESOR_MONEY = 'TRESOR_MONEY';
@@ -68,8 +57,6 @@ class MesStagiairesCipController extends Controller
             'page',
         ]);
 
-        $user = Auth::user();
-
         $query = InstanceParcours::with([
             'stage.beneficiaire.typePaiement',
             'stage.entreprise.typeStructure',
@@ -81,14 +68,16 @@ class MesStagiairesCipController extends Controller
             'stage.documents.versions',
             'stage.pointages.periode',
             'stage.pointages.versionCourante',
+            'etapeCourante',
         ]);
+
+        $agencesAutorisees = $this->agencesAutorisees();
 
         // Toujours exiger un stage non supprimé logiquement : Stage a désormais le trait
         // SoftDeletes, donc whereHas('stage') exclut déjà les dossiers "deleted_at" côté legacy.
-        // Sans ce garde-fou, un utilisateur sans agence_id verrait des lignes avec stage=null.
-        $query->whereHas('stage', function ($q) use ($user) {
-            if ($user && $user->agence_id && ! $user->hasRole('administrateur')) {
-                $q->where('agence_id', $user->agence_id);
+        $query->whereHas('stage', function ($q) use ($agencesAutorisees) {
+            if ($agencesAutorisees !== null) {
+                $q->whereIn('agence_id', $agencesAutorisees);
             }
         });
 
@@ -137,12 +126,7 @@ class MesStagiairesCipController extends Controller
             });
         }
         if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->whereHas('stage.beneficiaire', function ($q) use ($search) {
-                $q->where('nom', 'ilike', "%{$search}%")
-                    ->orWhere('prenoms', 'ilike', "%{$search}%")
-                    ->orWhere('numero_aej', 'ilike', "%{$search}%");
-            });
+            $this->applyRechercheDossier($query, $filters['search']);
         }
 
         $total = $query->count();
@@ -163,7 +147,7 @@ class MesStagiairesCipController extends Controller
         // Shell Inertia — données de filtres
         $agences = Agence::cachedPluck('nom');
         $entreprises = Entreprise::cached()
-            ->when($user && $user->agence_id && ! $user->hasRole('administrateur'), fn ($c) => $c->where('agence_id', $user->agence_id))
+            ->when($agencesAutorisees, fn ($c, $ids) => $c->whereIn('agence_id', $ids))
             ->sortBy('raison_sociale')
             ->pluck('raison_sociale', 'id')
             ->all();
@@ -206,7 +190,7 @@ class MesStagiairesCipController extends Controller
             'typestage_id', 'type_structure_id', 'search', 'page',
         ]);
 
-        $user = Auth::user();
+        $agencesAutorisees = $this->agencesAutorisees();
 
         $query = InstanceParcours::with([
             'stage.beneficiaire',
@@ -219,9 +203,9 @@ class MesStagiairesCipController extends Controller
             'evenements.acteur',
         ])
             ->where('corbeille_actuelle', CorbeilleEnum::CIP_AJOURNE_CA->value)
-            ->whereHas('stage', function ($q) use ($user) {
-                if ($user && $user->agence_id) {
-                    $q->where('agence_id', $user->agence_id);
+            ->whereHas('stage', function ($q) use ($agencesAutorisees) {
+                if ($agencesAutorisees !== null) {
+                    $q->whereIn('agence_id', $agencesAutorisees);
                 }
             });
 
@@ -241,19 +225,14 @@ class MesStagiairesCipController extends Controller
             $query->whereHas('stage.entreprise', fn ($q) => $q->where('type_structure_id', $filters['type_structure_id']));
         }
         if (! empty($filters['search'])) {
-            $search = $filters['search'];
-            $query->whereHas('stage.beneficiaire', function ($q) use ($search) {
-                $q->where('nom', 'ilike', "%{$search}%")
-                    ->orWhere('prenoms', 'ilike', "%{$search}%")
-                    ->orWhere('numero_aej', 'ilike', "%{$search}%");
-            });
+            $this->applyRechercheDossier($query, $filters['search']);
         }
 
         $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
 
         $agences = Agence::cachedPluck('nom');
         $entreprises = Entreprise::cached()
-            ->when($user && $user->agence_id, fn ($c) => $c->where('agence_id', $user->agence_id))
+            ->when($agencesAutorisees, fn ($c, $ids) => $c->whereIn('agence_id', $ids))
             ->sortBy('raison_sociale')
             ->pluck('raison_sociale', 'id')
             ->all();
@@ -284,7 +263,7 @@ class MesStagiairesCipController extends Controller
      */
     public function pointageAjourneDmg(Request $request)
     {
-        $user = Auth::user();
+        $agencesAutorisees = $this->agencesAutorisees();
 
         $filters = $request->only([
             'periode_id', 'agence_id', 'entreprise_id',
@@ -305,9 +284,9 @@ class MesStagiairesCipController extends Controller
                 $q->whereNotNull('pointage_id')
                     ->whereHas('pointage', fn ($p) => $p->where('statut', 'VALIDE'));
             })
-            ->whereHas('droitPaiement.pointage.stage', function ($q) use ($user) {
-                if ($user?->agence_id && ! $user->hasRole('administrateur')) {
-                    $q->where('agence_id', $user->agence_id);
+            ->whereHas('droitPaiement.pointage.stage', function ($q) use ($agencesAutorisees) {
+                if ($agencesAutorisees !== null) {
+                    $q->whereIn('agence_id', $agencesAutorisees);
                 }
             });
 
@@ -433,11 +412,82 @@ class MesStagiairesCipController extends Controller
     }
 
     /**
+     * Agences sur lesquelles l'utilisateur courant est habilité, ou `null` s'il n'a aucun
+     * périmètre défini — auquel cas aucune restriction n'est appliquée, comme dans
+     * `SituationStageService` et `SituationStagiaireCipController`. `users` n'a pas de colonne
+     * `agence_id` : le périmètre est porté par le pivot `perimetres_agences_utilisateurs`.
+     *
+     * @return array<int, int>|null
+     */
+    private function agencesAutorisees(): ?array
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return null;
+        }
+
+        $agenceIds = $user->perimetresAgences()->pluck('agences.id')->all();
+
+        return $agenceIds === [] ? null : $agenceIds;
+    }
+
+    /**
+     * Garde-fou périmètre pour les actions portant sur un dossier précis (génération/dépôt de
+     * documents, transmission, suivi, suppression) : sans ce contrôle, une URL directe permet
+     * de contourner le filtrage appliqué à la liste.
+     */
+    private function assertDansLePerimetre(InstanceParcours $instance): void
+    {
+        $agencesAutorisees = $this->agencesAutorisees();
+
+        if ($agencesAutorisees !== null && ! in_array($instance->stage->agence_id, $agencesAutorisees, true)) {
+            abort(403, "Ce dossier ne relève pas de votre périmètre d'agence.");
+        }
+    }
+
+    /**
+     * Recherche libre couvrant, comme le legacy DataTables : le bénéficiaire (nom, prénoms,
+     * numéro AEJ), le numéro et l'état du contrat, l'étape courante du workflow et l'état des
+     * pointages.
+     */
+    private function applyRechercheDossier($query, string $search): void
+    {
+        $operator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
+        $term = '%'.addcslashes($search, '%_').'%';
+
+        $query->where(function ($q) use ($operator, $term) {
+            $q->whereHas('stage.beneficiaire', function ($bq) use ($operator, $term) {
+                $bq->where('nom', $operator, $term)
+                    ->orWhere('prenoms', $operator, $term)
+                    ->orWhere('numero_aej', $operator, $term);
+            })
+                ->orWhereHas('stage.contrats', function ($cq) use ($operator, $term) {
+                    $cq->where('numero', $operator, $term)
+                        ->orWhere('statut', $operator, $term);
+                })
+                ->orWhereHas('etapeCourante', function ($eq) use ($operator, $term) {
+                    $eq->where('nom', $operator, $term);
+                })
+                ->orWhereHas('stage.pointages', function ($pq) use ($operator, $term) {
+                    $pq->where('statut', $operator, $term);
+                });
+        });
+    }
+
+    /**
      * Générer le contrat de stage (stream direct)
      */
     public function genererContrat(Request $request, $id)
     {
         $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
+
+        $request->validate([
+            'fonction' => 'nullable|string|max:255',
+            'montant' => 'nullable|numeric|min:0',
+        ]);
+
         $fonction = $request->query('fonction');
         $montant = $request->query('montant') ? (float) $request->query('montant') : null;
 
@@ -459,6 +509,13 @@ class MesStagiairesCipController extends Controller
     public function genererContratJson(Request $request, $id)
     {
         $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
+
+        $request->validate([
+            'fonction' => 'nullable|string|max:255',
+            'montant' => 'nullable|numeric|min:0',
+        ]);
+
         $fonction = $request->query('fonction');
         $montant = $request->query('montant') ? (float) $request->query('montant') : null;
 
@@ -495,6 +552,7 @@ class MesStagiairesCipController extends Controller
         ]);
 
         $instance = InstanceParcours::with('stage.contrats')->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
 
         $this->deposerDocument(
             $instance,
@@ -513,6 +571,7 @@ class MesStagiairesCipController extends Controller
     public function genererTresorMoney(Request $request, $id)
     {
         $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
 
         $service = app(TresorMoneyService::class);
 
@@ -532,6 +591,7 @@ class MesStagiairesCipController extends Controller
     public function genererTresorMoneyJson(Request $request, $id)
     {
         $instance = InstanceParcours::with('stage.beneficiaire')->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
 
         $service = app(TresorMoneyService::class);
 
@@ -586,6 +646,7 @@ class MesStagiairesCipController extends Controller
         ]);
 
         $instance = InstanceParcours::with('stage.contrats')->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
 
         $this->deposerDocument(
             $instance,
@@ -653,15 +714,16 @@ class MesStagiairesCipController extends Controller
     public function transmettreChefAgence(Request $request, $id, WorkflowTransitionService $workflow)
     {
         $instance = InstanceParcours::with(['stage.beneficiaire.typePaiement', 'stage.documents.typeDocument'])->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
 
-        if (! in_array($instance->corbeille_actuelle, self::CORBEILLES_NON_TRANSMISES, true)) {
+        if (! in_array($instance->corbeille_actuelle, CorbeilleEnum::nonTransmisesChefAgence(), true)) {
             return back()->with('error', 'Ce dossier a déjà été transmis au Chef d\'Agence.');
         }
 
         $documents = $instance->stage->documents;
         $aContrat = $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_CONTRAT);
 
-        $requiertTresorMoney = $instance->stage->beneficiaire?->typePaiement?->code === 'TRESOR_MONEY';
+        $requiertTresorMoney = $instance->stage->beneficiaire?->typePaiement?->estTresorMoney() ?? false;
         $aTresorMoney = ! $requiertTresorMoney
             || $documents->contains(fn ($d) => $d->typeDocument?->code === self::CODE_DOCUMENT_TRESOR_MONEY);
 
@@ -693,6 +755,7 @@ class MesStagiairesCipController extends Controller
     public function suiviPointages($id, SuiviPointageService $suivi)
     {
         $instance = InstanceParcours::with(SuiviPointageService::relationsStage())->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
 
         return response()->json([
             'corbeille_actuelle' => $suivi->corbeille($instance->corbeille_actuelle),
@@ -702,12 +765,16 @@ class MesStagiairesCipController extends Controller
 
     /**
      * Supprimer un dossier stagiaire
+     *
+     * Réservé au CIP/administrateur et aux dossiers pas encore transmis au Chef d'Agence —
+     * cf. InstanceParcoursPolicy::delete().
      */
     public function destroy($id)
     {
-        $instance = InstanceParcours::findOrFail($id);
+        $instance = InstanceParcours::with('stage')->findOrFail($id);
+        $this->assertDansLePerimetre($instance);
+        $this->authorize('delete', $instance);
 
-        // Note: Selon la logique métier, on supprime l'instance, ou le stage associé
         $instance->delete();
 
         return back()->with('success', 'Dossier stagiaire supprimé avec succès.');

@@ -2,6 +2,7 @@
 
 namespace App\Policies;
 
+use App\Enums\CorbeilleEnum;
 use App\Models\User;
 use App\Models\Workflow\InstanceParcours;
 
@@ -28,7 +29,7 @@ class InstanceParcoursPolicy
      */
     public function create(User $user): bool
     {
-        return $user->hasRole('CIP'); // Seul le CIP peut inscrire
+        return $user->hasRole('cip'); // Seul le CIP peut inscrire
     }
 
     /**
@@ -41,10 +42,18 @@ class InstanceParcoursPolicy
 
     /**
      * Determine whether the user can delete the model.
+     *
+     * Un dossier ne peut être supprimé que par le CIP (ou un administrateur) et tant qu'il n'a
+     * pas encore été transmis au Chef d'Agence : passé ce stade, il est engagé dans le circuit
+     * de validation et sa suppression casserait l'historique du workflow.
      */
     public function delete(User $user, InstanceParcours $instanceParcours): bool
     {
-        return false;
+        if (! ($user->hasRole('administrateur') || $user->hasRole('cip'))) {
+            return false;
+        }
+
+        return in_array($instanceParcours->corbeille_actuelle, CorbeilleEnum::nonTransmisesChefAgence(), true);
     }
 
     /**
