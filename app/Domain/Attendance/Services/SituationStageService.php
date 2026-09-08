@@ -33,7 +33,8 @@ class SituationStageService
      * Agences sur lesquelles l'utilisateur courant est habilité, ou `null` s'il n'a aucun
      * périmètre défini — auquel cas aucune restriction n'est appliquée, comme partout
      * ailleurs dans l'application (la table `perimetres_agences_utilisateurs` n'est pas
-     * encore alimentée).
+     * encore alimentée). L'administrateur a toujours une vue nationale, même s'il possède par
+     * ailleurs un périmètre (ex. pour tester un écran CIP) — cf. `VisaRegionalService`.
      *
      * @return array<int, int>|null
      */
@@ -42,6 +43,10 @@ class SituationStageService
         $user = Auth::user();
 
         if (! $user) {
+            return null;
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole('administrateur')) {
             return null;
         }
 

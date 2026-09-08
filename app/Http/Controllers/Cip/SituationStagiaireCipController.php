@@ -40,7 +40,10 @@ class SituationStagiaireCipController extends Controller
         $stages = $query->paginate(25)->withQueryString();
         $stages->through(fn (Stage $stage) => $this->situations->formatLigne($stage));
 
-        $agenceIds = Auth::user()?->perimetresAgences()->pluck('agences.id')->all() ?: [];
+        $user = Auth::user();
+        $agenceIds = ($user && method_exists($user, 'hasRole') && $user->hasRole('administrateur'))
+            ? []
+            : ($user?->perimetresAgences()->pluck('agences.id')->all() ?: []);
 
         return Inertia::render('Cip/Situations/Index', [
             'onglet' => $onglet,

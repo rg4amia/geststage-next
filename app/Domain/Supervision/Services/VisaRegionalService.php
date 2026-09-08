@@ -60,6 +60,7 @@ class VisaRegionalService
         'typeStage',
         'visaDessePar',
         'instanceParcours',
+        'contrats',
     ];
 
     // ─────────────────────────────────────────────────────────────────────
@@ -187,11 +188,14 @@ class VisaRegionalService
     }
 
     /**
-     * Filtres communs de l'écran, portés sur une requête de `stages`.
+     * Filtres communs aux écrans de supervision, portés sur une requête de `stages`.
+     *
+     * Public : partagé avec SupervisionListeService (listes de consultation DESSE) afin
+     * qu'un seul code applique filtres et périmètre d'agences.
      *
      * @param  array<string, mixed>  $filtres
      */
-    private function appliquerFiltresStage(Builder $query, array $filtres): Builder
+    public function appliquerFiltresStage(Builder $query, array $filtres): Builder
     {
         $valeur = static fn (string $cle): mixed => ($filtres[$cle] ?? '') === '' ? null : $filtres[$cle];
 
@@ -333,6 +337,52 @@ class VisaRegionalService
                 'visa_desse_par_id' => $auteurId,
             ])->save();
         });
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    //  Listes de consultation DESSE (bénéficiaires, sans contrat)
+    // ─────────────────────────────────────────────────────────────────────
+
+    /**
+     * Requête de base des listes de consultation : mêmes filtres et même périmètre
+     * d'agences que les corbeilles de visa, chargement commun partagé avec
+     * `formatLigneStage`.
+     *
+     * @param  array<string, mixed>  $filtres
+     */
+    public function consultationQuery(array $filtres = []): Builder
+    {
+        $query = Stage::query()->with(self::EAGER_LOADS);
+
+        return $this->appliquerFiltresStage($query, $filtres);
+    }
+
+    /**
+     * Bénéficiaires DESSE (legacy `GET /desse/beneficiaire/index` + `beneficiaire.index-json`) :
+     * registre de consultation de tous les stagiaires enregistrés. Le legacy lisait l'export
+     * figé `beneficiaire_stages` (table Power BI de mai 2024) : la donnée vivante de Next
+     * est le portefeuille de stages, la corbeille `desse_beneficiaires_2023` n'étant
+     * alimentée par aucune migration.
+     *
+     * @param  array<string, mixed>  $filtres
+     */
+    public function beneficiairesQuery(array $filtres = []): Builder
+    {
+        return $this->consultationQuery($filtres)->orderByDesc('created_at');
+    }
+
+    /**
+     * Stagiaires sans contrat (legacy `GET /desse/stagiaire-sans-contrat`, condition
+     * `avis_contrat = 0` sans le filtre d'année du portage). Un stage sans contrat est un
+     * stage dont aucune ligne `contrats` (non supprimée) n'existe.
+     *
+     * @param  array<string, mixed>  $filtres
+     */
+    public function sansContratQuery(array $filtres = []): Builder
+    {
+        return $this->consultationQuery($filtres)
+            ->whereDoesntHave('contrats')
+            ->orderByDesc('created_at');
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -636,6 +686,61 @@ class VisaRegionalService
             $agences,
             fn (array $agence): bool => in_array((int) $agence['id'], $autorisees, true)
         ));
+    }
+
+    /**
+     * Ligne enrichie des listes de consultation : à la ligne de visa s'ajoutent le téléphone,
+     * le type de structure, l'étape workflow et les dates de validation.
+     *
+     * @return array<string, mixed>
+     */
+    public function formatLigneConsultation(Stage $stage): array
+    {
+        $ligne = $this->formatLigne($stage);
+
+        $ligne['type_structure'] = $stage->entreprise?->typeStructure?->nom ?? '-';
+        $ligne['contrat'] = $stage->contrats->isNotEmpty()
+            ? $stage->contrats->first()->numero
+            : null;
+        $ligne['corbeille_code'] = $stage->instanceParcours?->corbeille_actuelle;
+
+        return $ligne;
+    }
+
+    /**
+     * Lignes CSV d'un export de liste de consultation (en-tête inclus).
+     *
+     * @return \Generator<int, array<int, string|null>>
+     */
+    public function lignesExportConsultation(Builder $query): \Generator
+    {
+        yield ['N° AEJ', 'Nom', 'Prénoms', 'Sexe', 'Date de naissance', 'Téléphone', 'Agence', 'Entreprise', 'Type de structure', 'Financement', 'Type de stage', 'Début', 'Fin prévue', 'Type de paiement', 'N° Trésor Money', 'N° Wave', 'Étape workflow', 'Visa DESSE', 'Validé AR le'];
+
+        foreach ($query->cursor() as $modele) {
+            $ligne = $this->formatLigneConsultation($modele);
+
+            yield [
+                $ligne['numero_aej'],
+                $ligne['beneficiaire']['nom'],
+                $ligne['beneficiaire']['prenoms'],
+                $ligne['beneficiaire']['sexe'],
+                $ligne['beneficiaire']['date_naissance'],
+                $ligne['beneficiaire']['telephone'],
+                $ligne['agence'],
+                $ligne['entreprise'],
+                $ligne['type_structure'],
+                $ligne['source_financement'],
+                $ligne['type_stage'],
+                $ligne['date_debut'],
+                $ligne['date_fin_prevue'],
+                $ligne['type_paiement'],
+                $ligne['numero_tresor_money'],
+                $ligne['numero_wave'],
+                $ligne['statut_parcours'],
+                $ligne['visa_desse_label'],
+                $ligne['date_validation_ar'],
+            ];
+        }
     }
 
     /**

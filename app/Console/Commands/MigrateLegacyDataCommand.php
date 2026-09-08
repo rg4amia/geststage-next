@@ -1100,7 +1100,10 @@ class MigrateLegacyDataCommand extends Command
         // Load mappings once to save memory and avoid querying per row
         $agencesMap = Agence::pluck('id', 'ancien_id')->toArray();
         $typesStageMap = TypeStage::pluck('id', 'ancien_id')->toArray();
-        $entreprisesMap = Entreprise::pluck('id', 'ancien_id')->toArray();
+        // withTrashed() : Entreprise utilise SoftDeletes. Une entreprise supprimée après la
+        // saisie du contrat reste la bonne cible FK pour ce stage (comme en legacy, qui ne
+        // filtre jamais sur deleted_at) — l'omettre provoquait un faux CONTRAT_RELATION_INTROUVABLE.
+        $entreprisesMap = Entreprise::withTrashed()->pluck('id', 'ancien_id')->toArray();
         // BUG corrigé : contrats_pae.source_financement contient l'ancien id numérique de
         // type_financements (ex: 1, 3, 4, 5), pas le code généré ("PA_PS_GOUV", ...). L'ancien
         // pluck('id', 'code') ne matchait donc quasiment jamais et retombait sur le défaut.

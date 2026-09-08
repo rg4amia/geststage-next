@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -135,5 +136,27 @@ class SituationStagiaireTest extends TestCase
         $this->actingAs(User::factory()->create());
 
         $this->assertCount(2, app(SituationStageService::class)->suspensionsQuery()->get());
+    }
+
+    /**
+     * Reproduit le compte admin@emploijeunes.ci en base réelle : un administrateur peut avoir
+     * hérité d'un périmètre agence. Le rôle doit toujours primer, sinon l'administrateur se
+     * retrouve restreint à une seule agence comme un CIP ordinaire.
+     */
+    public function test_un_administrateur_avec_un_perimetre_voit_quand_meme_toutes_les_agences(): void
+    {
+        $mien = Stage::factory()->create(['situation_stage' => SituationStage::CODE_SUSPENSION]);
+        $autre = Stage::factory()->create(['situation_stage' => SituationStage::CODE_SUSPENSION]);
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'administrateur', 'guard_name' => 'web']));
+        $admin->perimetresAgences()->attach($mien->agence_id);
+
+        $this->actingAs($admin);
+
+        $this->assertSame(
+            [$mien->id, $autre->id],
+            app(SituationStageService::class)->suspensionsQuery()->pluck('id')->sort()->values()->all()
+        );
     }
 }

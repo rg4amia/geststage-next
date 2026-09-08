@@ -13,6 +13,7 @@ use App\Http\Controllers\Cip\SituationStagiaireCipController;
 use App\Http\Controllers\Company\EntrepriseController;
 use App\Http\Controllers\Company\OffreEmploiController;
 use App\Http\Controllers\Daicg\StagiaireDaicgController;
+use App\Http\Controllers\Desse\ConsultationDesseController;
 use App\Http\Controllers\Desse\StagiaireDesseController;
 use App\Http\Controllers\Dmg\AjournementPaiementDmgController;
 use App\Http\Controllers\Dmg\AttentePaiementDmgController;
@@ -239,6 +240,31 @@ Route::middleware(['auth', 'verified'])->group(function () {
         $request->query()
     ))->name('desse.visas.index');
 
+    // Listes de consultation DESSE : registre des bénéficiaires (legacy
+    // `desse/beneficiaire/index`) et stagiaires sans contrat (legacy
+    // `desse/stagiaire-sans-contrat`). Consultation seule : lecture et export,
+    // aucune décision de workflow.
+    Route::get('/desse/{liste}', [ConsultationDesseController::class, 'index'])
+        ->whereIn('liste', ['beneficiaires', 'stagiaires-sans-contrat'])
+        ->middleware('can:valider_desse')
+        ->name('desse.consultation.index');
+    Route::get('/desse/{liste}/export', [ConsultationDesseController::class, 'export'])
+        ->whereIn('liste', ['beneficiaires', 'stagiaires-sans-contrat'])
+        ->middleware('can:valider_desse')
+        ->name('desse.consultation.export');
+    Route::post('/desse/{liste}/export', [ConsultationDesseController::class, 'exportAsynchrone'])
+        ->whereIn('liste', ['beneficiaires', 'stagiaires-sans-contrat'])
+        ->middleware('can:valider_desse')
+        ->name('desse.consultation.export.async');
+    Route::get('/desse/{liste}/export/{batch}/progress', [ConsultationDesseController::class, 'exportProgression'])
+        ->whereIn('liste', ['beneficiaires', 'stagiaires-sans-contrat'])
+        ->middleware('can:valider_desse')
+        ->name('desse.consultation.export.progress');
+    Route::get('/desse/{liste}/export/{batch}/download', [ConsultationDesseController::class, 'exportTelechargement'])
+        ->whereIn('liste', ['beneficiaires', 'stagiaires-sans-contrat'])
+        ->middleware('can:valider_desse')
+        ->name('desse.consultation.export.download');
+
     // Alias menu « Suivi des stagiaires » (Espace DESSE) : redirige vers les onglets
     // d'extraction de /agence-regionale/visas (legacy `desse/suivie/stagiaire-saved`),
     // en conservant les filtres déjà saisis. Sans paramètre `onglet`, l'écran cible
@@ -247,7 +273,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/desse/suivi', fn (Request $request) => redirect()->route(
         'agence-regionale.visas.index',
         ['onglet' => 'suivi_enregistres'] + $request->query()
-    ))->middleware('can:voir_visas_ar')->name('desse.suivi.index');
+    ))    ->middleware('can:voir_visas_ar')->name('desse.suivi.index');
 
     // Phase 9 : PEJEDEC / AAF
     Route::get('/pejedec/af', [AafController::class, 'index'])->name('pejedec.af.index');

@@ -416,6 +416,8 @@ class MesStagiairesCipController extends Controller
      * périmètre défini — auquel cas aucune restriction n'est appliquée, comme dans
      * `SituationStageService` et `SituationStagiaireCipController`. `users` n'a pas de colonne
      * `agence_id` : le périmètre est porté par le pivot `perimetres_agences_utilisateurs`.
+     * L'administrateur a toujours une vue nationale, même s'il possède par ailleurs un
+     * périmètre (ex. pour tester un écran CIP) — cf. `VisaRegionalService`.
      *
      * @return array<int, int>|null
      */
@@ -424,6 +426,10 @@ class MesStagiairesCipController extends Controller
         $user = Auth::user();
 
         if (! $user) {
+            return null;
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole('administrateur')) {
             return null;
         }
 

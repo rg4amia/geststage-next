@@ -64,6 +64,32 @@ class MesStagiairesCipTest extends TestCase
         $this->assertNotEquals($premiere->id, $seconde->id);
     }
 
+    /**
+     * Reproduit le compte admin@emploijeunes.ci en base réelle : un administrateur peut avoir
+     * hérité d'un périmètre agence (ex. utilisé aussi pour tester un écran CIP). Le rôle doit
+     * toujours primer sur ce périmètre — sinon l'administrateur se retrouve restreint à une
+     * seule agence comme un CIP ordinaire.
+     */
+    public function test_un_administrateur_avec_un_perimetre_voit_quand_meme_toutes_les_agences(): void
+    {
+        ['instance' => $premiere] = $this->creerDossier();
+        ['instance' => $seconde] = $this->creerDossier();
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'administrateur', 'guard_name' => 'web']));
+        $admin->perimetresAgences()->attach($premiere->stage->agence_id);
+
+        $this->actingAs($admin)
+            ->get('/cip/mes-stagiaires')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('Cip/MesStagiaires/Index')
+                ->where('stats.total', 2)
+            );
+
+        $this->assertNotEquals($premiere->id, $seconde->id);
+    }
+
     public function test_le_filtre_agence_restreint_la_liste(): void
     {
         ['user' => $admin, 'stage' => $stage1] = $this->creerDossier(admin: true);
