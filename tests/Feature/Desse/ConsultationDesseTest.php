@@ -131,29 +131,49 @@ class ConsultationDesseTest extends TestCase
             );
     }
 
-    public function test_le_perimetre_d_agence_limite_le_chef_d_agence_mais_pas_la_desse(): void
+    public function test_le_perimetre_d_agence_s_applique_aux_profils_non_nationaux(): void
     {
         $agence = Agence::factory()->create();
         $stageAgence = Stage::factory()->create(['agence_id' => $agence->id]);
         Stage::factory()->create();
 
+        // Le chef d'agence n'a pas accès aux listes DESSE par HTTP...
         $chef = User::factory()->create();
         $chef->assignRole('chef_agence');
         $chef->perimetresAgences()->attach($agence->id);
 
         $this->actingAs($chef)
             ->get('/desse/stagiaires-sans-contrat')
-            ->assertOk()
-            ->assertInertia(fn ($page) => $page
-                ->count('stages.data', 1)
-                ->where('stages.data.0.id', $stageAgence->id)
-            );
+            ->assertForbidden();
+
+        // ... mais la requête partagée reste bornée à son périmètre d'agences :
+        // le même cœur sert les corbeilles de visas et les listes de consultation.
+        $this->actingAs($chef);
+
+        $ids = app(\App\Domain\Supervision\Services\VisaRegionalService::class)
+            ->sansContratQuery()
+            ->pluck('id')
+            ->all();
+
+        $this->assertSame([$stageAgence->id], $ids);
 
         // Vision nationale : la DESSE voit les deux stages.
-        $this->actingAs($this->desse)
-            ->get('/desse/stagiaires-sans-contrat')
+        $this->actingAs($this->desse);
+
+        $this->assertCount(2, app(\App\Domain\Supervision\Services\VisaRegionalService::class)->sansContratQuery()->get());
+    }
+
+    public function test_l_administrateur_accede_aux_listes(): void
+    {
+        $admin = User::factory()->create();
+        $admin->assignRole('administrateur');
+
+        Stage::factory()->create();
+
+        $this->actingAs($admin)
+            ->get('/desse/beneficiaires')
             ->assertOk()
-            ->assertInertia(fn ($page) => $page->count('stages.data', 2));
+            ->assertInertia(fn ($page) => $page->count('stages.data', 1));
     }
 
     public function test_un_utilisateur_sans_habilitation_n_accede_pas_aux_listes(): void
