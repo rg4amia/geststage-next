@@ -19,7 +19,6 @@ use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Str;
 use Inertia\Testing\AssertableInertia as Assert;
-use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 class CorbeilleWiringTest extends TestCase
@@ -72,9 +71,9 @@ class CorbeilleWiringTest extends TestCase
     public function test_actions_desse_branchees_sur_les_transitions_metier(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('desse');
         $this->actingAs($user);
-
-        Role::create(['name' => 'desse', 'guard_name' => 'web']);
 
         $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
         $etape = EtapeParcours::factory()->create([
@@ -138,9 +137,9 @@ class CorbeilleWiringTest extends TestCase
     public function test_validation_retour_chef_agence_transmet_le_dossier_a_la_dmg(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('desse');
         $this->actingAs($user);
-
-        Role::create(['name' => 'desse', 'guard_name' => 'web']);
 
         $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
         $etape = EtapeParcours::factory()->create([
@@ -198,9 +197,9 @@ class CorbeilleWiringTest extends TestCase
     public function test_traitement_retour_chef_agence_ajourne_avec_motif_et_historique(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('desse');
         $this->actingAs($user);
-
-        Role::create(['name' => 'desse', 'guard_name' => 'web']);
 
         $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
         $etape = EtapeParcours::factory()->create([
@@ -255,8 +254,9 @@ class CorbeilleWiringTest extends TestCase
     public function test_doublons_groupes_par_cle_avec_vue_profils_du_groupe(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('desse');
         $this->actingAs($user);
-        Role::create(['name' => 'cip', 'guard_name' => 'web']);
 
         $def = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
         $etape = EtapeParcours::factory()->create([
@@ -321,8 +321,9 @@ class CorbeilleWiringTest extends TestCase
     public function test_doublons_cmu_et_type_stage_cmu_sont_exposes_par_la_desse(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('desse');
         $this->actingAs($user);
-        Role::create(['name' => 'cip', 'guard_name' => 'web']);
 
         $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
         $etape = EtapeParcours::factory()->create([
@@ -381,9 +382,9 @@ class CorbeilleWiringTest extends TestCase
     public function test_historique_retour_chef_agence_expose_decision_motif_auteur_et_date(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('desse');
         $this->actingAs($user);
-
-        Role::create(['name' => 'desse', 'guard_name' => 'web']);
 
         $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
         $etape = EtapeParcours::factory()->create([
@@ -436,9 +437,9 @@ class CorbeilleWiringTest extends TestCase
     public function test_validation_retour_chef_agence_oriente_vers_la_presence_si_cycle_demarre(): void
     {
         $user = User::factory()->create();
+        $this->seed(RolePermissionSeeder::class);
+        $user->assignRole('desse');
         $this->actingAs($user);
-
-        Role::create(['name' => 'desse', 'guard_name' => 'web']);
 
         $definition = DefinitionParcours::factory()->create(['code' => 'PAE', 'active' => true]);
         $etape = EtapeParcours::factory()->create([

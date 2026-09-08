@@ -207,12 +207,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/cb/paiements/valider/{id}', [PaiementCbController::class, 'valider'])->name('cb.paiements.valider');
     Route::post('/cb/paiements/ajourner/{id}', [PaiementCbController::class, 'ajourner'])->name('cb.paiements.ajourner');
 
-    Route::get('/desse/stagiaires', [StagiaireDesseController::class, 'index'])->name('desse.stagiaires.index');
-    Route::post('/desse/stagiaires/valider/{id}', [StagiaireDesseController::class, 'valider'])->name('desse.stagiaires.valider');
-    Route::post('/desse/stagiaires/retour-agence/{id}/valider', [StagiaireDesseController::class, 'validerRetourAgence'])->name('desse.stagiaires.retour-agence.valider');
-    Route::get('/desse/stagiaires/retour-agence/{id}/historique', [StagiaireDesseController::class, 'historiqueRetourAgence'])->name('desse.stagiaires.retour-agence.historique');
-    Route::post('/desse/stagiaires/ajourner/{id}', [StagiaireDesseController::class, 'ajourner'])->name('desse.stagiaires.ajourner');
-    Route::post('/desse/stagiaires/doublons/{id}/traiter', [StagiaireDesseController::class, 'traiterDoublon'])->name('desse.stagiaires.doublons.traiter');
+    Route::get('/desse/stagiaires', [StagiaireDesseController::class, 'index'])->middleware('can:valider_desse')->name('desse.stagiaires.index');
+    Route::post('/desse/stagiaires/valider/{id}', [StagiaireDesseController::class, 'valider'])->middleware('can:valider_desse')->name('desse.stagiaires.valider');
+    Route::post('/desse/stagiaires/retour-agence/{id}/valider', [StagiaireDesseController::class, 'validerRetourAgence'])->middleware('can:valider_desse')->name('desse.stagiaires.retour-agence.valider');
+    Route::get('/desse/stagiaires/retour-agence/{id}/historique', [StagiaireDesseController::class, 'historiqueRetourAgence'])->middleware('can:valider_desse')->name('desse.stagiaires.retour-agence.historique');
+    Route::post('/desse/stagiaires/ajourner/{id}', [StagiaireDesseController::class, 'ajourner'])->middleware('can:valider_desse')->name('desse.stagiaires.ajourner');
+    Route::post('/desse/stagiaires/doublons/{id}/traiter', [StagiaireDesseController::class, 'traiterDoublon'])->middleware('can:valider_desse')->name('desse.stagiaires.doublons.traiter');
 
     Route::get('/daicg/stagiaires', [StagiaireDaicgController::class, 'index'])->name('daicg.stagiaires.index');
 
