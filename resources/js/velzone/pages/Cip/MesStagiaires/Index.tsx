@@ -1190,51 +1190,52 @@ e.preventDefault();
                         </CardBody>
                     </Card>
 
-                    {/* Trésor Money */}
-                    {isTresorMoneyRequis(selectedActionStagiaire) && (
-                        <Card className="border shadow-none mb-0">
-                            <CardBody>
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 className="mb-0"><i className="ri-wallet-3-line me-1"></i>Fiche Trésor Money</h6>
-                                    {getDocument(selectedActionStagiaire, 'TRESOR_MONEY') ? (
-                                        <Badge color="success"><i className="ri-check-line me-1"></i>Déposée</Badge>
-                                    ) : (
-                                        <Badge color="warning">Manquante</Badge>
-                                    )}
-                                </div>
+                    {/* Trésor Money : toujours disponible (générer/déposer), mais bloquant pour la
+                        transmission uniquement si le bénéficiaire est payé par ce canal. */}
+                    <Card className="border shadow-none mb-0">
+                        <CardBody>
+                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                <h6 className="mb-0"><i className="ri-wallet-3-line me-1"></i>Fiche Trésor Money</h6>
+                                {getDocument(selectedActionStagiaire, 'TRESOR_MONEY') ? (
+                                    <Badge color="success"><i className="ri-check-line me-1"></i>Déposée</Badge>
+                                ) : isTresorMoneyRequis(selectedActionStagiaire) ? (
+                                    <Badge color="warning">Manquante</Badge>
+                                ) : (
+                                    <Badge color="secondary">Non requise</Badge>
+                                )}
+                            </div>
 
-                                <div className="d-flex gap-2 align-items-start flex-wrap mb-2">
-                                    <Form
-                                        className="d-flex gap-2 align-items-start flex-grow-1"
-                                        onSubmit={(e) => {
-                                            e.preventDefault();
-                                            tresorMoneyForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/upload-tresor-money`, {
-                                                preserveScroll: true,
-                                                onSuccess: () => tresorMoneyForm.reset(),
-                                            });
-                                        }}
-                                    >
-                                        <div className="flex-grow-1">
-                                            <Input type="file" id="tresor_money_file" onChange={e => tresorMoneyForm.setData('tresor_money_file', e.target.files ? e.target.files[0] : null)} required />
-                                            {tresorMoneyForm.errors.tresor_money_file && <div className="text-danger mt-1 fs-12">{tresorMoneyForm.errors.tresor_money_file}</div>}
-                                        </div>
-                                        <Button color="success" type="submit" disabled={tresorMoneyForm.processing}>Enregistrer</Button>
-                                    </Form>
-                                </div>
-
-                                <Button
-                                    color="light"
-                                    size="sm"
-                                    onClick={() => openPdfPreview(
-                                        `/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-tresor-money`,
-                                        `Fiche Trésor Money — ${selectedActionStagiaire?.stage?.beneficiaire?.nom ?? ''} ${selectedActionStagiaire?.stage?.beneficiaire?.prenoms ?? ''}`
-                                    )}
+                            <div className="d-flex gap-2 align-items-start flex-wrap mb-2">
+                                <Form
+                                    className="d-flex gap-2 align-items-start flex-grow-1"
+                                    onSubmit={(e) => {
+                                        e.preventDefault();
+                                        tresorMoneyForm.post(`/cip/mes-stagiaires/${selectedActionStagiaire?.id}/upload-tresor-money`, {
+                                            preserveScroll: true,
+                                            onSuccess: () => tresorMoneyForm.reset(),
+                                        });
+                                    }}
                                 >
-                                    <i className="ri-eye-line me-1"></i>Aperçu de la fiche
-                                </Button>
-                            </CardBody>
-                        </Card>
-                    )}
+                                    <div className="flex-grow-1">
+                                        <Input type="file" id="tresor_money_file" onChange={e => tresorMoneyForm.setData('tresor_money_file', e.target.files ? e.target.files[0] : null)} required />
+                                        {tresorMoneyForm.errors.tresor_money_file && <div className="text-danger mt-1 fs-12">{tresorMoneyForm.errors.tresor_money_file}</div>}
+                                    </div>
+                                    <Button color="success" type="submit" disabled={tresorMoneyForm.processing}>Enregistrer</Button>
+                                </Form>
+                            </div>
+
+                            <Button
+                                color="light"
+                                size="sm"
+                                onClick={() => openPdfPreview(
+                                    `/cip/mes-stagiaires/${selectedActionStagiaire?.id}/generer-tresor-money`,
+                                    `Fiche Trésor Money — ${selectedActionStagiaire?.stage?.beneficiaire?.nom ?? ''} ${selectedActionStagiaire?.stage?.beneficiaire?.prenoms ?? ''}`
+                                )}
+                            >
+                                <i className="ri-eye-line me-1"></i>Aperçu de la fiche
+                            </Button>
+                        </CardBody>
+                    </Card>
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setModalDossierChefAgence(false)}>Fermer</Button>
