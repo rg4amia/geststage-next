@@ -61,6 +61,24 @@ export default defineConfig({
             ),
         },
     },
+    css: {
+        preprocessorOptions: {
+            scss: {
+                // Le thème Velzone/Boostrap utilise encore `@import` et des fonctions
+                // globales dépréciées (mix, red, green, unit). Ces avertissements sont
+                // bénins et proviennent de node_modules + du thème tiers ; on les
+                // supprime à la compilation plutôt que de réécrire tout le thème.
+                quietDeps: true,
+                silenceDeprecations: [
+                    'import',
+                    'global-builtin',
+                    'color-functions',
+                    'mixed-decls',
+                    'legacy-js-api',
+                ],
+            },
+        },
+    },
     server: {
         host: '127.0.0.1',
         port: 5173,

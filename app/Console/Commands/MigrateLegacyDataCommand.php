@@ -4962,7 +4962,10 @@ class MigrateLegacyDataCommand extends Command
     private function fixStatutPaiementsLegacy(bool $dryRun): void
     {
         $query = DB::connection('legacy')->table('paiement_models')
-            ->select(['id', 'status', 'status_ac', 'status_dmg', 'status_cb', 'dossier_id', 'created_by_cb', 'date_vise_cb', 'date_confirm_pay', 'updated_at']);
+            // `pointage_id` et `status_ar` sont indispensables : sans eux,
+            // `estPointageAjournePourCorrectionCip()` lit des propriétés absentes, retourne
+            // toujours false, et cette étape réécrit tous les rejets DMG en `EN_DOSSIER`.
+            ->select(['id', 'status', 'status_ac', 'status_dmg', 'status_ar', 'status_cb', 'pointage_id', 'dossier_id', 'created_by_cb', 'date_vise_cb', 'date_confirm_pay', 'updated_at']);
 
         $total = $query->count();
         $this->info("Paiements legacy à réévaluer : {$total}");
