@@ -619,11 +619,13 @@ e.preventDefault();
 
                     const userRoles = auth?.user?.roles || [];
                     const isAdministrateur = userRoles.includes('administrateur') || auth?.user?.id === 1;
+                    const isCip = userRoles.includes('cip');
                     const isChefAgence = userRoles.includes('chef_agence');
 
                     const pointages = stage.pointages || [];
                     const nonTransmis = estNonTransmisChefAgence(row);
                     const dossierComplet = peutTransmettreChefAgence(row);
+                    const peutGererDossier = isAdministrateur || isCip || isChefAgence;
 
                     return (
                         <div className="d-flex gap-1">
@@ -640,7 +642,7 @@ e.preventDefault();
                                 </Button>
                             )}
 
-                            {(isAdministrateur || isChefAgence) && nonTransmis && (
+                            {peutGererDossier && nonTransmis && (
                                 <Button
                                     color={dossierComplet ? 'success' : 'warning'}
                                     size="sm"
@@ -1197,9 +1199,9 @@ e.preventDefault();
                             <div className="d-flex justify-content-between align-items-center mb-2">
                                 <h6 className="mb-0"><i className="ri-wallet-3-line me-1"></i>Fiche Trésor Money</h6>
                                 {getDocument(selectedActionStagiaire, 'TRESOR_MONEY') ? (
-                                    <Badge color="success"><i className="ri-check-line me-1"></i>Déposée</Badge>
+                                    <Badge color="success"><i className="ri-check-line me-1"></i>Déposée{isTresorMoneyRequis(selectedActionStagiaire) ? ' — requise' : ' — non requise'}</Badge>
                                 ) : isTresorMoneyRequis(selectedActionStagiaire) ? (
-                                    <Badge color="warning">Manquante</Badge>
+                                    <Badge color="warning">Requise — manquante</Badge>
                                 ) : (
                                     <Badge color="secondary">Non requise</Badge>
                                 )}

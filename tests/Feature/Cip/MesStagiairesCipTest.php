@@ -142,7 +142,12 @@ class MesStagiairesCipTest extends TestCase
     public function test_upload_fiche_tresor_money_accepte_pdf_jpg_jpeg_png_et_rejette_le_reste(): void
     {
         Storage::fake('public');
+        $tresorMoney = TypePaiement::firstOrCreate(
+            ['code' => TypePaiement::CODE_TRESOR_MONEY],
+            ['nom' => 'TRESOR MONEY', 'actif' => true]
+        );
         ['user' => $user, 'instance' => $instance] = $this->creerDossier();
+        $instance->stage->beneficiaire->update(['type_paiement_id' => $tresorMoney->id]);
 
         foreach (['fiche.pdf', 'fiche.jpg', 'fiche.jpeg', 'fiche.png'] as $nom) {
             $this->actingAs($user)
@@ -157,6 +162,34 @@ class MesStagiairesCipTest extends TestCase
                 'tresor_money_file' => UploadedFile::fake()->create('fiche.docx', 100),
             ])
             ->assertSessionHasErrors('tresor_money_file');
+    }
+
+    public function test_generation_et_depot_de_la_fiche_restent_disponibles_si_le_paiement_n_est_pas_tresor_money(): void
+    {
+        Storage::fake('public');
+        $wave = TypePaiement::firstOrCreate(
+            ['code' => TypePaiement::CODE_WAVE],
+            ['nom' => 'WAVE', 'actif' => true]
+        );
+        ['user' => $user, 'instance' => $instance] = $this->creerDossier();
+        $instance->stage->beneficiaire->update(['type_paiement_id' => $wave->id]);
+
+        $this->actingAs($user)
+            ->getJson("/cip/mes-stagiaires/{$instance->id}/generer-tresor-money/json")
+            ->assertOk()
+            ->assertJsonStructure(['url', 'filename']);
+
+        $this->actingAs($user)
+            ->post("/cip/mes-stagiaires/{$instance->id}/upload-tresor-money", [
+                'tresor_money_file' => UploadedFile::fake()->create('fiche-wave.pdf', 100, 'application/pdf'),
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('documents', [
+            'stage_id' => $instance->stage_id,
+            'nom' => 'fiche-wave.pdf',
+        ]);
     }
 
     public function test_le_json_expose_lexigence_de_fiche_tresor_money_pour_le_bouton_generer_du_frontend(): void
@@ -241,6 +274,31 @@ class MesStagiairesCipTest extends TestCase
         ]);
         $this->actingAs($user)->post("/cip/mes-stagiaires/{$instance->id}/upload-tresor-money", [
             'tresor_money_file' => UploadedFile::fake()->create('fiche.pdf', 100, 'application/pdf'),
+        ]);
+
+        $this->actingAs($user)
+            ->post("/cip/mes-stagiaires/{$instance->id}/transmettre-chef-agence")
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->assertContains(
+            $instance->fresh()->corbeille_actuelle,
+            [CorbeilleEnum::CA_ATTENTE_VALIDATION_DEMARRAGE->value, CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value]
+        );
+    }
+
+    public function test_transmission_reussit_sans_fiche_tresor_money_quand_le_paiement_est_wave(): void
+    {
+        Storage::fake('public');
+        $wave = TypePaiement::firstOrCreate(
+            ['code' => TypePaiement::CODE_WAVE],
+            ['nom' => 'WAVE', 'actif' => true]
+        );
+        ['user' => $user, 'instance' => $instance] = $this->creerDossier();
+        $instance->stage->beneficiaire->update(['type_paiement_id' => $wave->id]);
+
+        $this->actingAs($user)->post("/cip/mes-stagiaires/{$instance->id}/transferer-contrat", [
+            'contrat_stage' => UploadedFile::fake()->create('contrat.pdf', 100, 'application/pdf'),
         ]);
 
         $this->actingAs($user)
