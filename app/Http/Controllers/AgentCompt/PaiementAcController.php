@@ -69,11 +69,13 @@ class PaiementAcController extends Controller
             ->orderByDesc('created_at');
 
         // Équivalent canonique du legacy : bordereau pending contenant au moins
-        // un paiement DMG/CB qui n'a pas encore été validé par l'AC.
+        // une OP encore ouverte pour l'AC. Les bordereaux historiques restés
+        // TRANSMIS_AC sans OP EN_BORDEREAU ne doivent plus bloquer l'écran.
         $attente = (clone $baseQuery)
             ->where('statut', 'TRANSMIS_AC')
-            ->whereHas('ordresPaiement.dossiersPaiement.paiementsActifs', function (Builder $query): void {
-                $query->whereNotIn('paiements.statut', ['VALIDE_AC', 'REJETE_DEFINITIF']);
+            ->whereHas('ordresPaiement', function (Builder $ordre): void {
+                $ordre->where('statut', 'EN_BORDEREAU')
+                    ->whereHas('dossiersPaiement.paiementsActifs');
             })
             ->get()
             ->map(fn (BordereauPaiement $bordereau): array => $this->toRow($bordereau));
@@ -876,8 +878,9 @@ class PaiementAcController extends Controller
             ->select('periode_id')
             ->selectRaw('count(*) as total')
             ->where('statut', 'TRANSMIS_AC')
-            ->whereHas('ordresPaiement.dossiersPaiement.paiementsActifs', function (Builder $query): void {
-                $query->whereNotIn('paiements.statut', ['VALIDE_AC', 'REJETE_DEFINITIF']);
+            ->whereHas('ordresPaiement', function (Builder $ordre): void {
+                $ordre->where('statut', 'EN_BORDEREAU')
+                    ->whereHas('dossiersPaiement.paiementsActifs');
             })
             ->groupBy('periode_id')
             ->pluck('total', 'periode_id');

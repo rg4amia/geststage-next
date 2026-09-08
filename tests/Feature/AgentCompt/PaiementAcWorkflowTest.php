@@ -42,10 +42,9 @@ class PaiementAcWorkflowTest extends TestCase
         $autrePeriode = $this->periode('2026-07');
 
         $attente = $this->chainePaiement($periode, 'TRANSMIS_AC', 'EN_OP');
-        $this->chainePaiement($periode, 'TRANSMIS_AC', 'VALIDE_AC');
-        $vise = $this->chainePaiement($periode, 'VISE_AC', 'VALIDE_AC');
-        $vise['ordre']->update(['statut' => 'VISE_AC']);
-        $vise['dossier']->update(['statut' => 'VISE_AC']);
+        $dejaValide = $this->chainePaiement($periode, 'VISE_AC', 'VALIDE_AC');
+        $dejaValide['ordre']->update(['statut' => 'VISE_AC']);
+        $dejaValide['dossier']->update(['statut' => 'VISE_AC']);
         $rejete = $this->chainePaiement($periode, 'REJETE_AC', 'A_TRAITER');
         $this->chainePaiement($autrePeriode, 'TRANSMIS_AC', 'EN_OP');
         $this->bordereauVide($periode, 'TRANSMIS_AC');
@@ -66,10 +65,36 @@ class PaiementAcWorkflowTest extends TestCase
                 ->has('bordereauxRejetes', 1)
                 ->where('bordereauxRejetes.0.id', $rejete['bordereau']->id)
                 ->has('bordereauxVises', 1)
-                ->where('bordereauxVises.0.id', $vise['bordereau']->id)
+                ->where('bordereauxVises.0.id', $dejaValide['bordereau']->id)
+                ->has('statutPaiements', 1)
+                ->where('statutPaiements.0.ordres.0.id', $dejaValide['ordre']->id)
+                ->where('moisActuel', '2026-08'));
+    }
+
+    public function test_un_bordereau_transmis_sans_op_en_bordereau_ne_reste_pas_a_traiter(): void
+    {
+        $periode = $this->periode('2026-08');
+        $vise = $this->chainePaiement($periode, 'TRANSMIS_AC', 'VALIDE_AC');
+        $rejete = $this->chainePaiement($periode, 'TRANSMIS_AC', 'REJETE_AC', CorbeilleEnum::DMG_OP_REJETE_AC);
+
+        $rejete['ordre']->update(['bordereau_paiement_id' => $vise['bordereau']->id]);
+        $rejete['bordereau']->delete();
+
+        $vise['ordre']->update(['statut' => 'VISE_AC']);
+        $vise['dossier']->update(['statut' => 'VISE_AC']);
+        $rejete['ordre']->update(['statut' => 'REJETE_AC']);
+        $rejete['dossier']->update(['statut' => 'REJETE_AC']);
+
+        $this->actingAs($this->agentComptable)
+            ->get('/agent-comptable/paiements?mois=2026-08')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AgentComptable/Paiements/Index')
+                ->has('bordereauxAttente', 0)
                 ->has('statutPaiements', 1)
                 ->where('statutPaiements.0.ordres.0.id', $vise['ordre']->id)
-                ->where('moisActuel', '2026-08'));
+                ->has('operationsRejetees', 1)
+                ->where('operationsRejetees.0.ordres.0.id', $rejete['ordre']->id));
     }
 
     public function test_les_vues_legacy_status_validation_et_operation_rejete_sont_integrees_a_lindex(): void

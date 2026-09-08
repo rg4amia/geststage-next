@@ -87,7 +87,7 @@ class MesStagiairesCipController extends Controller
         // SoftDeletes, donc whereHas('stage') exclut déjà les dossiers "deleted_at" côté legacy.
         // Sans ce garde-fou, un utilisateur sans agence_id verrait des lignes avec stage=null.
         $query->whereHas('stage', function ($q) use ($user) {
-            if ($user && $user->agence_id) {
+            if ($user && $user->agence_id && ! $user->hasRole('administrateur')) {
                 $q->where('agence_id', $user->agence_id);
             }
         });
@@ -163,7 +163,7 @@ class MesStagiairesCipController extends Controller
         // Shell Inertia — données de filtres
         $agences = Agence::cachedPluck('nom');
         $entreprises = Entreprise::cached()
-            ->when($user && $user->agence_id, fn ($c) => $c->where('agence_id', $user->agence_id))
+            ->when($user && $user->agence_id && ! $user->hasRole('administrateur'), fn ($c) => $c->where('agence_id', $user->agence_id))
             ->sortBy('raison_sociale')
             ->pluck('raison_sociale', 'id')
             ->all();

@@ -773,6 +773,11 @@ export default function AcPaiementsIndex({
         const ordre = details?.ordres.find((item) => item.id === ordreId);
 
         if (!ordre) {
+            setSelectedOrdreId(null);
+            setOrdreDetail(null);
+            setFiltresOp(filtresVides);
+            setSelection([]);
+            setDetailError('');
             return;
         }
 

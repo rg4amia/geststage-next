@@ -139,4 +139,22 @@ enum CorbeilleEnum: string
             self::CA_RETOUR_AJOURNEMENT->value,
         ];
     }
+
+    /**
+     * Corbeilles CIP dans lesquelles un dossier n'a pas encore été (ou plus) transmis au Chef
+     * d'Agence : soumission initiale ou retour d'ajournement à corriger. Cf.
+     * `MesStagiairesCipController` / `InstanceParcoursPolicy::delete`.
+     *
+     * @return array<int, string>
+     */
+    public static function nonTransmisesChefAgence(): array
+    {
+        return [
+            self::CIP_MES_STAGIAIRES->value,
+            self::CIP_AJOURNE_CA->value,
+            self::CIP_AJOURNE_DESSE->value,
+            self::CIP_AJOURNE_DMG->value,
+            self::CIP_AJOURNE_AAF->value,
+        ];
+    }
 }

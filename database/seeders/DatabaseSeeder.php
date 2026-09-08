@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             ContratsPaeColumnMappingSeeder::class,
             RolePermissionSeeder::class,
+            AdminUserSeeder::class,
         ]);
     }
 }
