@@ -148,6 +148,34 @@ class VisaRegionalTest extends TestCase
             ->assertInertia(fn ($page) => $page->where('onglet', 'attente_visa_desse'));
     }
 
+    public function test_per_page_tout_affiche_toutes_les_lignes_sans_pagination(): void
+    {
+        Stage::factory()->count(30)->create(['visa_desse' => VisaDesseEnum::EN_ATTENTE]);
+
+        $this->actingAs($this->desse);
+
+        $this->get('/agence-regionale/visas')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('perPage', '25')
+                ->count('stages.data', 25)
+                ->where('stages.last_page', 2)
+            );
+
+        $this->get('/agence-regionale/visas?per_page=tout')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('perPage', 'tout')
+                ->count('stages.data', 30)
+                ->where('stages.last_page', 1)
+            );
+
+        // Une valeur hors liste blanche retombe sur la taille par défaut.
+        $this->get('/agence-regionale/visas?per_page=9999')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->count('stages.data', 25));
+    }
+
     public function test_l_ancienne_url_desse_redirige_en_conservant_les_parametres(): void
     {
         $this->actingAs($this->desse)

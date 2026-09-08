@@ -115,6 +115,8 @@ interface Props {
     };
     compteurs: Record<string, number>;
     filters: Record<string, string>;
+    perPage: string;
+    perPageOptions: number[];
     peutViser: boolean;
     agences: Record<string, string>;
     entreprises: Record<string, string>;
@@ -295,6 +297,8 @@ const Index = () => {
         statistiques,
         compteurs,
         filters,
+        perPage,
+        perPageOptions,
         peutViser,
         agences,
         entreprises,
@@ -323,6 +327,8 @@ const Index = () => {
         recherche: filters.recherche ?? '',
     });
 
+    const [taillePage, setTaillePage] = useState<string>(perPage ?? '25');
+
     const [ligneActive, setLigneActive] = useState<Ligne | null>(null);
     const [modalRejet, setModalRejet] = useState(false);
     const [modalDetail, setModalDetail] = useState(false);
@@ -336,8 +342,11 @@ const Index = () => {
     const [batchExport, setBatchExport] = useState<{ id: string; progress: number; disponible: boolean } | null>(null);
 
     const parametres = useMemo(
-        () => Object.fromEntries(Object.entries(filtres).filter(([, valeur]) => valeur !== '')),
-        [filtres],
+        () => ({
+            ...Object.fromEntries(Object.entries(filtres).filter(([, valeur]) => valeur !== '')),
+            per_page: taillePage,
+        }),
+        [filtres, taillePage],
     );
 
     const naviguer = (versOnglet: Onglet, filtresUtilises: Record<string, string> = parametres) => {
@@ -349,10 +358,15 @@ const Index = () => {
 
     const majFiltre = (cle: string, valeur: string) => setFiltres((etat) => ({ ...etat, [cle]: valeur }));
 
+    const changerTaillePage = (valeur: string) => {
+        setTaillePage(valeur);
+        naviguer(onglet, { ...parametres, per_page: valeur });
+    };
+
     const reinitialiser = () => {
         const vides = Object.fromEntries(Object.keys(filtres).map((cle) => [cle, '']));
         setFiltres(vides as Record<string, string>);
-        router.get('/agence-regionale/visas', { onglet }, { preserveState: true, preserveScroll: true });
+        router.get('/agence-regionale/visas', { onglet, per_page: taillePage }, { preserveState: true, preserveScroll: true });
     };
 
     const decider = (ligne: Ligne, action: 'viser' | 'remettre-en-attente') => {
@@ -661,6 +675,21 @@ const Index = () => {
                                         onChange={(e) => majFiltre('date_valid_desse_fin', e.target.value)}
                                     />
                                 </Col>
+                                {onglet !== 'statistiques' && (
+                                    <Col md={3}>
+                                        <Label className="form-label">Lignes par page</Label>
+                                        <Input
+                                            type="select"
+                                            value={taillePage}
+                                            onChange={(e) => changerTaillePage(e.target.value)}
+                                        >
+                                            {perPageOptions.map((valeur) => (
+                                                <option key={valeur} value={valeur}>{valeur}</option>
+                                            ))}
+                                            <option value="tout">Tout afficher</option>
+                                        </Input>
+                                    </Col>
+                                )}
                                 <Col md={6} className="d-flex align-items-end gap-2">
                                     <Button color="primary" onClick={() => naviguer(onglet)}>
                                         <i className="ri-search-line align-bottom me-1" /> Filtrer

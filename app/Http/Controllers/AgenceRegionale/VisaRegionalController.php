@@ -59,6 +59,16 @@ class VisaRegionalController extends Controller
 
     private const PAR_PAGE = 25;
 
+    /** Tailles de page proposées à l'utilisateur, en plus de « Tout afficher ». */
+    private const OPTIONS_PAR_PAGE = [25, 50, 100];
+
+    /**
+     * Taille de page utilisée pour « Tout afficher ». Un très grand LIMIT plutôt qu'une
+     * requête sans pagination : ça évite de dupliquer le rendu (formatLigne, withQueryString,
+     * liens) tout en bornant le pire cas si le filtrage est trop large.
+     */
+    private const PAR_PAGE_TOUT = 100000;
+
     public function __construct(
         private readonly VisaRegionalService $visas,
         private readonly PiecesStageService $pieces
@@ -70,10 +80,13 @@ class VisaRegionalController extends Controller
         $onglet = $this->onglet($request);
 
         $peutViser = $this->peutViser();
+        $parPage = $this->parPage($request);
 
         $donnees = [
             'onglet' => $onglet,
             'filters' => $filtres,
+            'perPage' => $request->string('per_page')->toString() ?: (string) self::PAR_PAGE,
+            'perPageOptions' => self::OPTIONS_PAR_PAGE,
             'compteurs' => $this->visas->compteurs($filtres),
             'peutViser' => $peutViser,
             'agences' => Agence::cachedPluck('nom'),
@@ -94,7 +107,7 @@ class VisaRegionalController extends Controller
         }
 
         $lignes = $this->visas->queryPourOnglet($onglet, $filtres)
-            ->paginate(self::PAR_PAGE)
+            ->paginate($parPage)
             ->withQueryString();
 
         $lignes->through(fn ($modele): array => in_array($onglet, VisaRegionalService::ONGLETS_PAIEMENT, true)
@@ -315,6 +328,23 @@ class VisaRegionalController extends Controller
         $onglet = $request->string('onglet')->toString();
 
         return in_array($onglet, VisaRegionalService::ONGLETS, true) ? $onglet : 'attente_visa_desse';
+    }
+
+    /**
+     * Taille de page demandée : une des options proposées, « tout », ou la valeur par défaut
+     * si le paramètre est absent ou invalide.
+     */
+    private function parPage(Request $request): int
+    {
+        $demande = $request->string('per_page')->toString();
+
+        if ($demande === 'tout') {
+            return self::PAR_PAGE_TOUT;
+        }
+
+        $valeur = (int) $demande;
+
+        return in_array($valeur, self::OPTIONS_PAR_PAGE, true) ? $valeur : self::PAR_PAGE;
     }
 
     /**
