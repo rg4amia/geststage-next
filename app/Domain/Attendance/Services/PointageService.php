@@ -2,6 +2,7 @@
 
 namespace App\Domain\Attendance\Services;
 
+use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Domain\Pejedec\Services\PejedecSourceResolver;
 use App\Enums\CorbeilleEnum;
@@ -24,6 +25,7 @@ class PointageService
     public function __construct(
         private WorkflowTransitionService $workflowService,
         private PejedecSourceResolver $pejedecSourceResolver,
+        private PrimeCalculatorService $primeCalculator,
     ) {}
 
     public function getCountsByTab(?int $periodeId, $stageFilters = []): array
@@ -260,10 +262,10 @@ class PointageService
 
             // 3. Générer le Droit de Paiement de nature PRESENCE
             $stage = $pointage->stage;
-            $contratActif = $stage->contrats()->latest()->first();
 
-            // Calcul au prorata si nécessaire. Simplifié ici :
-            $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 0;
+            // Prime du mois pointé, proratisée par le barème (mois de bord,
+            // financement, structure) — et non le montant total du contrat.
+            $montantPaiement = $this->primeCalculator->calculerPourPeriode($stage, $pointage->periode);
 
             $droitPaiement = DroitPaiement::create([
                 'stage_id' => $stage->id,

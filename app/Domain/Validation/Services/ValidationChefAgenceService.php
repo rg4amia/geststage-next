@@ -2,6 +2,7 @@
 
 namespace App\Domain\Validation\Services;
 
+use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Adjournment\Ajournement;
 use App\Models\Payment\DroitPaiement;
@@ -18,8 +19,10 @@ class ValidationChefAgenceService
 {
     protected $workflowService;
 
-    public function __construct(WorkflowTransitionService $workflowService)
-    {
+    public function __construct(
+        WorkflowTransitionService $workflowService,
+        private PrimeCalculatorService $primeCalculator,
+    ) {
         $this->workflowService = $workflowService;
     }
 
@@ -36,10 +39,6 @@ class ValidationChefAgenceService
                 throw new InvalidArgumentException("Cette instance de parcours n'est pas liée à un stage.");
             }
 
-            // 1. Générer le droit de paiement (DÉMARRAGE)
-            $contratActif = $stage->contrats()->latest()->first();
-            $montantDemarrage = $contratActif ? $contratActif->prime_mensuelle : 0;
-
             // Source de financement liée au stage (et non la première de la table)
             $sourceFinancementId = $stage->source_financement_id;
 
@@ -54,6 +53,11 @@ class ValidationChefAgenceService
                     ->first()
                     ?? Periode::query()->orderByDesc('date_debut')->first()
                 : Periode::query()->orderByDesc('date_debut')->first();
+
+            // 1. Prime du mois de démarrage, proratisée par le barème selon le
+            // jour de début, le financement et la structure — et non le montant
+            // total du contrat.
+            $montantDemarrage = $this->primeCalculator->calculerPourPeriode($stage, $periodeCourante);
 
             $droitPaiement = DroitPaiement::create([
                 'stage_id' => $stage->id,

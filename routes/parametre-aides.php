@@ -6,6 +6,7 @@ use App\Http\Controllers\ParametreAides\ConseillerController;
 use App\Http\Controllers\ParametreAides\JournalAuditController;
 use App\Http\Controllers\ParametreAides\ParametreAidesController;
 use App\Http\Controllers\ParametreAides\ParametreSystemeController;
+use App\Http\Controllers\ParametreAides\PrimeController;
 use App\Http\Controllers\ParametreAides\UtilisateurController;
 use Illuminate\Support\Facades\Route;
 
@@ -65,6 +66,14 @@ Route::middleware(['auth', 'verified'])->prefix('parametre-aides')->name('parame
         Route::post('/prelevements', [ParametreSystemeController::class, 'storeRegle'])->middleware('can:gerer_parametres_systeme')->name('prelevements.store');
         Route::put('/prelevements/{regle}', [ParametreSystemeController::class, 'updateRegle'])->middleware('can:gerer_parametres_systeme')->name('prelevements.update');
         Route::delete('/prelevements/{regle}', [ParametreSystemeController::class, 'destroyRegle'])->middleware('can:gerer_parametres_systeme')->name('prelevements.destroy');
+    });
+
+    // Barème des primes (legacy `/settings/primes`)
+    Route::prefix('primes')->name('primes.')->middleware('can:voir_parametres_systeme')->group(function (): void {
+        Route::get('/', [PrimeController::class, 'index'])->name('index');
+        Route::put('/', [PrimeController::class, 'update'])->middleware('can:gerer_parametres_systeme')->name('update');
+        Route::post('/reinitialiser', [PrimeController::class, 'reset'])->middleware('can:gerer_parametres_systeme')->name('reset');
+        Route::post('/simuler', [PrimeController::class, 'simuler'])->name('simuler');
     });
 
     // Journaux d'activité (legacy `/settings/activity-logs`)

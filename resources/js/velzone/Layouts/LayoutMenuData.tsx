@@ -87,6 +87,7 @@ export const businessMenuSections: BusinessMenuSection[] = [
             'parametre-aides-entreprises',
             'parametre-aides-offres',
             'parametre-aides-systeme',
+            'parametre-aides-primes',
             'parametre-aides-journaux',
             'parametre-aides-aide',
         ],
@@ -333,6 +334,12 @@ export const menuItems: MenuItem[] = [
         label: 'Paramètres système',
         icon: 'ri-tools-line',
         link: '/parametre-aides/parametres-systeme',
+    },
+    {
+        id: 'parametre-aides-primes',
+        label: 'Barème des primes',
+        icon: 'ri-money-euro-circle-line',
+        link: '/parametre-aides/primes',
     },
     {
         id: 'parametre-aides-journaux',

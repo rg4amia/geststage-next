@@ -4,6 +4,8 @@ namespace App\Console\Commands;
 
 use App\Domain\Audit\Support\AuditContext;
 use App\Domain\Payment\Services\AgentComptableService;
+use App\Domain\Payment\Services\Prime\ContexteCalculPrime;
+use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Domain\Validation\Services\ValidationChefAgenceService;
 use App\Domain\Workflow\Services\DesseDoublonService;
 use App\Enums\CorbeilleEnum;
@@ -65,6 +67,8 @@ use Throwable;
 
 class MigrateLegacyDataCommand extends Command
 {
+    private ?PrimeCalculatorService $primeCalculator = null;
+
     /**
      * The name and signature of the console command.
      *
@@ -358,6 +362,23 @@ class MigrateLegacyDataCommand extends Command
         $this->info('Migration terminée !');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Moteur de calcul des primes, résolu une seule fois : la migration
+     * l'appelle pour chacun des pointages repris.
+     */
+    private function primeCalculator(): PrimeCalculatorService
+    {
+        if ($this->primeCalculator === null) {
+            // Les référentiels viennent d'être (ré)importés par les étapes
+            // précédentes : la correspondance id Next -> `ancien_id` doit être
+            // relue, sinon les stratégies ne reconnaissent aucun type de stage.
+            ContexteCalculPrime::oublierReferentiels();
+            $this->primeCalculator = app(PrimeCalculatorService::class);
+        }
+
+        return $this->primeCalculator;
     }
 
     private function safeErrorMessage(Throwable $exception): string
@@ -3673,7 +3694,7 @@ class MigrateLegacyDataCommand extends Command
 
         foreach (array_chunk($pointageIds, 500) as $chunk) {
             $pointages = Pointage::whereIn('id', $chunk)
-                ->with(['stage.contrats'])
+                ->with(['stage.contrats', 'stage.entreprise', 'periode'])
                 ->get();
 
             // Batch-load les dates legacy pour tout le chunk en une seule requête
@@ -3707,9 +3728,11 @@ class MigrateLegacyDataCommand extends Command
                         continue;
                     }
 
-                    // Utiliser le contrat eager-loadé au lieu de refaire une requête
-                    $contratActif = $stage->contrats->first();
-                    $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 45000;
+                    // Prime du mois couvert par le pointage. `contrats.prime_mensuelle`
+                    // reprend `contrats_pae.montant_du`, qui est le dû sur toute la
+                    // durée du stage : l'utiliser ici gonflerait chaque paiement
+                    // mensuel du montant total du contrat.
+                    $montantPaiement = $this->primeCalculator()->calculerPourPeriode($stage, $pointage->periode);
 
                     $legacyDate = $legacyDateCache[$pointage->ancien_id] ?? null;
                     $createdAt = $legacyDate && $legacyDate !== '0000-00-00 00:00:00' ? $legacyDate : now();

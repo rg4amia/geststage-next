@@ -94,6 +94,17 @@ class ParametreAidesController extends Controller
                 'libelleCompteur' => 'règles actives',
             ],
             [
+                'id' => 'primes',
+                'titre' => 'Barème des primes',
+                'description' => 'Montants et prorata appliqués au calcul de la prime mensuelle des stagiaires.',
+                'icone' => 'ri-money-euro-circle-line',
+                'couleur' => 'info',
+                'href' => route('parametre-aides.primes.index'),
+                'permission' => 'voir_parametres_systeme',
+                'compteur' => null,
+                'libelleCompteur' => null,
+            ],
+            [
                 'id' => 'journaux',
                 'titre' => 'Journaux d’activité',
                 'description' => 'Traçabilité des créations, modifications et suppressions effectuées dans l’application.',

@@ -20,6 +20,7 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SourceFinancement;
+use App\Models\Reference\TypeStage;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
@@ -824,11 +825,17 @@ class MigrateLegacyDataCommandTest extends TestCase
             'date_debut' => '2026-09-01',
             'date_fin' => '2026-09-30',
         ]);
+        // Stage de qualification (`ancien_id` 1) sur trois mois : le paiement de
+        // présence de septembre est un mois intermédiaire, donc au montant plein
+        // de la grille — et non le dû de tout le contrat.
+        $typeStage = TypeStage::factory()->create(['ancien_id' => 1]);
         $stage = Stage::factory()->create([
             'ancien_id' => 505,
             'agence_id' => $agence->id,
             'source_financement_id' => $source->id,
+            'type_stage_id' => $typeStage->id,
             'date_debut' => '2026-08-10',
+            'date_fin_prevue' => '2026-11-09',
         ]);
         $pointage = Pointage::create([
             'ancien_id' => 7100,

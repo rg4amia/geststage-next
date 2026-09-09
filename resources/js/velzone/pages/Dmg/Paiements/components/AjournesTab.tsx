@@ -2,7 +2,7 @@ import { router } from '@inertiajs/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncSelect from 'react-select/async';
 import Select from 'react-select';
-import type {
+import {
     Alert,
     Badge,
     Button,

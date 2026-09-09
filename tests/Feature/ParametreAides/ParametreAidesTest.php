@@ -2,11 +2,12 @@
 
 namespace Tests\Feature\ParametreAides;
 
+use App\Enums\RoleEnum;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Conseiller;
 use App\Models\Reference\SourceFinancement;
-use App\Enums\RoleEnum;
 use App\Models\User;
+use Spatie\Permission\Models\Role;
 
 /**
  * Couvre le contrat métier du menu « Paramètre & Aides » : visibilité du hub,
@@ -49,7 +50,7 @@ class ParametreAidesTest extends ParametreAidesTestCase
         $response->assertOk();
         $response->assertInertia(fn ($page) => $page
             ->component('ParametreAides/Index')
-            ->count('modules', 8)
+            ->count('modules', 9)
         );
     }
 
@@ -88,7 +89,7 @@ class ParametreAidesTest extends ParametreAidesTestCase
     public function test_chaque_role_de_l_enum_existe_bien_en_base(): void
     {
         // Sinon le catalogue proposerait un rôle que syncRoles() refuserait d'attribuer.
-        $rolesEnBase = \Spatie\Permission\Models\Role::query()->pluck('name')->all();
+        $rolesEnBase = Role::query()->pluck('name')->all();
 
         foreach (RoleEnum::cases() as $role) {
             $this->assertContains($role->value, $rolesEnBase, "Le rôle {$role->value} n'est pas créé par RolePermissionSeeder.");
