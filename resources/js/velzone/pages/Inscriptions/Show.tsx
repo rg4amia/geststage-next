@@ -46,18 +46,79 @@ interface SuiviPointage {
     etapes: EtapeCircuit[];
 }
 
+// Doublon confirmé par DesseDoublonService : la vue n'en détecte aucun elle-même.
 interface DoublonMatch {
     type: string;
     label: string;
     cle: string;
+    bloquant: boolean;
+    pare_feu: 'ACTIF' | 'LEVE';
+    message: string;
+    decision: string | null;
+    decide_le: string | null;
+    motif: string | null;
+    // Renseigné uniquement si l'utilisateur peut statuer sur les doublons (valider_desse).
+    lien: string | null;
+}
+
+// Métadonnées GED d'une pièce du dossier (version courante).
+interface DocumentGed {
+    id: number;
+    type: string | null;
+    type_code: string | null;
+    nom_original: string | null;
+    version: number | null;
+    date_depot: string | null;
+    taille_octets: number | null;
+    type_mime: string | null;
+    statut: string | null;
+    auteur: string | null;
+    telechargeable: boolean;
+    url: string;
+}
+
+// Droits calculés côté serveur : la vue ne déduit plus le rôle de l'utilisateur.
+interface DroitsAction {
+    peut_modifier: boolean;
+    peut_telecharger_documents: boolean;
+    peut_voir_pointages: boolean;
+    peut_voir_paiements: boolean;
+    peut_traiter_doublons: boolean;
+    peut_valider_etape: boolean;
 }
 
 interface ShowProps {
     instance: any;
     corbeilleActuelle?: CorbeilleInfo;
     suiviPointages?: SuiviPointage[];
+    documents?: DocumentGed[];
     doublons?: DoublonMatch[];
+    droits?: DroitsAction;
 }
+
+const DROITS_PAR_DEFAUT: DroitsAction = {
+    peut_modifier: false,
+    peut_telecharger_documents: false,
+    peut_voir_pointages: false,
+    peut_voir_paiements: false,
+    peut_traiter_doublons: false,
+    peut_valider_etape: false,
+};
+
+// Taille lisible d'une pièce jointe.
+const formatTaille = (octets: number | null): string => {
+    if (!octets) {
+        return 'N/A';
+    }
+    if (octets < 1024) {
+        return `${octets} o`;
+    }
+    if (octets < 1024 * 1024) {
+        return `${(octets / 1024).toFixed(1)} Ko`;
+    }
+
+    return `${(octets / (1024 * 1024)).toFixed(2)} Mo`;
+};
 
 // Couleur du badge de corbeille selon le rôle propriétaire (préfixe du code).
 const corbeilleBadgeColor = (code: string | null): string => {
@@ -123,12 +184,18 @@ const ETAT_ETAPE: Record<string, { color: string; icone: string; label: string }
     sans_objet: { color: 'light', icone: 'ri-subtract-line', label: 'Sans objet' },
 };
 
-const Show = ({ instance, corbeilleActuelle, suiviPointages = [], doublons = [] }: ShowProps) => {
+const Show = ({
+    instance,
+    corbeilleActuelle,
+    suiviPointages = [],
+    documents = [],
+    doublons = [],
+    droits = DROITS_PAR_DEFAUT,
+}: ShowProps) => {
     const { stage, etapeCourante, evenements, taches_ouvertes } = instance;
     const beneficiaire = stage?.beneficiaire;
     const entreprise = stage?.entreprise;
     const contrats = stage?.contrats || [];
-    const documents = stage?.documents || [];
 
     // Helper to format date
     const formatDate = (dateString: string) => {
@@ -198,9 +265,11 @@ return 'N/A';
                                                         <i className="ri-inbox-line align-bottom me-1"></i> {corbeilleActuelle.label}
                                                     </Badge>
                                                 )}
-                                                <Link href={`/inscriptions/${instance.id}/edit`} className="btn btn-sm btn-soft-primary">
-                                                    <i className="ri-edit-2-line align-bottom me-1"></i> Modifier
-                                                </Link>
+                                                {droits.peut_modifier && (
+                                                    <Link href={`/inscriptions/${instance.id}/edit`} className="btn btn-sm btn-soft-primary">
+                                                        <i className="ri-edit-2-line align-bottom me-1"></i> Modifier
+                                                    </Link>
+                                                )}
                                             </div>
                                         </div>
                                     </Row>
@@ -212,16 +281,32 @@ return 'N/A';
                     {doublons.length > 0 && (
                         <Row>
                             <Col lg={12}>
-                                <Alert color="danger" className="d-flex align-items-start gap-2">
+                                <Alert
+                                    color={doublons.some((d) => d.bloquant) ? 'danger' : 'warning'}
+                                    className="d-flex align-items-start gap-2"
+                                >
                                     <i className="ri-error-warning-line fs-18 align-middle"></i>
-                                    <div>
-                                        <h6 className="alert-heading mb-1">Pare-feu doublons DESSE — dossier concerné</h6>
-                                        <div className="mb-1">Ce stagiaire partage un ou plusieurs critères avec un autre bénéficiaire, encore non tranché par la DESSE :</div>
-                                        <div className="hstack gap-2 flex-wrap">
-                                            {doublons.map((d) => (
-                                                <Badge key={d.type} color="danger" className="fs-12">{d.label}</Badge>
-                                            ))}
-                                        </div>
+                                    <div className="flex-grow-1">
+                                        <h6 className="alert-heading mb-2">Pare-feu doublons DESSE — dossier concerné</h6>
+                                        {doublons.map((d) => (
+                                            <div key={d.type} className="mb-2">
+                                                <div className="hstack gap-2 flex-wrap mb-1">
+                                                    <Badge color={d.bloquant ? 'danger' : 'secondary'} className="fs-12">{d.label}</Badge>
+                                                    <Badge color={d.bloquant ? 'danger' : 'success'} className="fs-11">
+                                                        Pare-feu {d.bloquant ? 'actif' : 'levé'}
+                                                    </Badge>
+                                                    <span className="text-muted fs-12">Clé : {d.cle}</span>
+                                                </div>
+                                                {/* Message produit par DesseDoublonService, jamais recomposé ici. */}
+                                                <div className="fs-13">{d.message}</div>
+                                                {d.motif && <div className="fs-12 fst-italic text-muted">Motif : {d.motif}</div>}
+                                                {d.lien && (
+                                                    <a href={d.lien} className="btn btn-sm btn-soft-danger mt-1">
+                                                        <i className="ri-external-link-line align-bottom me-1"></i> Traiter dans l'écran DESSE
+                                                    </a>
+                                                )}
+                                            </div>
+                                        ))}
                                     </div>
                                 </Alert>
                             </Col>
@@ -504,39 +589,48 @@ return 'N/A';
                                                 <tr>
                                                     <th>Type de Document</th>
                                                     <th>Nom du fichier</th>
+                                                    <th>Version</th>
+                                                    <th>Déposé le</th>
+                                                    <th>Déposé par</th>
                                                     <th>Taille</th>
+                                                    <th>Format</th>
                                                     <th>Statut</th>
                                                     <th>Action</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {documents.length > 0 ? documents.map((doc: any, index: number) => {
-                                                    const latestVersion = doc.versions?.[0];
-
-                                                    return (
-                                                        <tr key={index}>
-                                                            <td className="fw-medium">{doc.type_document?.nom || 'Document'}</td>
-                                                            <td>{latestVersion?.nom_original || doc.nom}</td>
-                                                            <td>{latestVersion?.taille_octets ? (latestVersion.taille_octets / 1024).toFixed(2) + ' KB' : 'N/A'}</td>
-                                                            <td>
-                                                                <Badge color={doc.statut === 'VALIDE' ? 'success' : 'warning'}>{doc.statut}</Badge>
-                                                            </td>
-                                                            <td>
-                                                                <div className="hstack gap-2">
+                                                {documents.length > 0 ? documents.map((doc) => (
+                                                    <tr key={doc.id}>
+                                                        <td className="fw-medium">{doc.type || 'Document'}</td>
+                                                        <td>{doc.nom_original}</td>
+                                                        <td>{doc.version ? `v${doc.version}` : 'N/A'}</td>
+                                                        <td>{doc.date_depot ? formatDateTime(doc.date_depot) : 'N/A'}</td>
+                                                        <td>{doc.auteur || 'N/A'}</td>
+                                                        <td>{formatTaille(doc.taille_octets)}</td>
+                                                        <td className="text-muted fs-12">{doc.type_mime || 'N/A'}</td>
+                                                        <td>
+                                                            <Badge color={doc.statut === 'VALIDE' ? 'success' : 'warning'}>{doc.statut}</Badge>
+                                                        </td>
+                                                        <td>
+                                                            <div className="hstack gap-2">
+                                                                {/* Le droit est revérifié par la route de téléchargement. */}
+                                                                {droits.peut_telecharger_documents && doc.telechargeable ? (
                                                                     <a
-                                                                        href={`/inscriptions/${instance.id}/documents/${doc.id}/download`}
+                                                                        href={doc.url}
                                                                         className="btn btn-light btn-sm btn-icon"
                                                                         title="Télécharger le document"
                                                                     >
                                                                         <i className="ri-download-2-line"></i>
                                                                     </a>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    )
-                                                }) : (
+                                                                ) : (
+                                                                    <span className="text-muted">—</span>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                )) : (
                                                     <tr>
-                                                        <td colSpan={5} className="text-center text-muted">Aucun document joint à ce dossier.</td>
+                                                        <td colSpan={9} className="text-center text-muted">Aucun document joint à ce dossier.</td>
                                                     </tr>
                                                 )}
                                             </tbody>
@@ -610,11 +704,17 @@ return 'N/A';
                                     <div className="mt-4 pt-2 border-top">
                                         <h6 className="mb-3">Actions Disponibles</h6>
                                         <div className="d-grid gap-2">
-                                            {/* Note: Roles are simulated here. Usually driven by Inertia shared props or etape_courante_id logic. */}
-                                            {etapeCourante?.nom === 'Validation CA' ? (
+                                            {/* Les droits viennent du serveur (prop `droits`) : la vue ne devine plus
+                                                le rôle de l'utilisateur, et chaque route revérifie l'autorisation. */}
+                                            {droits.peut_modifier && (
+                                                <Link href={`/inscriptions/${instance.id}/edit`} className="btn btn-soft-primary">
+                                                    <i className="ri-edit-2-line align-middle me-1"></i> Modifier le dossier
+                                                </Link>
+                                            )}
+                                            {droits.peut_valider_etape ? (
                                                 <>
                                                     <Link method="post" href={`/validations/demarrage/${instance.id}`} as="button" className="btn btn-success">
-                                                        <i className="ri-check-double-line align-middle me-1"></i> Valider le Démarrage
+                                                        <i className="ri-check-double-line align-middle me-1"></i> Valider l'étape « {etapeCourante?.nom} »
                                                     </Link>
                                                     <Button color="danger" outline onClick={() => {
                                                         const motif = prompt("Veuillez saisir le motif de l'ajournement :");
@@ -628,10 +728,24 @@ return 'N/A';
                                                         <i className="ri-close-circle-line align-middle me-1"></i> Ajourner le Dossier
                                                     </Button>
                                                 </>
-                                            ) : taches_ouvertes && taches_ouvertes.length > 0 ? (
-                                                <Button color="primary">Prendre en charge la tâche</Button>
                                             ) : (
-                                                <div className="text-muted text-center">Aucune tâche ouverte pour votre profil.</div>
+                                                <div className="text-muted text-center">
+                                                    {taches_ouvertes && taches_ouvertes.length > 0
+                                                        ? "Une tâche est ouverte, mais elle relève d'un autre profil."
+                                                        : 'Aucune tâche ouverte pour votre profil.'}
+                                                </div>
+                                            )}
+                                            {/* Pointages et paiements se pilotent depuis les modules CIP / DMG / CB / AC :
+                                                cette fiche n'en modifie jamais le statut. */}
+                                            {droits.peut_voir_pointages && (
+                                                <Link href={`/cip/pointages?search=${beneficiaire?.numero_aej ?? ''}`} className="btn btn-soft-info">
+                                                    <i className="ri-calendar-check-line align-middle me-1"></i> Consulter les pointages
+                                                </Link>
+                                            )}
+                                            {droits.peut_voir_paiements && (
+                                                <Link href={`/dmg/paiements?search=${beneficiaire?.numero_aej ?? ''}`} className="btn btn-soft-warning">
+                                                    <i className="ri-money-euro-box-line align-middle me-1"></i> Consulter les paiements
+                                                </Link>
                                             )}
                                         </div>
                                     </div>

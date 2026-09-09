@@ -436,6 +436,14 @@ return;
                 header: 'Actions',
                 cell: (cell: any) => (
                     <div className="d-flex gap-2">
+                        {/* Fiche détail complète du dossier (consultation seule). */}
+                        <a
+                            href={`/inscriptions/${cell.row.original.id}`}
+                            className="btn btn-light btn-sm"
+                            title="Consulter la fiche du dossier"
+                        >
+                            <i className="ri-eye-line align-bottom"></i>
+                        </a>
                         <Button color="success" size="sm" onClick={() => validerInstance(cell.row.original.id)} disabled={isProcessing}>
                             <i className="ri-check-line align-bottom me-1"></i> Valider
                         </Button>

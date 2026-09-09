@@ -29,6 +29,8 @@ use App\Models\Workflow\InstanceParcours;
 use App\Models\Contract\Contrat;
 use App\Models\Document\Document;
 use App\Models\Document\VersionDocument;
+use App\Models\Internship\Stage;
+use App\Models\Workflow\DesseDoublonDecision;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -44,12 +46,16 @@ class InscriptionController extends Controller
 
     public function index()
     {
-        $user = Auth::user();
+        $agencesAutorisees = $this->agencesAutorisees();
 
-        $instances = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'taches_ouvertes'])
-            ->whereHas('taches_ouvertes', function ($q) {
-                // Seulement les tâches de la corbeille CIP, assignables à ce rôle
-                // Simplification : instances dont l'utilisateur est concerné
+        // Sans ce filtre, la liste exposait les dossiers de toutes les agences aux
+        // profils bornés à un périmètre (CIP, Chef d'Agence).
+        $instances = InstanceParcours::with(['stage.beneficiaire', 'stage.entreprise', 'etapeCourante', 'taches_ouvertes'])
+            ->whereHas('taches_ouvertes')
+            ->whereHas('stage', function ($q) use ($agencesAutorisees): void {
+                if ($agencesAutorisees !== null) {
+                    $q->whereIn('agence_id', $agencesAutorisees);
+                }
             })
             ->get();
 
@@ -108,7 +114,7 @@ class InscriptionController extends Controller
             'stage.conseiller',
             'stage.offreEmploi',
             'stage.contrats',
-            'stage.documents.versions',
+            'stage.documents.versions.deposePar',
             'stage.documents.typeDocument',
             'etapeCourante',
             'evenements.acteur',
@@ -161,6 +167,151 @@ class InscriptionController extends Controller
         });
 
         return redirect()->route('inscriptions.show', $inscription)->with('success', 'Dossier stagiaire mis à jour.');
+    }
+
+    /**
+     * Rôles dont la visibilité est bornée à leur périmètre d'agence. Les profils centraux
+     * (DESSE, DAICG, DMG, CB, AC...) consultent les dossiers de tout le réseau.
+     */
+    private const ROLES_PERIMETRE_AGENCE = ['cip', 'chef_agence'];
+
+    /**
+     * Garde-fou de consultation : authentification, permission métier, existence du stage
+     * et périmètre d'agence. Appliqué à la fiche détail comme au téléchargement des pièces.
+     */
+    private function assertCanView(InstanceParcours $inscription): void
+    {
+        $user = Auth::user();
+        abort_unless($user !== null && $user->can('voir_beneficiaires'), 403);
+        abort_unless($inscription->stage()->exists(), 404);
+
+        $agencesAutorisees = $this->agencesAutorisees();
+
+        if ($agencesAutorisees !== null
+            && ! in_array((int) $inscription->stage()->value('agence_id'), $agencesAutorisees, true)) {
+            abort(403, "Ce dossier ne relève pas de votre périmètre d'agence.");
+        }
+    }
+
+    /**
+     * Identifiants d'agence visibles par l'utilisateur, ou null quand la consultation
+     * est nationale (administrateur et profils centraux).
+     *
+     * @return array<int, int>|null
+     */
+    private function agencesAutorisees(): ?array
+    {
+        $user = Auth::user();
+
+        if ($user === null || ! $user->hasAnyRole(self::ROLES_PERIMETRE_AGENCE)) {
+            return null;
+        }
+
+        $agenceIds = $user->perimetresAgences()->pluck('agences.id')->all();
+
+        return $agenceIds === [] ? null : $agenceIds;
+    }
+
+    /**
+     * Droits d'action calculés côté serveur et consommés par la fiche : la vue n'a plus à
+     * deviner le rôle de l'utilisateur pour décider quels boutons afficher. Chaque droit
+     * reste par ailleurs revérifié par la route qui porte l'action.
+     *
+     * @return array<string, bool>
+     */
+    private function droits(InstanceParcours $inscription): array
+    {
+        $user = Auth::user();
+
+        return [
+            'peut_modifier' => $this->peutModifier($inscription),
+            'peut_telecharger_documents' => (bool) $user?->can('voir_beneficiaires'),
+            'peut_voir_pointages' => (bool) $user?->can('voir_pointages'),
+            'peut_voir_paiements' => (bool) $user?->can('voir_paiements_dmg'),
+            'peut_traiter_doublons' => (bool) $user?->can('valider_desse'),
+            'peut_valider_etape' => $this->peutValiderEtapeCourante($inscription),
+        ];
+    }
+
+    /**
+     * Reprend, sans lever d'exception, la règle de assertCanEdit() : rôle habilité puis
+     * périmètre d'agence.
+     */
+    private function peutModifier(InstanceParcours $inscription): bool
+    {
+        $user = Auth::user();
+
+        if ($user === null || ! $user->hasAnyRole(['administrateur', 'chef_agence'])) {
+            return false;
+        }
+
+        if ($user->hasRole('administrateur')) {
+            return true;
+        }
+
+        $perimetre = $user->perimetresAgences()->pluck('agences.id')->all();
+
+        return in_array((int) $inscription->stage()->value('agence_id'), $perimetre, true);
+    }
+
+    /**
+     * L'utilisateur porte le rôle responsable de l'étape courante et une tâche y est
+     * ouverte : la validation de l'étape elle-même reste opérée par le module workflow.
+     */
+    private function peutValiderEtapeCourante(InstanceParcours $inscription): bool
+    {
+        $user = Auth::user();
+        $etape = $inscription->etapeCourante;
+
+        if ($user === null || $etape === null || $inscription->taches_ouvertes->isEmpty()) {
+            return false;
+        }
+
+        return $user->roles->pluck('id')->contains($etape->role_responsable_id);
+    }
+
+    /**
+     * Métadonnées GED de la fiche : type, nom d'origine, version courante, dépôt (auteur,
+     * date), taille, MIME et statut. Les octets ne transitent jamais par Inertia, seul le
+     * lien vers la route de téléchargement sécurisée est exposé.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function documentsPourAffichage(InstanceParcours $inscription): array
+    {
+        $stage = $inscription->stage;
+
+        if ($stage === null) {
+            return [];
+        }
+
+        return $stage->documents
+            ->map(function (Document $document) use ($inscription): array {
+                // Même sélection que downloadDocument() : dernière version déposée.
+                $version = $document->versions
+                    ->sortBy([['numero_version', 'desc'], ['id', 'desc']])
+                    ->first();
+
+                return [
+                    'id' => $document->id,
+                    'type' => $document->typeDocument?->nom,
+                    'type_code' => $document->typeDocument?->code,
+                    'nom_original' => $version?->nom_original ?: $document->nom,
+                    'version' => $version?->numero_version,
+                    'date_depot' => $version?->created_at?->toDateTimeString(),
+                    'taille_octets' => $version?->taille_octets,
+                    'type_mime' => $version?->type_mime,
+                    'statut' => $document->statut,
+                    'auteur' => $version?->deposePar?->nom,
+                    'telechargeable' => $version !== null,
+                    'url' => route('inscriptions.documents.download', [
+                        'inscription' => $inscription->id,
+                        'document' => $document->id,
+                    ]),
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function assertCanEdit(InstanceParcours $inscription): void
@@ -280,21 +431,33 @@ class InscriptionController extends Controller
         return redirect()->route('inscriptions.index')->with('success', 'Stagiaire inscrit et dossier initié avec succès.');
     }
 
-    public function show($id, DesseDoublonService $doublons, SuiviPointageService $suivi)
+    /**
+     * Fiche détail d'un dossier stagiaire (legacy : `/traitement/{id_contrat}/detail`).
+     * Lecture seule : toute mutation passe par les routes dédiées du module concerné
+     * (édition, validation, pointage, paiement), jamais depuis cet écran.
+     */
+    public function show(InstanceParcours $inscription, DesseDoublonService $doublons, SuiviPointageService $suivi)
     {
-        $instance = InstanceParcours::with($this->inscriptionRelations())->findOrFail($id);
+        $this->assertCanView($inscription);
+
+        $inscription->load($this->inscriptionRelations());
+        $stage = $inscription->stage;
 
         return Inertia::render('Inscriptions/Show', [
-            'instance' => $instance,
-            'corbeilleActuelle' => $suivi->corbeille($instance->corbeille_actuelle),
-            'suiviPointages' => $suivi->pourStage($instance->stage),
-            'doublons' => $this->doublonsPourStage($instance->stage, $doublons),
+            'instance' => $inscription,
+            'corbeilleActuelle' => $suivi->corbeille($inscription->corbeille_actuelle),
+            'suiviPointages' => $suivi->pourStage($stage),
+            'documents' => $this->documentsPourAffichage($inscription),
+            'doublons' => $this->doublonsPourStage($stage, $doublons, $inscription),
+            'droits' => $this->droits($inscription),
         ]);
     }
 
     public function downloadDocument(InstanceParcours $inscription, Document $document)
     {
-        abort_unless($inscription->stage()->exists(), 404);
+        // Le téléchargement rejoue les mêmes contrôles que la consultation : masquer le
+        // bouton côté React ne protège rien, l'URL du document est devinable.
+        $this->assertCanView($inscription);
         abort_unless((int) $document->stage_id === (int) $inscription->stage_id, 404);
 
         $version = $document->versions()
@@ -314,22 +477,67 @@ class InscriptionController extends Controller
 
     /**
      * Types de doublons DESSE (pare-feu) dans lesquels ce stage est actuellement impliqué.
-     * Réutilise DesseDoublonService pour ne pas dupliquer la logique de détection.
+     * Réutilise DesseDoublonService pour ne pas dupliquer la logique de détection : la vue
+     * n'affiche que ce que le service confirme, elle ne recalcule aucune clé.
      *
-     * @return array<int, array{type: string, label: string, cle: string}>
+     * Le pare-feu ne bloque plus le dossier dès lors que la DESSE a tranché le doublon
+     * (DesseDoublonDecision), même règle que applyDuplicateExclusionFilter().
+     *
+     * @return array<int, array<string, mixed>>
      */
-    private function doublonsPourStage($stage, DesseDoublonService $service): array
+    private function doublonsPourStage(?Stage $stage, DesseDoublonService $service, InstanceParcours $inscription): array
     {
+        if ($stage === null) {
+            return [];
+        }
+
         $duplicateKeysByType = collect(DoublonTypeEnum::cases())
             ->mapWithKeys(fn (DoublonTypeEnum $type) => [$type->value => $service->computeDuplicateKeys($type)])
             ->all();
 
+        $decisions = DesseDoublonDecision::where('instance_parcours_id', $inscription->id)
+            ->get()
+            ->keyBy('type_doublon');
+
+        $peutTraiter = (bool) Auth::user()?->can('valider_desse');
+
         return collect($service->matchingTypesForStage($stage, $duplicateKeysByType))
-            ->map(fn ($cle, $type) => [
-                'type' => $type,
-                'label' => DoublonTypeEnum::from($type)->label(),
-                'cle' => $cle,
-            ])
+            ->map(function ($cle, $type) use ($decisions, $peutTraiter) {
+                $enum = DoublonTypeEnum::from($type);
+                $decision = $decisions->get($type);
+                $bloquant = $decision === null;
+
+                return [
+                    'type' => $type,
+                    'label' => $enum->label(),
+                    'cle' => $cle,
+                    'bloquant' => $bloquant,
+                    'pare_feu' => $bloquant ? 'ACTIF' : 'LEVE',
+                    'message' => $bloquant
+                        ? sprintf(
+                            'Ce dossier partage « %s » avec au moins un autre dossier. Le pare-feu DESSE le retient hors des files de paiement tant que la DESSE n\'a pas tranché.',
+                            $enum->label(),
+                        )
+                        : sprintf(
+                            'Doublon « %s » tranché par la DESSE le %s (%s). Le dossier poursuit son parcours.',
+                            $enum->label(),
+                            $decision->decide_le?->format('d/m/Y') ?? '-',
+                            $decision->decision,
+                        ),
+                    'decision' => $decision?->decision,
+                    'decide_le' => $decision?->decide_le?->toDateTimeString(),
+                    'motif' => $decision?->motif,
+                    // Lien vers le groupe correspondant dans l'écran DESSE, seulement pour
+                    // qui a le droit d'y statuer.
+                    'lien' => $peutTraiter
+                        ? route('desse.stagiaires.index', [
+                            'tab' => 'doublons',
+                            'type_doublon' => $type,
+                            'doublon_cle' => $cle,
+                        ])
+                        : null,
+                ];
+            })
             ->values()
             ->all();
     }
