@@ -34,7 +34,7 @@ use Illuminate\Support\Facades\Route;
 Route::redirect('/', '/reporting')->name('home');
 
 Route::middleware(['auth', 'verified'])->group(function () {
-    Route::redirect('/dashboard', '/reporting')->name('dashboard');
+    Route::redirect('/dashboard', '/reporting')->middleware('can:voir_reporting')->name('dashboard');
     Route::get('/reporting', [TableauDeBordController::class, 'index'])->middleware('can:voir_reporting')->name('reporting.index');
     Route::get('/reporting/export/kpi.csv', [TableauDeBordController::class, 'exportCsv'])->middleware('can:voir_reporting')->name('reporting.export.kpi');
 

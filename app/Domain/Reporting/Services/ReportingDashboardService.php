@@ -310,7 +310,8 @@ class ReportingDashboardService
             ->whereNull('s.deleted_at')->where('droit.periode_id', $periodId)->where('droit.statut', 'OUVERT');
         $this->applyStageScope($query, 's', $sourceId, $agencyIds);
 
-        return $query->selectRaw('COUNT(*) AS total, COALESCE(SUM(droit.montant), 0) AS montant')->first()
+        return $query->whereNull('droit.annule_le')
+            ->selectRaw('COUNT(*) AS total, COALESCE(SUM(droit.montant), 0) AS montant')->first()
             ?? (object) ['total' => 0, 'montant' => '0'];
     }
 
@@ -399,19 +400,32 @@ class ReportingDashboardService
         $daicg = [];
         $reasons = [];
         if ($periodId !== null) {
-            $query = DB::table('droits_paiement as droit')->join('stages as s', 's.id', '=', 'droit.stage_id')
-                ->join('agences as agence', 'agence.id', '=', 's.agence_id')->leftJoin('paiements as paiement', 'paiement.droit_paiement_id', '=', 'droit.id')
-                ->whereNull('s.deleted_at')->where('droit.periode_id', $periodId)
-                ->when($this->typeStageIds($filters['type_stage']), fn (Builder $q, array $ids) => $q->whereIn('s.type_stage_id', $ids));
-            $this->applyStageScope($query, 's', $sourceId, $agencyIds);
             $rejectedSql = $this->quotedStatuses(self::PAYMENT_REJECTED);
             $progressSql = $this->quotedStatuses(self::PAYMENT_IN_PROGRESS);
+            $paymentTotals = DB::table('paiements as paiement_recap')
+                ->select('paiement_recap.droit_paiement_id')
+                ->where(function (Builder $query) use ($filters): void {
+                    $query->whereNull('paiement_recap.paye_le')
+                        ->orWhereDate('paiement_recap.paye_le', '<=', $filters['jour_reference']);
+                })
+                ->selectRaw("COALESCE(SUM(CASE WHEN paiement_recap.statut = 'PAYE' THEN paiement_recap.montant ELSE 0 END), 0) AS montant_paye")
+                ->selectRaw("COALESCE(SUM(CASE WHEN paiement_recap.statut IN ({$rejectedSql}) THEN paiement_recap.montant ELSE 0 END), 0) AS montant_rejete")
+                ->selectRaw("COALESCE(SUM(CASE WHEN paiement_recap.statut IN ({$progressSql}) THEN paiement_recap.montant ELSE 0 END), 0) AS montant_en_cours")
+                ->groupBy('paiement_recap.droit_paiement_id');
+
+            $query = DB::table('droits_paiement as droit')->join('stages as s', 's.id', '=', 'droit.stage_id')
+                ->join('agences as agence', 'agence.id', '=', 's.agence_id')->leftJoinSub($paymentTotals, 'paiement', function ($join): void {
+                    $join->on('paiement.droit_paiement_id', '=', 'droit.id');
+                })
+                ->whereNull('s.deleted_at')->whereNull('droit.annule_le')->where('droit.periode_id', $periodId)
+                ->when($this->typeStageIds($filters['type_stage']), fn (Builder $q, array $ids) => $q->whereIn('s.type_stage_id', $ids));
+            $this->applyStageScope($query, 's', $sourceId, $agencyIds);
             $daicg = $query->groupBy('agence.id', 'agence.nom')->orderBy('agence.nom')->selectRaw(
-                "agence.id AS agence_id, agence.nom AS agence, COUNT(DISTINCT s.id) AS beneficiaires,
+                'agence.id AS agence_id, agence.nom AS agence, COUNT(DISTINCT s.id) AS beneficiaires,
                 COUNT(DISTINCT droit.id) AS droits, COALESCE(SUM(droit.montant), 0) AS montant_du,
-                COALESCE(SUM(CASE WHEN paiement.statut = 'PAYE' THEN paiement.montant ELSE 0 END), 0) AS montant_paye,
-                COALESCE(SUM(CASE WHEN paiement.statut IN ({$rejectedSql}) THEN paiement.montant ELSE 0 END), 0) AS montant_rejete,
-                COALESCE(SUM(CASE WHEN paiement.statut IN ({$progressSql}) THEN paiement.montant ELSE 0 END), 0) AS montant_en_cours"
+                COALESCE(SUM(paiement.montant_paye), 0) AS montant_paye,
+                COALESCE(SUM(paiement.montant_rejete), 0) AS montant_rejete,
+                COALESCE(SUM(paiement.montant_en_cours), 0) AS montant_en_cours'
             )->get()->map(fn ($row) => [
                 'agence_id' => (int) $row->agence_id, 'agence' => $row->agence,
                 'beneficiaires' => (int) $row->beneficiaires, 'droits' => (int) $row->droits,
@@ -522,6 +536,7 @@ class ReportingDashboardService
     {
         $query = DB::table('periodes as periode')->leftJoin('droits_paiement as droit', 'droit.periode_id', '=', 'periode.id')
             ->leftJoin('stages as s', 's.id', '=', 'droit.stage_id')->leftJoin('paiements as paiement', 'paiement.droit_paiement_id', '=', 'droit.id')
+            ->whereNull('droit.annule_le')->whereNull('s.deleted_at')
             ->whereYear('periode.date_debut', $end->year)->whereDate('periode.date_debut', '<=', $end->toDateString())
             ->when($sourceId !== null, fn (Builder $q) => $q->where('s.source_financement_id', $sourceId))
             ->when($agencyIds !== null, fn (Builder $q) => $q->whereIn('s.agence_id', $agencyIds));
@@ -546,7 +561,7 @@ class ReportingDashboardService
             ->whereNull('s.deleted_at')->where('droit.periode_id', $periodId);
         $this->applyStageScope($query, 's', $sourceId, $agencyIds);
 
-        return $query->groupBy('source.id', 'source.code', 'source.nom')->orderByDesc('montant_total')
+        return $query->whereNull('droit.annule_le')->groupBy('source.id', 'source.code', 'source.nom')->orderByDesc('montant_total')
             ->selectRaw('source.id, source.code, source.nom, COUNT(*) AS total_droits, COALESCE(SUM(droit.montant), 0) AS montant_total')->get()
             ->map(fn ($row) => ['source' => ['id' => (int) $row->id, 'code' => $row->code, 'nom' => $row->nom], 'total_droits' => (int) $row->total_droits, 'montant_total' => (string) $row->montant_total])->all();
     }
@@ -592,7 +607,7 @@ class ReportingDashboardService
     private function paymentQuery(?int $periodId, ?int $sourceId, ?array $agencyIds): Builder
     {
         $query = DB::table('paiements as p')->join('droits_paiement as d', 'd.id', '=', 'p.droit_paiement_id')
-            ->join('stages as s', 's.id', '=', 'd.stage_id')->whereNull('s.deleted_at')
+            ->join('stages as s', 's.id', '=', 'd.stage_id')->whereNull('s.deleted_at')->whereNull('d.annule_le')
             ->when($periodId !== null, fn (Builder $q) => $q->where('d.periode_id', $periodId));
         $this->applyStageScope($query, 's', $sourceId, $agencyIds);
 

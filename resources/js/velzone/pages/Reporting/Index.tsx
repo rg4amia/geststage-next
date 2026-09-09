@@ -1040,7 +1040,8 @@ const ReportingIndex = (props: Props) => {
                             <Card>
                                 <CardHeader>
                                     <h4 className="card-title mb-0">
-                                        Détail DAICG par agence
+                                        Détail DAICG par agence à la date de
+                                        référence
                                     </h4>
                                 </CardHeader>
                                 <CardBody className="p-0">

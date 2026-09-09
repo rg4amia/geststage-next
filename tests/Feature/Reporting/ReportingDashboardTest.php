@@ -119,9 +119,10 @@ class ReportingDashboardTest extends TestCase
     {
         $this->get('/reporting')->assertRedirect(route('login'));
 
-        $this->actingAs(User::factory()->create())
-            ->get('/reporting')
-            ->assertForbidden();
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/reporting')->assertForbidden();
+        $this->actingAs($user)->get('/dashboard')->assertForbidden();
     }
 
     public function test_tous_les_roles_metier_recus_disposent_de_voir_reporting(): void
@@ -227,6 +228,69 @@ class ReportingDashboardTest extends TestCase
         $this->assertStringContainsString('2026-08', $content);
         $this->assertStringContainsString('C2D', $content);
         $this->assertStringContainsString('Bénéficiaires saisis', $content);
+    }
+
+    public function test_detail_daicg_respecte_la_date_de_reference_sans_doubler_le_droit(): void
+    {
+        Role::create(['name' => 'administrateur', 'guard_name' => 'web']);
+        $user = User::factory()->create();
+        $user->assignRole('administrateur');
+        $periode = Periode::create([
+            'code' => '2026-08',
+            'date_debut' => '2026-08-01',
+            'date_fin' => '2026-08-31',
+            'ouverte_pointage' => true,
+            'ouverte_paiement' => true,
+        ]);
+        $source = SourceFinancement::create(['code' => 'PEJEDEC', 'nom' => 'PEJEDEC', 'actif' => true]);
+        $stage = Stage::factory()->create([
+            'source_financement_id' => $source->id,
+            'date_debut' => '2026-08-01',
+            'date_fin_prevue' => '2026-12-31',
+        ]);
+        $pointage = Pointage::create([
+            'stage_id' => $stage->id,
+            'periode_id' => $periode->id,
+            'nature' => 'PRESENCE',
+            'statut' => 'VALIDE',
+            'version_courante' => 1,
+            'version_verrouillage' => 0,
+        ]);
+        $droit = DroitPaiement::create([
+            'stage_id' => $stage->id,
+            'pointage_id' => $pointage->id,
+            'periode_id' => $periode->id,
+            'source_financement_id' => $source->id,
+            'nature' => 'PRESENCE',
+            'montant' => 45000,
+            'statut' => 'OUVERT',
+        ]);
+        Paiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'droit_paiement_id' => $droit->id,
+            'montant' => 45000,
+            'statut' => 'PAYE',
+            'paye_le' => '2026-08-20 10:00:00',
+            'version_verrouillage' => 0,
+        ]);
+        Paiement::create([
+            'uuid_public' => (string) Str::uuid(),
+            'droit_paiement_id' => $droit->id,
+            'montant' => 45000,
+            'statut' => 'PAYE',
+            'paye_le' => '2026-08-10 10:00:00',
+            'version_verrouillage' => 0,
+        ]);
+
+        $overview = app(ReportingDashboardService::class)->buildOverview([
+            'mois' => '2026-08',
+            'source_financement_id' => $source->id,
+            'jour_reference' => '2026-08-15',
+        ], $user);
+
+        $detail = $overview['recapPaiements']['detail_daicg'][0];
+        $this->assertSame(45000.0, (float) $detail['montant_du']);
+        $this->assertSame(45000.0, (float) $detail['montant_paye']);
     }
 
     public function test_nombre_de_requetes_ne_croit_pas_avec_le_volume(): void
