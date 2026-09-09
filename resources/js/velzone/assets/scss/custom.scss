@@ -396,3 +396,12 @@ File: Custom Css File
         animation: none;
     }
 }
+
+// La bannière d'usurpation est rendue dans .main-content, avant le
+// contenu de page (donc hors de .page-content), et se retrouve sous
+// le topbar fixe (#page-topbar, position: fixed, z-index: 1002) sans
+// aucune marge de compensation : le message et le bouton "Revenir à
+// mon compte" étaient masqués derrière l'en-tête.
+.usurpation-banner {
+    margin-top: $header-height;
+}

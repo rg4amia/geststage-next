@@ -17,7 +17,7 @@ const UsurpationBanner = () => {
     }
 
     return (
-        <Container fluid className="pt-3">
+        <Container fluid className="usurpation-banner pt-3">
             <Alert color="warning" className="d-flex align-items-center mb-0">
                 <i className="ri-spy-line align-bottom me-2 fs-18" />
                 <span className="flex-grow-1">
