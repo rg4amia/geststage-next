@@ -351,7 +351,11 @@ class MigrerReferentielsCommand extends Command
                 'matricule' => null,
                 'nom' => $nom,
                 'prenoms' => null,
-                'actif' => (bool) $ligne->status_compte,
+                // `status_compte` legacy indique uniquement la présence d'un
+                // compte utilisateur, pas l'activation du conseiller dans le
+                // référentiel. Les conseillers legacy sans compte doivent
+                // donc rester sélectionnables lors d'une inscription.
+                'actif' => true,
             ]);
 
             $this->enregistrerCorrespondances('conseiller', (string) $ancienId, 'conseillers', $idCible, $nom);

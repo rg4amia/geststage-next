@@ -260,13 +260,31 @@ const EnhancedLabel: React.FC<{
     tooltipContent?: React.ReactNode;
 }> = ({ label, required, tooltipId, tooltipContent }) => {
     return (
-        <Label className="fw-semibold">
+        <Label className="form-label">
             {label}
-            {required && <span className="text-danger">*</span>}
+            {required && <span className="text-danger ms-1">*</span>}
             {tooltipId && tooltipContent && <FieldTooltip id={tooltipId}>{tooltipContent}</FieldTooltip>}
         </Label>
     );
 };
+
+/** Bloc thématique du récapitulatif */
+const RecapGroupe: React.FC<{ icon: string; titre: string; children: React.ReactNode }> = ({ icon, titre, children }) => (
+    <div className="wizard-recap-group">
+        <div className="wizard-recap-title">
+            <i className={icon} />{titre}
+        </div>
+        <dl className="mb-0">{children}</dl>
+    </div>
+);
+
+/** Ligne libellé / valeur du récapitulatif */
+const RecapLigne: React.FC<{ label: string; valeur?: React.ReactNode }> = ({ label, valeur }) => (
+    <div className="wizard-recap-item">
+        <dt>{label}</dt>
+        <dd>{valeur || '—'}</dd>
+    </div>
+);
 
 /**
  * Composant de récapitulatif avant validation finale
@@ -309,179 +327,94 @@ return '—';
         return d.toLocaleDateString('fr-FR');
     };
 
+    const fichiers = Object.entries(documents).filter(([, file]) => file);
+
     return (
-        <Card className="shadow border-0">
-            <CardHeader className="bg-gradient-primary text-white">
-                <h5 className="mb-0 fw-bold">
-                    <i className="ri-file-list-3-line me-2" />
-                    RÉCAPITULATIF DE L'INSCRIPTION
+        <Card>
+            <CardHeader>
+                <h5 className="card-title mb-1">
+                    <i className="ri-file-list-3-line align-bottom me-2" />Récapitulatif de l'inscription
                 </h5>
-                <small>Veuillez vérifier toutes les informations avant de valider</small>
+                <p className="text-muted mb-0">Vérifiez toutes les informations avant de valider.</p>
             </CardHeader>
             <CardBody>
-                <Row className="g-4">
-                    {/* Section Agence */}
+                <Row className="g-3">
                     <Col md={6}>
-                        <div className="border-start border-3 border-danger ps-3">
-                            <h6 className="text-danger fw-bold mb-3">
-                                <i className="ri-building-2-line me-1" />Informations Agence
-                            </h6>
-                            <div className="mb-2">
-                                <strong>Agence :</strong> {getRefLabel(refData.agences, stage.agence_id)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Conseiller :</strong> {stage.conseiller_id || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Origine :</strong> {getRefLabel(refData.originesStagiaire, stage.origine_stagiaire_id)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Financement :</strong> {getRefLabel(refData.sourcesFinancement, stage.source_financement_id)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Type de stage :</strong> {getRefLabel(refData.typesStage, stage.type_stage_id)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Durée :</strong> {stage.duree_stage ? `${stage.duree_stage} mois` : '—'}
-                            </div>
-                        </div>
+                        <RecapGroupe icon="ri-building-2-line" titre="Informations agence">
+                            <RecapLigne label="Agence" valeur={getRefLabel(refData.agences, stage.agence_id)} />
+                            <RecapLigne label="Conseiller" valeur={stage.conseiller_id} />
+                            <RecapLigne label="Origine" valeur={getRefLabel(refData.originesStagiaire, stage.origine_stagiaire_id)} />
+                            <RecapLigne label="Financement" valeur={getRefLabel(refData.sourcesFinancement, stage.source_financement_id)} />
+                            <RecapLigne label="Type de stage" valeur={getRefLabel(refData.typesStage, stage.type_stage_id)} />
+                            <RecapLigne label="Durée" valeur={stage.duree_stage ? `${stage.duree_stage} mois` : ''} />
+                        </RecapGroupe>
                     </Col>
 
-                    {/* Section Bénéficiaire */}
                     <Col md={6}>
-                        <div className="border-start border-3 border-info ps-3">
-                            <h6 className="text-info fw-bold mb-3">
-                                <i className="ri-user-3-line me-1" />Identité Stagiaire
-                            </h6>
-                            <div className="mb-2">
-                                <strong>N° AEJ :</strong> {beneficiaire.numero_aej || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Nom :</strong> {beneficiaire.nom || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Prénoms :</strong> {beneficiaire.prenoms || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Date de naissance :</strong> {formatDate(beneficiaire.date_naissance)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Sexe :</strong> {beneficiaire.sexe || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Téléphone :</strong> {beneficiaire.telephone_principal || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>N° CMU :</strong> {beneficiaire.numero_cmu || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Pièce d'identité :</strong> {beneficiaire.numero_piece_identite || '—'}
-                            </div>
-                        </div>
+                        <RecapGroupe icon="ri-user-3-line" titre="Identité stagiaire">
+                            <RecapLigne label="N° AEJ" valeur={beneficiaire.numero_aej} />
+                            <RecapLigne label="Nom" valeur={beneficiaire.nom} />
+                            <RecapLigne label="Prénoms" valeur={beneficiaire.prenoms} />
+                            <RecapLigne label="Date de naissance" valeur={formatDate(beneficiaire.date_naissance)} />
+                            <RecapLigne label="Sexe" valeur={beneficiaire.sexe} />
+                            <RecapLigne label="Téléphone" valeur={beneficiaire.telephone_principal} />
+                            <RecapLigne label="N° CMU" valeur={beneficiaire.numero_cmu} />
+                            <RecapLigne label="Pièce d'identité" valeur={beneficiaire.numero_piece_identite} />
+                        </RecapGroupe>
                     </Col>
 
-                    {/* Section Formation */}
                     <Col md={6}>
-                        <div className="border-start border-3 border-success ps-3">
-                            <h6 className="text-success fw-bold mb-3">
-                                <i className="ri-graduation-cap-line me-1" />Formation
-                            </h6>
-                            <div className="mb-2">
-                                <strong>Niveau d'étude :</strong> {getRefLabel(refData.niveauxEtude, beneficiaire.niveau_etude_id)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Diplôme :</strong> {getRefLabel(refData.diplomes, beneficiaire.diplome_id)}
-                            </div>
-                            {beneficiaire.specialite && (
-                                <div className="mb-2">
-                                    <strong>Spécialité :</strong> {beneficiaire.specialite}
-                                </div>
-                            )}
-                            {beneficiaire.annee_diplome && (
-                                <div className="mb-2">
-                                    <strong>Année :</strong> {beneficiaire.annee_diplome}
-                                </div>
-                            )}
-                        </div>
+                        <RecapGroupe icon="ri-graduation-cap-line" titre="Formation">
+                            <RecapLigne label="Niveau d'étude" valeur={getRefLabel(refData.niveauxEtude, beneficiaire.niveau_etude_id)} />
+                            <RecapLigne label="Diplôme" valeur={getRefLabel(refData.diplomes, beneficiaire.diplome_id)} />
+                            {beneficiaire.specialite && <RecapLigne label="Spécialité" valeur={beneficiaire.specialite} />}
+                            {beneficiaire.annee_diplome && <RecapLigne label="Année" valeur={beneficiaire.annee_diplome} />}
+                        </RecapGroupe>
                     </Col>
 
-                    {/* Section Entreprise */}
                     <Col md={6}>
-                        <div className="border-start border-3 border-warning ps-3">
-                            <h6 className="text-warning fw-bold mb-3">
-                                <i className="ri-building-4-line me-1" />Entreprise d'accueil
-                            </h6>
-                            <div className="mb-2">
-                                <strong>Entreprise :</strong> {getRefLabel(refData.entreprises, stage.entreprise_id)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Service :</strong> {stage.service_affectation || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Encadreur :</strong> {stage.nom_encadreur || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Fonction encadreur :</strong> {stage.fonction_encadreur || '—'}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Contact encadreur :</strong> {stage.contact_encadreur || '—'}
-                            </div>
-                        </div>
+                        <RecapGroupe icon="ri-building-4-line" titre="Entreprise d'accueil">
+                            <RecapLigne label="Entreprise" valeur={getRefLabel(refData.entreprises, stage.entreprise_id)} />
+                            <RecapLigne label="Service" valeur={stage.service_affectation} />
+                            <RecapLigne label="Encadreur" valeur={stage.nom_encadreur} />
+                            <RecapLigne label="Fonction encadreur" valeur={stage.fonction_encadreur} />
+                            <RecapLigne label="Contact encadreur" valeur={stage.contact_encadreur} />
+                        </RecapGroupe>
                     </Col>
 
-                    {/* Section Dates */}
                     <Col md={6}>
-                        <div className="border-start border-3 border-primary ps-3">
-                            <h6 className="text-primary fw-bold mb-3">
-                                <i className="ri-calendar-line me-1" />Dates
-                            </h6>
-                            <div className="mb-2">
-                                <strong>Date début :</strong> {formatDate(stage.date_debut)}
-                            </div>
-                            <div className="mb-2">
-                                <strong>Date fin prévue :</strong> {formatDate(stage.date_fin_prevue)}
-                            </div>
+                        <RecapGroupe icon="ri-calendar-line" titre="Dates">
+                            <RecapLigne label="Date début" valeur={formatDate(stage.date_debut)} />
+                            <RecapLigne label="Date fin prévue" valeur={formatDate(stage.date_fin_prevue)} />
                             {stage.date_demarrage_capitalisation && (
-                                <div className="mb-2">
-                                    <strong>Début capitalisation :</strong> {formatDate(stage.date_demarrage_capitalisation)}
-                                </div>
+                                <RecapLigne label="Début capitalisation" valeur={formatDate(stage.date_demarrage_capitalisation)} />
                             )}
-                        </div>
+                        </RecapGroupe>
                     </Col>
 
-                    {/* Section Documents */}
                     <Col md={6}>
-                        <div className="border-start border-3 border-secondary ps-3">
-                            <h6 className="text-secondary fw-bold mb-3">
-                                <i className="ri-file-upload-line me-1" />Documents joints
-                            </h6>
-                            {Object.entries(documents).map(([key, file]) => {
-                                if (!file) {
-return null;
-}
-
-                                return (
-                                    <div key={key} className="mb-2">
-                                        <i className="ri-file-3-line text-success me-1" />
-                                        <small>{file.name}</small>
+                        <RecapGroupe icon="ri-file-upload-line" titre="Documents joints">
+                            {fichiers.length > 0 ? (
+                                fichiers.map(([key, file]) => (
+                                    <div key={key} className="wizard-recap-item">
+                                        <dt className="text-truncate">
+                                            <i className="ri-file-3-line text-success me-1" />{file!.name}
+                                        </dt>
                                     </div>
-                                );
-                            })}
-                            {Object.values(documents).every(f => !f) && (
-                                <div className="text-muted">
-                                    <i className="ri-file-warning-line me-1" />
-                                    Aucun document joint
+                                ))
+                            ) : (
+                                <div className="text-muted small">
+                                    <i className="ri-file-warning-line me-1" />Aucun document joint
                                 </div>
                             )}
-                        </div>
+                        </RecapGroupe>
                     </Col>
 
-                    {/* Observations */}
                     {stage.observations && (
                         <Col md={12}>
                             <Alert color="info" className="mb-0">
-                                <strong>Observations :</strong>
-                                <div className="mt-2">{stage.observations}</div>
+                                <span className="fw-semibold">Observations :</span>
+                                <div className="mt-1">{stage.observations}</div>
                             </Alert>
                         </Col>
                     )}
@@ -1603,39 +1536,11 @@ formData.append(`documents[${k}]`, v);
        RENDER
        ═══════════════════════════════════════════════════════════════════════ */
     const canSubmit = auth?.user?.type_user_id === 1 || auth?.user?.type_user_id === 17;
+    const errorCount = Object.keys(errors).filter(k => k !== '_form').length;
 
     return (
         <React.Fragment>
             <Head title="Nouveau Stagiaire" />
-            <style>{`
-                @keyframes fadeInUp {
-                    from {
-                        opacity: 0;
-                        transform: translateY(20px);
-                    }
-                    to {
-                        opacity: 1;
-                        transform: translateY(0);
-                    }
-                }
-
-                @keyframes pulse {
-                    0%, 100% {
-                        transform: scale(1);
-                    }
-                    50% {
-                        transform: scale(1.05);
-                    }
-                }
-
-                .wizard-step-enter {
-                    animation: fadeInUp 0.4s ease-in-out;
-                }
-
-                .stepper-circle:hover {
-                    animation: pulse 0.6s ease-in-out;
-                }
-            `}</style>
             <div className="page-content">
                 <Container fluid>
                     <BreadCrumb title="Nouveau Stagiaire" pageTitle="CIP" />
@@ -1644,109 +1549,72 @@ formData.append(`documents[${k}]`, v);
                     {flash?.error && <Alert color="danger" className="border-0"><i className="ri-error-warning-line me-2" />{flash.error}</Alert>}
                     {errors._form && <Alert color="danger" className="border-0"><i className="ri-error-warning-line me-2" />{errors._form}</Alert>}
 
-                    {/* ═══ STEPPER WIZARD ═══ */}
-                    <div className="d-flex justify-content-center mb-4">
-                        <div className="d-flex align-items-center" style={{ gap: 0 }}>
-                            {STEPS.map((step, idx) => (
-                                <React.Fragment key={step.key}>
-                                    {/* Cercle étape */}
-                                    <div
-                                        onClick={() => handleStepClick(idx)}
-                                        className="text-center" style={{ cursor: idx <= currentStep ? 'pointer' : 'default' }}>
-                                        <div
-                                            className="stepper-circle rounded-circle d-inline-flex align-items-center justify-content-center"
-                                            style={{
-                                                width: 56, height: 56,
-                                                backgroundColor: idx < currentStep ? '#198754' : idx === currentStep ? 'var(--vz-primary)' : '#e9ecef',
-                                                color: idx <= currentStep ? '#fff' : '#6c757d',
-                                                transition: 'all 0.3s ease',
-                                                boxShadow: idx === currentStep ? '0 0 0 4px rgba(var(--vz-primary-rgb), 0.25)' : idx < currentStep ? '0 2px 8px rgba(25,135,84,0.3)' : 'none',
-                                                border: idx === currentStep ? '3px solid #fff' : 'none',
-                                            }}>
-                                            {idx < currentStep ? (
-                                                <i className="ri-check-line" style={{ fontSize: 24, fontWeight: 'bold' }} />
-                                            ) : (
-                                                <i className={step.icon} style={{ fontSize: 22 }} />
-                                            )}
-                                        </div>
-                                        <div className="mt-2" style={{
-                                            fontSize: 13, fontWeight: idx === currentStep ? 700 : 500,
-                                            color: idx === currentStep ? 'var(--vz-primary)' : idx < currentStep ? '#198754' : '#6c757d',
-                                            whiteSpace: 'nowrap',
-                                            textTransform: 'uppercase',
-                                            letterSpacing: '0.5px',
-                                        }}>
-                                            {step.label}
-                                        </div>
-                                        {getStepErrorCount(idx) > 0 && idx !== currentStep && (
-                                            <Badge color="danger" pill className="mt-1" style={{ fontSize: 10, fontWeight: 600 }}>
-                                                {getStepErrorCount(idx)} {getStepErrorCount(idx) === 1 ? 'erreur' : 'erreurs'}
-                                            </Badge>
-                                        )}
-                                    </div>
-                                    {/* Ligne connexion */}
-                                    {idx < STEPS.length - 1 && (
-                                        <div style={{
-                                            width: 80, height: 3, margin: '0 8px', marginBottom: 20,
-                                            backgroundColor: idx < currentStep ? '#198754' : '#e9ecef',
-                                            transition: 'background-color 0.3s ease',
-                                            borderRadius: 2,
-                                        }} />
-                                    )}
-                                </React.Fragment>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* ═══ BARRE PROGRESSION ═══ */}
-                    <div className="mb-4">
-                        <div className="d-flex justify-content-between align-items-center mb-2">
-                            <div className="d-flex align-items-center gap-2">
-                                <Badge color="primary" pill style={{ fontSize: 13, fontWeight: 600, padding: '6px 12px' }}>
-                                    Étape {currentStep + 1}/{STEPS.length}
-                                </Badge>
-                                <span className="text-muted fw-semibold">{STEPS[currentStep].label}</span>
+                    {/* ═══ EN-TÊTE WIZARD ═══ */}
+                    <Card className="mb-3">
+                        <CardBody className="py-3">
+                            <div className="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                                <span className="text-muted">
+                                    Étape <span className="fw-semibold text-body">{currentStep + 1}</span> sur {STEPS.length}
+                                    <span className="d-none d-sm-inline"> — {STEPS[currentStep].label}</span>
+                                </span>
+                                {errorCount > 0 && (
+                                    <span className="text-danger fw-semibold">
+                                        <i className="ri-error-warning-line align-bottom me-1" />
+                                        {errorCount} {errorCount === 1 ? 'erreur à corriger' : 'erreurs à corriger'}
+                                    </span>
+                                )}
                             </div>
-                            {Object.keys(errors).length > 0 && currentStep < STEPS.length - 1 && (
-                                <small className="text-danger fw-semibold">
-                                    <i className="ri-error-warning-line me-1" />
-                                    {Object.keys(errors).length} {Object.keys(errors).length === 1 ? 'erreur détectée' : 'erreurs détectées'}
-                                </small>
-                            )}
-                        </div>
-                        <div className="progress" style={{ height: 8, borderRadius: 10 }}>
-                            <div
-                                className="progress-bar bg-gradient-primary"
-                                role="progressbar"
-                                style={{
-                                    width: `${((currentStep + 1) / STEPS.length) * 100}%`,
-                                    transition: 'width 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    borderRadius: 10,
-                                    boxShadow: '0 2px 4px rgba(var(--vz-primary-rgb), 0.3)',
-                                }}
-                                aria-valuenow={(currentStep + 1) / STEPS.length * 100}
-                                aria-valuemin={0}
-                                aria-valuemax={100}
-                            />
-                        </div>
-                    </div>
+
+                            <nav className="wizard-nav" aria-label="Étapes de l'inscription">
+                                {STEPS.map((step, idx) => {
+                                    const isDone = idx < currentStep;
+                                    const isCurrent = idx === currentStep;
+                                    const stepErrors = isDone ? getStepErrorCount(idx) : 0;
+
+                                    return (
+                                        <React.Fragment key={step.key}>
+                                            {idx > 0 && (
+                                                <span className={`wizard-nav-track${idx <= currentStep ? ' is-done' : ''}`} aria-hidden="true" />
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleStepClick(idx)}
+                                                disabled={idx >= currentStep}
+                                                aria-current={isCurrent ? 'step' : undefined}
+                                                aria-label={`Étape ${idx + 1} : ${step.label}`}
+                                                className={`wizard-nav-link${isCurrent ? ' is-current' : ''}${isDone ? ' is-done is-visited' : ''}`}
+                                            >
+                                                <span className="wizard-nav-icon">
+                                                    <i className={isDone ? 'ri-check-line' : step.icon} />
+                                                </span>
+                                                <span className="wizard-nav-label">{step.label}</span>
+                                                {stepErrors > 0 && (
+                                                    <Badge color="danger" pill className="wizard-nav-badge">{stepErrors}</Badge>
+                                                )}
+                                            </button>
+                                        </React.Fragment>
+                                    );
+                                })}
+                            </nav>
+                        </CardBody>
+                    </Card>
 
                     <Form onSubmit={handleSubmit} encType="multipart/form-data" id="createStagiaireForm">
                         <Row className="g-3">
 
                             {/* ═══ ÉTAPE 0 : AGENCE REGIONALE ═══ */}
                             {currentStep === 0 && (
-                                <Col lg={12} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
-                                    <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-primary-subtle">
-                                            <h5 className="card-title mb-0 text-primary fw-bold">
-                                                <i className="ri-building-2-line me-1" />AGENCE REGIONALE
+                                <Col lg={12} className="wizard-pane">
+                                    <Card>
+                                        <CardHeader>
+                                            <h5 className="card-title mb-0">
+                                                <i className="ri-building-2-line align-bottom me-2" />Agence régionale
                                             </h5>
                                         </CardHeader>
                                         <CardBody>
                                             <Row className="g-3">
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Agence <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Agence <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.agence_id}
                                                         options={agences
@@ -1759,7 +1627,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('agence_id')}</div>
                                                 </Col>
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Conseiller référent <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Conseiller référent <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.conseiller_id}
                                                         options={conseillers
@@ -1773,7 +1641,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('conseiller_id')}</div>
                                                 </Col>
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Origine du stagiaire <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Origine du stagiaire <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.origine_stagiaire_id}
                                                         options={originesStagiaire.map(o => ({ value: String(o.id), label: o.nom }))}
@@ -1784,7 +1652,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('origine_stagiaire_id')}</div>
                                                 </Col>
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Source de financement <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Source de financement <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.source_financement_id}
                                                         options={sourcesFinancement.map(s => ({ value: String(s.id), label: s.nom }))}
@@ -1796,7 +1664,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('source_financement_id')}</div>
                                                 </Col>
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Type de stage <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Type de stage <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.type_stage_id}
                                                         options={filteredTypesStage.map(ts => ({ value: String(ts.id), label: ts.nom }))}
@@ -1808,7 +1676,7 @@ formData.append(`documents[${k}]`, v);
                                                 </Col>
                                                 {showTypeStructure && (
                                                     <Col lg={3}>
-                                                        <Label className="fw-semibold">Type de structure <span className="text-danger">*</span></Label>
+                                                        <Label className="form-label">Type de structure <span className="text-danger ms-1">*</span></Label>
                                                         <RsSelect
                                                             value={stage.type_structure_id}
                                                             options={(typesStructure || []).map(ts => ({ value: String(ts.id), label: ts.nom }))}
@@ -1820,7 +1688,7 @@ formData.append(`documents[${k}]`, v);
                                                     </Col>
                                                 )}
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Durée prévisionnelle du stage <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Durée prévisionnelle du stage <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.duree_stage}
                                                         options={durationOptions.map(d => ({ value: d.value, label: d.label }))}
@@ -1831,7 +1699,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('duree_stage')}</div>
                                                 </Col>
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Date d'entrée dans le portefeuille</Label>
+                                                    <Label className="form-label">Date d'entrée dans le portefeuille</Label>
                                                     <Input type="date" value={stage.date_entree_portefeuille}
                                                         onChange={e => setStage(s => ({ ...s, date_entree_portefeuille: e.target.value }))} />
                                                 </Col>
@@ -1843,11 +1711,11 @@ formData.append(`documents[${k}]`, v);
 
                             {/* ═══ ÉTAPE 1 : IDENTIFICATION STAGIAIRE ═══ */}
                             {currentStep === 1 && (
-                                <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
-                                    <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-primary-subtle">
-                                            <h5 className="card-title mb-0 text-primary fw-bold">
-                                                <i className="ri-user-3-line me-1" />IDENTIFICATION STAGIAIRE
+                                <Col lg={12} className="wizard-pane">
+                                    <Card>
+                                        <CardHeader>
+                                            <h5 className="card-title mb-0">
+                                                <i className="ri-user-3-line align-bottom me-2" />Identification du stagiaire
                                             </h5>
                                         </CardHeader>
                                         <CardBody>
@@ -1856,8 +1724,8 @@ formData.append(`documents[${k}]`, v);
                                                 {showOffre && (
                                                     <>
                                                         <Col lg={12}>
-                                                            <Label className="fw-semibold">
-                                                                Numéro de l'offre {isAEJ && <span className="text-danger">*</span>}
+                                                            <Label className="form-label">
+                                                                Numéro de l'offre {isAEJ && <span className="text-danger ms-1">*</span>}
                                                             </Label>
                                                             <Select
                                                                 options={offres
@@ -1874,11 +1742,11 @@ formData.append(`documents[${k}]`, v);
                                                         {showOffreDetail && (
                                                             <>
                                                                 <Col lg={6}>
-                                                                    <Label className="fw-semibold">Intitulé de l'offre</Label>
+                                                                    <Label className="form-label">Intitulé de l'offre</Label>
                                                                     <Input type="text" value={stage.intitule_offre} readOnly />
                                                                 </Col>
                                                                 <Col lg={6}>
-                                                                    <Label className="fw-semibold">Nombre de place</Label>
+                                                                    <Label className="form-label">Nombre de place</Label>
                                                                     <Input type="number" value={stage.nombre_de_place} readOnly />
                                                                 </Col>
                                                             </>
@@ -1924,7 +1792,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Nom / Prénoms */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Nom <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Nom <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('nom') ? 'is-invalid' : ''}
                                                         value={beneficiaire.nom}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, nom: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))}
@@ -1932,7 +1800,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('nom')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Prénoms <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Prénoms <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('prenoms') ? 'is-invalid' : ''}
                                                         value={beneficiaire.prenoms}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, prenoms: e.target.value.toUpperCase().replace(/[^A-Z\s\-']/g, '') }))}
@@ -1942,14 +1810,14 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Lieu + Date naissance */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Lieu de naissance <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Lieu de naissance <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('lieu_naissance') ? 'is-invalid' : ''}
                                                         value={beneficiaire.lieu_naissance}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, lieu_naissance: e.target.value.toUpperCase() }))} />
                                                     <div className="invalid-feedback">{fieldError('lieu_naissance')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Date de naissance <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Date de naissance <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="date"
                                                         className={fieldError('date_naissance') ? 'is-invalid' : ''}
                                                         value={beneficiaire.date_naissance}
@@ -1961,7 +1829,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Sexe + Sous-pref nais */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Sexe <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Sexe <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.sexe}
                                                         options={[{ value: 'Femme', label: 'Femme' }, { value: 'Homme', label: 'Homme' }]}
@@ -1972,7 +1840,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('sexe')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Sous-préfecture de naissance <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Sous-préfecture de naissance <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.sous_prefecture_naissance}
                                                         options={[
@@ -1997,7 +1865,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Commune + SP résidence */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Commune de résidence <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Commune de résidence <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text"
                                                         className={fieldError('commune_residence_text') ? 'is-invalid' : ''}
                                                         value={beneficiaire.commune_residence_text}
@@ -2005,7 +1873,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('commune_residence_text')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">S/P de résidence <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">S/P de résidence <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.sous_prefecture_residence}
                                                         options={communes.map(c => ({ value: c.nom, label: c.nom }))}
@@ -2018,7 +1886,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Nature + Numéro pièce */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Nature pièce d'identité <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Nature pièce d'identité <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.nature_piece_identite}
                                                         options={TYPE_PIECE_OPTIONS.map(p => ({ value: p.value, label: p.label }))}
@@ -2033,7 +1901,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('nature_piece_identite')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Numéro pièce d'identité <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Numéro pièce d'identité <span className="text-danger ms-1">*</span></Label>
                                                     <div className="input-group">
                                                         {piecePrefix && <span className="input-group-text">{piecePrefix}</span>}
                                                         <Input type="text"
@@ -2050,7 +1918,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Numéro CMU */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Numéro CMU <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Numéro CMU <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('numero_cmu') ? 'is-invalid' : ''}
                                                         value={beneficiaire.numero_cmu}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, numero_cmu: e.target.value.toUpperCase() }))}
@@ -2060,15 +1928,14 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Séparateur Contacts */}
                                                 <Col lg={12}>
-                                                    <hr className="my-3" style={{ borderTop: '2px solid #e9ecef' }} />
-                                                    <h6 className="text-muted fw-semibold mb-3">
-                                                        <i className="ri-phone-line me-2" />Coordonnées & Contact
+                                                    <h6 className="wizard-section-title">
+                                                        <i className="ri-phone-line" />Coordonnées & Contact
                                                     </h6>
                                                 </Col>
 
                                                 {/* Contacts */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Contact téléphonique 1 <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Contact téléphonique 1 <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('telephone_principal') ? 'is-invalid' : ''}
                                                         value={beneficiaire.telephone_principal}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, telephone_principal: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
@@ -2076,7 +1943,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('telephone_principal')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Contact téléphonique 2</Label>
+                                                    <Label className="form-label">Contact téléphonique 2</Label>
                                                     <Input type="text"
                                                         value={beneficiaire.telephone_secondaire}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, telephone_secondaire: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
@@ -2085,22 +1952,21 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Séparateur Urgence */}
                                                 <Col lg={12}>
-                                                    <hr className="my-3" style={{ borderTop: '2px solid #e9ecef' }} />
-                                                    <h6 className="text-muted fw-semibold mb-3">
-                                                        <i className="ri-alarm-warning-line me-2" />Contact d'urgence
+                                                    <h6 className="wizard-section-title">
+                                                        <i className="ri-alarm-warning-line" />Contact d'urgence
                                                     </h6>
                                                 </Col>
 
                                                 {/* Urgence */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Personne à contacter en cas d'urgence <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Personne à contacter en cas d'urgence <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('personne_urgence') ? 'is-invalid' : ''}
                                                         value={beneficiaire.personne_urgence}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, personne_urgence: e.target.value.toUpperCase() }))} />
                                                     <div className="invalid-feedback">{fieldError('personne_urgence')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Lien de parenté <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Lien de parenté <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.lien_parente_id}
                                                         options={liensParente.map(l => ({ value: String(l.id), label: l.nom }))}
@@ -2111,7 +1977,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('lien_parente_id')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Contact téléphonique 1 du parent <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Contact téléphonique 1 du parent <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('contact_urgence_1') ? 'is-invalid' : ''}
                                                         value={beneficiaire.contact_urgence_1}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, contact_urgence_1: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
@@ -2119,7 +1985,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('contact_urgence_1')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Contact téléphonique 2 du parent</Label>
+                                                    <Label className="form-label">Contact téléphonique 2 du parent</Label>
                                                     <Input type="text"
                                                         value={beneficiaire.contact_urgence_2}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, contact_urgence_2: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
@@ -2128,15 +1994,14 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Séparateur Formation */}
                                                 <Col lg={12}>
-                                                    <hr className="my-3" style={{ borderTop: '2px solid #e9ecef' }} />
-                                                    <h6 className="text-muted fw-semibold mb-3">
-                                                        <i className="ri-graduation-cap-line me-2" />Formation & Diplôme
+                                                    <h6 className="wizard-section-title">
+                                                        <i className="ri-graduation-cap-line" />Formation & Diplôme
                                                     </h6>
                                                 </Col>
 
                                                 {/* Formation */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Niveau d'études <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Niveau d'études <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.niveau_etude_id}
                                                         options={niveauxEtude.map(n => ({ value: String(n.id), label: n.nom }))}
@@ -2147,7 +2012,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('niveau_etude_id')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Diplôme <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Diplôme <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.diplome_id}
                                                         options={filteredDiplomes.map(d => ({ value: String(d.id), label: d.nom }))}
@@ -2159,7 +2024,7 @@ formData.append(`documents[${k}]`, v);
                                                 </Col>
                                                 {isDiplomeAutre && (
                                                     <Col lg={6}>
-                                                        <Label className="fw-semibold">Préciser Diplôme <span className="text-danger">*</span></Label>
+                                                        <Label className="form-label">Préciser Diplôme <span className="text-danger ms-1">*</span></Label>
                                                         <Input type="text" className={fieldError('autre_diplome') ? 'is-invalid' : ''}
                                                             value={beneficiaire.autre_diplome}
                                                             onChange={e => setBeneficiaire(b => ({ ...b, autre_diplome: e.target.value }))} />
@@ -2169,17 +2034,17 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Spécialité + Année */}
                                                 <Col lg={9}>
-                                                    <Label className="fw-semibold">Spécialité <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Spécialité <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('specialite') ? 'is-invalid' : ''}
                                                         value={beneficiaire.specialite}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, specialite: e.target.value.toUpperCase() }))} />
-                                                    <Alert color="info" className="mt-2 py-2" style={{ borderLeft: '4px solid #17a2b8' }}>
+                                                    <Alert color="info" className="mt-2 py-2 mb-0">
                                                         <small>Ce champ doit correspondre à la spécialité du diplôme sélectionné.</small>
                                                     </Alert>
                                                     <div className="invalid-feedback">{fieldError('specialite')}</div>
                                                 </Col>
                                                 <Col lg={3}>
-                                                    <Label className="fw-semibold">Année du diplôme {isNiveauAucun ? '' : <span className="text-danger">*</span>}</Label>
+                                                    <Label className="form-label">Année du diplôme {isNiveauAucun ? '' : <span className="text-danger ms-1">*</span>}</Label>
                                                     <Input type="text" className={fieldError('annee_diplome') ? 'is-invalid' : ''}
                                                         value={beneficiaire.annee_diplome}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, annee_diplome: e.target.value.replace(/[^0-9]/g, '') }))}
@@ -2189,12 +2054,12 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Établissement + Type enseignement */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Établissement fréquenté</Label>
+                                                    <Label className="form-label">Établissement fréquenté</Label>
                                                     <Input type="text" value={beneficiaire.etablissement_frequente}
                                                         onChange={e => setBeneficiaire(b => ({ ...b, etablissement_frequente: e.target.value.toUpperCase() }))} />
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Type d'enseignement <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Type d'enseignement <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.type_enseignement_id}
                                                         options={typesEnseignement.map(t => ({ value: String(t.id), label: t.nom }))}
@@ -2207,7 +2072,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Handicap */}
                                                 <Col lg={4}>
-                                                    <Label className="fw-semibold">Handicap <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Handicap <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.handicap_id}
                                                         options={HANDICAP_OPTIONS.map(h => ({ value: h.value, label: h.label }))}
@@ -2225,7 +2090,7 @@ formData.append(`documents[${k}]`, v);
                                                 {beneficiaire.handicap_id === 'HANDICAP' && (
                                                     <>
                                                         <Col lg={4}>
-                                                            <Label className="fw-semibold">Type handicap <span className="text-danger">*</span></Label>
+                                                            <Label className="form-label">Type handicap <span className="text-danger ms-1">*</span></Label>
                                                             <RsSelect
                                                                 value={beneficiaire.type_handicap_id}
                                                                 options={TYPE_HANDICAP_OPTIONS.map(h => ({ value: h.value, label: h.label }))}
@@ -2241,7 +2106,7 @@ formData.append(`documents[${k}]`, v);
                                                         </Col>
                                                         {beneficiaire.type_handicap_id === 'AUTRE' && (
                                                             <Col lg={4}>
-                                                                <Label className="fw-semibold">Autre handicap <span className="text-danger">*</span></Label>
+                                                                <Label className="form-label">Autre handicap <span className="text-danger ms-1">*</span></Label>
                                                                 <Input type="text"
                                                                     className={fieldError('autre_handicap') ? 'is-invalid' : ''}
                                                                     value={beneficiaire.autre_handicap}
@@ -2259,17 +2124,17 @@ formData.append(`documents[${k}]`, v);
 
                             {/* ═══ ÉTAPE 2 : MISE EN STAGE ═══ */}
                             {currentStep === 2 && (
-                                <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
-                                    <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-primary-subtle">
-                                            <h5 className="card-title mb-0 text-primary fw-bold">
+                                <Col lg={12} className="wizard-pane">
+                                    <Card>
+                                        <CardHeader>
+                                            <h5 className="card-title mb-0">
                                                 <i className="ri-briefcase-line me-1" />MISE EN STAGE
                                             </h5>
                                         </CardHeader>
                                         <CardBody>
                                             <Row className="g-3">
                                                 <Col lg={8}>
-                                                    <Label className="fw-semibold">Nom de l'entreprise <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Nom de l'entreprise <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.entreprise_id}
                                                         options={entrepriseOptions.map(o => ({ value: String(o.value), label: o.label }))}
@@ -2280,32 +2145,32 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('entreprise_id')}</div>
                                                 </Col>
                                                 <Col lg={4}>
-                                                    <Label className="fw-semibold">Sigle entreprise</Label>
+                                                    <Label className="form-label">Sigle entreprise</Label>
                                                     <Input type="text" value={stage.sigle_entreprise} readOnly />
                                                 </Col>
 
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Service d'affectation <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Service d'affectation <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('service_affectation') ? 'is-invalid' : ''}
                                                         value={stage.service_affectation}
                                                         onChange={e => setStage(s => ({ ...s, service_affectation: e.target.value.toUpperCase() }))} />
                                                     <div className="invalid-feedback">{fieldError('service_affectation')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Intitulé du poste de stage</Label>
+                                                    <Label className="form-label">Intitulé du poste de stage</Label>
                                                     <Input type="text" value={stage.intitule_poste}
                                                         onChange={e => setStage(s => ({ ...s, intitule_poste: e.target.value.toUpperCase() }))} />
                                                 </Col>
 
                                                 <Col lg={4}>
-                                                    <Label className="fw-semibold">Localité / Lieu de stage <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Localité / Lieu de stage <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('localite_stage') ? 'is-invalid' : ''}
                                                         value={stage.localite_stage}
                                                         onChange={e => setStage(s => ({ ...s, localite_stage: e.target.value.toUpperCase() }))} />
                                                     <div className="invalid-feedback">{fieldError('localite_stage')}</div>
                                                 </Col>
                                                 <Col lg={4}>
-                                                    <Label className="fw-semibold">Commune du lieu de stage <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Commune du lieu de stage <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.commune_stage}
                                                         options={communes.map(c => ({ value: c.nom, label: c.nom }))}
@@ -2316,7 +2181,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('commune_stage')}</div>
                                                 </Col>
                                                 <Col lg={4}>
-                                                    <Label className="fw-semibold">S/P du lieu de stage <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">S/P du lieu de stage <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.sous_prefecture_stage}
                                                         options={communes.map(c => ({ value: c.nom, label: c.nom }))}
@@ -2328,21 +2193,21 @@ formData.append(`documents[${k}]`, v);
                                                 </Col>
 
                                                 <Col lg={12}>
-                                                    <Label className="fw-semibold">Nom et prénom de l'encadreur <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Nom et prénom de l'encadreur <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('nom_encadreur') ? 'is-invalid' : ''}
                                                         value={stage.nom_encadreur}
                                                         onChange={e => setStage(s => ({ ...s, nom_encadreur: e.target.value.toUpperCase() }))} />
                                                     <div className="invalid-feedback">{fieldError('nom_encadreur')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Fonction de l'encadreur <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Fonction de l'encadreur <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('fonction_encadreur') ? 'is-invalid' : ''}
                                                         value={stage.fonction_encadreur}
                                                         onChange={e => setStage(s => ({ ...s, fonction_encadreur: e.target.value.toUpperCase() }))} />
                                                     <div className="invalid-feedback">{fieldError('fonction_encadreur')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Numéro de l'encadreur <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Numéro de l'encadreur <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="text" className={fieldError('contact_encadreur') ? 'is-invalid' : ''}
                                                         value={stage.contact_encadreur}
                                                         onChange={e => setStage(s => ({ ...s, contact_encadreur: e.target.value.replace(/[^0-9]/g, '').slice(0, 10) }))}
@@ -2352,7 +2217,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Statut + Situation */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Statut stage <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Statut stage <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.statut_stage}
                                                         options={(statutsStage || []).map(ss => ({ value: String(ss.id), label: ss.nom }))}
@@ -2363,7 +2228,7 @@ formData.append(`documents[${k}]`, v);
                                                     <div className="invalid-feedback">{fieldError('statut_stage')}</div>
                                                 </Col>
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Situation stage <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Situation stage <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={stage.situation_stage}
                                                         options={(situationsStage || []).map(ss => ({ value: String(ss.id), label: ss.nom }))}
@@ -2435,7 +2300,7 @@ formData.append(`documents[${k}]`, v);
                                                     </Col>
                                                 )}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Date de fin prévisionnelle <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Date de fin prévisionnelle <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="date"
                                                         className={fieldError('date_fin_prevue') ? 'is-invalid' : ''}
                                                         value={stage.date_fin_prevue} readOnly />
@@ -2444,7 +2309,7 @@ formData.append(`documents[${k}]`, v);
                                                 </Col>
 
                                                 <Col lg={12}>
-                                                    <Alert color="success" className="py-2" style={{ borderLeft: '4px solid #28a745' }}>
+                                                    <Alert color="success" className="py-2 mb-0">
                                                         <small className="text-success">
                                                             <strong>Exemple :</strong> cohorte 1, les jours indiqués seront : 1, 2, 3, 4, 5 ; cohorte 2 : le 10 ; cohorte 3 : le 20
                                                         </small>
@@ -2458,17 +2323,17 @@ formData.append(`documents[${k}]`, v);
 
                             {/* ═══ ÉTAPE 3 : PIECES JUSTIFICATIVES ═══ */}
                             {currentStep === 3 && (
-                                <Col lg={6} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
-                                    <Card className="shadow-sm border-0">
-                                        <CardHeader className="bg-primary-subtle">
-                                            <h5 className="card-title mb-0 text-primary fw-bold">
-                                                <i className="ri-file-upload-line me-1" />PIECES JUSTIFICATIVES
+                                <Col lg={12} className="wizard-pane">
+                                    <Card>
+                                        <CardHeader>
+                                            <h5 className="card-title mb-0">
+                                                <i className="ri-file-upload-line align-bottom me-2" />Pièces justificatives
                                             </h5>
                                         </CardHeader>
                                         <CardBody>
                                             <Row className="g-3">
                                                 <Col lg={12}>
-                                                    <Label className="fw-semibold">Fichier CMU <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Fichier CMU <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="file" accept=".pdf,.jpg,.jpeg,.png"
                                                         className={fieldError('fichier_cmu') ? 'is-invalid' : ''}
                                                         onChange={e => setDocuments(d => ({ ...d, fichier_cmu: e.target.files?.[0] || null }))} />
@@ -2476,7 +2341,7 @@ formData.append(`documents[${k}]`, v);
                                                 </Col>
 
                                                 <Col lg={12}>
-                                                    <Label className="fw-semibold">Pièce d'identité <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Pièce d'identité <span className="text-danger ms-1">*</span></Label>
                                                     <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                                         className={fieldError('piece_identite') ? 'is-invalid' : ''}
                                                         onChange={e => setDocuments(d => ({ ...d, piece_identite: e.target.files?.[0] || null }))} />
@@ -2485,7 +2350,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Fiche RIB (optionnel, comme legacy) */}
                                                 <Col lg={12}>
-                                                    <Label className="fw-semibold">Fiche RIB</Label>
+                                                    <Label className="form-label">Fiche RIB</Label>
                                                     <Input type="file" accept=".pdf,.jpg,.jpeg,.png"
                                                         onChange={e => setDocuments(d => ({ ...d, fichier_rib: e.target.files?.[0] || null }))} />
                                                 </Col>
@@ -2494,14 +2359,14 @@ formData.append(`documents[${k}]`, v);
                                                 {isStageEcole && (
                                                     <>
                                                         <Col lg={12}>
-                                                            <Label className="fw-semibold">Attestation d'admissibilité <span className="text-danger">*</span></Label>
+                                                            <Label className="form-label">Attestation d'admissibilité <span className="text-danger ms-1">*</span></Label>
                                                             <Input type="file" accept=".pdf,.doc,.docx"
                                                                 className={fieldError('fichier_attestation') ? 'is-invalid' : ''}
                                                                 onChange={e => setDocuments(d => ({ ...d, fichier_attestation: e.target.files?.[0] || null }))} />
                                                             <div className="invalid-feedback">{fieldError('fichier_attestation')}</div>
                                                         </Col>
                                                         <Col lg={12}>
-                                                            <Label className="fw-semibold">Certificat de fréquentation <span className="text-danger">*</span></Label>
+                                                            <Label className="form-label">Certificat de fréquentation <span className="text-danger ms-1">*</span></Label>
                                                             <Input type="file" accept=".pdf,.doc,.docx"
                                                                 className={fieldError('fichier_certificat_frequentation') ? 'is-invalid' : ''}
                                                                 onChange={e => setDocuments(d => ({ ...d, fichier_certificat_frequentation: e.target.files?.[0] || null }))} />
@@ -2513,7 +2378,7 @@ formData.append(`documents[${k}]`, v);
                                                 {/* Diplôme (QUALIFICATION) */}
                                                 {isStageQualification && (
                                                     <Col lg={12}>
-                                                        <Label className="fw-semibold">Diplôme <span className="text-danger">*</span></Label>
+                                                        <Label className="form-label">Diplôme <span className="text-danger ms-1">*</span></Label>
                                                         <Input type="file" accept=".pdf,.doc,.docx"
                                                             className={fieldError('fichier_diplome') ? 'is-invalid' : ''}
                                                             onChange={e => setDocuments(d => ({ ...d, fichier_diplome: e.target.files?.[0] || null }))} />
@@ -2523,7 +2388,7 @@ formData.append(`documents[${k}]`, v);
 
                                                 {/* Type paiement + fichiers */}
                                                 <Col lg={6}>
-                                                    <Label className="fw-semibold">Type de paiement <span className="text-danger">*</span></Label>
+                                                    <Label className="form-label">Type de paiement <span className="text-danger ms-1">*</span></Label>
                                                     <RsSelect
                                                         value={beneficiaire.type_paiement_id}
                                                         options={typesPaiement.map(t => ({ value: String(t.id), label: t.nom }))}
@@ -2539,12 +2404,12 @@ formData.append(`documents[${k}]`, v);
                                                 {showTresorMoney && (
                                                     <>
                                                         <Col lg={6}>
-                                                            <Label className="fw-semibold">Fiche Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
+                                                            <Label className="form-label">Fiche Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
                                                             <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                                                                 onChange={e => setDocuments(d => ({ ...d, fiche_tresor_money: e.target.files?.[0] || null }))} />
                                                         </Col>
                                                         <Col lg={6}>
-                                                            <Label className="fw-semibold">Numéro Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
+                                                            <Label className="form-label">Numéro Trésor Money <span className={requiresYup ? 'text-danger' : ''}>*</span></Label>
                                                             <Input type="text"
                                                                 className={fieldError('numero_tresor_money') ? 'is-invalid' : ''}
                                                                 value={beneficiaire.numero_tresor_money}
@@ -2559,12 +2424,12 @@ formData.append(`documents[${k}]`, v);
                                                 {showWave && (
                                                     <>
                                                         <Col lg={6}>
-                                                            <Label className="fw-semibold">Attestation de reconnaissance de numéro Mobile Money <span className="text-danger">*</span></Label>
+                                                            <Label className="form-label">Attestation de reconnaissance de numéro Mobile Money <span className="text-danger ms-1">*</span></Label>
                                                             <Input type="file" accept=".pdf,.doc,.docx"
                                                                 onChange={e => setDocuments(d => ({ ...d, fiche_wave: e.target.files?.[0] || null }))} />
                                                         </Col>
                                                         <Col lg={6}>
-                                                            <Label className="fw-semibold">Numéro Wave <span className="text-danger">*</span></Label>
+                                                            <Label className="form-label">Numéro Wave <span className="text-danger ms-1">*</span></Label>
                                                             <Input type="text"
                                                                 className={fieldError('numero_wave') ? 'is-invalid' : ''}
                                                                 value={beneficiaire.numero_wave}
@@ -2582,7 +2447,7 @@ formData.append(`documents[${k}]`, v);
 
                             {/* ═══ ÉTAPE 4 : RÉCAPITULATIF ═══ */}
                             {currentStep === 4 && (
-                                <Col lg={12} style={{ animation: 'fadeInUp 0.4s ease-in-out' }}>
+                                <Col lg={12} className="wizard-pane">
                                     <RecapitulatifInscription
                                         beneficiaire={beneficiaire}
                                         stage={stage}
@@ -2605,9 +2470,9 @@ formData.append(`documents[${k}]`, v);
 
                         {/* ═══ OBSERVATIONS (étapes 2 et 3) ═══ */}
                         {(currentStep === 2 || currentStep === 3) && (
-                            <Card className="shadow-sm border-0 mt-3">
-                                <CardHeader className="bg-primary-subtle">
-                                    <h5 className="card-title mb-0 text-primary fw-bold">OBSERVATIONS</h5>
+                            <Card className="mt-3">
+                                <CardHeader>
+                                    <h5 className="card-title mb-0">OBSERVATIONS</h5>
                                 </CardHeader>
                                 <CardBody>
                                     <Input type="textarea" rows={3}
@@ -2619,95 +2484,32 @@ formData.append(`documents[${k}]`, v);
                             </Card>
                         )}
 
-                        {/* ═══ NAVIGATION WIZARD ═══ */}
-                        <Card className="shadow-sm border-0 mt-4" style={{ borderTop: '3px solid var(--vz-primary)' }}>
-                            <CardBody className="p-4">
-                                <div className="d-flex justify-content-between align-items-center">
-                                    <div>
-                                        {currentStep > 0 && (
-                                            <Button
-                                                color="light"
-                                                type="button"
-                                                onClick={handlePrev}
-                                                size="lg"
-                                                className="px-4"
-                                                style={{
-                                                    border: '2px solid #e9ecef',
-                                                    fontWeight: 600,
-                                                    transition: 'all 0.3s ease',
-                                                }}
-                                            >
-                                                <i className="ri-arrow-left-line me-2" />Précédent
+                        {/* ═══ ACTIONS ═══ */}
+                        <Card className="mt-3">
+                            <CardBody className="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                                <Button color="light" type="button" onClick={handlePrev} disabled={currentStep === 0}>
+                                    <i className="ri-arrow-left-line align-bottom me-1" />Précédent
+                                </Button>
+
+                                <div className="d-flex flex-wrap gap-2">
+                                    {currentStep < STEPS.length - 1 ? (
+                                        <Button color="primary" type="button" onClick={handleNext}>
+                                            Suivant<i className="ri-arrow-right-line align-bottom ms-1" />
+                                        </Button>
+                                    ) : canSubmit ? (
+                                        <>
+                                            <Button color="success" outline type="submit" disabled={submitting}>
+                                                {submitting
+                                                    ? <><Spinner size="sm" className="me-1" />Enregistrement...</>
+                                                    : <><i className="ri-save-line align-bottom me-1" />Enregistrer</>}
                                             </Button>
-                                        )}
-                                    </div>
-                                    <div className="d-flex gap-3">
-                                        {currentStep < STEPS.length - 1 ? (
-                                            <Button
-                                                color="primary"
-                                                type="button"
-                                                onClick={handleNext}
-                                                size="lg"
-                                                className="px-5"
-                                                style={{
-                                                    fontWeight: 600,
-                                                    boxShadow: '0 4px 12px rgba(var(--vz-primary-rgb), 0.3)',
-                                                    transition: 'all 0.3s ease',
-                                                }}
-                                            >
-                                                Suivant <i className="ri-arrow-right-line ms-2" />
+                                            <Button color="success" type="submit" disabled={submitting}>
+                                                {submitting
+                                                    ? <><Spinner size="sm" className="me-1" />Enregistrement...</>
+                                                    : <><i className="ri-save-3-line align-bottom me-1" />Enregistrer & Fermer</>}
                                             </Button>
-                                        ) : canSubmit ? (
-                                            <>
-                                                <Button
-                                                    color="success"
-                                                    type="submit"
-                                                    disabled={submitting}
-                                                    size="lg"
-                                                    className="px-5"
-                                                    style={{
-                                                        fontWeight: 600,
-                                                        boxShadow: '0 4px 12px rgba(25,135,84,0.3)',
-                                                        transition: 'all 0.3s ease',
-                                                    }}
-                                                >
-                                                    {submitting ? (
-                                                        <>
-                                                            <Spinner size="sm" className="me-2" />
-                                                            Enregistrement...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <i className="ri-save-line me-2" />Enregistrer
-                                                        </>
-                                                    )}
-                                                </Button>
-                                                <Button
-                                                    color="info"
-                                                    type="submit"
-                                                    disabled={submitting}
-                                                    size="lg"
-                                                    className="px-5"
-                                                    style={{
-                                                        fontWeight: 600,
-                                                        boxShadow: '0 4px 12px rgba(13,202,240,0.3)',
-                                                        transition: 'all 0.3s ease',
-                                                    }}
-                                                >
-                                                    {submitting ? (
-                                                        <>
-                                                            <Spinner size="sm" className="me-2" />
-                                                            Enregistrement...
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <i className="ri-save-3-line me-2" />Enregistrer & Fermer
-                                                        </>
-                                                    )}
-                                                </Button>
-                                            </>
-                                        ) : null}
-                                    </div>
+                                        </>
+                                    ) : null}
                                 </div>
                             </CardBody>
                         </Card>

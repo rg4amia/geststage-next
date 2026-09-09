@@ -46,6 +46,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/offres/reference/{reference}', [OffreEmploiController::class, 'lookupByReference'])
         ->name('offres.lookup-reference');
     Route::resource('inscriptions', InscriptionController::class);
+    Route::get('/inscriptions/{inscription}/documents/{document}/download', [InscriptionController::class, 'downloadDocument'])
+        ->name('inscriptions.documents.download');
     Route::get('/api/stagiaires/demandeur/{matricule}', [InscriptionController::class, 'demandeur'])->name('inscriptions.demandeur');
 
     // Phase CIP : Mes Stagiaires et Ajournements

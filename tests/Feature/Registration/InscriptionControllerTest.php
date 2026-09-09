@@ -4,14 +4,18 @@ namespace Tests\Feature\Registration;
 
 use App\Models\Company\Entreprise;
 use App\Models\Company\OffreEmploi;
+use App\Models\Document\Document;
+use App\Models\Document\VersionDocument;
 use App\Models\Reference\Agence;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
+use App\Models\Reference\TypeDocument;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
 use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -225,6 +229,56 @@ class InscriptionControllerTest extends TestCase
         ])->assertRedirect("/inscriptions/{$instance->id}");
 
         $this->assertDatabaseHas('documents', ['stage_id' => $instance->stage_id, 'nom' => 'cni.pdf']);
+    }
+
+    public function test_un_document_du_dossier_peut_etre_telecharge(): void
+    {
+        Storage::fake('public');
+        $instance = $this->creerInscription('AEJ-DOWNLOAD-1');
+        $typeDocument = TypeDocument::create(['code' => 'TEST_PIECE', 'nom' => 'Pièce de test', 'actif' => true]);
+        $document = Document::create([
+            'type_document_id' => $typeDocument->id,
+            'stage_id' => $instance->stage_id,
+            'beneficiaire_id' => $instance->stage->beneficiaire_id,
+            'nom' => 'piece.pdf',
+            'statut' => 'VALIDE',
+            'prive' => true,
+        ]);
+        Storage::disk('public')->put('dossiers/piece.pdf', 'contenu');
+        VersionDocument::create([
+            'document_id' => $document->id,
+            'numero_version' => 1,
+            'disque' => 'public',
+            'chemin' => 'dossiers/piece.pdf',
+            'nom_original' => 'piece.pdf',
+            'type_mime' => 'application/pdf',
+            'taille_octets' => 8,
+            'empreinte_sha256' => hash('sha256', 'contenu'),
+        ]);
+
+        $this->actingAs($this->cip)
+            ->get("/inscriptions/{$instance->id}/documents/{$document->id}/download")
+            ->assertOk()
+            ->assertDownload('piece.pdf');
+    }
+
+    public function test_un_document_d_un_autre_dossier_est_inaccessible(): void
+    {
+        $instance = $this->creerInscription('AEJ-DOWNLOAD-2');
+        $autre = $this->creerInscription('AEJ-DOWNLOAD-3');
+        $typeDocument = TypeDocument::create(['code' => 'TEST_PIECE_AUTRE', 'nom' => 'Pièce de test autre', 'actif' => true]);
+        $document = Document::create([
+            'type_document_id' => $typeDocument->id,
+            'stage_id' => $autre->stage_id,
+            'beneficiaire_id' => $autre->stage->beneficiaire_id,
+            'nom' => 'autre.pdf',
+            'statut' => 'VALIDE',
+            'prive' => true,
+        ]);
+
+        $this->actingAs($this->cip)
+            ->get("/inscriptions/{$instance->id}/documents/{$document->id}/download")
+            ->assertNotFound();
     }
 
     public function test_rollback_transactionnel_si_erreur_lors_edition(): void

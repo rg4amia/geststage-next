@@ -523,10 +523,13 @@ return 'N/A';
                                                             </td>
                                                             <td>
                                                                 <div className="hstack gap-2">
-                                                                    {/* Note: Download route should be implemented in controller */}
-                                                                    <Button color="light" size="sm" className="btn-icon">
+                                                                    <a
+                                                                        href={`/inscriptions/${instance.id}/documents/${doc.id}/download`}
+                                                                        className="btn btn-light btn-sm btn-icon"
+                                                                        title="Télécharger le document"
+                                                                    >
                                                                         <i className="ri-download-2-line"></i>
-                                                                    </Button>
+                                                                    </a>
                                                                 </div>
                                                             </td>
                                                         </tr>

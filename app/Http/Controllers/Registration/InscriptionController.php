@@ -33,6 +33,7 @@ use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class InscriptionController extends Controller
@@ -289,6 +290,26 @@ class InscriptionController extends Controller
             'suiviPointages' => $suivi->pourStage($instance->stage),
             'doublons' => $this->doublonsPourStage($instance->stage, $doublons),
         ]);
+    }
+
+    public function downloadDocument(InstanceParcours $inscription, Document $document)
+    {
+        abort_unless($inscription->stage()->exists(), 404);
+        abort_unless((int) $document->stage_id === (int) $inscription->stage_id, 404);
+
+        $version = $document->versions()
+            ->latest('numero_version')
+            ->latest('id')
+            ->firstOrFail();
+        $disk = $version->disque ?: config('filesystems.default');
+
+        abort_unless(Storage::disk($disk)->exists($version->chemin), 404);
+
+        return Storage::disk($disk)->download(
+            $version->chemin,
+            $version->nom_original ?: $document->nom,
+            ['Content-Type' => $version->type_mime ?: 'application/octet-stream'],
+        );
     }
 
     /**
