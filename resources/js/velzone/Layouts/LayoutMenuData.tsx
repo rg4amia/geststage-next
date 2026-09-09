@@ -66,6 +66,8 @@ export const businessMenuSections: BusinessMenuSection[] = [
         label: 'PEJEDEC / AAF',
         icon: 'ri-stack-line',
         itemIds: [
+            'pejedec-dossiers-validation',
+            'pejedec-dossiers-valides',
             'pejedec-aaf-dashboard',
             'pejedec-aaf-validation',
             'pejedec-aaf-ajournes',
@@ -241,6 +243,20 @@ export const menuItems: MenuItem[] = [
     {
         label: 'PEJEDEC / AAF',
         isHeader: true,
+    },
+    {
+        id: 'pejedec-dossiers-validation',
+        label: 'Dossiers à valider',
+        icon: 'ri-checkbox-circle-line',
+        link: '/pejedec/attente-validation',
+        actor: 'PEJEDEC',
+    },
+    {
+        id: 'pejedec-dossiers-valides',
+        label: 'Dossiers validés',
+        icon: 'ri-folder-check-line',
+        link: '/pejedec/valides',
+        actor: 'PEJEDEC',
     },
     {
         id: 'pejedec-aaf-dashboard',

@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers\Pejedec;
 
-use App\Domain\Attendance\Services\PointageService;
 use App\Domain\Payment\Services\PejedecAafService;
+use App\Domain\Pejedec\Services\PejedecSourceResolver;
 use App\Http\Controllers\Controller;
-use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
 use App\Models\Company\Entreprise;
 use App\Models\Payment\DroitPaiement;
@@ -17,14 +16,13 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Inertia\Inertia;
+use InvalidArgumentException;
 
 class AafController extends Controller
 {
-    private const PEJEDEC_SOURCE_FINANCEMENT_ID = 3;
-
     public function __construct(
-        private PointageService $pointageService,
         private PejedecAafService $pejedecAafService,
+        private PejedecSourceResolver $pejedecSourceResolver,
     ) {}
 
     public function index(Request $request)
@@ -54,40 +52,38 @@ class AafController extends Controller
 
     public function validerPointage(Request $request, int $id): RedirectResponse
     {
-        $pointage = Pointage::with('versionCourante')->findOrFail($id);
-        $this->pointageService->validerMensuel($pointage, $request->user());
+        $pointage = Pointage::with(['stage.sourceFinancement', 'versionCourante'])->findOrFail($id);
+        $this->assertPointageDansLePerimetre($pointage);
 
-        return back()->with('success', 'Pointage validé et droit de paiement généré.');
+        try {
+            $this->pejedecAafService->validerPointage($pointage, $request->user());
+        } catch (InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
+        }
+
+        return back()->with('success', 'Validation AAF enregistrée et droit de paiement ouvert.');
     }
 
     public function validerCorrection(Request $request, int $id): RedirectResponse
     {
-        $pointage = Pointage::with('versionCourante')->findOrFail($id);
+        $pointage = Pointage::with(['stage.sourceFinancement', 'versionCourante'])->findOrFail($id);
+        $this->assertPointageDansLePerimetre($pointage);
 
-        if ($pointage->statut !== 'CORRIGE_CIP') {
-            abort(409, 'La correction ne peut pas être validée dans cet état.');
+        try {
+            $this->pejedecAafService->validerPointage($pointage, $request->user(), depuisCorrection: true);
+        } catch (InvalidArgumentException $e) {
+            return back()->with('error', $e->getMessage());
         }
 
-        if (! $pointage->versionCourante) {
-            abort(422, 'La version courante du pointage est introuvable.');
-        }
-
-        $pointage->update(['statut' => 'VALIDE']);
-
-        DecisionPointage::create([
-            'pointage_id' => $pointage->id,
-            'version_pointage_id' => $pointage->versionCourante->id,
-            'auteur_id' => $request->user()->id,
-            'decision' => 'VALIDE_AAF',
-            'motif' => $request->input('motif'),
-        ]);
-
-        return back()->with('success', 'Correction validée par l’AAF.');
+        return back()->with('success', 'Correction validée par l’AAF et droit de paiement ouvert.');
     }
 
     public function genererPaiement(Request $request, int $id): RedirectResponse
     {
-        $droitPaiement = DroitPaiement::findOrFail($id);
+        $droitPaiement = DroitPaiement::with(['stage.sourceFinancement'])->findOrFail($id);
+        $this->assertDroitDansLePerimetre($droitPaiement);
+        $this->assertDroitPejedec($droitPaiement);
+
         $paiement = $this->pejedecAafService->genererPaiement($droitPaiement);
 
         $message = $paiement->wasRecentlyCreated
@@ -103,12 +99,20 @@ class AafController extends Controller
         $agenceId = $request->query('agence_id');
         $entrepriseId = $request->query('entreprise_id');
         $sourceFinancementId = $request->query('source_financement_id');
+        $pejedecSource = $this->pejedecSourceResolver->source();
+
         if ($sourceFinancementId === null || $sourceFinancementId === '') {
-            $sourceFinancementId = (string) self::PEJEDEC_SOURCE_FINANCEMENT_ID;
+            $sourceFinancementId = $pejedecSource?->id ? (string) $pejedecSource->id : null;
         }
+
         $periode = Periode::where('code', $mois)->first();
         $sourceFinancement = SourceFinancement::find($sourceFinancementId);
-        $agences = Agence::orderBy('nom')->get(['id', 'nom'])->map(function (Agence $agence) {
+        $agencesAutorisees = $this->agencesAutorisees($request);
+        $agences = Agence::query()
+            ->when($agencesAutorisees !== null, fn ($query) => $query->whereIn('id', $agencesAutorisees))
+            ->orderBy('nom')
+            ->get(['id', 'nom'])
+            ->map(function (Agence $agence) {
             return [
                 'id' => $agence->id,
                 'label' => $agence->nom,
@@ -128,19 +132,19 @@ class AafController extends Controller
         });
 
         $attenteValidation = $this->pointageRows(
-            $this->queryPointages($mois, ['SOUMIS'], $agenceId, $entrepriseId, $sourceFinancementId)
+            $this->queryPointages($mois, ['VALIDE'], $agenceId, $entrepriseId, $sourceFinancementId, aafNonTraite: true, agencesAutorisees: $agencesAutorisees)
         );
 
         $paiementsAjournes = $this->pointageRows(
-            $this->queryPointages($mois, ['AJOURNE_DMG', 'AJOURNE_CA'], $agenceId, $entrepriseId, $sourceFinancementId)
+            $this->queryPointages($mois, ['AJOURNE_DMG', 'AJOURNE_CA'], $agenceId, $entrepriseId, $sourceFinancementId, agencesAutorisees: $agencesAutorisees)
         );
 
         $correctionsAValider = $this->pointageRows(
-            $this->queryPointages($mois, ['CORRIGE_CIP'], $agenceId, $entrepriseId, $sourceFinancementId)
+            $this->queryPointages($mois, ['CORRIGE_CIP'], $agenceId, $entrepriseId, $sourceFinancementId, aafNonTraite: true, agencesAutorisees: $agencesAutorisees)
         );
 
         $attentePaiement = $this->droitRows(
-            $this->queryDroitsPaiement($mois, $agenceId, $entrepriseId, $sourceFinancementId)
+            $this->queryDroitsPaiement($mois, $agenceId, $entrepriseId, $sourceFinancementId, $agencesAutorisees)
         );
 
         return Inertia::render($component, [
@@ -173,7 +177,7 @@ class AafController extends Controller
                 'mois' => $mois,
                 'agence_id' => $agenceId ? (string) $agenceId : '',
                 'entreprise_id' => $entrepriseId ? (string) $entrepriseId : '',
-                'source_financement_id' => (string) $sourceFinancementId,
+                'source_financement_id' => $sourceFinancementId ? (string) $sourceFinancementId : '',
             ],
             'focus' => $focus,
         ]);
@@ -185,6 +189,8 @@ class AafController extends Controller
         ?string $agenceId = null,
         ?string $entrepriseId = null,
         ?string $sourceFinancementId = null,
+        bool $aafNonTraite = false,
+        ?array $agencesAutorisees = null,
     ): Collection {
         return Pointage::with([
             'stage.beneficiaire',
@@ -203,6 +209,11 @@ class AafController extends Controller
                     $stageQuery->where('agence_id', $agenceId);
                 });
             })
+            ->when($agencesAutorisees !== null, function ($query) use ($agencesAutorisees) {
+                $query->whereHas('stage', function ($stageQuery) use ($agencesAutorisees) {
+                    $stageQuery->whereIn('agence_id', $agencesAutorisees);
+                });
+            })
             ->when($entrepriseId, function ($query) use ($entrepriseId) {
                 $query->whereHas('stage', function ($stageQuery) use ($entrepriseId) {
                     $stageQuery->where('entreprise_id', $entrepriseId);
@@ -211,6 +222,13 @@ class AafController extends Controller
             ->when($sourceFinancementId, function ($query) use ($sourceFinancementId) {
                 $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
                     $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
+            })
+            ->when($aafNonTraite, function ($query) {
+                $query->whereDoesntHave('decisions', function ($decisionQuery) {
+                    $decisionQuery->where('decision', 'VALIDE_AAF');
+                })->whereDoesntHave('droitsPaiement', function ($droitQuery) {
+                    $droitQuery->whereNull('annule_le');
                 });
             })
             ->orderByDesc('id')
@@ -222,6 +240,7 @@ class AafController extends Controller
         ?string $agenceId = null,
         ?string $entrepriseId = null,
         ?string $sourceFinancementId = null,
+        ?array $agencesAutorisees = null,
     ): Collection {
         return DroitPaiement::with([
             'stage.beneficiaire',
@@ -241,6 +260,11 @@ class AafController extends Controller
                     $stageQuery->where('agence_id', $agenceId);
                 });
             })
+            ->when($agencesAutorisees !== null, function ($query) use ($agencesAutorisees) {
+                $query->whereHas('stage', function ($stageQuery) use ($agencesAutorisees) {
+                    $stageQuery->whereIn('agence_id', $agencesAutorisees);
+                });
+            })
             ->when($entrepriseId, function ($query) use ($entrepriseId) {
                 $query->whereHas('stage', function ($stageQuery) use ($entrepriseId) {
                     $stageQuery->where('entreprise_id', $entrepriseId);
@@ -254,6 +278,46 @@ class AafController extends Controller
             ->whereDoesntHave('paiements')
             ->orderByDesc('id')
             ->get();
+    }
+
+    private function agencesAutorisees(Request $request): ?array
+    {
+        $user = $request->user();
+
+        if (! $user || $user->hasRole('administrateur')) {
+            return null;
+        }
+
+        $agenceIds = $user->perimetresAgences()->pluck('agences.id')->all();
+
+        return $agenceIds === [] ? null : $agenceIds;
+    }
+
+    private function assertPointageDansLePerimetre(Pointage $pointage): void
+    {
+        $agencesAutorisees = $this->agencesAutorisees(request());
+
+        if ($agencesAutorisees !== null && ! in_array($pointage->stage?->agence_id, $agencesAutorisees, true)) {
+            abort(403, "Ce pointage ne relève pas de votre périmètre d'agence.");
+        }
+    }
+
+    private function assertDroitDansLePerimetre(DroitPaiement $droitPaiement): void
+    {
+        $agencesAutorisees = $this->agencesAutorisees(request());
+
+        if ($agencesAutorisees !== null && ! in_array($droitPaiement->stage?->agence_id, $agencesAutorisees, true)) {
+            abort(403, "Ce droit de paiement ne relève pas de votre périmètre d'agence.");
+        }
+    }
+
+    private function assertDroitPejedec(DroitPaiement $droitPaiement): void
+    {
+        $source = $droitPaiement->stage?->sourceFinancement;
+
+        if ($source?->code !== 'PEJEDEC' && (int) $source?->ancien_id !== 5) {
+            abort(403, "Ce droit de paiement n'appartient pas au financement PEJEDEC.");
+        }
     }
 
     private function pointageRows(Collection $pointages): Collection

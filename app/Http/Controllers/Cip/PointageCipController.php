@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Cip;
 
 use App\Domain\Attendance\Services\PointageService;
 use App\Domain\Attendance\Services\RejetDmgService;
+use App\Domain\Pejedec\Services\PejedecSourceResolver;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance\DecisionPointage;
@@ -38,7 +39,10 @@ use Inertia\Inertia;
 
 class PointageCipController extends Controller
 {
-    public function __construct(private PointageService $pointageService) {}
+    public function __construct(
+        private PointageService $pointageService,
+        private PejedecSourceResolver $pejedecSourceResolver,
+    ) {}
 
     public function stagiaireAttentePointage(Request $request)
     {
@@ -52,6 +56,7 @@ class PointageCipController extends Controller
         $filters['mois'] = $mois;
 
         $periode = Periode::where('code', $mois)->first();
+        $pejedecSourceId = $this->pejedecSourceResolver->id();
 
         // Références pour les filtres
         $agences = Agence::orderBy('nom')->get(['id', 'nom']);
@@ -87,7 +92,7 @@ class PointageCipController extends Controller
                     ->whereDoesntHave('instanceParcours', function ($q) {
                         $q->whereIn('corbeille_actuelle', CorbeilleEnum::nonValideesParCa());
                     })
-                    ->where('source_financement_id', '!=', 4); // Exclure PEJEDEC
+                    ->when($pejedecSourceId, fn ($stageQuery) => $stageQuery->where('source_financement_id', '!=', $pejedecSourceId)); // Exclure PEJEDEC
 
                 $this->applyStageFilters($query, $filters);
                 $data = $query->paginate(20)->withQueryString();
@@ -118,7 +123,11 @@ class PointageCipController extends Controller
                     ->whereDoesntHave('instanceParcours', function ($q) {
                         $q->whereIn('corbeille_actuelle', CorbeilleEnum::nonValideesParCa());
                     })
-                    ->where('source_financement_id', 4); // Seulement PEJEDEC
+                    ->when(
+                        $pejedecSourceId,
+                        fn ($stageQuery) => $stageQuery->where('source_financement_id', $pejedecSourceId),
+                        fn ($stageQuery) => $stageQuery->whereRaw('1 = 0')
+                    ); // Seulement PEJEDEC
 
                 $this->applyStageFilters($query, $filters);
                 $data = $query->paginate(20)->withQueryString();

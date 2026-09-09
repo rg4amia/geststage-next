@@ -17,7 +17,7 @@ const AttentePaiement = ({
         mois: filters?.mois || moisActuel || '',
         agence_id: filters?.agence_id || '',
         entreprise_id: filters?.entreprise_id || '',
-        source_financement_id: filters?.source_financement_id || sourceFinancement?.id?.toString() || '3',
+        source_financement_id: filters?.source_financement_id || sourceFinancement?.id?.toString() || '',
     });
 
     const search = () => {

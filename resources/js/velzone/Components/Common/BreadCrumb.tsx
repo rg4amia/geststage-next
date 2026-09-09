@@ -1,6 +1,7 @@
 import React from 'react';
 import { Col, Row } from 'reactstrap';
 import { Link } from '@/velzone/inertia-router';
+import UsurpationBanner from './UsurpationBanner';
 
 interface BreadCrumbProps {
     title: string;
@@ -28,6 +29,9 @@ const BreadCrumb = ({ title, pageTitle }: BreadCrumbProps) => {
                     </div>
                 </Col>
             </Row>
+            {/* Rendu ici, juste sous le titre de page, pour ne jamais être
+                masqué derrière le topbar fixe (voir UsurpationBanner). */}
+            <UsurpationBanner />
         </React.Fragment>
     );
 };

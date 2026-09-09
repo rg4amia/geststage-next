@@ -3,6 +3,7 @@
 namespace App\Domain\Attendance\Services;
 
 use App\Domain\Workflow\Services\WorkflowTransitionService;
+use App\Domain\Pejedec\Services\PejedecSourceResolver;
 use App\Enums\CorbeilleEnum;
 use App\Models\Attendance\DecisionPointage;
 use App\Models\Attendance\Pointage;
@@ -12,7 +13,6 @@ use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SituationStage;
-use App\Models\Reference\SourceFinancement;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +21,10 @@ use InvalidArgumentException;
 
 class PointageService
 {
-    public function __construct(private WorkflowTransitionService $workflowService) {}
+    public function __construct(
+        private WorkflowTransitionService $workflowService,
+        private PejedecSourceResolver $pejedecSourceResolver,
+    ) {}
 
     public function getCountsByTab(?int $periodeId, $stageFilters = []): array
     {
@@ -72,11 +75,13 @@ class PointageService
             $queryAttente->where('type_stage_id', $stageFilters['type_stage_id']);
         }
 
-        $attenteCounts = (clone $queryAttente)
-            ->selectRaw('SUM(CASE WHEN source_financement_id = 4 THEN 1 ELSE 0 END) as pejedec, SUM(CASE WHEN source_financement_id != 4 THEN 1 ELSE 0 END) as normal')
-            ->first();
-        $counts['attente'] = (int) ($attenteCounts->normal ?? 0);
-        $counts['attente_pejedec'] = (int) ($attenteCounts->pejedec ?? 0);
+        $pejedecSourceId = $this->pejedecSourceResolver->id();
+        $counts['attente_pejedec'] = $pejedecSourceId
+            ? (int) (clone $queryAttente)->where('source_financement_id', $pejedecSourceId)->count()
+            : 0;
+        $counts['attente'] = $pejedecSourceId
+            ? (int) (clone $queryAttente)->where('source_financement_id', '!=', $pejedecSourceId)->count()
+            : (int) (clone $queryAttente)->count();
 
         $stageFilterScope = function ($q) use ($stageFilters) {
             if (! empty($stageFilters['agence_id'])) {
@@ -260,13 +265,11 @@ class PointageService
             // Calcul au prorata si nécessaire. Simplifié ici :
             $montantPaiement = $contratActif ? $contratActif->prime_mensuelle : 0;
 
-            $sourceFinancement = SourceFinancement::first();
-
             $droitPaiement = DroitPaiement::create([
                 'stage_id' => $stage->id,
                 'pointage_id' => $pointage->id,
                 'periode_id' => $pointage->periode_id,
-                'source_financement_id' => $sourceFinancement ? $sourceFinancement->id : 1,
+                'source_financement_id' => $stage->source_financement_id,
                 'nature' => 'PRESENCE',
                 'montant' => $montantPaiement,
                 'statut' => 'OUVERT',

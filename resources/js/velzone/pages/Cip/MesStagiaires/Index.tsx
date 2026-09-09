@@ -695,24 +695,7 @@ e.preventDefault();
             <Head title="Mes Stagiaires" />
             <div className="page-content">
                 <Container fluid>
-                    {/* Page Title */}
-                    <div className="row">
-                        <div className="col-12">
-                            <div className="page-title-box d-sm-flex align-items-center justify-content-between">
-                                <h4 className="mb-sm-0">Mes Stagiaires</h4>
-                                <div className="page-title-right">
-                                    <ol className="breadcrumb m-0">
-                                        <li className="breadcrumb-item">
-                                            <Link href="/dashboard">Accueil</Link>
-                                        </li>
-                                        <li className="breadcrumb-item active">
-                                            Mes Stagiaires
-                                        </li>
-                                    </ol>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    <BreadCrumb title="Mes Stagiaires" pageTitle="Accueil" />
 
                     {/* Statistics Cards */}
                     <Row className="g-3 mb-3">

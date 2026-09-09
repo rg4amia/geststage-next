@@ -26,6 +26,7 @@ use App\Http\Controllers\Dmg\PaiementDmgController;
 use App\Http\Controllers\Dmg\RejetDmgController;
 use App\Http\Controllers\Dmg\ValidationDmgController;
 use App\Http\Controllers\Pejedec\AafController;
+use App\Http\Controllers\Pejedec\DossierController as PejedecDossierController;
 use App\Http\Controllers\Registration\InscriptionController;
 use App\Http\Controllers\Reporting\TableauDeBordController;
 use Illuminate\Http\Request;
@@ -106,6 +107,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Phase 5 : Pointages CIP
     Route::get('/cip/pointages', [PointageCipController::class, 'stagiaireAttentePointage'])->name('cip.pointages.index');
+    Route::get('/cip/pointages/pejedec', fn (Request $request) => redirect()->route(
+        'cip.pointages.index',
+        ['tab' => 'attente_pejedec'] + $request->query()
+    ))->name('cip.pointages.pejedec');
     Route::post('/cip/pointages/soumettre-batch', [PointageCipController::class, 'soumettreBatch'])->name('cip.pointages.soumettre_batch');
     Route::get('/cip/pointages/edit-stagiaire/{id}', [PointageCipController::class, 'editStagiaire'])->name('cip.pointages.edit_stagiaire');
     // POST et non PUT : le formulaire de traitement d'un rejet DMG redépose des pièces
@@ -278,14 +283,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     ))    ->middleware('can:voir_visas_ar')->name('desse.suivi.index');
 
     // Phase 9 : PEJEDEC / AAF
-    Route::get('/pejedec/af', [AafController::class, 'index'])->name('pejedec.af.index');
-    Route::get('/pejedec/af/attente-validation', [AafController::class, 'attenteValidation'])->name('pejedec.af.attente_validation');
-    Route::post('/pejedec/af/pointages/{id}/valider', [AafController::class, 'validerPointage'])->name('pejedec.af.pointages.valider');
-    Route::post('/pejedec/af/pointages/{id}/valider-correction', [AafController::class, 'validerCorrection'])->name('pejedec.af.pointages.valider_correction');
-    Route::get('/pejedec/af/paiements-ajournes', [AafController::class, 'paiementsAjournes'])->name('pejedec.af.paiements_ajournes');
-    Route::get('/pejedec/af/corrections-a-valider', [AafController::class, 'correctionsAValider'])->name('pejedec.af.corrections_a_valider');
-    Route::get('/pejedec/af/attente-paiement', [AafController::class, 'attentePaiement'])->name('pejedec.af.attente_paiement');
-    Route::post('/pejedec/af/droits-paiement/{id}/generer', [AafController::class, 'genererPaiement'])->name('pejedec.af.droits.generer_paiement');
+    Route::get('/pejedec/attente-validation', [PejedecDossierController::class, 'attenteValidation'])->middleware('can:valider_pejedec')->name('pejedec.attente_validation');
+    Route::get('/pejedec/valides', [PejedecDossierController::class, 'valides'])->middleware('can:valider_pejedec')->name('pejedec.valides');
+    Route::post('/pejedec/dossiers/{id}/valider', [PejedecDossierController::class, 'valider'])->middleware('can:valider_pejedec')->name('pejedec.dossiers.valider');
+
+    Route::get('/pejedec/af', [AafController::class, 'index'])->middleware('can:valider_aaf')->name('pejedec.af.index');
+    Route::get('/pejedec/af/attente-validation', [AafController::class, 'attenteValidation'])->middleware('can:valider_aaf')->name('pejedec.af.attente_validation');
+    Route::post('/pejedec/af/pointages/{id}/valider', [AafController::class, 'validerPointage'])->middleware('can:valider_aaf')->name('pejedec.af.pointages.valider');
+    Route::post('/pejedec/af/pointages/{id}/valider-correction', [AafController::class, 'validerCorrection'])->middleware('can:valider_aaf')->name('pejedec.af.pointages.valider_correction');
+    Route::get('/pejedec/af/paiements-ajournes', [AafController::class, 'paiementsAjournes'])->middleware('can:valider_aaf')->name('pejedec.af.paiements_ajournes');
+    Route::get('/pejedec/af/corrections-a-valider', [AafController::class, 'correctionsAValider'])->middleware('can:valider_aaf')->name('pejedec.af.corrections_a_valider');
+    Route::get('/pejedec/af/attente-paiement', [AafController::class, 'attentePaiement'])->middleware('can:valider_aaf')->name('pejedec.af.attente_paiement');
+    Route::post('/pejedec/af/droits-paiement/{id}/generer', [AafController::class, 'genererPaiement'])->middleware('can:valider_aaf')->name('pejedec.af.droits.generer_paiement');
 });
 
 require __DIR__.'/parametre-aides.php';
