@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ParametreAides;
 
+use App\Enums\RoleEnum;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\ParametreAides\StoreUtilisateurRequest;
 use App\Http\Requests\ParametreAides\UpdateUtilisateurRequest;
@@ -28,6 +29,34 @@ class UtilisateurController extends Controller
     /** Clé de session portant l'identité réelle pendant une usurpation. */
     public const CLE_USURPATION = 'parametre_aides.usurpateur_id';
 
+    /** Valeur du filtre « rôle » isolant les comptes sans aucun rôle attribué. */
+    public const FILTRE_SANS_ROLE = 'sans_role';
+
+    /**
+     * Rôles proposés à l'attribution : ceux réellement présents en base, enrichis de leur
+     * libellé métier et des types d'utilisateur legacy qu'ils remplacent (RoleEnum). Un rôle
+     * créé hors de l'enum reste proposé, simplement sans correspondance legacy.
+     *
+     * @return list<array{name: string, label: string, description: string, types_legacy: list<string>}>
+     */
+    private function catalogueRoles(): array
+    {
+        $catalogue = collect(RoleEnum::catalogue())->keyBy('name');
+        $ordre = $catalogue->keys()->flip();
+
+        return Role::query()->orderBy('name')->pluck('name')
+            ->map(fn (string $nom): array => $catalogue->get($nom, [
+                'name' => $nom,
+                'label' => $nom,
+                'description' => '',
+                'types_legacy' => [],
+            ]))
+            // Ordre de l'enum (hiérarchie métier) ; les rôles hors enum ferment la liste.
+            ->sortBy(fn (array $role): int => $ordre->get($role['name'], PHP_INT_MAX))
+            ->values()
+            ->all();
+    }
+
     public function index(Request $request): Response
     {
         $this->authorize('viewAny', User::class);
@@ -43,6 +72,15 @@ class UtilisateurController extends Controller
                 });
             })
             ->when($request->string('role')->toString(), function ($query, string $role): void {
+                // Les types d'utilisateur legacy sans équivalent (DIC, DPF, Cabinet...) ont
+                // produit des comptes sans aucun rôle : ce filtre permet de les retrouver
+                // pour leur attribuer un rôle applicatif.
+                if ($role === self::FILTRE_SANS_ROLE) {
+                    $query->doesntHave('roles');
+
+                    return;
+                }
+
                 $query->whereHas('roles', fn ($sousRequete) => $sousRequete->where('name', $role));
             })
             ->when($request->filled('agence_id'), function ($query) use ($request): void {
@@ -57,7 +95,8 @@ class UtilisateurController extends Controller
 
         return Inertia::render('ParametreAides/Comptes/Index', [
             'utilisateurs' => $utilisateurs,
-            'roles' => Role::query()->orderBy('name')->pluck('name'),
+            'roles' => $this->catalogueRoles(),
+            'nombreComptesSansRole' => User::query()->doesntHave('roles')->count(),
             'agences' => Agence::query()->where('actif', true)->orderBy('nom')->get(['id', 'nom']),
             'filters' => $request->only(['search', 'role', 'agence_id', 'actif']),
             'peutGerer' => $request->user()->can('create', User::class),
@@ -70,7 +109,7 @@ class UtilisateurController extends Controller
         $this->authorize('create', User::class);
 
         return Inertia::render('ParametreAides/Comptes/Create', [
-            'roles' => Role::query()->orderBy('name')->pluck('name'),
+            'roles' => $this->catalogueRoles(),
             'agences' => Agence::query()->where('actif', true)->orderBy('nom')->get(['id', 'nom']),
         ]);
     }
@@ -108,7 +147,7 @@ class UtilisateurController extends Controller
                 'roles' => $utilisateur->getRoleNames(),
                 'agences' => $utilisateur->perimetresAgences()->pluck('agences.id'),
             ],
-            'roles' => Role::query()->orderBy('name')->pluck('name'),
+            'roles' => $this->catalogueRoles(),
             'agences' => Agence::query()->where('actif', true)->orderBy('nom')->get(['id', 'nom']),
         ]);
     }

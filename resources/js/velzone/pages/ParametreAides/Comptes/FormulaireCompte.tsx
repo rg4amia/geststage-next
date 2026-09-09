@@ -2,6 +2,14 @@ import { Link } from '@inertiajs/react';
 import React from 'react';
 import { Button, Col, Form, Input, Label, Row } from 'reactstrap';
 
+/** Rôle proposé à l'attribution, avec les profils legacy (`type_users`) qu'il remplace. */
+export interface RoleAttribuable {
+    name: string;
+    label: string;
+    description: string;
+    types_legacy: string[];
+}
+
 export interface DonneesCompte {
     nom: string;
     email: string;
@@ -19,7 +27,7 @@ interface Props {
     errors: Partial<Record<keyof DonneesCompte, string>>;
     processing: boolean;
     onSubmit: (e: React.FormEvent) => void;
-    roles: string[];
+    roles: RoleAttribuable[];
     agences: { id: number; nom: string }[];
     /** En modification, laisser le mot de passe vide conserve celui en place. */
     motDePasseFacultatif?: boolean;
@@ -122,18 +130,26 @@ const FormulaireCompte = ({
 
             <Col md={6}>
                 <Label className="form-label">Rôles</Label>
-                <div className="border rounded p-3">
+                <div className="border rounded p-3" style={{ maxHeight: '320px', overflowY: 'auto' }}>
                     {roles.map((role) => (
-                        <div className="form-check" key={role}>
+                        <div className="form-check mb-2" key={role.name}>
                             <Input
                                 type="checkbox"
                                 className="form-check-input"
-                                id={`role-${role}`}
-                                checked={data.roles.includes(role)}
-                                onChange={() => setData('roles', basculerDansListe(data.roles, role))}
+                                id={`role-${role.name}`}
+                                checked={data.roles.includes(role.name)}
+                                onChange={() => setData('roles', basculerDansListe(data.roles, role.name))}
                             />
-                            <Label className="form-check-label" htmlFor={`role-${role}`}>
-                                {role}
+                            <Label className="form-check-label" htmlFor={`role-${role.name}`}>
+                                <span className="fw-medium">{role.label}</span>
+                                <small className="text-muted d-block">{role.description}</small>
+                                {/* Correspondance avec les profils de l'ancien Gestage, pour
+                                    retrouver le bon rôle à partir du type d'utilisateur legacy. */}
+                                {role.types_legacy.length > 0 && (
+                                    <small className="text-muted d-block fst-italic">
+                                        Remplace : {role.types_legacy.join(', ')}
+                                    </small>
+                                )}
                             </Label>
                         </div>
                     ))}

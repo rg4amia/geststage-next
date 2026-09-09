@@ -3,17 +3,24 @@ import React, { useState } from 'react';
 import { Button, Card, CardBody, CardHeader, Col, Container, Input, Row, Table } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import ServerPagination, { normalizePagination } from '../../../Components/Common/ServerPagination';
+import { RoleAttribuable } from './FormulaireCompte';
 
 interface Props {
     utilisateurs: any;
-    roles: string[];
+    roles: RoleAttribuable[];
     agences: { id: number; nom: string }[];
     filters: Record<string, string | undefined>;
     peutGerer: boolean;
     peutUsurper: boolean;
+    /** Comptes repris du legacy dont le type d'utilisateur n'avait aucun rôle cible. */
+    nombreComptesSansRole?: number;
 }
 
-const Index = ({ utilisateurs, roles, agences, filters, peutGerer, peutUsurper }: Props) => {
+/** Valeur du filtre isolant les comptes sans rôle (UtilisateurController::FILTRE_SANS_ROLE). */
+const FILTRE_SANS_ROLE = 'sans_role';
+
+const Index = ({ utilisateurs, roles, agences, filters, peutGerer, peutUsurper, nombreComptesSansRole = 0 }: Props) => {
+    const libelleRole = (nom: string): string => roles.find((r) => r.name === nom)?.label || nom;
     const [search, setSearch] = useState(filters.search || '');
     const [role, setRole] = useState(filters.role || '');
     const [agenceId, setAgenceId] = useState(filters.agence_id || '');
@@ -52,6 +59,37 @@ const Index = ({ utilisateurs, roles, agences, filters, peutGerer, peutUsurper }
                 <Container fluid>
                     <BreadCrumb title="Comptes utilisateurs" pageTitle="Parametre & Aides" />
 
+                    {/* Les types d'utilisateur legacy sans équivalent (DIC, DPF, Cabinet,
+                        Chef de projet, DRHAJA, Call Center...) ont produit des comptes sans
+                        aucun droit : ils doivent être arbitrés à la main. */}
+                    {nombreComptesSansRole > 0 && role !== FILTRE_SANS_ROLE && (
+                        <Row>
+                            <Col lg={12}>
+                                <div className="alert alert-warning d-flex align-items-center gap-2">
+                                    <i className="ri-user-unfollow-line fs-18" />
+                                    <div className="flex-grow-1">
+                                        {nombreComptesSansRole} compte(s) sans rôle attribué — sans rôle, un compte
+                                        repris de l’ancien Gestage n’a accès à aucun module.
+                                    </div>
+                                    <Button
+                                        color="warning"
+                                        size="sm"
+                                        onClick={() => {
+                                            setRole(FILTRE_SANS_ROLE);
+                                            router.get(
+                                                '/parametre-aides/comptes',
+                                                { search, role: FILTRE_SANS_ROLE, agence_id: agenceId, actif },
+                                                { preserveState: true, replace: true },
+                                            );
+                                        }}
+                                    >
+                                        Les afficher
+                                    </Button>
+                                </div>
+                            </Col>
+                        </Row>
+                    )}
+
                     <Row>
                         <Col lg={12}>
                             <Card>
@@ -79,8 +117,9 @@ const Index = ({ utilisateurs, roles, agences, filters, peutGerer, peutUsurper }
                                             <Col md={2}>
                                                 <select className="form-select" value={role} onChange={(e) => setRole(e.target.value)}>
                                                     <option value="">Tous les rôles</option>
+                                                    <option value={FILTRE_SANS_ROLE}>Sans rôle attribué</option>
                                                     {roles.map((r) => (
-                                                        <option key={r} value={r}>{r}</option>
+                                                        <option key={r.name} value={r.name}>{r.label}</option>
                                                     ))}
                                                 </select>
                                             </Col>
@@ -136,10 +175,12 @@ const Index = ({ utilisateurs, roles, agences, filters, peutGerer, peutUsurper }
                                                             {utilisateur.roles?.length
                                                                 ? utilisateur.roles.map((r: any) => (
                                                                       <span key={r.id} className="badge bg-primary-subtle text-primary me-1">
-                                                                          {r.name}
+                                                                          {libelleRole(r.name)}
                                                                       </span>
                                                                   ))
-                                                                : '-'}
+                                                                : (
+                                                                      <span className="badge bg-warning-subtle text-warning">Aucun rôle</span>
+                                                                  )}
                                                         </td>
                                                         <td>
                                                             {utilisateur.perimetres_agences?.length

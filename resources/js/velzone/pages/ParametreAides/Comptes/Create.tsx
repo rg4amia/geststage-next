@@ -2,10 +2,10 @@ import { Head, useForm } from '@inertiajs/react';
 import React from 'react';
 import { Card, CardBody, CardHeader, Col, Container, Row } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
-import FormulaireCompte, { DonneesCompte } from './FormulaireCompte';
+import FormulaireCompte, { DonneesCompte, RoleAttribuable } from './FormulaireCompte';
 
 interface Props {
-    roles: string[];
+    roles: RoleAttribuable[];
     agences: { id: number; nom: string }[];
 }
 

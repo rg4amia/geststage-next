@@ -3,6 +3,7 @@
 namespace App\Services\Migration;
 
 use App\Enums\CorbeilleEnum;
+use App\Enums\RoleEnum;
 use Carbon\Carbon;
 use Illuminate\Support\Str;
 
@@ -357,21 +358,15 @@ class LegacyMapperService
     /**
      * Mapping des types d'utilisateurs legacy vers les rôles Spatie du projet cible.
      *
+     * La table de correspondance elle-même vit dans RoleEnum : l'écran d'administration
+     * des comptes s'en sert pour proposer les mêmes rôles, un compte migré et un compte
+     * créé à la main restent donc alignés.
+     *
      * @return list<string>
      */
     public function mapTypeUserToRoles(int $typeUserId): array
     {
-        return match ($typeUserId) {
-            1, 14, 15, 81 => ['administrateur'],
-            2 => ['chef_agence'],
-            3, 17 => ['cip'],
-            4, 8, 85 => ['daicg'],
-            5, 76, 77, 78, 79, 80, 82 => ['dmg'],
-            11, 74, 75 => ['desse'],
-            83 => ['pejedec'],
-            84 => ['cb', 'agent_comptable'],
-            default => [],
-        };
+        return RoleEnum::pourTypeUserLegacy($typeUserId);
     }
 
     /**

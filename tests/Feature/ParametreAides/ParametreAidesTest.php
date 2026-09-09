@@ -5,6 +5,7 @@ namespace Tests\Feature\ParametreAides;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Conseiller;
 use App\Models\Reference\SourceFinancement;
+use App\Enums\RoleEnum;
 use App\Models\User;
 
 /**
@@ -82,6 +83,95 @@ class ParametreAidesTest extends ParametreAidesTestCase
             ->count('utilisateurs.data', 1)
             ->where('utilisateurs.data.0.nom', $trouve->nom)
         );
+    }
+
+    public function test_chaque_role_de_l_enum_existe_bien_en_base(): void
+    {
+        // Sinon le catalogue proposerait un rôle que syncRoles() refuserait d'attribuer.
+        $rolesEnBase = \Spatie\Permission\Models\Role::query()->pluck('name')->all();
+
+        foreach (RoleEnum::cases() as $role) {
+            $this->assertContains($role->value, $rolesEnBase, "Le rôle {$role->value} n'est pas créé par RolePermissionSeeder.");
+        }
+    }
+
+    public function test_le_catalogue_de_roles_porte_la_correspondance_avec_les_types_legacy(): void
+    {
+        $admin = $this->creerAdministrateur();
+
+        $this->actingAs($admin)->get('/parametre-aides/comptes/creer')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('ParametreAides/Comptes/Create')
+                // Ordre de RoleEnum : la hiérarchie métier, pas l'ordre alphabétique.
+                ->where('roles.0.name', 'administrateur')
+                ->where('roles.0.label', 'Administrateur')
+                ->has('roles.0.types_legacy')
+                ->etc()
+            );
+    }
+
+    public function test_chaque_role_expose_les_profils_legacy_qu_il_remplace(): void
+    {
+        $admin = $this->creerAdministrateur();
+
+        $roles = collect(
+            $this->actingAs($admin)->get('/parametre-aides/comptes/creer')
+                ->viewData('page')['props']['roles']
+        )->keyBy('name');
+
+        $this->assertSame(
+            ['Direction des Moyens Généraux', 'DMG Administration', 'DMG Validation',
+                'DMG Vérification & Validation', 'DMG Dossier', 'DMG Consultation',
+                'DMG Vérifier, Valider et État de paiement'],
+            $roles['dmg']['types_legacy'],
+        );
+        $this->assertSame(['Agent de consultation', 'Agent de saisie'], $roles['cip']['types_legacy']);
+        $this->assertSame(['Agent Comptable - Contrôleur Budgétaire'], $roles['agent_comptable']['types_legacy']);
+        // Rôle né du nouveau workflow : aucun profil legacy correspondant.
+        $this->assertSame([], $roles['aaf']['types_legacy']);
+    }
+
+    public function test_admin_retrouve_les_comptes_sans_role_attribue(): void
+    {
+        $admin = $this->creerAdministrateur();
+
+        // Compte issu d'un type legacy sans équivalent (DIC, Cabinet, Call Center...).
+        $orphelin = User::factory()->create(['nom' => 'Compte Sans Role']);
+        $avecRole = User::factory()->create(['nom' => 'Compte Avec Role']);
+        $avecRole->assignRole('cip');
+
+        $this->actingAs($admin)->get('/parametre-aides/comptes?role=sans_role')
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->component('ParametreAides/Comptes/Index')
+                ->count('utilisateurs.data', 1)
+                ->where('utilisateurs.data.0.nom', $orphelin->nom)
+                ->etc()
+            );
+
+        $this->actingAs($admin)->get('/parametre-aides/comptes')
+            ->assertInertia(fn ($page) => $page->where('nombreComptesSansRole', 1)->etc());
+    }
+
+    public function test_admin_attribue_a_un_compte_le_role_correspondant_a_son_type_legacy(): void
+    {
+        $admin = $this->creerAdministrateur();
+        $compte = User::factory()->create();
+
+        // Type legacy 84 « Agent Comptable - Contrôleur Budgétaire » : deux rôles cibles.
+        $roles = RoleEnum::pourTypeUserLegacy(84);
+
+        $this->actingAs($admin)->put("/parametre-aides/comptes/{$compte->id}", [
+            'nom' => $compte->nom,
+            'email' => $compte->email,
+            'telephone' => null,
+            'actif' => true,
+            'roles' => $roles,
+            'agences' => [],
+        ])->assertRedirect(route('parametre-aides.comptes.index'));
+
+        $this->assertSame(['cb', 'agent_comptable'], $compte->fresh()->getRoleNames()->all());
     }
 
     public function test_admin_peut_creer_un_compte(): void
