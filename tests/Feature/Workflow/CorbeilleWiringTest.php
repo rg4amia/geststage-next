@@ -6,9 +6,11 @@ use App\Enums\CorbeilleEnum;
 use App\Models\Attendance\Pointage;
 use App\Models\Attendance\VersionPointage;
 use App\Models\Beneficiary\Beneficiaire;
+use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Reference\Periode;
+use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
 use App\Models\User;
 use App\Models\Workflow\DefinitionParcours;
@@ -44,6 +46,8 @@ class CorbeilleWiringTest extends TestCase
             '/daicg/stagiaires' => ['Daicg/Stagiaires/Index', ['onglet', 'filters', 'stages']],
             '/cip/suivi' => ['Cip/Suivi/Index', ['differesAC', 'doublonsDESSE', 'renouvellements', 'suspensionsAbandons']],
             '/cip/pointages' => ['Cip/Pointages/Index', ['tab', 'counts', 'data', 'filters']],
+            '/pejedec/attente-validation' => ['Pejedec/Dossiers/AttenteValidation', ['dossiers', 'filters', 'sourceFinancement', 'agences', 'entreprises', 'stats']],
+            '/pejedec/valides' => ['Pejedec/Dossiers/Valides', ['dossiers', 'filters', 'sourceFinancement', 'agences', 'entreprises', 'stats']],
             '/pejedec/af' => ['Pejedec/Aaf/Index', ['attenteValidation', 'paiementsAjournes', 'correctionsAValider', 'attentePaiement', 'statistiques', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],
             '/pejedec/af/attente-validation' => ['Pejedec/Aaf/AttenteValidation', ['attenteValidation', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],
             '/pejedec/af/paiements-ajournes' => ['Pejedec/Aaf/PaiementsAjournes', ['paiementsAjournes', 'moisActuel', 'sourceFinancement', 'agences', 'entreprises', 'sourcesFinancement', 'filters']],
@@ -508,10 +512,23 @@ class CorbeilleWiringTest extends TestCase
 
     public function test_actions_pejedec_aaf_branchees_sur_les_transitions_metier(): void
     {
+        $this->seed(RolePermissionSeeder::class);
         $user = User::factory()->create();
+        $user->assignRole('aaf');
         $this->actingAs($user);
 
-        $stageValidation = Stage::factory()->create();
+        $sourcePejedec = SourceFinancement::create([
+            'ancien_id' => 5,
+            'code' => 'PEJEDEC',
+            'nom' => 'PEJEDEC',
+            'actif' => true,
+        ]);
+        $stageValidation = Stage::factory()->create(['source_financement_id' => $sourcePejedec->id]);
+        Contrat::factory()->create([
+            'stage_id' => $stageValidation->id,
+            'prime_mensuelle' => 45000,
+            'statut' => 'VALIDE',
+        ]);
         $periodeValidation = Periode::create([
             'code' => '2026-08',
             'date_debut' => '2026-08-01',
@@ -525,7 +542,7 @@ class CorbeilleWiringTest extends TestCase
             'stage_id' => $stageValidation->id,
             'periode_id' => $periodeValidation->id,
             'nature' => 'MENSUEL',
-            'statut' => 'SOUMIS',
+            'statut' => 'VALIDE',
             'version_courante' => 1,
             'version_verrouillage' => 0,
         ]);
@@ -552,10 +569,16 @@ class CorbeilleWiringTest extends TestCase
             'stage_id' => $stageValidation->id,
             'pointage_id' => $pointageSoumis->id,
             'periode_id' => $periodeValidation->id,
+            'source_financement_id' => $sourcePejedec->id,
             'statut' => 'OUVERT',
         ]);
 
-        $stageCorrection = Stage::factory()->create();
+        $stageCorrection = Stage::factory()->create(['source_financement_id' => $sourcePejedec->id]);
+        Contrat::factory()->create([
+            'stage_id' => $stageCorrection->id,
+            'prime_mensuelle' => 45000,
+            'statut' => 'VALIDE',
+        ]);
         $pointageCorrige = Pointage::create([
             'uuid_public' => (string) Str::uuid(),
             'stage_id' => $stageCorrection->id,
@@ -589,13 +612,13 @@ class CorbeilleWiringTest extends TestCase
             'decision' => 'VALIDE_AAF',
         ]);
 
-        $stagePaiement = Stage::factory()->create();
+        $stagePaiement = Stage::factory()->create(['source_financement_id' => $sourcePejedec->id]);
         $droitPaiement = DroitPaiement::create([
             'uuid_public' => (string) Str::uuid(),
             'stage_id' => $stagePaiement->id,
             'pointage_id' => null,
             'periode_id' => $periodeValidation->id,
-            'source_financement_id' => $stagePaiement->source_financement_id,
+            'source_financement_id' => $sourcePejedec->id,
             'nature' => 'PRESENCE',
             'montant' => 12500,
             'statut' => 'OUVERT',

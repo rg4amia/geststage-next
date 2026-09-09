@@ -155,6 +155,41 @@ export const construireUrl = (
     return chaine ? `${base}?${chaine}` : base;
 };
 
+/* Options react-select normalisées pour la recherche d'entreprises. */
+export interface OptionEntreprise {
+    value: string;
+    label: string;
+}
+
+/**
+ * Recherche serveur d'entreprises (route dmg.paiements.entreprises) pour les listes
+ * déroulantes async : le référentiel complet peut dépasser plusieurs milliers d'entrées,
+ * on interroge l'API à chaque frappe plutôt que de le charger dans le navigateur.
+ * Débounce 300 ms ; la requête en cours est annulée si une nouvelle saisie arrive.
+ */
+let minuterieEntreprises: number | undefined;
+let controleurEntreprises: AbortController | undefined;
+export const chargerOptionsEntreprises = (saisie: string): Promise<OptionEntreprise[]> =>
+    new Promise((resolve) => {
+        window.clearTimeout(minuterieEntreprises);
+        minuterieEntreprises = window.setTimeout(async () => {
+            controleurEntreprises?.abort();
+            controleurEntreprises = new AbortController();
+
+            try {
+                const donnees = await getJson<{ data: { id: number; raison_sociale: string }[] }>(
+                    '/dmg/paiements/entreprises',
+                    { q: saisie },
+                    controleurEntreprises.signal,
+                );
+
+                resolve((donnees.data || []).map((e) => ({ value: String(e.id), label: e.raison_sociale })));
+            } catch {
+                resolve([]);
+            }
+        }, 300);
+    });
+
 /**
  * GET JSON. Lève sur réponse non 2xx : l'appelant décide quoi montrer, plutôt que de laisser
  * l'écran afficher une liste vide sur une erreur 403 ou 500 — indiscernable d'un mois sans données.

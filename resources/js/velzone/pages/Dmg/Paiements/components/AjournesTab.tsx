@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/react';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
+import AsyncSelect from 'react-select/async';
+import Select from 'react-select';
+import type {
     Alert,
     Badge,
     Button,
@@ -20,9 +22,10 @@ import {
 import type {
     AjourneRow,
     OptionDossier,
-    RefItem,
+    OptionEntreprise,
     ReponsePaginee} from '../shared';
 import {
+    chargerOptionsEntreprises,
     formatDate,
     formatMontant,
     getJson,
@@ -34,7 +37,6 @@ interface AjournesTabProps {
     actif: boolean;
     mois: string;
     agences: RefItem[];
-    entreprises: RefItem[];
     typesStage: RefItem[];
     sourcesFinancement: RefItem[];
     /** Ouvre la modale de prévisualisation des pièces jointes portée par la page. */
@@ -71,7 +73,6 @@ const AjournesTab = ({
     actif,
     mois,
     agences,
-    entreprises,
     typesStage,
     sourcesFinancement,
     onApercuDocuments,
@@ -89,6 +90,27 @@ const AjournesTab = ({
 
     const [optionsDossier, setOptionsDossier] = useState<OptionDossier[]>([]);
     const [selection, setSelection] = useState<number[]>([]);
+    // Option d'entreprise conservée pour l'affichage : la recherche async ne garde pas
+    // les résultats en local, le libellé choisi doit donc vivre dans l'état.
+    const [entrepriseChoisie, setEntrepriseChoisie] = useState<OptionEntreprise | null>(null);
+
+    /* Options react-select : valeur vide « Tous/Toutes » en tête, puis les référentiels. */
+    const optionsDossierSelect = useMemo(
+        () => [{ value: '', label: 'Tous' }, ...optionsDossier.map((o) => ({ value: o.value, label: o.label }))],
+        [optionsDossier],
+    );
+    const optionsAgencesSelect = useMemo(
+        () => [{ value: '', label: 'Toutes' }, ...agences.map((a) => ({ value: String(a.id), label: a.nom }))],
+        [agences],
+    );
+    const optionsTypesStageSelect = useMemo(
+        () => [{ value: '', label: 'Tous' }, ...typesStage.map((t) => ({ value: String(t.id), label: t.nom }))],
+        [typesStage],
+    );
+    const optionsSourcesSelect = useMemo(
+        () => [{ value: '', label: 'Toutes' }, ...sourcesFinancement.map((s) => ({ value: String(s.id), label: s.nom }))],
+        [sourcesFinancement],
+    );
 
     const [modalOuverte, setModalOuverte] = useState(false);
     const [motif, setMotif] = useState('');
@@ -193,6 +215,7 @@ setOptionsDossier([]);
 
     const reinitialiser = () => {
         setFiltres(FILTRES_VIDES);
+        setEntrepriseChoisie(null);
         setRecherche('');
         setPage(1);
         setSelection([]);
@@ -251,43 +274,57 @@ setOptionsDossier([]);
                     <Row className="g-3 align-items-end">
                         <Col md={3}>
                             <Label className="form-label fs-12 text-muted fw-semibold">Dossier / Multi-dossier</Label>
-                            <Input type="select" bsSize="sm" value={filtres.dossier}
-                                onChange={(e) => changerFiltre('dossier', e.target.value)}>
-                                <option value="">Tous</option>
-                                {optionsDossier.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-                            </Input>
+                            <Select isSearchable placeholder="Tous" noOptionsMessage={() => 'Aucun dossier'}
+                                options={optionsDossierSelect}
+                                value={optionsDossierSelect.find((o) => o.value === filtres.dossier) || null}
+                                onChange={(selected) => changerFiltre('dossier', selected?.value || '')}
+                                classNamePrefix="react-select"
+                            />
                         </Col>
                         <Col md={3}>
                             <Label className="form-label fs-12 text-muted fw-semibold">Agence</Label>
-                            <Input type="select" bsSize="sm" value={filtres.agence_id}
-                                onChange={(e) => changerFiltre('agence_id', e.target.value)}>
-                                <option value="">Toutes</option>
-                                {agences.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
-                            </Input>
+                            <Select isSearchable placeholder="Toutes" noOptionsMessage={() => 'Aucune agence'}
+                                options={optionsAgencesSelect}
+                                value={optionsAgencesSelect.find((o) => o.value === filtres.agence_id) || null}
+                                onChange={(selected) => changerFiltre('agence_id', selected?.value || '')}
+                                classNamePrefix="react-select"
+                            />
                         </Col>
                         <Col md={3}>
                             <Label className="form-label fs-12 text-muted fw-semibold">Entreprise</Label>
-                            <Input type="select" bsSize="sm" value={filtres.entreprise_id}
-                                onChange={(e) => changerFiltre('entreprise_id', e.target.value)}>
-                                <option value="">Toutes</option>
-                                {entreprises.map((e2) => <option key={e2.id} value={e2.id}>{e2.raison_sociale ?? e2.nom}</option>)}
-                            </Input>
+                            <AsyncSelect
+                                loadOptions={chargerOptionsEntreprises}
+                                value={entrepriseChoisie}
+                                onChange={(selected) => {
+                                    setEntrepriseChoisie(selected);
+                                    changerFiltre('entreprise_id', selected?.value || '');
+                                }}
+                                placeholder="Rechercher une entreprise..."
+                                noOptionsMessage={({ inputValue }) => inputValue.length < 2 ? 'Saisissez au moins 2 caractères' : 'Aucune entreprise'}
+                                loadingMessage={() => 'Recherche...'}
+                                isClearable
+                                cacheOptions
+                                defaultOptions={[]}
+                                classNamePrefix="react-select"
+                            />
                         </Col>
                         <Col md={3}>
                             <Label className="form-label fs-12 text-muted fw-semibold">Type de stage</Label>
-                            <Input type="select" bsSize="sm" value={filtres.type_stage_id}
-                                onChange={(e) => changerFiltre('type_stage_id', e.target.value)}>
-                                <option value="">Tous</option>
-                                {typesStage.map((t) => <option key={t.id} value={t.id}>{t.nom}</option>)}
-                            </Input>
+                            <Select isSearchable placeholder="Tous" noOptionsMessage={() => 'Aucun type de stage'}
+                                options={optionsTypesStageSelect}
+                                value={optionsTypesStageSelect.find((o) => o.value === filtres.type_stage_id) || null}
+                                onChange={(selected) => changerFiltre('type_stage_id', selected?.value || '')}
+                                classNamePrefix="react-select"
+                            />
                         </Col>
                         <Col md={3}>
                             <Label className="form-label fs-12 text-muted fw-semibold">Source de financement</Label>
-                            <Input type="select" bsSize="sm" value={filtres.source_financement_id}
-                                onChange={(e) => changerFiltre('source_financement_id', e.target.value)}>
-                                <option value="">Toutes</option>
-                                {sourcesFinancement.map((s) => <option key={s.id} value={s.id}>{s.nom}</option>)}
-                            </Input>
+                            <Select isSearchable placeholder="Toutes" noOptionsMessage={() => 'Aucune source'}
+                                options={optionsSourcesSelect}
+                                value={optionsSourcesSelect.find((o) => o.value === filtres.source_financement_id) || null}
+                                onChange={(selected) => changerFiltre('source_financement_id', selected?.value || '')}
+                                classNamePrefix="react-select"
+                            />
                         </Col>
                         <Col md={4}>
                             <Label className="form-label fs-12 text-muted fw-semibold">Recherche (nom, prénoms, n° AEJ)</Label>

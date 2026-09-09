@@ -113,11 +113,11 @@ class AafController extends Controller
             ->orderBy('nom')
             ->get(['id', 'nom'])
             ->map(function (Agence $agence) {
-            return [
-                'id' => $agence->id,
-                'label' => $agence->nom,
-            ];
-        });
+                return [
+                    'id' => $agence->id,
+                    'label' => $agence->nom,
+                ];
+            });
         $entreprises = Entreprise::orderBy('raison_sociale')->get(['id', 'raison_sociale'])->map(function (Entreprise $entreprise) {
             return [
                 'id' => $entreprise->id,
@@ -223,6 +223,11 @@ class AafController extends Controller
                 $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
                     $stageQuery->where('source_financement_id', $sourceFinancementId);
                 });
+            }, function ($query) {
+                $query->whereHas('stage.sourceFinancement', function ($sourceQuery) {
+                    $sourceQuery->where('code', 'PEJEDEC')
+                        ->orWhere('ancien_id', 5);
+                });
             })
             ->when($aafNonTraite, function ($query) {
                 $query->whereDoesntHave('decisions', function ($decisionQuery) {
@@ -273,6 +278,11 @@ class AafController extends Controller
             ->when($sourceFinancementId, function ($query) use ($sourceFinancementId) {
                 $query->whereHas('stage', function ($stageQuery) use ($sourceFinancementId) {
                     $stageQuery->where('source_financement_id', $sourceFinancementId);
+                });
+            }, function ($query) {
+                $query->whereHas('stage.sourceFinancement', function ($sourceQuery) {
+                    $sourceQuery->where('code', 'PEJEDEC')
+                        ->orWhere('ancien_id', 5);
                 });
             })
             ->whereDoesntHave('paiements')

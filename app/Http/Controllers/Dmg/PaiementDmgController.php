@@ -115,7 +115,12 @@ class PaiementDmgController extends Controller
             'cohorte' => $cohorte,
             'limiteAffichee' => 100,
             'agences' => Agence::cachedOptions('nom'),
-            'entreprises' => Entreprise::cachedOptions('raison_sociale'),
+            // Le référentiel complet des entreprises se cherche désormais via la route
+            // dmg.paiements.entreprises (react-select async) ; on ne transmet que
+            // l'entreprise pré-filtrée pour en afficher le libellé dans le sélecteur.
+            'entreprises' => ($filters['entreprise_id'] ?? null)
+                ? Entreprise::query()->whereKey($filters['entreprise_id'])->get(['id', 'raison_sociale'])->toArray()
+                : [],
             'sourcesFinancement' => SourceFinancement::cachedOptions('nom'),
             'typesStage' => TypeStage::cachedOptions('nom'),
             'typestructures' => TypeStructure::cachedOptions('nom'),

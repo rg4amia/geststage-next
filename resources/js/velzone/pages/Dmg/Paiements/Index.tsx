@@ -1,6 +1,7 @@
 import { Deferred, Head, router, usePage } from '@inertiajs/react';
 import classnames from 'classnames';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import AsyncSelect from 'react-select/async';
 import Select from 'react-select';
 import { toast } from 'sonner';
 import {
@@ -34,6 +35,7 @@ import {
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
 import AjournesTab from './components/AjournesTab';
+import { chargerOptionsEntreprises } from './shared';
 import BordereauxTab from './components/BordereauxTab';
 import OrdresPaiementTab from './components/OrdresPaiementTab';
 
@@ -44,10 +46,40 @@ interface RefItem {
     raison_sociale?: string;
 }
 
+/* Option react-select : les valeurs restent des chaînes pour coller au format querystring. */
+interface OptionSelect {
+    value: string;
+    label: string;
+}
+
+/* Options communes à tous les listes déroulantes : "tous/toutes" en tête (valeur vide),
+   puis les référentiels. Les labels d'entreprise retombent sur `nom` quand
+   `raison_sociale` est absent. */
+const optionsAvecTout = (items: RefItem[], libelleTout: string): OptionSelect[] => [
+    { value: '', label: libelleTout },
+    ...items.map((item) => ({ value: String(item.id), label: item.raison_sociale || item.nom })),
+];
+
+const optionSelectionnee = (options: OptionSelect[], value?: string | null): OptionSelect | null =>
+    options.find((o) => o.value === value) || null;
+
 interface PeriodeOption {
     id: number;
     code: string;
 }
+
+const MOIS_FR: Record<number, string> = {
+    1: 'Janvier', 2: 'Février', 3: 'Mars', 4: 'Avril',
+    5: 'Mai', 6: 'Juin', 7: 'Juillet', 8: 'Août',
+    9: 'Septembre', 10: 'Octobre', 11: 'Novembre', 12: 'Décembre',
+};
+
+const formatPeriode = (code: string): string => {
+    const [year, month] = code.split('-');
+    const m = parseInt(month, 10);
+
+    return `${MOIS_FR[m] || month} ${year}`;
+};
 
 interface PaiementRow {
     id: number;
@@ -318,6 +350,35 @@ setMoisDossiers(value);
     /* ─── Données onglet courant ─── */
     const currentDemarrageRows = useMemo(() => attenteDemarrage || [], [attenteDemarrage]);
     const currentPresenceRows = useMemo(() => attentePresence || [], [attentePresence]);
+
+    /* ─── Options react-select des référentiels (mémoïsées) ─── */
+    const optionsAgences = useMemo(() => optionsAvecTout(agences, 'Toutes les agences'), [agences]);
+    const optionsSources = useMemo(() => optionsAvecTout(sourcesFinancement, 'Toutes les sources de financement'), [sourcesFinancement]);
+    const optionsTypesStage = useMemo(() => optionsAvecTout(typesStage, 'Tous les types de stage'), [typesStage]);
+    const optionsTypesStructure = useMemo(() => optionsAvecTout(typestructures, 'Tous les types de structure'), [typestructures]);
+    // L'entreprise choisie est mémorisée en état : la recherche async ne conserve pas les
+    // résultats en local, le libellé sélectionné doit donc survivre à la fermeture du menu.
+    // Au montage (filtre présent dans l'URL), on retombe sur la prop `entreprises` que le
+    // contrôleur alimente uniquement avec l'entreprise pré-filtrée.
+    const [entrepriseChoisie, setEntrepriseChoisie] = useState<OptionSelect | null>(null);
+    const optionEntrepriseAffichee = entrepriseChoisie
+        ?? (selectedFilters.entreprise_id
+            ? {
+                value: selectedFilters.entreprise_id,
+                label: entreprises.find((e) => String(e.id) === selectedFilters.entreprise_id)?.raison_sociale
+                    || entreprises.find((e) => String(e.id) === selectedFilters.entreprise_id)?.nom
+                    || `Entreprise #${selectedFilters.entreprise_id}`,
+            }
+            : null);
+    const optionsPeriodes = useMemo(() => [
+        { value: '', label: 'Toutes les périodes' },
+        ...periodeOptions.map((p) => ({ value: p.code, label: formatPeriode(p.code) })),
+    ], [periodeOptions]);
+    const optionsTypeTraitement = useMemo(() => [
+        { value: '', label: 'Tout' },
+        { value: 'DM', label: 'DÉMARRAGE' },
+        { value: 'PS', label: 'PRÉSENCE' },
+    ], []);
 
     
     /* ─── Navigation filtres ─── */
@@ -1303,38 +1364,57 @@ return null;
                             <Row className="g-2 align-items-end mb-2">
                                 <Col xs={6} sm={3} md={2}>
                                     <Label className="form-label fs-12 text-muted mb-1">Agence</Label>
-                                    <Input type="select" bsSize="sm" value={selectedFilters.agence_id || ''} onChange={(e) => handleFilterChange('agence_id', e.target.value)}>
-                                        <option value="">Toutes</option>
-                                        {agences.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
-                                    </Input>
+                                    <Select isSearchable placeholder="Toutes" noOptionsMessage={() => 'Aucune agence'}
+                                        options={optionsAgences}
+                                        value={optionSelectionnee(optionsAgences, selectedFilters.agence_id)}
+                                        onChange={(selected) => handleFilterChange('agence_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col xs={6} sm={3} md={2}>
                                     <Label className="form-label fs-12 text-muted mb-1">Entreprise</Label>
-                                    <Input type="select" bsSize="sm" value={selectedFilters.entreprise_id || ''} onChange={(e) => handleFilterChange('entreprise_id', e.target.value)}>
-                                        <option value="">Toutes</option>
-                                        {entreprises.map((e) => <option key={e.id} value={e.id}>{e.raison_sociale || e.nom}</option>)}
-                                    </Input>
+                                    <AsyncSelect
+                                        loadOptions={chargerOptionsEntreprises}
+                                        value={optionEntrepriseAffichee}
+                                        onChange={(selected) => {
+                                            setEntrepriseChoisie(selected);
+                                            handleFilterChange('entreprise_id', selected?.value || '');
+                                        }}
+                                        placeholder="Rechercher une entreprise..."
+                                        noOptionsMessage={({ inputValue }) => inputValue.length < 2 ? 'Saisissez au moins 2 caractères' : 'Aucune entreprise'}
+                                        loadingMessage={() => 'Recherche...'}
+                                        isClearable
+                                        cacheOptions
+                                        defaultOptions={[]}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col xs={6} sm={3} md={2}>
                                     <Label className="form-label fs-12 text-muted mb-1">Financement</Label>
-                                    <Input type="select" bsSize="sm" value={selectedFilters.source_financement_id || ''} onChange={(e) => handleFilterChange('source_financement_id', e.target.value)}>
-                                        <option value="">Tous</option>
-                                        {sourcesFinancement.map((sf) => <option key={sf.id} value={sf.id}>{sf.nom}</option>)}
-                                    </Input>
+                                    <Select isSearchable placeholder="Tous" noOptionsMessage={() => 'Aucun financement'}
+                                        options={optionsSources}
+                                        value={optionSelectionnee(optionsSources, selectedFilters.source_financement_id)}
+                                        onChange={(selected) => handleFilterChange('source_financement_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col xs={6} sm={3} md={2}>
                                     <Label className="form-label fs-12 text-muted mb-1">Type Stage</Label>
-                                    <Input type="select" bsSize="sm" value={selectedFilters.type_stage_id || ''} onChange={(e) => handleFilterChange('type_stage_id', e.target.value)}>
-                                        <option value="">Tous</option>
-                                        {typesStage.map((ts) => <option key={ts.id} value={ts.id}>{ts.nom}</option>)}
-                                    </Input>
+                                    <Select isSearchable placeholder="Tous" noOptionsMessage={() => 'Aucun type de stage'}
+                                        options={optionsTypesStage}
+                                        value={optionSelectionnee(optionsTypesStage, selectedFilters.type_stage_id)}
+                                        onChange={(selected) => handleFilterChange('type_stage_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                                 <Col xs={6} sm={3} md={2}>
                                     <Label className="form-label fs-12 text-muted mb-1">Type Structure</Label>
-                                    <Input type="select" bsSize="sm" value={selectedFilters.type_structure_id || ''} onChange={(e) => handleFilterChange('type_structure_id', e.target.value)}>
-                                        <option value="">Toutes</option>
-                                        {typestructures.map((t) => <option key={t.id} value={t.id}>{t.nom}</option>)}
-                                    </Input>
+                                    <Select isSearchable placeholder="Toutes" noOptionsMessage={() => 'Aucun type de structure'}
+                                        options={optionsTypesStructure}
+                                        value={optionSelectionnee(optionsTypesStructure, selectedFilters.type_structure_id)}
+                                        onChange={(selected) => handleFilterChange('type_structure_id', selected?.value || '')}
+                                        classNamePrefix="react-select"
+                                    />
                                 </Col>
                             </Row>
                             <Row className="g-2 align-items-end">
@@ -1441,11 +1521,11 @@ return null;
                                     <div className="d-flex align-items-center gap-2 mb-3">
                                         <i className="ri-calendar-line text-primary fs-16"></i>
                                         <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
-                                        <Input type="select" bsSize="sm" style={{ width: 180 }} value={moisDemarrage}
-                                            onChange={(e) => setMoisDemarrage(e.target.value)}>
-                                            <option value="">Toutes les périodes</option>
-                                            {periodeOptions.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}
-                                        </Input>
+                                        <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
+                                            value={optionSelectionnee(optionsPeriodes, moisDemarrage)}
+                                            onChange={(selected) => setMoisDemarrage(selected?.value || '')}
+                                            classNamePrefix="react-select"
+                                        />
                                         <Button color="primary" size="sm" onClick={applyFilters} disabled={isLoading}>
                                             <i className="ri-search-line me-1"></i>Appliquer
                                         </Button>
@@ -1614,11 +1694,11 @@ return null;
                                     <div className="d-flex align-items-center gap-2 mb-3">
                                         <i className="ri-calendar-line text-info fs-16"></i>
                                         <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
-                                        <Input type="select" bsSize="sm" style={{ width: 180 }} value={moisPresence}
-                                            onChange={(e) => setMoisPresence(e.target.value)}>
-                                            <option value="">Toutes les périodes</option>
-                                            {periodeOptions.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}
-                                        </Input>
+                                        <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
+                                            value={optionSelectionnee(optionsPeriodes, moisPresence)}
+                                            onChange={(selected) => setMoisPresence(selected?.value || '')}
+                                            classNamePrefix="react-select"
+                                        />
                                         <Button color="info" size="sm" onClick={applyFilters} disabled={isLoading}>
                                             <i className="ri-search-line me-1"></i>Appliquer
                                         </Button>
@@ -1735,11 +1815,11 @@ return null;
                                     <div className="d-flex align-items-center gap-2 mb-3">
                                         <i className="ri-calendar-line text-warning fs-16"></i>
                                         <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
-                                        <Input type="select" bsSize="sm" style={{ width: 180 }} value={moisDossiers}
-                                            onChange={(e) => setMoisDossiers(e.target.value)}>
-                                            <option value="">Toutes les périodes</option>
-                                            {periodeOptions.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}
-                                        </Input>
+                                        <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
+                                            value={optionSelectionnee(optionsPeriodes, moisDossiers)}
+                                            onChange={(selected) => setMoisDossiers(selected?.value || '')}
+                                            classNamePrefix="react-select"
+                                        />
                                         <Button color="warning" size="sm" onClick={applyFilters} disabled={isLoading}>
                                             <i className="ri-search-line me-1"></i>Appliquer
                                         </Button>
@@ -2119,7 +2199,6 @@ pgs.push('...');
                                                 actif={dossierTab === 'ajournes'}
                                                 mois={moisDossiers}
                                                 agences={agences}
-                                                entreprises={entreprises}
                                                 typesStage={typesStage}
                                                 sourcesFinancement={sourcesFinancement}
                                                 onApercuDocuments={handlePreviewDocs}
@@ -2140,28 +2219,27 @@ pgs.push('...');
                                                             <Row className="g-3 align-items-end">
                                                                 <Col md={4}>
                                                                     <Label className="form-label fs-12 text-muted fw-semibold">Type Traitement</Label>
-                                                                    <Input type="select" bsSize="sm" value={multiTypeTraitement}
-                                                                        onChange={(e) => setMultiTypeTraitement(e.target.value)}>
-                                                                        <option value="">Tout</option>
-                                                                        <option value="DM">DÉMARRAGE</option>
-                                                                        <option value="PS">PRÉSENCE</option>
-                                                                    </Input>
+                                                                    <Select isSearchable={false} options={optionsTypeTraitement}
+                                                                        value={optionSelectionnee(optionsTypeTraitement, multiTypeTraitement)}
+                                                                        onChange={(selected) => setMultiTypeTraitement(selected?.value || '')}
+                                                                        classNamePrefix="react-select"
+                                                                    />
                                                                 </Col>
                                                                 <Col md={4}>
                                                                     <Label className="form-label fs-12 text-muted fw-semibold">Agence</Label>
-                                                                    <Input type="select" bsSize="sm" value={multiAgenceId}
-                                                                        onChange={(e) => setMultiAgenceId(e.target.value)}>
-                                                                        <option value="">Toutes</option>
-                                                                        {agences.map((a) => <option key={a.id} value={a.id}>{a.nom}</option>)}
-                                                                    </Input>
+                                                                    <Select isSearchable options={optionsAgences}
+                                                                        value={optionSelectionnee(optionsAgences, multiAgenceId)}
+                                                                        onChange={(selected) => setMultiAgenceId(selected?.value || '')}
+                                                                        classNamePrefix="react-select"
+                                                                    />
                                                                 </Col>
                                                                 <Col md={4}>
                                                                     <Label className="form-label fs-12 text-muted fw-semibold">Source de financement</Label>
-                                                                    <Input type="select" bsSize="sm" value={multiSourceId}
-                                                                        onChange={(e) => setMultiSourceId(e.target.value)}>
-                                                                        <option value="">Toutes</option>
-                                                                        {sourcesFinancement.map((sf) => <option key={sf.id} value={sf.id}>{sf.nom}</option>)}
-                                                                    </Input>
+                                                                    <Select isSearchable options={optionsSources}
+                                                                        value={optionSelectionnee(optionsSources, multiSourceId)}
+                                                                        onChange={(selected) => setMultiSourceId(selected?.value || '')}
+                                                                        classNamePrefix="react-select"
+                                                                    />
                                                                 </Col>
                                                                 <Col md={12}>
                                                                     <Label className="form-label fs-12 text-muted fw-semibold">
@@ -2566,11 +2644,19 @@ stPageNums.push('...');
                     <p>Indiquez le statut du dossier physique pour les stagiaires sélectionnés.</p>
                     <div>
                         <Label className="form-label">Statut</Label>
-                        <Input type="select" value={dossierStatus} onChange={(e) => setDossierStatus(e.target.value)}>
-                            <option value="en_attente">En attente</option>
-                            <option value="recu">Reçu</option>
-                            <option value="conforme">Conforme</option>
-                        </Input>
+                        <Select isSearchable={false} classNamePrefix="react-select"
+                            options={[
+                                { value: 'en_attente', label: 'En attente' },
+                                { value: 'recu', label: 'Reçu' },
+                                { value: 'conforme', label: 'Conforme' },
+                            ]}
+                            value={dossierStatus === 'en_attente'
+                                ? { value: 'en_attente', label: 'En attente' }
+                                : dossierStatus === 'recu'
+                                    ? { value: 'recu', label: 'Reçu' }
+                                    : { value: 'conforme', label: 'Conforme' }}
+                            onChange={(selected) => setDossierStatus(selected?.value || 'en_attente')}
+                        />
                     </div>
                 </ModalBody>
                 <ModalFooter>

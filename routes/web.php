@@ -18,6 +18,7 @@ use App\Http\Controllers\Desse\StagiaireDesseController;
 use App\Http\Controllers\Dmg\AjournementPaiementDmgController;
 use App\Http\Controllers\Dmg\AttentePaiementDmgController;
 use App\Http\Controllers\Dmg\DossierPaiementDmgController;
+use App\Http\Controllers\Dmg\EntrepriseRechercheController;
 use App\Http\Controllers\Dmg\ExportPaiementDmgController;
 use App\Http\Controllers\Dmg\MultiDossierController;
 use App\Http\Controllers\Dmg\OperationDmgController;
@@ -137,6 +138,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dmg/validation', [ValidationDmgController::class, 'index'])->middleware('can:valider_dmg')->name('dmg.validation.index');
     Route::get('/dmg/paiements', [PaiementDmgController::class, 'index'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.index');
     Route::get('/dmg/paiements/json', [AttentePaiementDmgController::class, 'index'])->middleware('can:voir_paiements_dmg')->name('dmg.paiements.json');
+    Route::get('/dmg/paiements/entreprises', EntrepriseRechercheController::class)->middleware('can:voir_paiements_dmg')->name('dmg.paiements.entreprises');
     Route::get('/dmg/paiements/generer-pdf', ExportPaiementDmgController::class)->middleware('can:generer_etat_financier')->name('dmg.paiements.generer_pdf');
     Route::get('/dmg/paiements/generer-excel', [ExportPaiementDmgController::class, 'excel'])->middleware('can:generer_etat_financier')->name('dmg.paiements.generer_excel');
     // Génération en arrière-plan des exports volumineux : lancement, suivi, téléchargement
