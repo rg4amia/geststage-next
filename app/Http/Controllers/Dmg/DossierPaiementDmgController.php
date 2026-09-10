@@ -5,12 +5,18 @@ namespace App\Http\Controllers\Dmg;
 use App\Domain\Payment\Services\DmgService;
 use App\Domain\Payment\Services\MultiDossierPdfService;
 use App\Http\Controllers\Controller;
+use App\Jobs\ValiderPaiementsDmgJob;
 use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Reference\Periode;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
@@ -29,6 +35,142 @@ class DossierPaiementDmgController extends Controller
         $dossiers = $this->service->genererDossiersPaiement($data['periode_id'], $data['paiement_ids'], $request->user());
 
         return back()->with('success', $dossiers->count().' dossier(s) genere(s).');
+    }
+
+    public function validerWorkflow(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'mois' => ['required', 'date_format:Y-m', 'exists:periodes,code'],
+            'nature' => ['required', 'in:demarrage,presence'],
+            'keyword' => ['nullable', 'in:valider,valider-select,annuler-selection,annuler-tous'],
+            'datas' => ['nullable', 'array', 'max:'.DmgService::LIMITE_LISTE_ATTENTE],
+            'datas.*' => ['integer', 'distinct'],
+            'observation' => ['nullable', 'string', 'max:1000'],
+            'agence_id' => ['nullable', 'integer'],
+            'entreprise_id' => ['nullable', 'integer'],
+            'source_financement_id' => ['nullable', 'integer'],
+            'typesfinancement_id' => ['nullable', 'integer'],
+            'type_stage_id' => ['nullable', 'integer'],
+            'typestages_id' => ['nullable', 'integer'],
+            'type_structure_id' => ['nullable', 'integer'],
+            'date_debut' => ['nullable', 'date'],
+            'date_fin' => ['nullable', 'date'],
+            'date_debut_start' => ['nullable', 'date'],
+            'date_debut_end' => ['nullable', 'date'],
+            'date_validation_debut' => ['nullable', 'date'],
+            'date_validation_fin' => ['nullable', 'date'],
+            'search' => ['nullable', 'string', 'max:255'],
+            'dossier_physique' => ['nullable', 'string', 'max:50'],
+            'dossier_identifiant' => ['nullable', 'string', 'max:100'],
+            'cohorte' => ['nullable', 'in:global,cohorte1,cohorte2,cohorte3'],
+        ]);
+
+        $keyword = $data['keyword'] ?? 'valider';
+        $selection = in_array($keyword, ['valider-select', 'annuler-selection'], true);
+        $action = in_array($keyword, ['annuler-selection', 'annuler-tous'], true) ? 'ajourner' : 'valider';
+        $idsDemandes = array_values(array_unique(array_map('intval', $data['datas'] ?? [])));
+
+        if ($selection && $idsDemandes === []) {
+            throw ValidationException::withMessages([
+                'datas' => 'Aucun paiement sélectionné.',
+            ]);
+        }
+
+        $periode = Periode::query()->where('code', $data['mois'])->firstOrFail();
+        $query = $this->requeteValidationPaiements($data);
+
+        if ($selection) {
+            $query->whereIn('paiements.id', $idsDemandes);
+        }
+
+        $paiementIds = $query
+            ->orderBy('paiements.id')
+            ->limit(DmgService::LIMITE_LISTE_ATTENTE)
+            ->pluck('paiements.id')
+            ->map(fn (mixed $id): int => (int) $id)
+            ->values()
+            ->all();
+
+        if ($paiementIds === [] || ($selection && count($paiementIds) !== count($idsDemandes))) {
+            throw ValidationException::withMessages([
+                'datas' => 'La sélection ne contient aucun paiement encore éligible.',
+            ]);
+        }
+
+        $batch = Bus::batch([
+            new ValiderPaiementsDmgJob(
+                periodeId: (int) $periode->id,
+                paiementIds: $paiementIds,
+                action: $action,
+                observation: $data['observation'] ?? null,
+                auteurId: (int) $request->user()->id,
+            ),
+        ])->name("validation-paiements-dmg:{$action}:{$data['nature']}:{$data['mois']}")->dispatch();
+
+        return response()->json([
+            'batch_id' => $batch->id,
+            'numero_dossier' => null,
+            'paiements_count' => count($paiementIds),
+            'action' => $action,
+        ]);
+    }
+
+    public function progressionValidation(string $batchId): JsonResponse
+    {
+        $batch = Bus::findBatch($batchId);
+
+        if (! $batch) {
+            return response()->json(['message' => 'Batch introuvable.'], 404);
+        }
+
+        return response()->json([
+            'id' => $batch->id,
+            'name' => $batch->name,
+            'totalJobs' => $batch->totalJobs,
+            'pendingJobs' => $batch->pendingJobs,
+            'failedJobs' => $batch->failedJobs,
+            'processedJobs' => $batch->processedJobs(),
+            'progress' => $batch->progress(),
+            'finished' => $batch->finished(),
+        ]);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function requeteValidationPaiements(array $data): Builder
+    {
+        $filters = $this->filtresValidation($data);
+        $query = $data['nature'] === 'presence'
+            ? $this->service->attentePaiementPresence($filters, $data['mois'])
+            : $this->service->attentePaiementDemarrage($filters, $data['mois']);
+
+        if ($data['nature'] === 'demarrage') {
+            $query = $this->service->applyCohorteFilter($query, $data['cohorte'] ?? 'global');
+        }
+
+        return $query;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function filtresValidation(array $data): array
+    {
+        return [
+            'agence_id' => $data['agence_id'] ?? null,
+            'entreprise_id' => $data['entreprise_id'] ?? null,
+            'source_financement_id' => $data['source_financement_id'] ?? $data['typesfinancement_id'] ?? null,
+            'type_stage_id' => $data['type_stage_id'] ?? $data['typestages_id'] ?? null,
+            'type_structure_id' => $data['type_structure_id'] ?? null,
+            'date_debut' => $data['date_debut'] ?? $data['date_debut_start'] ?? null,
+            'date_fin' => $data['date_fin'] ?? $data['date_debut_end'] ?? null,
+            'date_validation_debut' => $data['date_validation_debut'] ?? null,
+            'date_validation_fin' => $data['date_validation_fin'] ?? null,
+            'search' => $data['search'] ?? null,
+            'dossier_physique' => $data['dossier_physique'] ?? null,
+        ];
     }
 
     public function transmettre(DossierPaiement $dossier): RedirectResponse

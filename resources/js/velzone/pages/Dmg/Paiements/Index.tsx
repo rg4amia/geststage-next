@@ -81,6 +81,23 @@ const formatPeriode = (code: string): string => {
     return `${MOIS_FR[m] || month} ${year}`;
 };
 
+const csrfToken = (): string => {
+    const metaToken = (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement | null)?.content;
+
+    if (metaToken) {
+        return metaToken;
+    }
+
+    return decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '');
+};
+
+const csrfHeaders = (contentType?: string): Record<string, string> => ({
+    Accept: 'application/json',
+    'X-Requested-With': 'XMLHttpRequest',
+    'X-CSRF-TOKEN': csrfToken(),
+    ...(contentType ? { 'Content-Type': contentType } : {}),
+});
+
 interface PaiementRow {
     id: number;
     numero: string;
@@ -264,6 +281,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
     /* ─── Export en arrière-plan ─── */
     type ExportType = 'etat_paiement' | 'attestation_demarrage' | 'attestation_presence' | 'fusion_tresor' | 'excel';
+    type WorkflowScope = 'liste' | 'selected';
+    type WorkflowAction = 'valider' | 'ajourner';
     const [batchExport, setBatchExport] = useState<{
         id: string;
         type: ExportType;
@@ -271,6 +290,15 @@ const DmgPaiementsIndex = (props: PageProps) => {
         progress: number;
         disponible: boolean;
         echec: boolean;
+    } | null>(null);
+    const [batchValidation, setBatchValidation] = useState<{
+        id: string;
+        libelle: string;
+        progress: number;
+        finished: boolean;
+        echec: boolean;
+        action: WorkflowAction;
+        count: number;
     } | null>(null);
 
     /* ─── Filtres ─── */
@@ -326,7 +354,9 @@ setMoisDossiers(value);
     const [motifAjourner, setMotifAjourner] = useState('');
     // Portée des actions de masse : « toute la liste » (équivalent legacy annuler-tous) ou
     // « sélection » (annuler-selection). Posée à l'ouverture de la modale par l'élément cliqué.
-    const [ajournerScope, setAjournerScope] = useState<'liste' | 'selection'>('liste');
+    const [ajournerScope, setAjournerScope] = useState<WorkflowScope>('liste');
+    const [validerScope, setValiderScope] = useState<WorkflowScope>('liste');
+    const [observationValidation, setObservationValidation] = useState('');
     const [dossierScope, setDossierScope] = useState<'liste' | 'selection'>('liste');
     const [dossierStatus, setDossierStatus] = useState('en_attente');
     const [observationGroupe, setObservationGroupe] = useState('');
@@ -549,43 +579,132 @@ return;
         });
     };
 
-    const handleValiderPaiement = (ids: number[], scope: 'liste' | 'selected') => {
-        if (ids.length === 0 || !props.periode) {
-return;
-}
-
-        setProcessing(true);
-        router.post('/dmg/paiements/generer', { periode_id: props.periode.id, paiement_ids: ids, scope }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setSelectedDemarrageIds([]);
-                setSelectedPresenceIds([]);
-                setModalValiderOpen(false);
-            },
-            onFinish: () => setProcessing(false),
-        });
-    };
-
     const currentRows = activeTab === '2' ? currentPresenceRows : currentDemarrageRows;
 
-    const handleAjournerPaiement = () => {
-        const ids = ajournerScope === 'liste' ? currentRows.map((r) => r.id) : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds);
+    const selectedPaiementIds = () => (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds);
 
-        if (motifAjourner.trim().length < 5 || ids.length === 0) {
-return;
-}
+    const workflowCount = (scope: WorkflowScope) => {
+        if (scope === 'selected') {
+            return selectedPaiementIds().length;
+        }
+
+        if (activeTab === '2') {
+            return compteurs?.presence ?? currentPresenceRows.length;
+        }
+
+        if (demarrageTab === 'cohorte1') {
+            return compteurs?.cohorte1?.demarrage ?? currentDemarrageRows.length;
+        }
+
+        if (demarrageTab === 'cohorte2') {
+            return compteurs?.cohorte2?.demarrage ?? currentDemarrageRows.length;
+        }
+
+        if (demarrageTab === 'cohorte3') {
+            return compteurs?.cohorte3?.demarrage ?? currentDemarrageRows.length;
+        }
+
+        return compteurs?.global?.demarrage ?? compteurs?.demarrage ?? currentDemarrageRows.length;
+    };
+
+    const workflowPayload = (action: WorkflowAction, scope: WorkflowScope, observation: string) => {
+        const selection = scope === 'selected';
+
+        return {
+            mois: getMoisForTab(activeTab),
+            nature: activeTab === '2' ? 'presence' : 'demarrage',
+            keyword: action === 'valider'
+                ? (selection ? 'valider-select' : 'valider')
+                : (selection ? 'annuler-selection' : 'annuler-tous'),
+            datas: selection ? selectedPaiementIds() : [],
+            observation,
+            ...selectedFilters,
+            typesfinancement_id: selectedFilters.source_financement_id,
+            typestages_id: selectedFilters.type_stage_id,
+            date_debut_start: selectedFilters.date_debut,
+            date_debut_end: selectedFilters.date_fin,
+            cohorte: activeTab === '1' ? demarrageTab : 'global',
+        };
+    };
+
+    const lancerWorkflowValidation = async (action: WorkflowAction, scope: WorkflowScope, observation: string) => {
+        const count = workflowCount(scope);
+
+        if (!getMoisForTab(activeTab)) {
+            toast.error('Choisissez une période avant de lancer le traitement.');
+
+            return;
+        }
+
+        if (count === 0) {
+            toast.error('Aucun paiement éligible pour cette action.');
+
+            return;
+        }
+
+        if (action === 'ajourner' && observation.trim().length < 5) {
+            toast.error('Le motif doit contenir au moins 5 caractères.');
+
+            return;
+        }
 
         setProcessing(true);
-        router.post('/dmg/paiements/ajourner', { paiement_ids: ids, motif: motifAjourner }, {
-            preserveScroll: true,
-            onSuccess: () => {
-                setSelectedDemarrageIds([]);
-                setSelectedPresenceIds([]);
-                setModalAjournerOpen(false);
-                setMotifAjourner('');
-            },
-            onFinish: () => setProcessing(false),
-        });
+
+        try {
+            const reponse = await fetch('/dmg/paiements/valider-workflow', {
+                method: 'POST',
+                headers: csrfHeaders('application/json'),
+                body: JSON.stringify(workflowPayload(action, scope, observation.trim())),
+            });
+            const donnees = await reponse.json();
+
+            if (!reponse.ok || !donnees.batch_id) {
+                const message = donnees.message
+                    || Object.values(donnees.errors ?? {}).flat().join(' ')
+                    || 'Impossible de lancer le traitement.';
+                toast.error(message);
+
+                return;
+            }
+
+            const libelleAction = action === 'valider' ? 'Validation des paiements' : 'Ajournement des paiements';
+            const libelleScope = scope === 'selected' ? `${count} sélectionné(s)` : 'toute la liste filtrée';
+
+            setBatchValidation({
+                id: donnees.batch_id,
+                libelle: `${libelleAction} — ${libelleScope}`,
+                progress: 0,
+                finished: false,
+                echec: false,
+                action,
+                count: donnees.paiements_count ?? count,
+            });
+            setModalValiderOpen(false);
+            setModalAjournerOpen(false);
+            toast.info('Traitement lancé en arrière-plan', { description: `${libelleAction} (${donnees.paiements_count ?? count} paiement(s)).` });
+        } catch {
+            toast.error('Impossible de lancer le traitement.');
+        } finally {
+            setProcessing(false);
+        }
+    };
+
+    const openValiderModal = (scope: WorkflowScope) => {
+        if (workflowCount(scope) === 0) {
+            return;
+        }
+
+        setValiderScope(scope);
+        setObservationValidation('');
+        setModalValiderOpen(true);
+    };
+
+    const handleValiderPaiement = () => {
+        void lancerWorkflowValidation('valider', validerScope, observationValidation);
+    };
+
+    const handleAjournerPaiement = () => {
+        void lancerWorkflowValidation('ajourner', ajournerScope, motifAjourner);
     };
 
     const handleMarquerDossier = (status: string) => {
@@ -606,8 +725,8 @@ return;
         });
     };
 
-    const openAjournerModal = (scope: 'liste' | 'selection') => {
-        const count = scope === 'liste' ? currentRows.length : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds).length;
+    const openAjournerModal = (scope: WorkflowScope) => {
+        const count = workflowCount(scope);
 
         if (count === 0) {
 return;
@@ -644,11 +763,7 @@ return;
         try {
             const reponse = await fetch('/dmg/paiements/exporter', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Accept: 'application/json',
-                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
-                },
+                headers: csrfHeaders('application/json'),
                 body: JSON.stringify(payload),
             });
 
@@ -658,6 +773,7 @@ return;
                 if (typeof Notification !== 'undefined' && Notification.permission === 'default') {
                     Notification.requestPermission();
                 }
+
                 setBatchExport({ id: donnees.batch_id, type, libelle, progress: 0, disponible: false, echec: false });
                 toast.info('Export lancé en arrière-plan', { description: `${libelle} — vous serez prévenu dès que le fichier sera prêt.` });
             } else {
@@ -682,6 +798,7 @@ return;
 
             if (!reponse.ok) {
                 window.clearInterval(minuteur);
+
                 return;
             }
 
@@ -729,6 +846,65 @@ return;
             toast.error('Échec de la génération', { description: batchExport.libelle });
         }
     }, [batchExport?.disponible, batchExport?.echec]);
+
+    useEffect(() => {
+        if (!batchValidation || batchValidation.finished || batchValidation.echec) {
+            return;
+        }
+
+        const minuteur = window.setInterval(async () => {
+            const reponse = await fetch(`/dmg/paiements/valider-workflow/${batchValidation.id}/progression`, {
+                headers: { Accept: 'application/json' },
+            });
+
+            if (!reponse.ok) {
+                window.clearInterval(minuteur);
+
+                return;
+            }
+
+            const donnees = await reponse.json();
+            setBatchValidation((etat) => {
+                if (!etat || etat.id !== donnees.id) {
+                    return etat;
+                }
+
+                return {
+                    ...etat,
+                    progress: donnees.progress ?? 0,
+                    finished: Boolean(donnees.finished),
+                    echec: Number(donnees.failedJobs ?? 0) > 0,
+                };
+            });
+        }, 1000);
+
+        return () => window.clearInterval(minuteur);
+    }, [batchValidation?.id, batchValidation?.finished, batchValidation?.echec]);
+
+    useEffect(() => {
+        if (!batchValidation || (!batchValidation.finished && !batchValidation.echec)) {
+            return;
+        }
+
+        if (batchValidation.echec) {
+            toast.error('Échec du traitement', { description: batchValidation.libelle });
+
+            return;
+        }
+
+        toast.success(batchValidation.action === 'valider' ? 'Paiements validés' : 'Paiements ajournés', {
+            description: `${batchValidation.count} paiement(s) traité(s).`,
+        });
+        setSelectedDemarrageIds([]);
+        setSelectedPresenceIds([]);
+        setMotifAjourner('');
+        setObservationValidation('');
+        setIsLoading(true);
+        router.reload({
+            preserveScroll: true,
+            onFinish: () => setIsLoading(false),
+        });
+    }, [batchValidation?.finished, batchValidation?.echec]);
 
     const handleTransmettreDossier = (id: number) => {
         router.post(`/dmg/paiements/transmettre/${id}`, {}, { preserveScroll: true });
@@ -870,12 +1046,7 @@ return;
 
         fetch('/dmg/paiements/stagiaires', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? ''),
-            },
+            headers: csrfHeaders('application/x-www-form-urlencoded'),
             body: body.toString(),
         })
             .then((r) => r.json())
@@ -976,12 +1147,7 @@ params.set('typetraitement', multiTypeTraitement);
 
         fetch('/dmg/multi-dossier/stagiaires', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded',
-                Accept: 'application/json',
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? ''),
-            },
+            headers: csrfHeaders('application/x-www-form-urlencoded'),
             body: body.toString(),
         })
             .then((r) => r.json())
@@ -1024,7 +1190,7 @@ return;
         setProcessing(true);
         fetch('/dmg/multi-dossier/validate', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            headers: csrfHeaders('application/json'),
             body: JSON.stringify({ dossiers: selectedMultiDossierIds, mois: moisDossiers, observation: multiObservation.trim() || null }),
         })
             .then((r) => r.json())
@@ -1049,7 +1215,7 @@ return;
         setProcessing(true);
         fetch('/dmg/multi-dossier/ajourner-dossier', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            headers: csrfHeaders('application/json'),
             body: JSON.stringify({ dossier_id: selectedMultiDossierIds, motif: motifMultiAjournerDossier, mois: moisDossiers }),
         })
             .then((r) => r.json())
@@ -1068,7 +1234,7 @@ return;
         setProcessing(true);
         fetch('/dmg/multi-dossier/ajourner-stagiaire', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            headers: csrfHeaders('application/json'),
             body: JSON.stringify({ paiementIds: selectedStagiaireIds, motif: motifMultiAjournerStagiaire }),
         })
             .then((r) => r.json())
@@ -1089,7 +1255,7 @@ return;
         selectedMultiDossierIds.forEach((id) => body.append('dossiers[]', String(id)));
         fetch(url, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'X-Requested-With': 'XMLHttpRequest', 'X-XSRF-TOKEN': decodeURIComponent(document.cookie.match(/XSRF-TOKEN=([^;]+)/)?.[1] ?? '') },
+            headers: csrfHeaders('application/x-www-form-urlencoded'),
             body: body.toString(),
         })
             .then((r) => {
@@ -1539,6 +1705,33 @@ return null;
                                 </Card>
                             )}
 
+                            {batchValidation && (
+                                <Card className="border shadow-none mb-3 border-success">
+                                    <CardBody className="py-2">
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                            <i className={`ri-loader-4-line ${batchValidation.finished || batchValidation.echec ? '' : 'ri-spin'} text-success me-1`}></i>
+                                            <span className="fw-semibold fs-13">{batchValidation.libelle}</span>
+                                            {batchValidation.echec ? (
+                                                <Badge color="danger">Échec</Badge>
+                                            ) : batchValidation.finished ? (
+                                                <Badge color="success">Terminé</Badge>
+                                            ) : (
+                                                <Badge color="info">En cours…</Badge>
+                                            )}
+                                        </div>
+                                        {batchValidation.echec ? (
+                                            <p className="text-muted mb-0 fs-12">Le traitement a échoué. Vérifiez que les paiements sont toujours éligibles, puis relancez.</p>
+                                        ) : batchValidation.finished ? (
+                                            <p className="text-muted mb-0 fs-12">{batchValidation.count} paiement(s) traité(s). La liste a été rafraîchie.</p>
+                                        ) : (
+                                            <Progress value={batchValidation.progress} color="success" className="mt-1" style={{ height: '6px' }}>
+                                                {batchValidation.progress}%
+                                            </Progress>
+                                        )}
+                                    </CardBody>
+                                </Card>
+                            )}
+
 <TabContent activeTab={activeTab} className="pt-4 text-muted">
                                 {/* ═══════ ONGLET 1 : ATTENTE DÉMARRAGE ═══════ */}
                                 <TabPane tabId="1">
@@ -1615,7 +1808,7 @@ return null;
                                                     </DropdownToggle>
                                                     <DropdownMenu>
                                                         <DropdownItem disabled={currentDemarrageRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openAjournerModal('selection')}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openAjournerModal('selected')}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
@@ -1624,8 +1817,8 @@ return null;
                                                         <i className="ri-check-line me-1"></i>Valider paiement <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => handleValiderPaiement(currentDemarrageRows.map((r) => r.id), 'liste')}>Valider toute la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => handleValiderPaiement(selectedDemarrageIds, 'selected')}>Valider sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                        <DropdownItem disabled={workflowCount('liste') === 0} onClick={() => openValiderModal('liste')}>Valider toute la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openValiderModal('selected')}>Valider sélection ({selectedDemarrageIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
@@ -1788,7 +1981,7 @@ return null;
                                                     </DropdownToggle>
                                                     <DropdownMenu>
                                                         <DropdownItem disabled={currentPresenceRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openAjournerModal('selection')}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openAjournerModal('selected')}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
 
@@ -1807,8 +2000,8 @@ return null;
                                                         <i className="ri-check-line me-1"></i>Valider paiement <i className="ri-arrow-down-s-line"></i>
                                                     </DropdownToggle>
                                                     <DropdownMenu>
-                                                        <DropdownItem onClick={() => handleValiderPaiement(currentPresenceRows.map((r) => r.id), 'liste')}>Valider toute la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => handleValiderPaiement(selectedPresenceIds, 'selected')}>Valider sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                        <DropdownItem disabled={workflowCount('liste') === 0} onClick={() => openValiderModal('liste')}>Valider toute la liste</DropdownItem>
+                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openValiderModal('selected')}>Valider sélection ({selectedPresenceIds.length})</DropdownItem>
                                                     </DropdownMenu>
                                                 </UncontrolledDropdown>
                                             </div>
@@ -2634,6 +2827,37 @@ stPageNums.push('...');
                         </>
                     )}
                 </ModalBody>
+            </Modal>
+
+            {/* Modale — Valider paiement */}
+            <Modal isOpen={modalValiderOpen} toggle={() => !processing && setModalValiderOpen(false)} centered>
+                <ModalHeader toggle={() => !processing && setModalValiderOpen(false)} className="bg-success text-white">
+                    <i className="ri-check-double-line me-2"></i>Valider le paiement
+                </ModalHeader>
+                <ModalBody>
+                    <p>
+                        {validerScope === 'selected'
+                            ? `${workflowCount('selected')} paiement(s) sélectionné(s) seront validés.`
+                            : `${workflowCount('liste')} paiement(s) de la liste filtrée seront validés.`}
+                    </p>
+                    <div>
+                        <Label className="form-label">Observation</Label>
+                        <Input
+                            type="textarea"
+                            rows={3}
+                            value={observationValidation}
+                            onChange={(e) => setObservationValidation(e.target.value)}
+                            placeholder="Observation facultative"
+                            disabled={processing}
+                        />
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalValiderOpen(false)} disabled={processing}>Annuler</Button>
+                    <Button color="success" onClick={handleValiderPaiement} disabled={processing || workflowCount(validerScope) === 0}>
+                        {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : <><i className="ri-check-double-line me-1"></i>Confirmer la validation</>}
+                    </Button>
+                </ModalFooter>
             </Modal>
 
             {/* Modale — Ajourner */}

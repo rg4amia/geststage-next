@@ -136,6 +136,80 @@ class PaiementsDmgWorkflowTest extends TestCase
         $this->assertDatabaseHas('bordereau_paiements', ['id' => $bordereau->id, 'statut' => 'TRANSMIS_AC']);
     }
 
+    public function test_le_workflow_legacy_valide_une_selection_en_batch(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('administrateur');
+        $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+        $paiement = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-10');
+
+        $reponse = $this->actingAs($user)->postJson('/dmg/paiements/valider-workflow', [
+            'mois' => '2026-08',
+            'nature' => 'presence',
+            'keyword' => 'valider-select',
+            'datas' => [$paiement->id],
+            'observation' => 'Validation depuis workflow legacy',
+        ])->assertOk()
+            ->assertJsonPath('action', 'valider')
+            ->assertJsonPath('paiements_count', 1)
+            ->assertJsonStructure(['batch_id'])
+            ->json();
+
+        $this->assertDatabaseHas('paiements', ['id' => $paiement->id, 'statut' => 'EN_DOSSIER']);
+        $this->assertDatabaseHas('decisions_paiements', ['paiement_id' => $paiement->id, 'decision' => 'VALIDE_DMG']);
+
+        $this->getJson('/dmg/paiements/valider-workflow/'.$reponse['batch_id'].'/progression')
+            ->assertOk()
+            ->assertJsonPath('finished', true);
+    }
+
+    public function test_le_workflow_legacy_valide_toute_la_liste_filtree_sans_datas(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('administrateur');
+        $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+        $paiementA = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-10');
+        $paiementB = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-12');
+
+        $this->actingAs($user)->postJson('/dmg/paiements/valider-workflow', [
+            'mois' => '2026-08',
+            'nature' => 'presence',
+            'keyword' => 'valider',
+            'datas' => [],
+        ])->assertOk()
+            ->assertJsonPath('action', 'valider')
+            ->assertJsonPath('paiements_count', 2);
+
+        $this->assertSame(2, Paiement::whereIn('id', [$paiementA->id, $paiementB->id])->where('statut', 'EN_DOSSIER')->count());
+        $this->assertDatabaseCount('dossiers_paiement', 2);
+        $this->assertDatabaseCount('lignes_dossiers_paiement', 2);
+    }
+
+    public function test_le_workflow_legacy_ajourne_une_selection_en_batch(): void
+    {
+        $this->seed(RolePermissionSeeder::class);
+        $user = User::factory()->create();
+        $user->assignRole('administrateur');
+        $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
+        $paiement = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'DEMARRAGE', '2026-08-03');
+
+        $this->actingAs($user)->postJson('/dmg/paiements/valider-workflow', [
+            'mois' => '2026-08',
+            'nature' => 'demarrage',
+            'keyword' => 'annuler-selection',
+            'datas' => [$paiement->id],
+            'observation' => 'Dossier physique non conforme',
+            'cohorte' => 'global',
+        ])->assertOk()
+            ->assertJsonPath('action', 'ajourner')
+            ->assertJsonPath('paiements_count', 1);
+
+        $this->assertDatabaseHas('paiements', ['id' => $paiement->id, 'statut' => 'AJOURNE_DMG']);
+        $this->assertDatabaseHas('decisions_paiements', ['paiement_id' => $paiement->id, 'decision' => 'AJOURNE_DMG']);
+    }
+
     public function test_le_multi_dossier_regroupe_et_transmet_des_dossiers_compatibles(): void
     {
         $this->seed(RolePermissionSeeder::class);

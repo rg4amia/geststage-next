@@ -159,6 +159,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/dmg/paiements/ajourner', [AttentePaiementDmgController::class, 'ajourner'])->middleware('can:ajourner_paiement_dmg')->name('dmg.paiements.ajourner');
     Route::post('/dmg/paiements/marquer-dossier-physique', [AttentePaiementDmgController::class, 'marquerDossierPhysique'])->middleware('can:marquer_dossier_physique')->name('dmg.paiements.marquer_dossier_physique');
     Route::post('/dmg/paiements/generer', [DossierPaiementDmgController::class, 'generer'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.generer');
+    Route::post('/dmg/paiements/valider-workflow', [DossierPaiementDmgController::class, 'validerWorkflow'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.valider_workflow');
+    Route::get('/dmg/paiements/valider-workflow/{batch}/progression', [DossierPaiementDmgController::class, 'progressionValidation'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.valider_workflow.progression');
     Route::post('/dmg/paiements/transmettre/{dossier}', [DossierPaiementDmgController::class, 'transmettre'])->middleware('can:transmettre_cb')->name('dmg.paiements.transmettre');
     Route::post('/dmg/paiements/groupes', [DossierPaiementDmgController::class, 'grouper'])->middleware('can:generer_dossier_paiement')->name('dmg.paiements.groupes.store');
     Route::post('/dmg/paiements/groupes/{groupe}/transmettre', [DossierPaiementDmgController::class, 'transmettreGroupe'])->middleware('can:transmettre_cb')->name('dmg.paiements.groupes.transmettre');

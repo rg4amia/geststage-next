@@ -1,5 +1,6 @@
 import { createInertiaApp } from '@inertiajs/react';
 import { configureStore } from '@reduxjs/toolkit';
+import axios from 'axios';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import type { ComponentType } from 'react';
 import { Provider } from 'react-redux';
@@ -47,6 +48,11 @@ const pages = import.meta.glob<{ default: ComponentType }>([
 ]);
 
 const appName = import.meta.env.VITE_APP_NAME || 'GestStage';
+const csrfToken = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content;
+
+if (csrfToken) {
+    axios.defaults.headers.common['X-CSRF-TOKEN'] = csrfToken;
+}
 
 createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),
