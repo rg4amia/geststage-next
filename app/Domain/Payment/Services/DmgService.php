@@ -16,6 +16,7 @@ use App\Models\Payment\Paiement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SituationStage;
 use App\Models\User;
+use App\Models\Workflow\InstanceParcours;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -25,7 +26,10 @@ use Illuminate\Validation\ValidationException;
 
 class DmgService
 {
-    public function __construct(private WorkflowTransitionService $workflowService) {}
+    public function __construct(
+        private WorkflowTransitionService $workflowService,
+        private MultiDossierPdfService $pdfService,
+    ) {}
 
     /**
      * Plafond des files d'attente DMG chargées d'un bloc (liste écran et export PDF).
@@ -36,6 +40,8 @@ class DmgService
      * paiements, la marge sert de garde-fou, pas de découpage métier.
      */
     public const LIMITE_LISTE_ATTENTE = 5000;
+
+    private const STATUTS_TACHES_OUVERTES = ['OUVERTE', 'REVENDIQUEE'];
 
     /** @param array<string, mixed> $filters */
     public function attentePaiementDemarrage(array $filters, ?string $mois = null): Builder
@@ -337,12 +343,17 @@ class DmgService
     }
 
     /** @param list<int> $paiementIds @return Collection<int, DossierPaiement> */
-    public function genererDossiersPaiement(int $periodeId, array $paiementIds, User $auteur): Collection
+    public function genererDossiersPaiement(int $periodeId, array $paiementIds, User $auteur, ?string $validationBatchId = null): Collection
     {
-        return DB::transaction(function () use ($periodeId, $paiementIds, $auteur): Collection {
+        $initialesValideur = $this->initiales($auteur);
+
+        return DB::transaction(function () use ($periodeId, $paiementIds, $auteur, $validationBatchId, $initialesValideur): Collection {
             $ids = array_values(array_unique($paiementIds));
             $paiements = Paiement::query()->lockForUpdate()
-                ->with(['droitPaiement.stage.instanceParcours'])
+                ->with([
+                    'droitPaiement.stage.instanceParcours.taches' => fn ($query) => $query->whereIn('statut', self::STATUTS_TACHES_OUVERTES),
+                    'droitPaiement.pointage.instanceParcours.taches' => fn ($query) => $query->whereIn('statut', self::STATUTS_TACHES_OUVERTES),
+                ])
                 ->whereIn('id', $ids)->where('statut', 'A_TRAITER')
                 ->whereHas('droitPaiement', fn (Builder $d) => $d->where('periode_id', $periodeId)->whereNull('annule_le'))
                 ->get();
@@ -351,14 +362,15 @@ class DmgService
             }
 
             $corbeilles = [CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE->value];
-            if ($paiements->contains(fn (Paiement $p) => ! in_array($p->droitPaiement?->stage?->instanceParcours?->corbeille_actuelle, $corbeilles, true))) {
+            if ($paiements->contains(fn (Paiement $p) => $this->corbeilleDmgDuPaiement($p, $corbeilles) === null)) {
                 throw ValidationException::withMessages(['paiement_ids' => 'Un paiement ne se trouve plus dans une corbeille DMG.']);
             }
 
             $dossiers = collect();
-            $groupes = $paiements->groupBy(function (Paiement $paiement): string {
+            $groupes = $paiements->groupBy(function (Paiement $paiement) use ($corbeilles): string {
                 $droit = $paiement->droitPaiement;
-                $nature = $droit->stage->instanceParcours->corbeille_actuelle === CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value ? 'DM' : 'PS';
+                $corbeille = $this->corbeilleDmgDuPaiement($paiement, $corbeilles);
+                $nature = $corbeille === CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value ? 'DM' : 'PS';
 
                 return "{$droit->stage->agence_id}:{$droit->source_financement_id}:{$nature}";
             });
@@ -374,6 +386,9 @@ class DmgService
                     'agence_id' => (int) $agenceId, 'source_financement_id' => (int) $financementId,
                     'numero' => $this->numero('DOS-'.$nature), 'nature' => $nature,
                     'statut' => 'BROUILLON', 'montant_total' => $groupe->sum('montant'),
+                    'valide_par_id' => $auteur->id,
+                    'valideur_initiales' => $initialesValideur,
+                    'validation_batch_id' => $validationBatchId,
                 ]);
                 foreach ($groupe as $paiement) {
                     $lignes[] = [
@@ -394,8 +409,64 @@ class DmgService
             DB::table('decisions_paiements')->insert($decisions);
             Paiement::whereIn('id', $paiements->modelKeys())->update(['statut' => 'EN_DOSSIER']);
 
-            return $dossiers;
+            return $dossiers
+                ->map(fn (DossierPaiement $dossier) => $this->pdfService->genererPdfsDossier($dossier, $initialesValideur))
+                ->values();
         });
+    }
+
+    private function initiales(User $utilisateur): string
+    {
+        $nom = trim((string) ($utilisateur->nom ?? $utilisateur->name ?? ''));
+
+        if ($nom === '') {
+            return 'DMG';
+        }
+
+        $mots = preg_split('/\s+/', $nom) ?: [];
+        $initiales = collect($mots)
+            ->filter()
+            ->take(3)
+            ->map(fn (string $mot) => mb_strtoupper(mb_substr($mot, 0, 1)))
+            ->implode('');
+
+        return $initiales !== '' ? $initiales : 'DMG';
+    }
+
+    /**
+     * Le workflow de paiement mensuel se lit d'abord sur le pointage. Le workflow du stage ne
+     * sert que de repli pour les droits sans pointage, comme dans attentePaiement().
+     *
+     * @param  array<int, string>  $corbeilles
+     */
+    private function corbeilleDmgDuPaiement(Paiement $paiement, array $corbeilles): ?string
+    {
+        $instance = $paiement->droitPaiement?->pointage?->instanceParcours
+            ?? $paiement->droitPaiement?->stage?->instanceParcours;
+
+        if (! $instance instanceof InstanceParcours || $instance->terminee_le !== null) {
+            return null;
+        }
+
+        $tachesOuvertes = $instance->relationLoaded('taches')
+            ? $instance->taches
+            : $instance->taches()->whereIn('statut', self::STATUTS_TACHES_OUVERTES)->get();
+
+        $tacheDmg = $tachesOuvertes->first(
+            fn ($tache) => in_array($tache->code_corbeille, $corbeilles, true)
+        );
+
+        if ($tacheDmg) {
+            return $tacheDmg->code_corbeille;
+        }
+
+        if ($tachesOuvertes->isNotEmpty()) {
+            return null;
+        }
+
+        return in_array($instance->corbeille_actuelle, $corbeilles, true)
+            ? $instance->corbeille_actuelle
+            : null;
     }
 
     /** @param list<int> $paiementIds */

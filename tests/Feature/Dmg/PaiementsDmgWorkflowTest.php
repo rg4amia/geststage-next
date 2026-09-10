@@ -6,6 +6,7 @@ use App\Domain\Payment\Services\DmgService;
 use App\Enums\CorbeilleEnum;
 use App\Models\Beneficiary\Beneficiaire;
 use App\Models\Contract\Contrat;
+use App\Models\Attendance\Pointage;
 use App\Models\Internship\Stage;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierGroupe;
@@ -163,6 +164,73 @@ class PaiementsDmgWorkflowTest extends TestCase
         $this->getJson('/dmg/paiements/valider-workflow/'.$reponse['batch_id'].'/progression')
             ->assertOk()
             ->assertJsonPath('finished', true);
+    }
+
+    public function test_la_validation_dmg_utilise_la_corbeille_du_pointage_avant_celle_du_stage(): void
+    {
+        $this->travelTo(Carbon::parse('2026-09-10'), function () {
+            $this->seed(RolePermissionSeeder::class);
+            $user = User::factory()->create();
+            $user->assignRole('administrateur');
+            $periode = Periode::create(['code' => '2026-09', 'date_debut' => '2026-09-01', 'date_fin' => '2026-09-30']);
+            $stage = Stage::factory()->create(['date_debut' => '2026-09-07']);
+            Contrat::factory()->create(['stage_id' => $stage->id]);
+            $definition = DefinitionParcours::factory()->create();
+            $etape = EtapeParcours::factory()->create(['definition_parcours_id' => $definition->id]);
+            InstanceParcours::create([
+                'uuid_public' => (string) Str::uuid(),
+                'definition_parcours_id' => $definition->id,
+                'etape_courante_id' => $etape->id,
+                'stage_id' => $stage->id,
+                'corbeille_actuelle' => CorbeilleEnum::DESSE_DOUBLONS_TRAITES->value,
+                'version_verrouillage' => 0,
+            ]);
+            $pointage = Pointage::create([
+                'uuid_public' => (string) Str::uuid(),
+                'stage_id' => $stage->id,
+                'periode_id' => $periode->id,
+                'nature' => 'DEMARRAGE',
+                'statut' => 'VALIDE',
+            ]);
+            InstanceParcours::create([
+                'uuid_public' => (string) Str::uuid(),
+                'definition_parcours_id' => $definition->id,
+                'etape_courante_id' => $etape->id,
+                'pointage_id' => $pointage->id,
+                'corbeille_actuelle' => CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE->value,
+                'version_verrouillage' => 0,
+            ]);
+            $droit = DroitPaiement::create([
+                'uuid_public' => (string) Str::uuid(),
+                'stage_id' => $stage->id,
+                'pointage_id' => $pointage->id,
+                'periode_id' => $periode->id,
+                'source_financement_id' => $stage->source_financement_id,
+                'nature' => 'DEMARRAGE',
+                'montant' => 45000,
+                'statut' => 'OUVERT',
+            ]);
+            $paiement = Paiement::create([
+                'uuid_public' => (string) Str::uuid(),
+                'droit_paiement_id' => $droit->id,
+                'montant' => 45000,
+                'statut' => 'A_TRAITER',
+            ]);
+
+            $this->actingAs($user)->postJson('/dmg/paiements/valider-workflow', [
+                'mois' => '2026-09',
+                'nature' => 'demarrage',
+                'keyword' => 'valider-select',
+                'datas' => [$paiement->id],
+                'cohorte' => 'global',
+            ])->assertOk()
+                ->assertJsonPath('action', 'valider')
+                ->assertJsonPath('paiements_count', 1);
+
+            $this->assertDatabaseHas('paiements', ['id' => $paiement->id, 'statut' => 'EN_DOSSIER']);
+            $this->assertDatabaseHas('dossiers_paiement', ['periode_id' => $periode->id, 'nature' => 'DM', 'statut' => 'BROUILLON']);
+            $this->assertDatabaseHas('decisions_paiements', ['paiement_id' => $paiement->id, 'decision' => 'VALIDE_DMG']);
+        });
     }
 
     public function test_le_workflow_legacy_valide_toute_la_liste_filtree_sans_datas(): void

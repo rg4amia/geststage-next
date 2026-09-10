@@ -6,6 +6,7 @@
         body { font-family: DejaVu Sans, sans-serif; color: #20252b; font-size: 9px; }
         .entete-financement { border-bottom: 1px solid #20252b; margin-bottom: 10px; padding-bottom: 6px; }
         .meta { color: #667085; margin-bottom: 10px; font-size: 10px; text-align: right; }
+        .numero-dossier { text-align: right; margin: 2px 0 0; font-size: 10px; font-weight: bold; }
         table { border-collapse: collapse; width: 100%; }
         th, td { border: 1px solid #d0d5dd; padding: 4px 5px; text-align: left; }
         th { background: #e7f5ef; color: #075e45; text-transform: uppercase; font-size: 8px; }
@@ -34,6 +35,9 @@
                 'financement' => $financement,
                 'titre' => "ETAT DE PAIEMENT DES PRIMES DE STAGE DE {$totalEnLettres} ({$total}) STAGIAIRE(S) DE L'AGENCE EMPLOI JEUNES",
             ])
+            @if (! empty($numeroDossier))
+                <p class="numero-dossier">{{ $numeroDossier }}{{ ! empty($initialesValideur) ? '-'.$initialesValideur : '' }}</p>
+            @endif
             <p class="meta">Période(s) : {{ \Illuminate\Support\Str::upper($mois) }}</p>
         @endif
 

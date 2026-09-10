@@ -293,14 +293,23 @@ const DmgPaiementsIndex = (props: PageProps) => {
         disponible: boolean;
         echec: boolean;
     } | null>(null);
+    type DossierGenere = {
+        id: number;
+        numero: string;
+        nature: string;
+        attestation_url: string | null;
+        etat_paiement_url: string | null;
+    };
     const [batchValidation, setBatchValidation] = useState<{
         id: string;
         libelle: string;
         progress: number;
         finished: boolean;
         echec: boolean;
+        erreur?: string | null;
         action: WorkflowAction;
         count: number;
+        dossiers: DossierGenere[];
     } | null>(null);
 
     /* ─── Filtres ─── */
@@ -680,6 +689,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                 echec: false,
                 action,
                 count: donnees.paiements_count ?? count,
+                dossiers: [],
             });
             setModalValiderOpen(false);
             setModalAjournerOpen(false);
@@ -876,6 +886,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
                     progress: donnees.progress ?? 0,
                     finished: Boolean(donnees.finished),
                     echec: Number(donnees.failedJobs ?? 0) > 0,
+                    erreur: typeof donnees.failureMessage === 'string' ? donnees.failureMessage : null,
+                    dossiers: Array.isArray(donnees.dossiers) ? donnees.dossiers : etat.dossiers,
                 };
             });
         }, 1000);
@@ -889,7 +901,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
         }
 
         if (batchValidation.echec) {
-            toast.error('Échec du traitement', { description: batchValidation.libelle });
+            toast.error('Échec du traitement', { description: batchValidation.erreur ?? batchValidation.libelle });
 
             return;
         }
@@ -901,6 +913,14 @@ const DmgPaiementsIndex = (props: PageProps) => {
         setSelectedPresenceIds([]);
         setMotifAjourner('');
         setObservationValidation('');
+
+        // Les dossiers générés par la validation atterrissent en brouillon ("En élaboration") :
+        // on y bascule directement pour enchaîner sur le groupement multi-dossiers puis l'envoi au CB.
+        if (batchValidation.action === 'valider' && batchValidation.dossiers.length > 0) {
+            setActiveTab('3');
+            setDossierTab('brouillon');
+        }
+
         setIsLoading(true);
         router.reload({
             preserveScroll: true,
@@ -1715,7 +1735,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                             <CardBody className="py-2">
                                                 <div className="d-flex align-items-center gap-2 mb-1">
                                                     <i className={`ri-loader-4-line ${batchValidation.finished || batchValidation.echec ? '' : 'ri-spin'} text-success me-1`}></i>
-                                                    <span className="fw-semibold fs-13">{batchValidation.libelle}</span>
+                                                    <span className="fw-semibold fs-13 flex-grow-1">{batchValidation.libelle}</span>
                                                     {batchValidation.echec ? (
                                                         <Badge color="danger">Échec</Badge>
                                                     ) : batchValidation.finished ? (
@@ -1723,11 +1743,36 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                     ) : (
                                                         <Badge color="info">En cours…</Badge>
                                                     )}
+                                                    {(batchValidation.finished || batchValidation.echec) && (
+                                                        <Button color="light" size="sm" onClick={() => setBatchValidation(null)}>Fermer</Button>
+                                                    )}
                                                 </div>
                                                 {batchValidation.echec ? (
-                                                    <p className="text-muted mb-0 fs-12">Le traitement a échoué. Vérifiez que les paiements sont toujours éligibles, puis relancez.</p>
+                                                    <p className="text-muted mb-0 fs-12">{batchValidation.erreur ?? 'Le traitement a échoué. Vérifiez que les paiements sont toujours éligibles, puis relancez.'}</p>
                                                 ) : batchValidation.finished ? (
-                                                    <p className="text-muted mb-0 fs-12">{batchValidation.count} paiement(s) traité(s). La liste a été rafraîchie.</p>
+                                                    <>
+                                                        <p className="text-muted mb-2 fs-12">{batchValidation.count} paiement(s) traité(s). La liste a été rafraîchie.</p>
+                                                        {batchValidation.dossiers.length > 0 && (
+                                                            <div className="d-flex flex-column gap-1">
+                                                                {batchValidation.dossiers.map((dossier) => (
+                                                                    <div key={dossier.id} className="d-flex align-items-center gap-2 fs-12">
+                                                                        <span className="fw-semibold">{dossier.numero}</span>
+                                                                        <span className="text-muted">({dossier.nature === 'DM' ? 'Démarrage' : 'Présence'})</span>
+                                                                        {dossier.attestation_url && (
+                                                                            <a href={dossier.attestation_url} className="btn btn-soft-success btn-sm py-0 px-2" target="_blank" rel="noreferrer">
+                                                                                <i className="ri-file-download-line me-1"></i>Attestation
+                                                                            </a>
+                                                                        )}
+                                                                        {dossier.etat_paiement_url && (
+                                                                            <a href={dossier.etat_paiement_url} className="btn btn-soft-success btn-sm py-0 px-2" target="_blank" rel="noreferrer">
+                                                                                <i className="ri-file-download-line me-1"></i>État de paiement
+                                                                            </a>
+                                                                        )}
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </>
                                                 ) : (
                                                     <Progress value={batchValidation.progress} color="success" className="mt-1" style={{ height: '6px' }}>
                                                         {batchValidation.progress}%

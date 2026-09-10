@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpFoundation\Response;
@@ -132,7 +133,57 @@ class DossierPaiementDmgController extends Controller
             'processedJobs' => $batch->processedJobs(),
             'progress' => $batch->progress(),
             'finished' => $batch->finished(),
+            'failureMessage' => $this->messageErreurBatch($batch->failedJobIds),
+            'dossiers' => $this->dossiersDuBatch($batch->id),
         ]);
+    }
+
+    /**
+     * @param  array<int, string>|null  $failedJobIds
+     */
+    private function messageErreurBatch(?array $failedJobIds): ?string
+    {
+        if ($failedJobIds === null || $failedJobIds === []) {
+            return null;
+        }
+
+        $exception = DB::table('failed_jobs')
+            ->where('uuid', $failedJobIds[0])
+            ->value('exception');
+
+        if (! is_string($exception) || $exception === '') {
+            return null;
+        }
+
+        $premiereLigne = strtok($exception, "\n") ?: $exception;
+        $message = preg_replace('/^.*Exception:\s*/', '', $premiereLigne) ?? $premiereLigne;
+        $message = preg_replace('/\s+in\s+\/.*$/', '', $message) ?? $message;
+
+        return trim($message) !== '' ? trim($message) : null;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function dossiersDuBatch(string $batchId): array
+    {
+        return DossierPaiement::query()
+            ->where('validation_batch_id', $batchId)
+            ->orderBy('id')
+            ->get()
+            ->map(fn (DossierPaiement $dossier) => [
+                'id' => $dossier->id,
+                'numero' => $dossier->numero,
+                'nature' => $dossier->nature,
+                'attestation_url' => $dossier->attestation_path
+                    ? route('dmg.paiements.dossiers.download_attestation', $dossier)
+                    : null,
+                'etat_paiement_url' => $dossier->etat_financier_path
+                    ? route('dmg.paiements.dossiers.download_etat_financier', $dossier)
+                    : null,
+            ])
+            ->values()
+            ->all();
     }
 
     /**
@@ -266,13 +317,27 @@ class DossierPaiementDmgController extends Controller
      */
     public function downloadAttestationDossier(DossierPaiement $dossier): Response
     {
+        if ($dossier->attestation_path && Storage::disk('temp_files')->exists($dossier->attestation_path)) {
+            return response()->download(
+                Storage::disk('temp_files')->path($dossier->attestation_path),
+                basename($dossier->attestation_path)
+            );
+        }
+
         $paiements = $this->paiementsActifsDuDossier($dossier);
         if ($paiements->isEmpty()) {
             throw new NotFoundHttpException('Aucun paiement actif dans ce dossier.');
         }
 
         $moisCode = $dossier->periode?->code ?? now()->format('Y-m');
-        $pdf = $this->pdfService->construireAttestation($paiements, $dossier->source_financement_id, $moisCode);
+        $pdf = $this->pdfService->construireAttestation(
+            $paiements,
+            $dossier->source_financement_id,
+            $moisCode,
+            $dossier->nature === 'DM' ? 'demarrage' : 'presence',
+            $dossier->valideur_initiales,
+            $dossier->numero,
+        );
 
         return response()->streamDownload(function () use ($pdf): void {
             echo $pdf->output();
@@ -285,13 +350,26 @@ class DossierPaiementDmgController extends Controller
      */
     public function downloadEtatFinancierDossier(DossierPaiement $dossier): Response
     {
+        if ($dossier->etat_financier_path && Storage::disk('temp_files')->exists($dossier->etat_financier_path)) {
+            return response()->download(
+                Storage::disk('temp_files')->path($dossier->etat_financier_path),
+                basename($dossier->etat_financier_path)
+            );
+        }
+
         $paiements = $this->paiementsActifsDuDossier($dossier);
         if ($paiements->isEmpty()) {
             throw new NotFoundHttpException('Aucun paiement actif dans ce dossier.');
         }
 
         $moisCode = $dossier->periode?->code ?? now()->format('Y-m');
-        $pdf = $this->pdfService->construireEtatFinancier($paiements, $moisCode);
+        $pdf = $this->pdfService->construireEtatFinancier(
+            $paiements,
+            $moisCode,
+            $dossier->source_financement_id,
+            $dossier->valideur_initiales,
+            $dossier->numero,
+        );
 
         return response()->streamDownload(function () use ($pdf): void {
             echo $pdf->output();

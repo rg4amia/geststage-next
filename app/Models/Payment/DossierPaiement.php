@@ -27,6 +27,11 @@ class DossierPaiement extends Model
         'statut',
         'montant_total',
         'ordre_paiement_id',
+        'valide_par_id',
+        'valideur_initiales',
+        'validation_batch_id',
+        'attestation_path',
+        'etat_financier_path',
     ];
 
     protected $casts = [

@@ -11,6 +11,8 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 class ValiderPaiementsDmgJob implements ShouldQueue
 {
@@ -37,19 +39,36 @@ class ValiderPaiementsDmgJob implements ShouldQueue
             return;
         }
 
-        $auteur = User::findOrFail($this->auteurId);
-        Auth::login($auteur);
+        try {
+            $auteur = User::findOrFail($this->auteurId);
+            Auth::login($auteur);
 
-        if ($this->action === 'ajourner') {
-            $service->ajournerPaiements(
+            if ($this->action === 'ajourner') {
+                $service->ajournerPaiements(
+                    $this->paiementIds,
+                    $this->observation ?: 'Ajournement DMG depuis la validation des paiements.',
+                    $auteur,
+                );
+
+                return;
+            }
+
+            $service->genererDossiersPaiement(
+                $this->periodeId,
                 $this->paiementIds,
-                $this->observation ?: 'Ajournement DMG depuis la validation des paiements.',
                 $auteur,
+                $this->batch()?->id,
             );
+        } catch (Throwable $exception) {
+            Log::error('Echec validation paiements DMG', [
+                'periode_id' => $this->periodeId,
+                'paiement_ids' => $this->paiementIds,
+                'action' => $this->action,
+                'auteur_id' => $this->auteurId,
+                'exception' => $exception,
+            ]);
 
-            return;
+            throw $exception;
         }
-
-        $service->genererDossiersPaiement($this->periodeId, $this->paiementIds, $auteur);
     }
 }

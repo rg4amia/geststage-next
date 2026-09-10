@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Domain\Payment\Services;
 
 use App\Models\Payment\DossierGroupe;
+use App\Models\Payment\DossierPaiement;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\SourceFinancement;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -43,7 +44,7 @@ class MultiDossierPdfService
      *
      * @param  Collection<int, Paiement>  $paiements
      */
-    public function construireAttestation(Collection $paiements, ?int $sourceFinancementId, string $moisCode)
+    public function construireAttestation(Collection $paiements, ?int $sourceFinancementId, string $moisCode, ?string $nature = null, ?string $initialesValideur = null, ?string $numeroDossier = null)
     {
         $codeFinancement = $this->codeFinancement($sourceFinancementId);
         $mois = Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
@@ -53,6 +54,9 @@ class MultiDossierPdfService
             'financement' => $codeFinancement,
             'mois' => $mois,
             'moisCode' => $moisCode,
+            'nature' => $nature,
+            'initialesValideur' => $initialesValideur,
+            'numeroDossier' => $numeroDossier,
         ])->setPaper('a4', 'landscape');
 
         $this->configurerPdf($pdf);
@@ -72,7 +76,7 @@ class MultiDossierPdfService
      *
      * @param  Collection<int, Paiement>  $paiements
      */
-    public function construireEtatFinancier(Collection $paiements, string $moisCode, ?int $sourceFinancementId = null)
+    public function construireEtatFinancier(Collection $paiements, string $moisCode, ?int $sourceFinancementId = null, ?string $initialesValideur = null, ?string $numeroDossier = null)
     {
         $pages = preparePaginatedDataWithFooterSpace($paiements);
         $mois = Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
@@ -86,6 +90,8 @@ class MultiDossierPdfService
             'mois' => $mois,
             'moisCode' => $moisCode,
             'financement' => $this->codeFinancement($sourceFinancementId ?? $paiements->first()?->droitPaiement?->stage?->source_financement_id),
+            'initialesValideur' => $initialesValideur,
+            'numeroDossier' => $numeroDossier,
         ])->setPaper('a4', 'landscape');
 
         $this->configurerPdf($pdf);
@@ -155,6 +161,70 @@ class MultiDossierPdfService
         ]);
 
         return $groupe->fresh();
+    }
+
+    public function genererPdfsDossier(DossierPaiement $dossier, ?string $initialesValideur = null): DossierPaiement
+    {
+        $paiements = $this->collectPaiementsDossier($dossier);
+
+        if ($paiements->isEmpty()) {
+            return $dossier->fresh();
+        }
+
+        $moisCode = $dossier->periode?->code ?? now()->format('Y-m');
+        $natureDocument = $dossier->nature === 'DM' ? 'demarrage' : 'presence';
+        $path = 'dossiers_paiement/'.$dossier->id;
+
+        Storage::disk('temp_files')->makeDirectory($path);
+
+        $attestationPath = $path.'/attestation_'.$natureDocument.'_'.$dossier->numero.'.pdf';
+        $etatFinancierPath = $path.'/etat_paiement_'.$dossier->numero.'.pdf';
+
+        $this->construireAttestation(
+            $paiements,
+            $dossier->source_financement_id,
+            $moisCode,
+            $natureDocument,
+            $initialesValideur,
+            $dossier->numero,
+        )->save(Storage::disk('temp_files')->path($attestationPath));
+
+        $this->construireEtatFinancier(
+            $paiements,
+            $moisCode,
+            $dossier->source_financement_id,
+            $initialesValideur,
+            $dossier->numero,
+        )->save(Storage::disk('temp_files')->path($etatFinancierPath));
+
+        $dossier->update([
+            'attestation_path' => $attestationPath,
+            'etat_financier_path' => $etatFinancierPath,
+        ]);
+
+        return $dossier->fresh();
+    }
+
+    /**
+     * @return Collection<int, Paiement>
+     */
+    private function collectPaiementsDossier(DossierPaiement $dossier): Collection
+    {
+        return Paiement::query()
+            ->with([
+                'droitPaiement.stage.beneficiaire',
+                'droitPaiement.stage.entreprise',
+                'droitPaiement.stage.agence',
+                'droitPaiement.stage.sourceFinancement',
+                'droitPaiement.stage.typeStage',
+                'droitPaiement.stage.contrats',
+            ])
+            ->whereHas('dossiersPaiement', fn ($q) => $q
+                ->where('dossiers_paiement.id', $dossier->id)
+                ->whereNull('lignes_dossiers_paiement.retire_le'))
+            ->orderBy('paiements.id')
+            ->limit(500)
+            ->get();
     }
 
     private function codeFinancement(?int $sourceFinancementId): ?string

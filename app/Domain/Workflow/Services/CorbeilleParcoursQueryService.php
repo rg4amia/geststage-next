@@ -162,6 +162,9 @@ class CorbeilleParcoursQueryService
                 'date_ajournement' => $dossier->updated_at?->format('d/m/Y'),
                 'motif_ajournement' => $statut,
                 'motif_rejet' => $statut,
+                'attestation_path' => $dossier->attestation_path,
+                'etat_financier_path' => $dossier->etat_financier_path,
+                'valideur_initiales' => $dossier->valideur_initiales,
                 'statut' => $statut,
                 'statut_code' => $dossier->statut,
             ])
