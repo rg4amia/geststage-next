@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Domain\Payment\Services;
 
 use App\Models\Internship\Stage;
+use App\Models\Payment\Paiement;
 use App\Services\TresorMoneyService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -55,13 +57,17 @@ class ExportPaiementDmgService
     /**
      * Construit le PDF demandé (déjà configuré : contexte SSL, numérotation de page).
      *
-     * @param  Collection<int, \App\Models\Payment\Paiement>  $paiements
+     * @param  Collection<int, Paiement>  $paiements
      * @param  array<string, mixed>  $filtres
      */
     public function construirePdf(string $type, Collection $paiements, string $moisCode, array $filtres): mixed
     {
         $pdf = match ($type) {
-            'etat_paiement' => $this->multiDossierPdf->construireEtatFinancier($paiements, $moisCode),
+            'etat_paiement' => $this->multiDossierPdf->construireEtatFinancier(
+                $paiements,
+                $moisCode,
+                $this->sourceFinancementId($paiements, $filtres),
+            ),
             'attestation_presence' => $this->multiDossierPdf->construireAttestation(
                 $paiements,
                 $this->sourceFinancementId($paiements, $filtres),
@@ -84,7 +90,7 @@ class ExportPaiementDmgService
     /**
      * Construit le classeur « Canvas TrésorPay » (export Excel).
      *
-     * @param  Collection<int, \App\Models\Payment\Paiement>  $paiements
+     * @param  Collection<int, Paiement>  $paiements
      */
     public function construireExcel(Collection $paiements, string $nature, string $moisCode): Spreadsheet
     {
@@ -136,7 +142,7 @@ class ExportPaiementDmgService
         return self::DOSSIER.'/'.$batchId.'.'.$extension;
     }
 
-    /** @param  Collection<int, \App\Models\Payment\Paiement>  $paiements */
+    /** @param  Collection<int, Paiement>  $paiements */
     private function fusionTresor(Collection $paiements): mixed
     {
         $stages = Stage::query()
@@ -153,11 +159,11 @@ class ExportPaiementDmgService
     /**
      * Attestation de démarrage : la vue historique `pdf.dmg-paiements`, conservée telle quelle.
      *
-     * @param  Collection<int, \App\Models\Payment\Paiement>  $paiements
+     * @param  Collection<int, Paiement>  $paiements
      */
     private function attestationDemarrage(Collection $paiements, string $moisCode): mixed
     {
-        $mois = \Carbon\Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
+        $mois = Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
 
         return Pdf::loadView('pdf.dmg-paiements', [
             'paiements' => $paiements,
@@ -172,7 +178,7 @@ class ExportPaiementDmgService
      * filtre quand il est posé (comme le legacy qui choisissait la vue depuis typesfinancement_id),
      * sinon la source dominante de la sélection (premier paiement trié par id).
      *
-     * @param  Collection<int, \App\Models\Payment\Paiement>  $paiements
+     * @param  Collection<int, Paiement>  $paiements
      * @param  array<string, mixed>  $filtres
      */
     private function sourceFinancementId(Collection $paiements, array $filtres): ?int
@@ -186,7 +192,7 @@ class ExportPaiementDmgService
         return $paiements->first()?->droitPaiement?->stage?->source_financement_id;
     }
 
-    /** @param  Collection<int, \App\Models\Payment\Paiement>  $paiements */
+    /** @param  Collection<int, Paiement>  $paiements */
     private function lignesExcel(Collection $paiements): array
     {
         return $paiements->map(function ($paiement): array {

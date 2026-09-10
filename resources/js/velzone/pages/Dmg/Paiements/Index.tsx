@@ -254,7 +254,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
         dossiersEligiblesOp = [],
         groupesDossiers = [],
         ops = [],
-            bordereaux = [],
+        bordereaux = [],
         moisActuel,
         filters = {},
         cohorte: initialCohorte = 'global',
@@ -320,23 +320,23 @@ const DmgPaiementsIndex = (props: PageProps) => {
 
     const getMoisForTab = (tab: string) => {
         if (tab === '1') {
-return moisDemarrage;
-}
+            return moisDemarrage;
+        }
 
         if (tab === '2') {
-return moisPresence;
-}
+            return moisPresence;
+        }
 
         return moisDossiers;
     };
     const setMoisForTab = (tab: string, value: string) => {
         if (tab === '1') {
-setMoisDemarrage(value);
-} else if (tab === '2') {
-setMoisPresence(value);
-} else {
-setMoisDossiers(value);
-}
+            setMoisDemarrage(value);
+        } else if (tab === '2') {
+            setMoisPresence(value);
+        } else {
+            setMoisDossiers(value);
+        }
     };
 
     /* ─── Modales ─── */
@@ -416,20 +416,20 @@ setMoisDossiers(value);
         { value: 'PS', label: 'PRÉSENCE' },
     ], []);
 
-    
+
     /* ─── Navigation filtres ─── */
     const applyFilters = useCallback(() => {
         const params: Record<string, string> = {};
         const mois = getMoisForTab(activeTab);
 
         if (mois) {
-params.mois = mois;
-}
+            params.mois = mois;
+        }
 
         Object.entries(selectedFilters).forEach(([key, val]) => {
             if (val) {
-params[key] = val;
-}
+                params[key] = val;
+            }
         });
         params.cohorte = demarrageTab;
         params.tab = activeTab;
@@ -438,8 +438,8 @@ params[key] = val;
         url.search = '';
         Object.entries(params).forEach(([key, val]) => {
             if (val) {
-url.searchParams.set(key, val);
-}
+                url.searchParams.set(key, val);
+            }
         });
         window.history.replaceState({}, '', url);
 
@@ -471,18 +471,18 @@ url.searchParams.set(key, val);
             setActiveTab(tab);
             setSelectedDemarrageIds([]);
             setSelectedPresenceIds([]);
-            
+
             const params: Record<string, string> = {};
             const mois = getMoisForTab(tab);
 
             if (mois) {
-params.mois = mois;
-}
+                params.mois = mois;
+            }
 
             Object.entries(selectedFilters).forEach(([key, val]) => {
                 if (val) {
-params[key] = val;
-}
+                    params[key] = val;
+                }
             });
             params.cohorte = demarrageTab;
             params.tab = tab;
@@ -491,8 +491,8 @@ params[key] = val;
             url.search = '';
             Object.entries(params).forEach(([key, val]) => {
                 if (val) {
-url.searchParams.set(key, val);
-}
+                    url.searchParams.set(key, val);
+                }
             });
             window.history.replaceState({}, '', url);
 
@@ -508,18 +508,18 @@ url.searchParams.set(key, val);
         if (demarrageTab !== tab) {
             setDemarrageTab(tab);
             setSelectedDemarrageIds([]);
-            
+
             const params: Record<string, string> = {};
             const mois = getMoisForTab(activeTab);
 
             if (mois) {
-params.mois = mois;
-}
+                params.mois = mois;
+            }
 
             Object.entries(selectedFilters).forEach(([key, val]) => {
                 if (val) {
-params[key] = val;
-}
+                    params[key] = val;
+                }
             });
             params.cohorte = tab;
             params.tab = activeTab;
@@ -528,8 +528,8 @@ params[key] = val;
             url.search = '';
             Object.entries(params).forEach(([key, val]) => {
                 if (val) {
-url.searchParams.set(key, val);
-}
+                    url.searchParams.set(key, val);
+                }
             });
             window.history.replaceState({}, '', url);
 
@@ -565,8 +565,8 @@ url.searchParams.set(key, val);
         const ids = activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds;
 
         if (!props.periode || ids.length === 0) {
-return;
-}
+            return;
+        }
 
         setIsLoading(true);
         router.post('/dmg/paiements/generer', { periode_id: props.periode.id, paiement_ids: ids }, {
@@ -711,8 +711,8 @@ return;
         const ids = dossierScope === 'liste' ? currentRows.map((r) => r.id) : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds);
 
         if (ids.length === 0) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         router.post('/dmg/paiements/marquer-dossier-physique', {
@@ -729,8 +729,8 @@ return;
         const count = workflowCount(scope);
 
         if (count === 0) {
-return;
-}
+            return;
+        }
 
         setAjournerScope(scope);
         setModalAjournerOpen(true);
@@ -740,8 +740,8 @@ return;
         const count = scope === 'liste' ? currentRows.length : (activeTab === '2' ? selectedPresenceIds : selectedDemarrageIds).length;
 
         if (count === 0) {
-return;
-}
+            return;
+        }
 
         setDossierScope(scope);
         setModalDossierOpen(true);
@@ -912,8 +912,8 @@ return;
 
     const handleGrouperDossiers = () => {
         if (!props.periode || selectedDossierIds.length < 2) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         router.post('/dmg/paiements/groupes', {
@@ -963,8 +963,8 @@ return;
 
     const handleElaborerOp = (id: number) => {
         if (!props.periode) {
-return;
-}
+            return;
+        }
 
         router.post('/dmg/paiements/elaborer-op', { dossiers: [id], periode_id: props.periode.id }, { preserveScroll: true });
     };
@@ -975,7 +975,7 @@ return;
         setIsLoadingPreviewDocs(true);
         setModalPreviewOpen(true);
         setActivePreviewTab(null);
-        
+
         fetch(`/dmg/paiements/documents?stage_id=${stagiaire.stage_id}`)
             .then(res => res.json())
             .then(data => {
@@ -1097,20 +1097,20 @@ return;
         const params = new URLSearchParams();
 
         if (moisDossiers) {
-params.set('mois', moisDossiers);
-}
+            params.set('mois', moisDossiers);
+        }
 
         if (multiAgenceId) {
-params.set('agence_id', multiAgenceId);
-}
+            params.set('agence_id', multiAgenceId);
+        }
 
         if (multiSourceId) {
-params.set('source_financement_id', multiSourceId);
-}
+            params.set('source_financement_id', multiSourceId);
+        }
 
         if (multiTypeTraitement) {
-params.set('typetraitement', multiTypeTraitement);
-}
+            params.set('typetraitement', multiTypeTraitement);
+        }
 
         fetch(`/dmg/multi-dossier/dossiers?${params.toString()}`, {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
@@ -1156,8 +1156,8 @@ params.set('typetraitement', multiTypeTraitement);
                 setStagiaireTotal(res.recordsFiltered || 0);
             })
             .catch(() => {
- setStagiaires([]); setStagiaireTotal(0); 
-})
+                setStagiaires([]); setStagiaireTotal(0);
+            })
             .finally(() => setStagiaireLoading(false));
     }, [selectedMultiDossierIds, stagiairePage, stagiaireSearch]);
 
@@ -1184,8 +1184,8 @@ params.set('typetraitement', multiTypeTraitement);
 
     const handleMultiValiderSelection = () => {
         if (selectedMultiDossierIds.length === 0 || !moisDossiers) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         fetch('/dmg/multi-dossier/validate', {
@@ -1203,14 +1203,14 @@ return;
                     router.reload({ only: ['groupesDossiers'] });
                 }
             })
-            .catch(() => {})
+            .catch(() => { })
             .finally(() => setProcessing(false));
     };
 
     const handleMultiAjournerDossier = () => {
         if (selectedMultiDossierIds.length === 0 || motifMultiAjournerDossier.trim().length < 5) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         fetch('/dmg/multi-dossier/ajourner-dossier', {
@@ -1220,16 +1220,16 @@ return;
         })
             .then((r) => r.json())
             .then(() => {
- setModalMultiAjournerDossierOpen(false); setMotifMultiAjournerDossier(''); setSelectedMultiDossierIds([]); loadMultiDossiers(); 
-})
-            .catch(() => {})
+                setModalMultiAjournerDossierOpen(false); setMotifMultiAjournerDossier(''); setSelectedMultiDossierIds([]); loadMultiDossiers();
+            })
+            .catch(() => { })
             .finally(() => setProcessing(false));
     };
 
     const handleMultiAjournerStagiaire = () => {
         if (selectedStagiaireIds.length === 0 || motifMultiAjournerStagiaire.trim().length < 5) {
-return;
-}
+            return;
+        }
 
         setProcessing(true);
         fetch('/dmg/multi-dossier/ajourner-stagiaire', {
@@ -1239,16 +1239,16 @@ return;
         })
             .then((r) => r.json())
             .then(() => {
- setModalMultiAjournerStagiaireOpen(false); setMotifMultiAjournerStagiaire(''); setSelectedStagiaireIds([]); loadStagiairesMulti(); 
-})
-            .catch(() => {})
+                setModalMultiAjournerStagiaireOpen(false); setMotifMultiAjournerStagiaire(''); setSelectedStagiaireIds([]); loadStagiairesMulti();
+            })
+            .catch(() => { })
             .finally(() => setProcessing(false));
     };
 
     const handleMultiGenererPdf = (type: 'paiement' | 'attestations') => {
         if (selectedMultiDossierIds.length === 0) {
-return;
-}
+            return;
+        }
 
         const url = type === 'paiement' ? '/dmg/multi-dossier/generer-pdf-paiement' : '/dmg/multi-dossier/generer-pdf-attestations';
         const body = new URLSearchParams();
@@ -1259,16 +1259,16 @@ return;
             body: body.toString(),
         })
             .then((r) => {
- if (!r.ok) {
-throw new Error();
-}
+                if (!r.ok) {
+                    throw new Error();
+                }
 
- return r.blob(); 
-})
+                return r.blob();
+            })
             .then((blob) => {
- const u = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${type}_${new Date().toISOString().slice(0, 10)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(u); 
-})
-            .catch(() => {});
+                const u = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = u; a.download = `${type}_${new Date().toISOString().slice(0, 10)}.pdf`; document.body.appendChild(a); a.click(); a.remove(); window.URL.revokeObjectURL(u);
+            })
+            .catch(() => { });
     };
 
     /* ─── Badge helpers ─── */
@@ -1320,86 +1320,102 @@ throw new Error();
         { header: 'Date Création', cell: (cell: any) => cell.row.original.date_creation || '-' },
         { header: 'Agence', cell: (cell: any) => <span className="fw-medium">{cell.row.original.agence?.nom || '-'}</span> },
         { header: 'Entreprise', cell: (cell: any) => cell.row.original.entreprise?.raison_sociale || '-' },
-        { header: 'Type Structure', cell: (cell: any) => {
-            const ts = cell.row.original.entreprise?.type_structure;
-            const colorMap: Record<string, string> = { PUBLIC: 'success', PRIVE: 'info' };
-            const label = ts || 'néant';
+        {
+            header: 'Type Structure', cell: (cell: any) => {
+                const ts = cell.row.original.entreprise?.type_structure;
+                const colorMap: Record<string, string> = { PUBLIC: 'success', PRIVE: 'info' };
+                const label = ts || 'néant';
 
-            return <Badge color={`${(colorMap[ts || ''] || 'secondary')}-subtle`} className={`text-${colorMap[ts || ''] || 'secondary'}`}>{label}</Badge>;
-        }},
-        { header: 'Financement', cell: (cell: any) => {
-            const val = cell.row.original.stage?.source_financement || '-';
-            const colorMap: Record<string, string> = { 'PEJEDEC': 'info', 'BUDGET AEJ': 'primary', 'PAPS-GOUV': 'success', 'C2D': 'warning' };
+                return <Badge color={`${(colorMap[ts || ''] || 'secondary')}-subtle`} className={`text-${colorMap[ts || ''] || 'secondary'}`}>{label}</Badge>;
+            }
+        },
+        {
+            header: 'Financement', cell: (cell: any) => {
+                const val = cell.row.original.stage?.source_financement || '-';
+                const colorMap: Record<string, string> = { 'PEJEDEC': 'info', 'BUDGET AEJ': 'primary', 'PAPS-GOUV': 'success', 'C2D': 'warning' };
 
-            return <Badge color={`${(colorMap[val] || 'secondary')}-subtle`} className={`text-${colorMap[val] || 'secondary'}`}>{val}</Badge>;
-        }},
+                return <Badge color={`${(colorMap[val] || 'secondary')}-subtle`} className={`text-${colorMap[val] || 'secondary'}`}>{val}</Badge>;
+            }
+        },
         { header: 'Type Stage', cell: (cell: any) => cell.row.original.stage?.type_stage || '-' },
         { header: 'N° AEJ', cell: (cell: any) => <span className="text-muted">{cell.row.original.beneficiaire?.matricule || '-'}</span> },
-        { header: 'Nom et prénoms', cell: (cell: any) => {
-            const b = cell.row.original.beneficiaire;
+        {
+            header: 'Nom et prénoms', cell: (cell: any) => {
+                const b = cell.row.original.beneficiaire;
 
-            return <span className="fw-semibold">{b ? `${b.nom} ${b.prenoms}`.trim() : '-'}</span>;
-        }},
+                return <span className="fw-semibold">{b ? `${b.nom} ${b.prenoms}`.trim() : '-'}</span>;
+            }
+        },
         { header: 'Date Naiss.', cell: (cell: any) => cell.row.original.beneficiaire?.date_naissance || '-' },
         { header: 'Date Début', cell: (cell: any) => cell.row.original.stage?.date_debut || '-' },
         { header: 'Date Fin', cell: (cell: any) => cell.row.original.stage?.date_fin || '-' },
         { header: 'N° Trésor Pay', cell: (cell: any) => cell.row.original.beneficiaire?.tresor_pay || '-' },
-        { header: 'Dossier Physique', cell: (cell: any) => {
-            const dp = cell.row.original.dossier_physique;
-            const statut = dp?.statut || null;
-            const colorMap: Record<string, string> = { EN_ATTENTE: 'warning', RECU: 'info', CONFORME: 'success' };
-            const labelMap: Record<string, string> = { EN_ATTENTE: 'En attente', RECU: 'Reçu', CONFORME: 'Conforme' };
+        {
+            header: 'Dossier Physique', cell: (cell: any) => {
+                const dp = cell.row.original.dossier_physique;
+                const statut = dp?.statut || null;
+                const colorMap: Record<string, string> = { EN_ATTENTE: 'warning', RECU: 'info', CONFORME: 'success' };
+                const labelMap: Record<string, string> = { EN_ATTENTE: 'En attente', RECU: 'Reçu', CONFORME: 'Conforme' };
 
-            if (!statut) {
-return <span className="text-muted">—</span>;
-}
+                if (!statut) {
+                    return <span className="text-muted">—</span>;
+                }
 
-            return (
-                <div>
-                    <Badge color={`${(colorMap[statut] || 'secondary')}-subtle`} className={`text-${colorMap[statut] || 'secondary'}`}>{labelMap[statut] || statut}</Badge>
-                    {dp?.marque_le && <div className="text-muted fs-11">le {dp.marque_le}</div>}
-                </div>
-            );
-        }},
-        { header: 'Montant Brut', cell: (cell: any) => {
-            const mb = cell.row.original.montant_brut;
+                return (
+                    <div>
+                        <Badge color={`${(colorMap[statut] || 'secondary')}-subtle`} className={`text-${colorMap[statut] || 'secondary'}`}>{labelMap[statut] || statut}</Badge>
+                        {dp?.marque_le && <div className="text-muted fs-11">le {dp.marque_le}</div>}
+                    </div>
+                );
+            }
+        },
+        {
+            header: 'Montant Brut', cell: (cell: any) => {
+                const mb = cell.row.original.montant_brut;
 
-            return mb != null ? <span className="text-muted">{Number(mb).toLocaleString('fr-FR')} FCFA</span> : '-';
-        }},
-        { header: 'Prélèvement', cell: (cell: any) => {
-            const prelev = cell.row.original.montant_prelevement;
+                return mb != null ? <span className="text-muted">{Number(mb).toLocaleString('fr-FR')} FCFA</span> : '-';
+            }
+        },
+        {
+            header: 'Prélèvement', cell: (cell: any) => {
+                const prelev = cell.row.original.montant_prelevement;
 
-            if (!prelev) {
-return <span className="text-muted">—</span>;
-}
+                if (!prelev) {
+                    return <span className="text-muted">—</span>;
+                }
 
-            return (
-                <div>
-                    <Badge color="warning" className="fs-11">-{Number(prelev).toLocaleString('fr-FR')} F</Badge>
-                    <div className="text-muted fs-11">{cell.row.original.type_prelevement || 'CMU'}</div>
-                </div>
-            );
-        }},
-        { header: 'Net à payer', cell: (cell: any) => {
-            const m = cell.row.original.montant;
+                return (
+                    <div>
+                        <Badge color="warning" className="fs-11">-{Number(prelev).toLocaleString('fr-FR')} F</Badge>
+                        <div className="text-muted fs-11">{cell.row.original.type_prelevement || 'CMU'}</div>
+                    </div>
+                );
+            }
+        },
+        {
+            header: 'Net à payer', cell: (cell: any) => {
+                const m = cell.row.original.montant;
 
-            return m ? <span className="fw-bold text-success">{Number(m).toLocaleString('fr-FR')} FCFA</span> : '-';
-        }},
+                return m ? <span className="fw-bold text-success">{Number(m).toLocaleString('fr-FR')} FCFA</span> : '-';
+            }
+        },
         { header: 'État', cell: (cell: any) => <Badge color={getStatutBadge(cell.row.original.statut)} className="fs-11">{cell.row.original.statut || '-'}</Badge> },
-        { header: 'Actions', cell: (cell: any) => (
-            <div className="d-flex gap-1">
-                <Button color="info" size="sm" outline onClick={() => {
- setDetailRow(cell.row.original); setModalDetailOpen(true); 
-}} title="Détail">
-                    <i className="ri-eye-line"></i>
-                </Button>
-                {cell.row.original.stage?.id && (
-                    <Button color="primary" size="sm" outline onClick={() => handlePreviewDocs(cell.row.original)} title="Pièces jointes (CNI, Trésor Money, contrat, attestation)">
-                        <i className="ri-folder-open-line"></i>
+        {
+            header: 'Actions', cell: (cell: any) => (
+                <div className="d-flex gap-1">
+                    <Button color="info" size="sm" outline onClick={() => {
+                        setDetailRow(cell.row.original); setModalDetailOpen(true);
+                    }} title="Détail">
+                        <i className="ri-eye-line"></i>
                     </Button>
-                )}
-            </div>
-        )},
+                    {cell.row.original.stage?.id && (
+                        <Button color="primary" size="sm" outline onClick={() => handlePreviewDocs(cell.row.original)} title="Pièces jointes (CNI, Trésor Money, contrat, attestation)">
+                            <i className="ri-folder-open-line"></i>
+                        </Button>
+                    )}
+                </div>
+            )
+        },
     ], [selectedPresenceIds, selectedDemarrageIds]);
 
     const presenceColumns = useMemo(() => [
@@ -1420,30 +1436,32 @@ return <span className="text-muted">—</span>;
         { header: 'Nb Stagiaires', cell: (cell: any) => <Badge color="info">{cell.row.original.nombre_stagiaires}</Badge> },
         { header: 'Montant', cell: (cell: any) => <span className="fw-bold">{Number(cell.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
         { header: 'Statut', cell: (cell: any) => <Badge color={getStatutBadge(cell.row.original.statut)} className="fs-11">{cell.row.original.statut}</Badge> },
-        { header: 'Actions', cell: (cell: any) => (
-            <div className="d-flex gap-1">
-                {cell.row.original.statut_code === 'BROUILLON' && (
-                    <Button color="success" size="sm" outline onClick={() => handleTransmettreDossier(cell.row.original.id)} title="Transmettre au CB">
-                        <i className="ri-send-plane-line"></i>
-                    </Button>
-                )}
-                {cell.row.original.statut_code === 'VALIDE_CB' && (
-                    <Button color="primary" size="sm" outline onClick={() => handleElaborerOp(cell.row.original.id)} title="Elaborer un OP">
-                        <i className="ri-file-list-3-line"></i>
-                    </Button>
-                )}
-                {cell.row.original.statut_code !== 'BROUILLON' && (
-                    <>
-                        <Button color="info" size="sm" outline onClick={() => handleDownloadAttestationDossier(cell.row.original.id)} title="Attestation de présence (PDF)">
-                            <i className="ri-file-text-line"></i>
+        {
+            header: 'Actions', cell: (cell: any) => (
+                <div className="d-flex gap-1">
+                    {cell.row.original.statut_code === 'BROUILLON' && (
+                        <Button color="success" size="sm" outline onClick={() => handleTransmettreDossier(cell.row.original.id)} title="Transmettre au CB">
+                            <i className="ri-send-plane-line"></i>
                         </Button>
-                        <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancierDossier(cell.row.original.id)} title="État de paiement (PDF)">
-                            <i className="ri-money-dollar-circle-line"></i>
+                    )}
+                    {cell.row.original.statut_code === 'VALIDE_CB' && (
+                        <Button color="primary" size="sm" outline onClick={() => handleElaborerOp(cell.row.original.id)} title="Elaborer un OP">
+                            <i className="ri-file-list-3-line"></i>
                         </Button>
-                    </>
-                )}
-            </div>
-        )},
+                    )}
+                    {cell.row.original.statut_code !== 'BROUILLON' && (
+                        <>
+                            <Button color="info" size="sm" outline onClick={() => handleDownloadAttestationDossier(cell.row.original.id)} title="Attestation de présence (PDF)">
+                                <i className="ri-file-text-line"></i>
+                            </Button>
+                            <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancierDossier(cell.row.original.id)} title="État de paiement (PDF)">
+                                <i className="ri-money-dollar-circle-line"></i>
+                            </Button>
+                        </>
+                    )}
+                </div>
+            )
+        },
     ], [props.periode]);
 
     /* ─── Charger les dossiers multi quand l'onglet est actif ou que la periode change ─── */
@@ -1493,8 +1511,8 @@ return <span className="text-muted">—</span>;
     /* ─── Cohorte badges (démarrage uniquement) ─── */
     const cohortBadge = (cohorteKey: 'global' | 'cohorte1' | 'cohorte2' | 'cohorte3') => {
         if (!compteurs || !compteurs[cohorteKey]) {
-return null;
-}
+            return null;
+        }
 
         return <Badge color="secondary" pill className="ms-1 fs-11">{compteurs[cohorteKey]?.demarrage ?? 0}</Badge>;
     };
@@ -1647,1072 +1665,1081 @@ return null;
                         </CardHeader>
                         <CardBody>
                             {/* ── Onglets Principaux ── */}
-                        <Row className="g-3">
-                            <Col xs={12}>
-<Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
-                                <NavItem>
-                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '1' }, 'fw-semibold py-3')} onClick={() => toggleTab('1')}>
-                                        <i className="ri-flag-line me-1 align-middle"></i>
-                                        Attente Démarrage <Badge color="primary" pill className="ms-2">{compteurs?.demarrage ?? attenteDemarrage.length}</Badge>
-                                    </NavLink>
-                                </NavItem>
-                                <NavItem>
-                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '2' }, 'fw-semibold py-3')} onClick={() => toggleTab('2')}>
-                                        <i className="ri-user-follow-line me-1 align-middle"></i>
-                                        Attente Présence <Badge color="info" pill className="ms-2">{compteurs?.presence ?? attentePresence.length}</Badge>
-                                    </NavLink>
-                                </NavItem>
-                                <NavItem>
-                                    <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '3' }, 'fw-semibold py-3')} onClick={() => toggleTab('3')}>
-                                        <i className="ri-folder-2-line me-1 align-middle"></i>
-                                        Dossiers & OP <Badge color="warning" pill className="ms-2">{dossiers.length + dossiersTransmis.length}</Badge>
-                                    </NavLink>
-                                </NavItem>
-                            </Nav>
-                            </Col>
-                            <Col xs={12}>
-
-                            {/* ── Export en arrière-plan : progression et téléchargement ── */}
-                            {batchExport && (
-                                <Card className="border shadow-none mb-3 border-primary">
-                                    <CardBody className="py-2">
-                                        <div className="d-flex align-items-center gap-2 mb-1">
-                                            <i className="ri-loader-4-line ri-spin text-primary me-1"></i>
-                                            <span className="fw-semibold fs-13">{batchExport.libelle}</span>
-                                            {batchExport.echec ? (
-                                                <Badge color="danger">Échec</Badge>
-                                            ) : batchExport.disponible ? (
-                                                <Badge color="success">Prêt</Badge>
-                                            ) : (
-                                                <Badge color="info">En cours…</Badge>
-                                            )}
-                                        </div>
-                                        {batchExport.echec ? (
-                                            <p className="text-muted mb-0 fs-12">
-                                                La génération a échoué (fichier trop volumineux ou aucun paiement éligible).
-                                                Réduisez la sélection ou les filtres, puis relancez.
-                                            </p>
-                                        ) : batchExport.disponible ? (
-                                            <a className="btn btn-sm btn-success mt-1" href={`/dmg/paiements/exporter/${batchExport.id}/telechargement`}>
-                                                <i className="ri-download-2-line me-1"></i>Télécharger le fichier
-                                            </a>
-                                        ) : (
-                                            <Progress value={batchExport.progress} color="success" className="mt-1" style={{ height: '6px' }}>
-                                                {batchExport.progress}%
-                                            </Progress>
-                                        )}
-                                    </CardBody>
-                                </Card>
-                            )}
-
-                            {batchValidation && (
-                                <Card className="border shadow-none mb-3 border-success">
-                                    <CardBody className="py-2">
-                                        <div className="d-flex align-items-center gap-2 mb-1">
-                                            <i className={`ri-loader-4-line ${batchValidation.finished || batchValidation.echec ? '' : 'ri-spin'} text-success me-1`}></i>
-                                            <span className="fw-semibold fs-13">{batchValidation.libelle}</span>
-                                            {batchValidation.echec ? (
-                                                <Badge color="danger">Échec</Badge>
-                                            ) : batchValidation.finished ? (
-                                                <Badge color="success">Terminé</Badge>
-                                            ) : (
-                                                <Badge color="info">En cours…</Badge>
-                                            )}
-                                        </div>
-                                        {batchValidation.echec ? (
-                                            <p className="text-muted mb-0 fs-12">Le traitement a échoué. Vérifiez que les paiements sont toujours éligibles, puis relancez.</p>
-                                        ) : batchValidation.finished ? (
-                                            <p className="text-muted mb-0 fs-12">{batchValidation.count} paiement(s) traité(s). La liste a été rafraîchie.</p>
-                                        ) : (
-                                            <Progress value={batchValidation.progress} color="success" className="mt-1" style={{ height: '6px' }}>
-                                                {batchValidation.progress}%
-                                            </Progress>
-                                        )}
-                                    </CardBody>
-                                </Card>
-                            )}
-
-<TabContent activeTab={activeTab} className="pt-4 text-muted">
-                                {/* ═══════ ONGLET 1 : ATTENTE DÉMARRAGE ═══════ */}
-                                <TabPane tabId="1">
-                                    {/* ── Sélecteur de période Démarrage ── */}
-                                    <div className="d-flex align-items-center gap-2 mb-3">
-                                        <i className="ri-calendar-line text-primary fs-16"></i>
-                                        <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
-                                        <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
-                                            value={optionSelectionnee(optionsPeriodes, moisDemarrage)}
-                                            onChange={(selected) => setMoisDemarrage(selected?.value || '')}
-                                            classNamePrefix="react-select"
-                                        />
-                                        <Button color="primary" size="sm" onClick={applyFilters} disabled={isLoading}>
-                                            <i className="ri-search-line me-1"></i>Appliquer
-                                        </Button>
-                                        <Badge color="primary" pill className="fs-11">{currentDemarrageRows.length} paiement(s)</Badge>
-                                    </div>
-                                    {/* ── Actions globales démarrage ── */}
-                                    <Card className="border shadow-none mb-3">
-                                        <CardHeader className="bg-light border-bottom border-light d-flex align-items-center">
-                                            <h5 className="card-title mb-0 flex-grow-1 fs-14">
-                                                <i className="ri-checkbox-multiple-line me-1"></i>
-                                                Traitement démarrage
-                                                {selectedDemarrageIds.length > 0 && (
-                                                    <Badge color="success" className="ms-2 fs-12">{selectedDemarrageIds.length} sélectionné(s)</Badge>
-                                                )}
-                                            </h5>
-                                        </CardHeader>
-                                        <CardBody className="py-2">
-                                            <div className="d-flex flex-wrap gap-2">
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-info btn-sm">
-                                                        <i className="ri-printer-line me-1"></i>État Paiement (PDF) <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('etat_paiement', 'liste', 'État de paiement — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('etat_paiement', 'selected', 'État de paiement — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-success btn-sm">
-                                                        <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('excel', 'liste', 'Canvas TrésorPay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('excel', 'selected', 'Canvas TrésorPay — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-primary btn-sm">
-                                                        <i className="ri-printer-line me-1"></i>Attestation Démarrage (PDF) <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('attestation_demarrage', 'liste', 'Attestation de démarrage — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('attestation_demarrage', 'selected', 'Attestation de démarrage — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-primary btn-sm">
-                                                        <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('fusion_tresor', 'liste', 'Fusion Trésor Pay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('fusion_tresor', 'selected', 'Fusion Trésor Pay — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-danger btn-sm">
-                                                        <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem disabled={currentDemarrageRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openAjournerModal('selected')}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-success btn-sm">
-                                                        <i className="ri-check-line me-1"></i>Valider paiement <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem disabled={workflowCount('liste') === 0} onClick={() => openValiderModal('liste')}>Valider toute la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openValiderModal('selected')}>Valider sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-dark btn-sm">
-                                                        <i className="ri-folder-fill me-1"></i>Marquer dossier <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem disabled={currentDemarrageRows.length === 0} onClick={() => openDossierModal('liste')}>Marquer la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openDossierModal('selection')}>Marquer sélection ({selectedDemarrageIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
-
-                                    {/* ── Info Cohortes ── */}
-                                    <Row className="g-3 mb-3">
-                                        <Col md={4}>
-                                            <div className="alert alert-info border-0 border-start border-4 border-info mb-0 h-100 d-flex align-items-center gap-2 fs-13">
-                                                <i className="ri-information-line fs-16"></i>
-                                                <span><strong>Cohorte 1 :</strong> date début 1er–5 du mois. Badge <Badge color="info" className="ms-1">{compteurs?.cohorte1?.demarrage ?? 0}</Badge></span>
-                                            </div>
-                                        </Col>
-                                        <Col md={4}>
-                                            <div className="alert alert-warning border-0 border-start border-4 border-warning mb-0 h-100 d-flex align-items-center gap-2 fs-13">
-                                                <i className="ri-information-line fs-16"></i>
-                                                <span><strong>Cohorte 2 :</strong> date début 6–19 du mois. Badge <Badge color="warning" className="ms-1">{compteurs?.cohorte2?.demarrage ?? 0}</Badge></span>
-                                            </div>
-                                        </Col>
-                                        <Col md={4}>
-                                            <div className="alert alert-danger border-0 border-start border-4 border-danger mb-0 h-100 d-flex align-items-center gap-2 fs-13">
-                                                <i className="ri-information-line fs-16"></i>
-                                                <span><strong>Cohorte 3 :</strong> date début 20+ du mois. Badge <Badge color="danger" className="ms-1">{compteurs?.cohorte3?.demarrage ?? 0}</Badge></span>
-                                            </div>
-                                        </Col>
-                                    </Row>
-
-                                    {/* ── Sous-onglets Cohorte ── */}
-                                    <Row className="g-3">
-                                        <Col xs={12}>
-<Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
+                            <Row className="g-3">
+                                <Col xs={12}>
+                                    <Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'global' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('global')}>
-                                                Cohorte Global {cohortBadge('global')}
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '1' }, 'fw-semibold py-3')} onClick={() => toggleTab('1')}>
+                                                <i className="ri-flag-line me-1 align-middle"></i>
+                                                Attente Démarrage <Badge color="primary" pill className="ms-2">{compteurs?.demarrage ?? attenteDemarrage.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte1' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte1')}>
-                                                Cohorte 1 {cohortBadge('cohorte1')}
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '2' }, 'fw-semibold py-3')} onClick={() => toggleTab('2')}>
+                                                <i className="ri-user-follow-line me-1 align-middle"></i>
+                                                Attente Présence <Badge color="info" pill className="ms-2">{compteurs?.presence ?? attentePresence.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                         <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte2' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte2')}>
-                                                Cohorte 2 {cohortBadge('cohorte2')}
-                                            </NavLink>
-                                        </NavItem>
-                                        <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte3' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte3')}>
-                                                Cohorte 3 {cohortBadge('cohorte3')}
+                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: activeTab === '3' }, 'fw-semibold py-3')} onClick={() => toggleTab('3')}>
+                                                <i className="ri-folder-2-line me-1 align-middle"></i>
+                                                Dossiers & OP <Badge color="warning" pill className="ms-2">{dossiers.length + dossiersTransmis.length}</Badge>
                                             </NavLink>
                                         </NavItem>
                                     </Nav>
-                                        </Col>
-                                        <Col xs={12}>
+                                </Col>
+                                <Col xs={12}>
 
-                                    {/* ── Tableau Démarrage ── */}
-                                    {isLoading ? (
-                                        <div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>
-                                    ) : (
-                                        <Deferred data="attenteDemarrage" fallback={<div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>}>
-                                            <TableContainerReactTable
-                                                columns={demarrageColumns}
-                                                data={currentDemarrageRows}
-                                                isGlobalFilter={true}
-                                                customPageSize={10}
-                                                divClass="table-responsive table-card mb-3"
-                                                tableClass="table-striped align-middle table-nowrap mb-0"
-                                                theadClass="table-light text-uppercase fw-semibold fs-11"
-                                                SearchPlaceholder="Rechercher..."
-                                            />
-                                        </Deferred>
-                                    )}
-                                        </Col>
-                                    </Row>
-                                </TabPane>
-
-                                {/* ═══════ ONGLET 2 : ATTENTE PRÉSENCE ═══════ */}
-                                <TabPane tabId="2">
-                                    {/* ── Sélecteur de période Présence ── */}
-                                    <div className="d-flex align-items-center gap-2 mb-3">
-                                        <i className="ri-calendar-line text-info fs-16"></i>
-                                        <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
-                                        <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
-                                            value={optionSelectionnee(optionsPeriodes, moisPresence)}
-                                            onChange={(selected) => setMoisPresence(selected?.value || '')}
-                                            classNamePrefix="react-select"
-                                        />
-                                        <Button color="info" size="sm" onClick={applyFilters} disabled={isLoading}>
-                                            <i className="ri-search-line me-1"></i>Appliquer
-                                        </Button>
-                                        <Badge color="info" pill className="fs-11">{compteurs?.presence ?? currentPresenceRows.length} paiement(s)</Badge>
-                                    </div>
-                                    {/* ── Actions globales présence ── */}
-                                    <Card className="border shadow-none mb-3">
-                                        <CardHeader className="bg-light border-bottom border-light d-flex align-items-center">
-                                            <h5 className="card-title mb-0 flex-grow-1 fs-14">
-                                                <i className="ri-checkbox-multiple-line me-1"></i>
-                                                Traitement présence
-                                                {selectedPresenceIds.length > 0 && (
-                                                    <Badge color="success" className="ms-2 fs-12">{selectedPresenceIds.length} sélectionné(s)</Badge>
-                                                )}
-                                            </h5>
-                                        </CardHeader>
-                                        <CardBody className="py-2">
-                                            <div className="d-flex flex-wrap gap-2">
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-info btn-sm">
-                                                        <i className="ri-printer-line me-1"></i>État Paiement (PDF) <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('etat_paiement', 'liste', 'État de paiement — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('etat_paiement', 'selected', 'État de paiement — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-success btn-sm">
-                                                        <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('excel', 'liste', 'Canvas TrésorPay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('excel', 'selected', 'Canvas TrésorPay — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-primary btn-sm">
-                                                        <i className="ri-printer-line me-1"></i>Attestation Présence (PDF) <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('attestation_presence', 'liste', 'Attestation de présence — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('attestation_presence', 'selected', 'Attestation de présence — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-primary btn-sm">
-                                                        <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem onClick={() => lancerExport('fusion_tresor', 'liste', 'Fusion Trésor Pay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('fusion_tresor', 'selected', 'Fusion Trésor Pay — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-danger btn-sm">
-                                                        <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem disabled={currentPresenceRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openAjournerModal('selected')}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-soft-dark btn-sm">
-                                                        <i className="ri-folder-fill me-1"></i>Marquer dossier <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem disabled={currentPresenceRows.length === 0} onClick={() => openDossierModal('liste')}>Marquer la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openDossierModal('selection')}>Marquer sélection ({selectedPresenceIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-
-                                                <UncontrolledDropdown>
-                                                    <DropdownToggle tag="button" className="btn btn-success btn-sm">
-                                                        <i className="ri-check-line me-1"></i>Valider paiement <i className="ri-arrow-down-s-line"></i>
-                                                    </DropdownToggle>
-                                                    <DropdownMenu>
-                                                        <DropdownItem disabled={workflowCount('liste') === 0} onClick={() => openValiderModal('liste')}>Valider toute la liste</DropdownItem>
-                                                        <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openValiderModal('selected')}>Valider sélection ({selectedPresenceIds.length})</DropdownItem>
-                                                    </DropdownMenu>
-                                                </UncontrolledDropdown>
-                                            </div>
-                                        </CardBody>
-                                    </Card>
-
-                                    {/* ── Tableau Présence ── */}
-                                    {isLoading ? (
-                                        <div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>
-                                    ) : (
-                                        <Deferred data="attentePresence" fallback={<div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>}>
-                                            <TableContainerReactTable
-                                                columns={presenceColumns}
-                                                data={currentPresenceRows}
-                                                isGlobalFilter={true}
-                                                customPageSize={10}
-                                                divClass="table-responsive table-card mb-3"
-                                                tableClass="table-striped align-middle table-nowrap mb-0"
-                                                theadClass="table-light text-uppercase fw-semibold fs-11"
-                                                SearchPlaceholder="Rechercher..."
-                                            />
-                                        </Deferred>
-                                    )}
-                                </TabPane>
-
-                                {/* ═══════ ONGLET 3 : DOSSIERS & OP ═══════ */}
-                                <TabPane tabId="3">
-                                    {/* ── Sélecteur de période Dossiers ── */}
-                                    <div className="d-flex align-items-center gap-2 mb-3">
-                                        <i className="ri-calendar-line text-warning fs-16"></i>
-                                        <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
-                                        <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
-                                            value={optionSelectionnee(optionsPeriodes, moisDossiers)}
-                                            onChange={(selected) => setMoisDossiers(selected?.value || '')}
-                                            classNamePrefix="react-select"
-                                        />
-                                        <Button color="warning" size="sm" onClick={applyFilters} disabled={isLoading}>
-                                            <i className="ri-search-line me-1"></i>Appliquer
-                                        </Button>
-                                        <Badge color="warning" pill className="fs-11">{dossiers.length} dossier(s)</Badge>
-                                    </div>
-                                    {/* ── Sous-onglets dossiers ── */}
-                                    <Row className="g-3">
-                                        <Col xs={12}>
-<Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
-                                        <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'brouillon' }, 'fw-semibold py-3')} onClick={() => setDossierTab('brouillon')}>
-                                                <i className="ri-draft-line me-1"></i>En élaboration <Badge color="warning" pill className="ms-2">{dossiers.length}</Badge>
-                                            </NavLink>
-                                        </NavItem>
-                                        <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'transmis' }, 'fw-semibold py-3')} onClick={() => setDossierTab('transmis')}>
-                                                <i className="ri-send-plane-line me-1"></i>Transmis CB <Badge color="info" pill className="ms-2">{dossiersCbTransmis.length + dossiersCbValides.length}</Badge>
-                                            </NavLink>
-                                        </NavItem>
-                                        <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ajournes' }, 'fw-semibold py-3')} onClick={() => setDossierTab('ajournes')}>
-                                                <i className="ri-close-circle-line me-1"></i>Ajournés <Badge color="danger" pill className="ms-2">{dossiersAjournes.length}</Badge>
-                                            </NavLink>
-                                        </NavItem>
-                                        <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'multi' }, 'fw-semibold py-3')} onClick={() => setDossierTab('multi')}>
-                                                <i className="ri-folder-shared-line me-1"></i>Multi-dossiers <Badge color="warning" pill className="ms-2">{groupesDossiers.length}</Badge>
-                                            </NavLink>
-                                        </NavItem>
-                                        <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ops' }, 'fw-semibold py-3')} onClick={() => setDossierTab('ops')}>
-                                                <i className="ri-file-list-3-line me-1"></i>Ordres de Paiement <Badge color="primary" pill className="ms-2">{ops.length}</Badge>
-                                            </NavLink>
-                                        </NavItem>
-                                        <NavItem>
-                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'bordereaux' }, 'fw-semibold py-3')} onClick={() => setDossierTab('bordereaux')}>
-                                                <i className="ri-file-shield-2-line me-1"></i>Bordereaux <Badge color="success" pill className="ms-2">{bordereaux.length}</Badge>
-                                            </NavLink>
-                                        </NavItem>
-                                    </Nav>
-                                        </Col>
-                                        <Col xs={12}>
-
-                                    <div className="d-flex gap-2 mb-3">
-                                            <Button color="success" size="sm" onClick={handleGenererDossiers} disabled={!props.periode || processing || (selectedDemarrageIds.length + selectedPresenceIds.length === 0)}>
-                                            {processing ? <><Spinner size="sm" className="me-1" />Génération...</> : <><i className="ri-folder-add-line me-1"></i>Générer les dossiers pour la période</>}
-                                        </Button>
-                                    </div>
-
-<Deferred
-                                        data={['dossiers', 'dossiersTransmis', 'dossiersAjournes', 'dossiersGroupables', 'dossiersEligiblesOp', 'groupesDossiers', 'ops', 'bordereaux']}
-                                        fallback={<div className="d-flex justify-content-center py-5"><Spinner color="warning" /></div>}
-                                    >
-<TabContent activeTab={dossierTab} className="pt-4">
-                                        <TabPane tabId="brouillon">
-                                            <TableContainerReactTable columns={dossierColumns} data={dossiers} isGlobalFilter={true} customPageSize={10}
-                                                divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
-                                        </TabPane>
-                                        <TabPane tabId="transmis" ref={cbDossiersRef as any}>
-                                            {isLoadingCbDossiers ? (
-                                                <div className="d-flex justify-content-center py-5"><Spinner color="info" /></div>
-                                            ) : (
-                                                <>
-                                                    {/* ═══ Section 1 : Dossiers en attente CB ═══ */}
-                                                    <Card className="border shadow-none mb-4">
-                                                        <CardHeader className="bg-warning bg-opacity-10 py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                                            <h6 className="card-title mb-0 fs-14 text-warning fw-bold">
-                                                                <i className="ri-folder-check-line me-1"></i>
-                                                                Dossiers en attente de validation CB
-                                                                <Badge color="warning" pill className="ms-2 fs-11">{dossiersCbTransmis.length}</Badge>
-                                                            </h6>
-                                                            <div className="d-flex align-items-center">
-                                                                <div className="search-box me-2">
-                                                                    <Input
-                                                                        type="text"
-                                                                        placeholder="Rechercher dossier, stagiaire..."
-                                                                        className="form-control form-control-sm search"
-                                                                        value={cbDossiersSearch}
-                                                                        onChange={(e) => setCbDossiersSearch(e.target.value)}
-                                                                        onKeyDown={(e) => {
-                                                                            if (e.key === 'Enter') {
-loadDossiersCb();
-}
-                                                                        }}
-                                                                        style={{ minWidth: '250px' }}
-                                                                    />
-                                                                    <i className="ri-search-line search-icon"></i>
-                                                                </div>
-                                                                <Button color="primary" size="sm" onClick={loadDossiersCb}>
-                                                                    <i className="ri-search-line"></i>
-                                                                </Button>
-                                                            </div>
-                                                        </CardHeader>
-                                                        <CardBody className="p-0">
-                                                            <div className="table-responsive">
-                                                                <table className="table table-striped table-hover align-middle mb-0">
-                                                                    <thead className="table-light text-uppercase fs-11 fw-semibold">
-                                                                        <tr>
-                                                                            <th style={{ width: 40 }}>#</th>
-                                                                            <th>Numéro</th>
-                                                                            <th>Agence</th>
-                                                                            <th>Financement</th>
-                                                                            <th className="text-center">Stagiaires</th>
-                                                                            <th className="text-end">Montant</th>
-                                                                            <th>Statut</th>
-                                                                            <th style={{ width: 60 }}></th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {(() => {
-                                                                            const tp = Math.max(1, Math.ceil(dossiersCbTransmis.length / CB_DOSSIERS_PER_PAGE));
-                                                                            const safePage = Math.min(cbTransmisPage, tp);
-                                                                            const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
-                                                                            const rows = dossiersCbTransmis.slice(si, si + CB_DOSSIERS_PER_PAGE);
-
-                                                                            return rows.map((d: any, idx: number) => (
-                                                                                <React.Fragment key={d.id}>
-                                                                                    <tr
-                                                                                        className={expandedCbDossierId === d.id ? 'table-active' : ''}
-                                                                                        style={{ cursor: 'pointer' }}
-                                                                                        onClick={() => toggleExpandCbDossier(d.id)}>
-                                                                                        <td>{si + idx + 1}</td>
-                                                                                        <td className="fw-medium text-primary">{d.identifiant}</td>
-                                                                                        <td>{d.agence}</td>
-                                                                                        <td><Badge color="info-subtle" className="text-info">{d.source_financement}</Badge></td>
-                                                                                        <td className="text-center"><Badge color="warning" pill>{d.nombre_stagiaires}</Badge></td>
-                                                                                        <td className="text-end fw-bold">{Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA</td>
-                                                                                        <td><Badge color="warning" className="fs-11">TRANSMIS_CB</Badge></td>
-                                                                                        <td><i className={`ri-arrow-${expandedCbDossierId === d.id ? 'up' : 'down'}-s-line text-muted`}></i></td>
-                                                                                    </tr>
-                                                                                    {expandedCbDossierId === d.id && (
-                                                                                        <tr>
-                                                                                            <td colSpan={8} className="p-0 border-0">
-                                                                                                <div className="bg-light p-3">
-                                                                                                    <div className="d-flex justify-content-end mb-2">
-                                                                                                        <Input
-                                                                                                            type="text"
-                                                                                                            bsSize="sm"
-                                                                                                            placeholder="Rechercher stagiaire..."
-                                                                                                            value={cbStagiaireSearch}
-                                                                                                            onChange={(e) => setCbStagiaireSearch(e.target.value)}
-                                                                                                            onKeyDown={(e) => {
-                                                                                                                if (e.key === 'Enter') {
-loadCbStagiaires(d.id);
-}
-                                                                                                            }}
-                                                                                                            style={{ width: '200px' }}
-                                                                                                        />
-                                                                                                    </div>
-                                                                                                    {cbStagiaireLoading ? (
-                                                                                                        <div className="d-flex justify-content-center py-3"><Spinner size="sm" color="info" /></div>
-                                                                                                    ) : cbStagiaires.length === 0 ? (
-                                                                                                        <p className="text-muted text-center mb-0">Aucun stagiaire trouvé.</p>
-                                                                                                    ) : (
-                                                                                                        <>
-                                                                                                            <table className="table table-sm table-bordered mb-2">
-                                                                                                                <thead className="table-light fs-11">
-                                                                                                                    <tr>
-                                                                                                                        <th>N° AEJ</th>
-                                                                                                                        <th>Nom et Prénoms</th>
-                                                                                                                        <th>Entreprise</th>
-                                                                                                                        <th>Financement</th>
-                                                                                                                        <th>Type Stage</th>
-                                                                                                                        <th>Début</th>
-                                                                                                                        <th>Fin</th>
-                                                                                                                        <th className="text-end">Montant</th>
-                                                                                                                        <th className="text-center">Actions</th>
-                                                                                                                    </tr>
-                                                                                                                </thead>
-                                                                                                                <tbody>
-                                                                                                                    {cbStagiaires.map((s: any) => (
-                                                                                                                        <tr key={s.paiement_id}>
-                                                                                                                            <td className="text-muted">{s.numero_aej}</td>
-                                                                                                                            <td className="fw-semibold">{s.nom} {s.prenoms}</td>
-                                                                                                                            <td className="text-truncate" style={{ maxWidth: 120 }}>{s.entreprise}</td>
-                                                                                                                            <td>{s.source_financement}</td>
-                                                                                                                            <td>{s.type_stage}</td>
-                                                                                                                            <td className="fs-12">{s.date_debut}</td>
-                                                                                                                            <td className="fs-12">{s.date_fin}</td>
-                                                                                                                            <td className="text-end fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
-                                                                                                                            <td className="text-center">
-                                                                                                                                <Button 
-                                                                                                                                    color="info" 
-                                                                                                                                    size="sm" 
-                                                                                                                                    className="btn-icon" 
-                                                                                                                                    outline
-                                                                                                                                    onClick={() => handlePreviewDocs(s)}
-                                                                                                                                    title="Prévisualiser les fichiers"
-                                                                                                                                >
-                                                                                                                                    <i className="ri-folder-open-line"></i>
-                                                                                                                                </Button>
-                                                                                                                            </td>
-                                                                                                                        </tr>
-                                                                                                                    ))}
-                                                                                                                </tbody>
-                                                                                                            </table>
-                                                                                                            {cbStagiaireTotal > 10 && (
-                                                                                                                <div className="d-flex justify-content-between align-items-center">
-                                                                                                                    <small className="text-muted">{cbStagiaireTotal} stagiaire(s)</small>
-                                                                                                                    <div className="d-flex gap-1">
-                                                                                                                        <Button size="sm" color="light" disabled={cbStagiairePage <= 1} onClick={() => setCbStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
-                                                                                                                        <Button size="sm" color="light" disabled={cbStagiairePage >= Math.ceil(cbStagiaireTotal / 10)} onClick={() => setCbStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
-                                                                                                                    </div>
-                                                                                                                </div>
-                                                                                                            )}
-                                                                                                        </>
-                                                                                                    )}
-                                                                                                </div>
-                                                                                            </td>
-                                                                                        </tr>
-                                                                                    )}
-                                                                                </React.Fragment>
-                                                                            ));
-                                                                        })()}
-                                                                        {dossiersCbTransmis.length === 0 && (
-                                                                            <tr><td colSpan={8} className="text-center py-4 text-muted">
-                                                                                <i className="ri-inbox-line fs-24 d-block mb-2"></i>Aucun dossier en attente de validation CB.
-                                                                            </td></tr>
-                                                                        )}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                            {dossiersCbTransmis.length > CB_DOSSIERS_PER_PAGE && (() => {
-                                                                const tp = Math.ceil(dossiersCbTransmis.length / CB_DOSSIERS_PER_PAGE);
-                                                                const maxV = 7;
-                                                                let pgs: (number | '...')[] = [];
-
-                                                                if (tp <= maxV) {
- pgs = Array.from({ length: tp }, (_, i) => i + 1); 
-} else {
-                                                                    pgs = [1];
-
-                                                                    if (cbTransmisPage > 3) {
-pgs.push('...');
-}
-
-                                                                    for (let i = Math.max(2, cbTransmisPage - 1); i <= Math.min(tp - 1, cbTransmisPage + 1); i++) {
-pgs.push(i);
-}
-
-                                                                    if (cbTransmisPage < tp - 2) {
-pgs.push('...');
-}
-
-                                                                    pgs.push(tp);
-                                                                }
-
-                                                                const siT = (Math.min(cbTransmisPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
-
-                                                                return (
-                                                                    <div className="d-flex justify-content-between align-items-center p-2 border-top">
-                                                                        <small className="text-muted">{siT + 1}–{Math.min(siT + CB_DOSSIERS_PER_PAGE, dossiersCbTransmis.length)} sur {dossiersCbTransmis.length}</small>
-                                                                        <div className="d-flex align-items-center gap-1">
-                                                                            <Button size="sm" color="light" disabled={cbTransmisPage <= 1} onClick={() => setCbTransmisPage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
-                                                                            {pgs.map((page, i) => page === '...' ? <span key={`t-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === cbTransmisPage ? 'warning' : 'light'} onClick={() => setCbTransmisPage(page)}>{page}</Button>)}
-                                                                            <Button size="sm" color="light" disabled={cbTransmisPage >= tp} onClick={() => setCbTransmisPage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })()}
-                                                        </CardBody>
-                                                    </Card>
-
-                                                    {/* ═══ Section 2 : Dossiers validés CB ═══ */}
-                                                    <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-                                                        <div>
-                                                            <h5 className="fs-14 mb-1 text-success fw-bold">
-                                                                <i className="ri-check-double-line me-1"></i>Dossiers validés CB — Éligibles OP
-                                                            </h5>
-                                                            <p className="text-muted mb-0 fs-12">
-                                                                Élaborez l'ordre de paiement depuis l'onglet <strong>Ordres de Paiement</strong>.
-                                                            </p>
-                                                        </div>
-                                                        <Button color="primary" size="sm" outline onClick={() => setDossierTab('ops')}>
-                                                            <i className="ri-file-list-3-line me-1"></i>Aller aux ordres de paiement
-                                                        </Button>
+                                    {/* ── Export en arrière-plan : progression et téléchargement ── */}
+                                    {batchExport && (
+                                        <Card className="border shadow-none mb-3 border-primary">
+                                            <CardBody className="py-2">
+                                                <div className="d-flex align-items-center gap-2 mb-1">
+                                                    <i className={`ri-loader-4-line ${batchExport.disponible || batchExport.echec ? '' : 'ri-spin'} text-primary me-1`}></i>
+                                                    <span className="fw-semibold fs-13 flex-grow-1">{batchExport.libelle}</span>
+                                                    {!batchExport.disponible && !batchExport.echec && (
+                                                        <span className="text-muted fs-12 fw-semibold me-1">{batchExport.progress}%</span>
+                                                    )}
+                                                    {batchExport.echec ? (
+                                                        <Badge color="danger">Échec</Badge>
+                                                    ) : batchExport.disponible ? (
+                                                        <Badge color="success">Prêt</Badge>
+                                                    ) : (
+                                                        <Badge color="info">En cours…</Badge>
+                                                    )}
+                                                </div>
+                                                {batchExport.echec ? (
+                                                    <>
+                                                        <p className="text-muted mb-1 fs-12">
+                                                            La génération a échoué (fichier trop volumineux ou aucun paiement éligible).
+                                                            Réduisez la sélection ou les filtres, puis relancez.
+                                                        </p>
+                                                        <button className="btn btn-sm btn-light mt-1" onClick={() => setBatchExport(null)}>Fermer</button>
+                                                    </>
+                                                ) : batchExport.disponible ? (
+                                                    <div className="d-flex gap-2 mt-1">
+                                                        <a className="btn btn-sm btn-success" href={`/dmg/paiements/exporter/${batchExport.id}/telechargement`}>
+                                                            <i className="ri-download-2-line me-1"></i>Télécharger le fichier
+                                                        </a>
+                                                        <button className="btn btn-sm btn-light" onClick={() => setBatchExport(null)}>Fermer</button>
                                                     </div>
-                                                    <Card className="border shadow-none">
-                                                        <CardBody className="p-0">
-                                                            <div className="table-responsive">
-                                                                <table className="table table-striped table-hover align-middle mb-0">
-                                                                    <thead className="table-light text-uppercase fs-11 fw-semibold">
-                                                                        <tr>
-                                                                            <th>#</th>
-                                                                            <th>Numéro</th>
-                                                                            <th>Agence</th>
-                                                                            <th>Financement</th>
-                                                                            <th className="text-center">Stagiaires</th>
-                                                                            <th className="text-end">Montant</th>
-                                                                            <th>Statut</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {(() => {
-                                                                            const tp = Math.max(1, Math.ceil(dossiersCbValides.length / CB_DOSSIERS_PER_PAGE));
-                                                                            const safePage = Math.min(cbValidesPage, tp);
-                                                                            const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
-                                                                            const rows = dossiersCbValides.slice(si, si + CB_DOSSIERS_PER_PAGE);
+                                                ) : (
+                                                    <Progress value={batchExport.progress} color="success" className="mt-1" style={{ height: '8px', borderRadius: '4px' }} />
+                                                )}
+                                            </CardBody>
+                                        </Card>
+                                    )}
 
-                                                                            return rows.map((d: any, idx: number) => (
-                                                                                <tr key={d.id}>
-                                                                                    <td>{si + idx + 1}</td>
-                                                                                    <td className="fw-medium text-success">{d.identifiant}</td>
-                                                                                    <td>{d.agence}</td>
-                                                                                    <td><Badge color="success-subtle" className="text-success">{d.source_financement}</Badge></td>
-                                                                                    <td className="text-center"><Badge color="success" pill>{d.nombre_stagiaires}</Badge></td>
-                                                                                    <td className="text-end fw-bold">{Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA</td>
-                                                                                    <td><Badge color="success" className="fs-11">VALIDE_CB</Badge></td>
-                                                                                </tr>
-                                                                            ));
-                                                                        })()}
-                                                                        {dossiersCbValides.length === 0 && (
-                                                                            <tr><td colSpan={7} className="text-center py-4 text-muted">
-                                                                                <i className="ri-inbox-line fs-24 d-block mb-2"></i>Aucun dossier validé CB.
-                                                                            </td></tr>
-                                                                        )}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
-                                                            {dossiersCbValides.length > CB_DOSSIERS_PER_PAGE && (() => {
-                                                                const tp = Math.ceil(dossiersCbValides.length / CB_DOSSIERS_PER_PAGE);
-                                                                const maxV = 7;
-                                                                let pgs: (number | '...')[] = [];
+                                    {batchValidation && (
+                                        <Card className="border shadow-none mb-3 border-success">
+                                            <CardBody className="py-2">
+                                                <div className="d-flex align-items-center gap-2 mb-1">
+                                                    <i className={`ri-loader-4-line ${batchValidation.finished || batchValidation.echec ? '' : 'ri-spin'} text-success me-1`}></i>
+                                                    <span className="fw-semibold fs-13">{batchValidation.libelle}</span>
+                                                    {batchValidation.echec ? (
+                                                        <Badge color="danger">Échec</Badge>
+                                                    ) : batchValidation.finished ? (
+                                                        <Badge color="success">Terminé</Badge>
+                                                    ) : (
+                                                        <Badge color="info">En cours…</Badge>
+                                                    )}
+                                                </div>
+                                                {batchValidation.echec ? (
+                                                    <p className="text-muted mb-0 fs-12">Le traitement a échoué. Vérifiez que les paiements sont toujours éligibles, puis relancez.</p>
+                                                ) : batchValidation.finished ? (
+                                                    <p className="text-muted mb-0 fs-12">{batchValidation.count} paiement(s) traité(s). La liste a été rafraîchie.</p>
+                                                ) : (
+                                                    <Progress value={batchValidation.progress} color="success" className="mt-1" style={{ height: '6px' }}>
+                                                        {batchValidation.progress}%
+                                                    </Progress>
+                                                )}
+                                            </CardBody>
+                                        </Card>
+                                    )}
 
-                                                                if (tp <= maxV) {
- pgs = Array.from({ length: tp }, (_, i) => i + 1); 
-} else {
-                                                                    pgs = [1];
+                                    <TabContent activeTab={activeTab} className="pt-4 text-muted">
+                                        {/* ═══════ ONGLET 1 : ATTENTE DÉMARRAGE ═══════ */}
+                                        <TabPane tabId="1">
+                                            {/* ── Sélecteur de période Démarrage ── */}
+                                            <div className="d-flex align-items-center gap-2 mb-3">
+                                                <i className="ri-calendar-line text-primary fs-16"></i>
+                                                <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
+                                                <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
+                                                    value={optionSelectionnee(optionsPeriodes, moisDemarrage)}
+                                                    onChange={(selected) => setMoisDemarrage(selected?.value || '')}
+                                                    classNamePrefix="react-select"
+                                                />
+                                                <Button color="primary" size="sm" onClick={applyFilters} disabled={isLoading}>
+                                                    <i className="ri-search-line me-1"></i>Appliquer
+                                                </Button>
+                                                <Badge color="primary" pill className="fs-11">{currentDemarrageRows.length} paiement(s)</Badge>
+                                            </div>
+                                            {/* ── Actions globales démarrage ── */}
+                                            <Card className="border shadow-none mb-3">
+                                                <CardHeader className="bg-light border-bottom border-light d-flex align-items-center">
+                                                    <h5 className="card-title mb-0 flex-grow-1 fs-14">
+                                                        <i className="ri-checkbox-multiple-line me-1"></i>
+                                                        Traitement démarrage
+                                                        {selectedDemarrageIds.length > 0 && (
+                                                            <Badge color="success" className="ms-2 fs-12">{selectedDemarrageIds.length} sélectionné(s)</Badge>
+                                                        )}
+                                                    </h5>
+                                                </CardHeader>
+                                                <CardBody className="py-2">
+                                                    <div className="d-flex flex-wrap gap-2">
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-info btn-sm">
+                                                                <i className="ri-printer-line me-1"></i>État Paiement (PDF) <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('etat_paiement', 'liste', 'État de paiement — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('etat_paiement', 'selected', 'État de paiement — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                    if (cbValidesPage > 3) {
-pgs.push('...');
-}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-success btn-sm">
+                                                                <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('excel', 'liste', 'Canvas TrésorPay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('excel', 'selected', 'Canvas TrésorPay — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                    for (let i = Math.max(2, cbValidesPage - 1); i <= Math.min(tp - 1, cbValidesPage + 1); i++) {
-pgs.push(i);
-}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-primary btn-sm">
+                                                                <i className="ri-printer-line me-1"></i>Attestation Démarrage (PDF) <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('attestation_demarrage', 'liste', 'Attestation de démarrage — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('attestation_demarrage', 'selected', 'Attestation de démarrage — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                    if (cbValidesPage < tp - 2) {
-pgs.push('...');
-}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-primary btn-sm">
+                                                                <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('fusion_tresor', 'liste', 'Fusion Trésor Pay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => lancerExport('fusion_tresor', 'selected', 'Fusion Trésor Pay — sélection')}>Sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                    pgs.push(tp);
-                                                                }
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-danger btn-sm">
+                                                                <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem disabled={currentDemarrageRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
+                                                                <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openAjournerModal('selected')}>Ajourner sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                const siP = (Math.min(cbValidesPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-success btn-sm">
+                                                                <i className="ri-check-line me-1"></i>Valider paiement <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem disabled={workflowCount('liste') === 0} onClick={() => openValiderModal('liste')}>Valider toute la liste</DropdownItem>
+                                                                <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openValiderModal('selected')}>Valider sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                return (
-                                                                    <div className="d-flex justify-content-between align-items-center p-2 border-top">
-                                                                        <small className="text-muted">{siP + 1}–{Math.min(siP + CB_DOSSIERS_PER_PAGE, dossiersCbValides.length)} sur {dossiersCbValides.length}</small>
-                                                                        <div className="d-flex align-items-center gap-1">
-                                                                            <Button size="sm" color="light" disabled={cbValidesPage <= 1} onClick={() => setCbValidesPage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
-                                                                            {pgs.map((page, i) => page === '...' ? <span key={`v-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === cbValidesPage ? 'success' : 'light'} onClick={() => setCbValidesPage(page)}>{page}</Button>)}
-                                                                            <Button size="sm" color="light" disabled={cbValidesPage >= tp} onClick={() => setCbValidesPage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
-                                                                        </div>
-                                                                    </div>
-                                                                );
-                                                            })()}
-                                                        </CardBody>
-                                                    </Card>
-                                                </>
-                                            )}
-                                        </TabPane>
-                                        <TabPane tabId="ajournes">
-                                            <h5 className="fs-14 mb-1 text-danger fw-bold">
-                                                <i className="ri-folder-forbid-line me-1"></i>Dossiers ajournés
-                                            </h5>
-                                            <p className="text-muted fs-12">Dossiers renvoyés par le CB ou retirés par la DMG.</p>
-                                            <TableContainerReactTable columns={dossierColumns} data={dossiersAjournes} isGlobalFilter={true} customPageSize={10}
-                                                divClass="table-responsive table-card mb-4" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
-                                            <h5 className="fs-14 mb-1 text-danger fw-bold">
-                                                <i className="ri-user-forbid-line me-1"></i>Stagiaires ajournés
-                                            </h5>
-                                            <p className="text-muted fs-12">
-                                                Liste nominative, motif de la décision et remise en file d'attente après correction.
-                                            </p>
-                                            <AjournesTab
-                                                actif={dossierTab === 'ajournes'}
-                                                mois={moisDossiers}
-                                                agences={agences}
-                                                typesStage={typesStage}
-                                                sourcesFinancement={sourcesFinancement}
-                                                onApercuDocuments={handlePreviewDocs}
-                                            />
-                                        </TabPane>
-                                        <TabPane tabId="multi">
-                                            {/* ── Filtres + Sélection + Actions ── */}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-dark btn-sm">
+                                                                <i className="ri-folder-fill me-1"></i>Marquer dossier <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem disabled={currentDemarrageRows.length === 0} onClick={() => openDossierModal('liste')}>Marquer la liste</DropdownItem>
+                                                                <DropdownItem disabled={selectedDemarrageIds.length === 0} onClick={() => openDossierModal('selection')}>Marquer sélection ({selectedDemarrageIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
+                                                    </div>
+                                                </CardBody>
+                                            </Card>
+
+                                            {/* ── Info Cohortes ── */}
                                             <Row className="g-3 mb-3">
-                                                {/* ── Filtres ── */}
-                                                <Col lg={8} xl={9}>
-                                                    <Card className="border shadow-none">
-                                                        <CardHeader className="bg-light py-2 d-flex align-items-center gap-2">
-                                                            <i className="ri-filter-3-line text-warning"></i>
-                                                            <h6 className="card-title mb-0 fs-13 fw-semibold">Filtres et Sélection</h6>
-                                                            {isLoadingMultiDossiers && <Spinner size="sm" color="warning" />}
-                                                        </CardHeader>
-                                                        <CardBody className="py-3">
-                                                            <Row className="g-3 align-items-end">
-                                                                <Col md={4}>
-                                                                    <Label className="form-label fs-12 text-muted fw-semibold">Type Traitement</Label>
-                                                                    <Select isSearchable={false} options={optionsTypeTraitement}
-                                                                        value={optionSelectionnee(optionsTypeTraitement, multiTypeTraitement)}
-                                                                        onChange={(selected) => setMultiTypeTraitement(selected?.value || '')}
-                                                                        classNamePrefix="react-select"
-                                                                    />
-                                                                </Col>
-                                                                <Col md={4}>
-                                                                    <Label className="form-label fs-12 text-muted fw-semibold">Agence</Label>
-                                                                    <Select isSearchable options={optionsAgences}
-                                                                        value={optionSelectionnee(optionsAgences, multiAgenceId)}
-                                                                        onChange={(selected) => setMultiAgenceId(selected?.value || '')}
-                                                                        classNamePrefix="react-select"
-                                                                    />
-                                                                </Col>
-                                                                <Col md={4}>
-                                                                    <Label className="form-label fs-12 text-muted fw-semibold">Source de financement</Label>
-                                                                    <Select isSearchable options={optionsSources}
-                                                                        value={optionSelectionnee(optionsSources, multiSourceId)}
-                                                                        onChange={(selected) => setMultiSourceId(selected?.value || '')}
-                                                                        classNamePrefix="react-select"
-                                                                    />
-                                                                </Col>
-                                                                <Col md={12}>
-                                                                    <Label className="form-label fs-12 text-muted fw-semibold">
-                                                                        <i className="ri-folder-2-fill me-1 text-warning"></i>Sélectionner les dossiers
-                                                                        <Badge color="secondary" pill className="ms-2 fs-11">{multiDossiers.length} disponible(s)</Badge>
-                                                                    </Label>
-                                                                    <Select
-                                                                        isMulti
-                                                                        options={multiDossiers.map((d) => ({
-                                                                            value: d.id,
-                                                                            label: `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires} stagi., ${Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA)`,
-                                                                            dossier: d,
-                                                                        }))}
-                                                                        value={multiDossiers
-                                                                            .filter((d) => selectedMultiDossierIds.includes(d.id))
-                                                                            .map((d) => ({
-                                                                                value: d.id,
-                                                                                label: `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires})`,
-                                                                            }))}
-                                                                        onChange={(selected: any) => {
-                                                                            const ids = (selected || []).map((s: any) => s.value);
-                                                                            setSelectedMultiDossierIds(ids);
-                                                                            setStagiairePage(1);
-                                                                        }}
-                                                                        placeholder="Rechercher et sélectionner des dossiers..."
-                                                                        noOptionsMessage={() => 'Aucun dossier disponible'}
-                                                                        isDisabled={isLoadingMultiDossiers}
-                                                                        classNamePrefix="react-select"
-                                                                        styles={{
-                                                                            control: (base) => ({ ...base, minHeight: 38, borderColor: '#dee2e6', fontSize: 13 }),
-                                                                            menu: (base) => ({ ...base, zIndex: 9999 }),
-                                                                        }}
-                                                                    />
-                                                                </Col>
-                                                            </Row>
-                                                        </CardBody>
-                                                    </Card>
+                                                <Col md={4}>
+                                                    <div className="alert alert-info border-0 border-start border-4 border-info mb-0 h-100 d-flex align-items-center gap-2 fs-13">
+                                                        <i className="ri-information-line fs-16"></i>
+                                                        <span><strong>Cohorte 1 :</strong> date début 1er–5 du mois. Badge <Badge color="info" className="ms-1">{compteurs?.cohorte1?.demarrage ?? 0}</Badge></span>
+                                                    </div>
                                                 </Col>
-
-                                                {/* ── Actions ── */}
-                                                <Col lg={4} xl={3}>
-                                                    <Card className="border shadow-none h-100">
-                                                        <CardHeader className="bg-success bg-opacity-10 py-2">
-                                                            <h6 className="card-title mb-0 fs-13 text-success">
-                                                                <i className="ri-settings-3-line me-1"></i>Actions
-                                                            </h6>
-                                                        </CardHeader>
-                                                        <CardBody className="py-2 d-flex flex-column gap-2">
-                                                            <Button color="success" size="sm" block disabled={selectedMultiDossierIds.length === 0 || !moisDossiers || processing}
-                                                                onClick={() => setModalMultiValiderOpen(true)}>
-                                                                <i className="ri-check-double-line me-1"></i>Valider sélection
-                                                            </Button>
-                                                            <Button color="warning" size="sm" block disabled={selectedMultiDossierIds.length === 0}
-                                                                onClick={() => setModalMultiAjournerDossierOpen(true)}>
-                                                                <i className="ri-close-circle-line me-1"></i>Retirer le dossier
-                                                            </Button>
-                                                            <Button color="warning" size="sm" block disabled={selectedStagiaireIds.length === 0}
-                                                                onClick={() => setModalMultiAjournerStagiaireOpen(true)}>
-                                                                <i className="ri-user-unfollow-line me-1"></i>Retirer Stagiaire(s) ({selectedStagiaireIds.length})
-                                                            </Button>
-                                                            <hr className="my-1" />
-                                                            <div className="d-flex gap-1">
-                                                                <Button color="info" className="flex-fill" size="sm" disabled={selectedMultiDossierIds.length === 0}
-                                                                    onClick={() => handleMultiGenererPdf('paiement')}>
-                                                                    <i className="ri-file-text-line me-1"></i>État Paiement
-                                                                </Button>
-                                                                <Button color="info" className="flex-fill" size="sm" disabled={selectedMultiDossierIds.length === 0}
-                                                                    onClick={() => handleMultiGenererPdf('attestations')}>
-                                                                    <i className="ri-file-shield-line me-1"></i>ADD/ADP
-                                                                </Button>
-                                                            </div>
-                                                            {selectedMultiDossierIds.length > 0 && (
-                                                                <div className="text-center mt-1">
-                                                                    <Badge color="success" pill className="fs-11">{selectedMultiDossierIds.length} dossier(s) sélectionné(s)</Badge>
-                                                                </div>
-                                                            )}
-                                                        </CardBody>
-                                                    </Card>
+                                                <Col md={4}>
+                                                    <div className="alert alert-warning border-0 border-start border-4 border-warning mb-0 h-100 d-flex align-items-center gap-2 fs-13">
+                                                        <i className="ri-information-line fs-16"></i>
+                                                        <span><strong>Cohorte 2 :</strong> date début 6–19 du mois. Badge <Badge color="warning" className="ms-1">{compteurs?.cohorte2?.demarrage ?? 0}</Badge></span>
+                                                    </div>
+                                                </Col>
+                                                <Col md={4}>
+                                                    <div className="alert alert-danger border-0 border-start border-4 border-danger mb-0 h-100 d-flex align-items-center gap-2 fs-13">
+                                                        <i className="ri-information-line fs-16"></i>
+                                                        <span><strong>Cohorte 3 :</strong> date début 20+ du mois. Badge <Badge color="danger" className="ms-1">{compteurs?.cohorte3?.demarrage ?? 0}</Badge></span>
+                                                    </div>
                                                 </Col>
                                             </Row>
 
-                                            {/* ── Tableau Stagiaires (serveur-side) ── */}
-                                            {selectedMultiDossierIds.length > 0 && (
-                                                <Card className="border shadow-none mb-3">
-                                                    <CardHeader className="bg-info bg-opacity-10 py-2 d-flex justify-content-between align-items-center">
-                                                        <h6 className="card-title mb-0 fs-13 text-info">
-                                                            <i className="ri-user-search-line me-1"></i>Liste des Stagiaires
-                                                            <Badge color="info" pill className="ms-2 fs-11">{stagiaireTotal}</Badge>
-                                                        </h6>
-                                                        <Input type="text" bsSize="sm" placeholder="Rechercher..." style={{ maxWidth: 220 }}
-                                                            value={stagiaireSearch} onChange={(e) => {
- setStagiaireSearch(e.target.value); setStagiairePage(1); 
-}} />
-                                                    </CardHeader>
-                                                    <CardBody className="p-0">
-                                                        {stagiaireLoading ? (
-                                                            <div className="d-flex justify-content-center py-4"><Spinner color="info" size="sm" /></div>
-                                                        ) : stagiaires.length === 0 ? (
-                                                            <p className="text-muted text-center py-4 mb-0"><i className="ri-inbox-line me-1"></i>Aucun stagiaire trouvé.</p>
-                                                        ) : (
-                                                            <div className="table-responsive">
-                                                                <table className="table table-striped table-hover align-middle mb-0">
-                                                                    <thead className="table-light text-uppercase fs-11 fw-semibold">
-                                                                        <tr>
-                                                                            <th style={{ width: 35 }}><Input type="checkbox" className="form-check-input"
-                                                                                checked={stagiaires.length > 0 && selectedStagiaireIds.length === stagiaires.length}
-                                                                                onChange={toggleAllStagiaires} /></th>
-                                                                            <th>Date Création</th>
-                                                                            <th>Agence</th>
-                                                                            <th>Entreprise</th>
-                                                                            <th>Financement</th>
-                                                                            <th>Type Stage</th>
-                                                                            <th>N° AEJ</th>
-                                                                            <th>Nom et Prénoms</th>
-                                                                            <th>Date Naiss.</th>
-                                                                            <th>Date Début</th>
-                                                                            <th>Date Fin</th>
-                                                                            <th>N° Trésor Pay</th>
-                                                                            <th>Montant</th>
-                                                                            <th className="text-center">Actions</th>
-                                                                        </tr>
-                                                                    </thead>
-                                                                    <tbody>
-                                                                        {stagiaires.map((s) => (
-                                                                            <tr key={s.paiement_id}>
-                                                                                <td><Input type="checkbox" className="form-check-input"
-                                                                                    checked={selectedStagiaireIds.includes(s.paiement_id)}
-                                                                                    onChange={() => toggleStagiaireSelection(s.paiement_id)} /></td>
-                                                                                <td className="fs-12">{s.created_at}</td>
-                                                                                <td>{s.agence}</td>
-                                                                                <td className="text-truncate" style={{ maxWidth: 130 }}>{s.entreprise}</td>
-                                                                                <td>{s.source_financement}</td>
-                                                                                <td className="text-truncate" style={{ maxWidth: 100 }}>{s.type_stage}</td>
-                                                                                <td className="text-muted">{s.numero_aej}</td>
-                                                                                <td className="fw-semibold">{s.nom_prenoms}</td>
-                                                                                <td className="fs-12">{s.date_naissance}</td>
-                                                                                <td className="fs-12">{s.date_debut}</td>
-                                                                                <td className="fs-12">{s.date_fin}</td>
-                                                                                <td className="text-muted">{s.tresor_pay}</td>
-                                                                                <td className="fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
-                                                                                <td className="text-center">
-                                                                                    <Button 
-                                                                                        color="info" 
-                                                                                        size="sm" 
-                                                                                        className="btn-icon" 
-                                                                                        outline
-                                                                                        onClick={() => handlePreviewDocs(s)}
-                                                                                        title="Prévisualiser les fichiers"
-                                                                                    >
-                                                                                        <i className="ri-folder-open-line"></i>
-                                                                                    </Button>
-                                                                                </td>
-                                                                            </tr>
-                                                                        ))}
-                                                                    </tbody>
-                                                                </table>
-                                                            </div>
+                                            {/* ── Sous-onglets Cohorte ── */}
+                                            <Row className="g-3">
+                                                <Col xs={12}>
+                                                    <Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'global' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('global')}>
+                                                                Cohorte Global {cohortBadge('global')}
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte1' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte1')}>
+                                                                Cohorte 1 {cohortBadge('cohorte1')}
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte2' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte2')}>
+                                                                Cohorte 2 {cohortBadge('cohorte2')}
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: demarrageTab === 'cohorte3' }, 'fw-semibold py-3')} onClick={() => toggleDemarrageTab('cohorte3')}>
+                                                                Cohorte 3 {cohortBadge('cohorte3')}
+                                                            </NavLink>
+                                                        </NavItem>
+                                                    </Nav>
+                                                </Col>
+                                                <Col xs={12}>
+
+                                                    {/* ── Tableau Démarrage ── */}
+                                                    {isLoading ? (
+                                                        <div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>
+                                                    ) : (
+                                                        <Deferred data="attenteDemarrage" fallback={<div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>}>
+                                                            <TableContainerReactTable
+                                                                columns={demarrageColumns}
+                                                                data={currentDemarrageRows}
+                                                                isGlobalFilter={true}
+                                                                customPageSize={10}
+                                                                divClass="table-responsive table-card mb-3"
+                                                                tableClass="table-striped align-middle table-nowrap mb-0"
+                                                                theadClass="table-light text-uppercase fw-semibold fs-11"
+                                                                SearchPlaceholder="Rechercher..."
+                                                            />
+                                                        </Deferred>
+                                                    )}
+                                                </Col>
+                                            </Row>
+                                        </TabPane>
+
+                                        {/* ═══════ ONGLET 2 : ATTENTE PRÉSENCE ═══════ */}
+                                        <TabPane tabId="2">
+                                            {/* ── Sélecteur de période Présence ── */}
+                                            <div className="d-flex align-items-center gap-2 mb-3">
+                                                <i className="ri-calendar-line text-info fs-16"></i>
+                                                <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
+                                                <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
+                                                    value={optionSelectionnee(optionsPeriodes, moisPresence)}
+                                                    onChange={(selected) => setMoisPresence(selected?.value || '')}
+                                                    classNamePrefix="react-select"
+                                                />
+                                                <Button color="info" size="sm" onClick={applyFilters} disabled={isLoading}>
+                                                    <i className="ri-search-line me-1"></i>Appliquer
+                                                </Button>
+                                                <Badge color="info" pill className="fs-11">{compteurs?.presence ?? currentPresenceRows.length} paiement(s)</Badge>
+                                            </div>
+                                            {/* ── Actions globales présence ── */}
+                                            <Card className="border shadow-none mb-3">
+                                                <CardHeader className="bg-light border-bottom border-light d-flex align-items-center">
+                                                    <h5 className="card-title mb-0 flex-grow-1 fs-14">
+                                                        <i className="ri-checkbox-multiple-line me-1"></i>
+                                                        Traitement présence
+                                                        {selectedPresenceIds.length > 0 && (
+                                                            <Badge color="success" className="ms-2 fs-12">{selectedPresenceIds.length} sélectionné(s)</Badge>
                                                         )}
-                                                        {(() => {
-                                                            const stPages = Math.ceil(stagiaireTotal / 10);
+                                                    </h5>
+                                                </CardHeader>
+                                                <CardBody className="py-2">
+                                                    <div className="d-flex flex-wrap gap-2">
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-info btn-sm">
+                                                                <i className="ri-printer-line me-1"></i>État Paiement (PDF) <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('etat_paiement', 'liste', 'État de paiement — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('etat_paiement', 'selected', 'État de paiement — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                            if (stPages <= 1) {
-return null;
-}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-success btn-sm">
+                                                                <i className="ri-file-excel-2-line me-1"></i>Canvas TrésorPay <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('excel', 'liste', 'Canvas TrésorPay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('excel', 'selected', 'Canvas TrésorPay — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                            const maxVis = 7;
-                                                            let stPageNums: (number | '...')[] = [];
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-primary btn-sm">
+                                                                <i className="ri-printer-line me-1"></i>Attestation Présence (PDF) <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('attestation_presence', 'liste', 'Attestation de présence — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('attestation_presence', 'selected', 'Attestation de présence — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                            if (stPages <= maxVis) {
- stPageNums = Array.from({ length: stPages }, (_, i) => i + 1); 
-} else {
-                                                                stPageNums = [1];
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-primary btn-sm">
+                                                                <i className="ri-check-double-line me-1"></i>Fusionner Trésor Pay <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem onClick={() => lancerExport('fusion_tresor', 'liste', 'Fusion Trésor Pay — tous les stagiaires')}>Tous les stagiaires</DropdownItem>
+                                                                <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => lancerExport('fusion_tresor', 'selected', 'Fusion Trésor Pay — sélection')}>Sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                if (stagiairePage > 3) {
-stPageNums.push('...');
-}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-danger btn-sm">
+                                                                <i className="ri-close-circle-line me-1"></i>Ajourner <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem disabled={currentPresenceRows.length === 0} onClick={() => openAjournerModal('liste')}>Ajourner la liste</DropdownItem>
+                                                                <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openAjournerModal('selected')}>Ajourner sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                for (let i = Math.max(2, stagiairePage - 1); i <= Math.min(stPages - 1, stagiairePage + 1); i++) {
-stPageNums.push(i);
-}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-soft-dark btn-sm">
+                                                                <i className="ri-folder-fill me-1"></i>Marquer dossier <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem disabled={currentPresenceRows.length === 0} onClick={() => openDossierModal('liste')}>Marquer la liste</DropdownItem>
+                                                                <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openDossierModal('selection')}>Marquer sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
 
-                                                                if (stagiairePage < stPages - 2) {
-stPageNums.push('...');
-}
+                                                        <UncontrolledDropdown>
+                                                            <DropdownToggle tag="button" className="btn btn-success btn-sm">
+                                                                <i className="ri-check-line me-1"></i>Valider paiement <i className="ri-arrow-down-s-line"></i>
+                                                            </DropdownToggle>
+                                                            <DropdownMenu>
+                                                                <DropdownItem disabled={workflowCount('liste') === 0} onClick={() => openValiderModal('liste')}>Valider toute la liste</DropdownItem>
+                                                                <DropdownItem disabled={selectedPresenceIds.length === 0} onClick={() => openValiderModal('selected')}>Valider sélection ({selectedPresenceIds.length})</DropdownItem>
+                                                            </DropdownMenu>
+                                                        </UncontrolledDropdown>
+                                                    </div>
+                                                </CardBody>
+                                            </Card>
 
-                                                                stPageNums.push(stPages);
-                                                            }
-
-                                                            return (
-                                                                <div className="d-flex justify-content-between align-items-center p-2 border-top">
-                                                                    <small className="text-muted">{stagiaireTotal} résultat(s) — Page {stagiairePage}/{stPages}</small>
-                                                                    <div className="d-flex align-items-center gap-1">
-                                                                        <Button size="sm" color="light" disabled={stagiairePage <= 1} onClick={() => setStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
-                                                                        {stPageNums.map((page, i) => page === '...' ? <span key={`mds-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === stagiairePage ? 'primary' : 'light'} onClick={() => setStagiairePage(page)}>{page}</Button>)}
-                                                                        <Button size="sm" color="light" disabled={stagiairePage >= stPages} onClick={() => setStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
-                                                                    </div>
-                                                                </div>
-                                                            );
-                                                        })()}
-                                                    </CardBody>
-                                                </Card>
+                                            {/* ── Tableau Présence ── */}
+                                            {isLoading ? (
+                                                <div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>
+                                            ) : (
+                                                <Deferred data="attentePresence" fallback={<div className="d-flex justify-content-center py-5"><Spinner color="success" /></div>}>
+                                                    <TableContainerReactTable
+                                                        columns={presenceColumns}
+                                                        data={currentPresenceRows}
+                                                        isGlobalFilter={true}
+                                                        customPageSize={10}
+                                                        divClass="table-responsive table-card mb-3"
+                                                        tableClass="table-striped align-middle table-nowrap mb-0"
+                                                        theadClass="table-light text-uppercase fw-semibold fs-11"
+                                                        SearchPlaceholder="Rechercher..."
+                                                    />
+                                                </Deferred>
                                             )}
+                                        </TabPane>
 
-                                            {/* ── Multi-dossiers constitués ── */}
-                                            <h5 className="fs-14 mb-3"><i className="ri-folder-shared-line me-1 text-warning"></i>Multi-dossiers constitués</h5>
-                                            <TableContainerReactTable
-                                                columns={[
-                                                    { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
-                                                    { header: 'Nature', cell: (c: any) => c.row.original.nature },
-                                                    { header: 'Financement', cell: (c: any) => c.row.original.source_financement?.nom || '-' },
-                                                    { header: 'Dossiers', cell: (c: any) => <Badge color="info">{c.row.original.dossiers_count}</Badge> },
-                                                    { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
-                                                    { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)}>{c.row.original.statut}</Badge> },
-                                                    { header: 'Actions', cell: (c: any) => (
-                                                        <div className="d-flex gap-1">
-                                                            {c.row.original.statut === 'BROUILLON' && (
-                                                                <Button color="warning" size="sm" outline onClick={() => handleGenererPdfsGroupe(c.row.original.id)} title="Générer les PDFs"><i className="ri-file-pdf-2-line"></i></Button>
-                                                            )}
-                                                            {c.row.original.attestation_path && (
-                                                                <Button color="info" size="sm" outline onClick={() => handleDownloadAttestation(c.row.original.id)} title="Attestation"><i className="ri-file-text-line"></i></Button>
-                                                            )}
-                                                            {c.row.original.etat_financier_path && (
-                                                                <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancier(c.row.original.id)} title="État financier"><i className="ri-money-dollar-circle-line"></i></Button>
-                                                            )}
-                                                            {c.row.original.statut === 'BROUILLON' && (
-                                                                <Button color="info" size="sm" outline onClick={() => handleTransmettreGroupe(c.row.original.id)} title="Transmettre CB"><i className="ri-send-plane-line"></i></Button>
-                                                            )}
-                                                        </div>
-                                                    ) },
-                                                ]}
-                                                data={groupesDossiers} isGlobalFilter={true} customPageSize={10}
-                                                divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
-                                        </TabPane>
-                                        <TabPane tabId="ops">
-                                            <OrdresPaiementTab
-                                                actif={dossierTab === 'ops'}
-                                                mois={moisDossiers}
-                                                periodeId={props.periode?.id ?? null}
-                                                dossiersEligibles={dossiersEligiblesOp}
-                                            />
-                                        </TabPane>
-                                        <TabPane tabId="bordereaux">
-                                            <BordereauxTab
-                                                actif={dossierTab === 'bordereaux'}
-                                                mois={moisDossiers}
-                                                periodeId={props.periode?.id ?? null}
-                                                bordereaux={bordereaux}
-                                            />
+                                        {/* ═══════ ONGLET 3 : DOSSIERS & OP ═══════ */}
+                                        <TabPane tabId="3">
+                                            {/* ── Sélecteur de période Dossiers ── */}
+                                            <div className="d-flex align-items-center gap-2 mb-3">
+                                                <i className="ri-calendar-line text-warning fs-16"></i>
+                                                <Label className="form-label fs-12 text-muted fw-semibold mb-0 me-1">Période :</Label>
+                                                <Select isSearchable={false} style={{ width: 220 }} options={optionsPeriodes}
+                                                    value={optionSelectionnee(optionsPeriodes, moisDossiers)}
+                                                    onChange={(selected) => setMoisDossiers(selected?.value || '')}
+                                                    classNamePrefix="react-select"
+                                                />
+                                                <Button color="warning" size="sm" onClick={applyFilters} disabled={isLoading}>
+                                                    <i className="ri-search-line me-1"></i>Appliquer
+                                                </Button>
+                                                <Badge color="warning" pill className="fs-11">{dossiers.length} dossier(s)</Badge>
+                                            </div>
+                                            {/* ── Sous-onglets dossiers ── */}
+                                            <Row className="g-3">
+                                                <Col xs={12}>
+                                                    <Nav tabs className="nav-tabs-custom nav-success mb-0 border-bottom">
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'brouillon' }, 'fw-semibold py-3')} onClick={() => setDossierTab('brouillon')}>
+                                                                <i className="ri-draft-line me-1"></i>En élaboration <Badge color="warning" pill className="ms-2">{dossiers.length}</Badge>
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'transmis' }, 'fw-semibold py-3')} onClick={() => setDossierTab('transmis')}>
+                                                                <i className="ri-send-plane-line me-1"></i>Transmis CB <Badge color="info" pill className="ms-2">{dossiersCbTransmis.length + dossiersCbValides.length}</Badge>
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ajournes' }, 'fw-semibold py-3')} onClick={() => setDossierTab('ajournes')}>
+                                                                <i className="ri-close-circle-line me-1"></i>Ajournés <Badge color="danger" pill className="ms-2">{dossiersAjournes.length}</Badge>
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'multi' }, 'fw-semibold py-3')} onClick={() => setDossierTab('multi')}>
+                                                                <i className="ri-folder-shared-line me-1"></i>Multi-dossiers <Badge color="warning" pill className="ms-2">{groupesDossiers.length}</Badge>
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'ops' }, 'fw-semibold py-3')} onClick={() => setDossierTab('ops')}>
+                                                                <i className="ri-file-list-3-line me-1"></i>Ordres de Paiement <Badge color="primary" pill className="ms-2">{ops.length}</Badge>
+                                                            </NavLink>
+                                                        </NavItem>
+                                                        <NavItem>
+                                                            <NavLink style={{ cursor: 'pointer' }} className={classnames({ active: dossierTab === 'bordereaux' }, 'fw-semibold py-3')} onClick={() => setDossierTab('bordereaux')}>
+                                                                <i className="ri-file-shield-2-line me-1"></i>Bordereaux <Badge color="success" pill className="ms-2">{bordereaux.length}</Badge>
+                                                            </NavLink>
+                                                        </NavItem>
+                                                    </Nav>
+                                                </Col>
+                                                <Col xs={12}>
+
+                                                    <div className="d-flex gap-2 mb-3">
+                                                        <Button color="success" size="sm" onClick={handleGenererDossiers} disabled={!props.periode || processing || (selectedDemarrageIds.length + selectedPresenceIds.length === 0)}>
+                                                            {processing ? <><Spinner size="sm" className="me-1" />Génération...</> : <><i className="ri-folder-add-line me-1"></i>Générer les dossiers pour la période</>}
+                                                        </Button>
+                                                    </div>
+
+                                                    <Deferred
+                                                        data={['dossiers', 'dossiersTransmis', 'dossiersAjournes', 'dossiersGroupables', 'dossiersEligiblesOp', 'groupesDossiers', 'ops', 'bordereaux']}
+                                                        fallback={<div className="d-flex justify-content-center py-5"><Spinner color="warning" /></div>}
+                                                    >
+                                                        <TabContent activeTab={dossierTab} className="pt-4">
+                                                            <TabPane tabId="brouillon">
+                                                                <TableContainerReactTable columns={dossierColumns} data={dossiers} isGlobalFilter={true} customPageSize={10}
+                                                                    divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                                            </TabPane>
+                                                            <TabPane tabId="transmis" ref={cbDossiersRef as any}>
+                                                                {isLoadingCbDossiers ? (
+                                                                    <div className="d-flex justify-content-center py-5"><Spinner color="info" /></div>
+                                                                ) : (
+                                                                    <>
+                                                                        {/* ═══ Section 1 : Dossiers en attente CB ═══ */}
+                                                                        <Card className="border shadow-none mb-4">
+                                                                            <CardHeader className="bg-warning bg-opacity-10 py-2 d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                                                                <h6 className="card-title mb-0 fs-14 text-warning fw-bold">
+                                                                                    <i className="ri-folder-check-line me-1"></i>
+                                                                                    Dossiers en attente de validation CB
+                                                                                    <Badge color="warning" pill className="ms-2 fs-11">{dossiersCbTransmis.length}</Badge>
+                                                                                </h6>
+                                                                                <div className="d-flex align-items-center">
+                                                                                    <div className="search-box me-2">
+                                                                                        <Input
+                                                                                            type="text"
+                                                                                            placeholder="Rechercher dossier, stagiaire..."
+                                                                                            className="form-control form-control-sm search"
+                                                                                            value={cbDossiersSearch}
+                                                                                            onChange={(e) => setCbDossiersSearch(e.target.value)}
+                                                                                            onKeyDown={(e) => {
+                                                                                                if (e.key === 'Enter') {
+                                                                                                    loadDossiersCb();
+                                                                                                }
+                                                                                            }}
+                                                                                            style={{ minWidth: '250px' }}
+                                                                                        />
+                                                                                        <i className="ri-search-line search-icon"></i>
+                                                                                    </div>
+                                                                                    <Button color="primary" size="sm" onClick={loadDossiersCb}>
+                                                                                        <i className="ri-search-line"></i>
+                                                                                    </Button>
+                                                                                </div>
+                                                                            </CardHeader>
+                                                                            <CardBody className="p-0">
+                                                                                <div className="table-responsive">
+                                                                                    <table className="table table-striped table-hover align-middle mb-0">
+                                                                                        <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                                                            <tr>
+                                                                                                <th style={{ width: 40 }}>#</th>
+                                                                                                <th>Numéro</th>
+                                                                                                <th>Agence</th>
+                                                                                                <th>Financement</th>
+                                                                                                <th className="text-center">Stagiaires</th>
+                                                                                                <th className="text-end">Montant</th>
+                                                                                                <th>Statut</th>
+                                                                                                <th style={{ width: 60 }}></th>
+                                                                                            </tr>
+                                                                                        </thead>
+                                                                                        <tbody>
+                                                                                            {(() => {
+                                                                                                const tp = Math.max(1, Math.ceil(dossiersCbTransmis.length / CB_DOSSIERS_PER_PAGE));
+                                                                                                const safePage = Math.min(cbTransmisPage, tp);
+                                                                                                const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
+                                                                                                const rows = dossiersCbTransmis.slice(si, si + CB_DOSSIERS_PER_PAGE);
+
+                                                                                                return rows.map((d: any, idx: number) => (
+                                                                                                    <React.Fragment key={d.id}>
+                                                                                                        <tr
+                                                                                                            className={expandedCbDossierId === d.id ? 'table-active' : ''}
+                                                                                                            style={{ cursor: 'pointer' }}
+                                                                                                            onClick={() => toggleExpandCbDossier(d.id)}>
+                                                                                                            <td>{si + idx + 1}</td>
+                                                                                                            <td className="fw-medium text-primary">{d.identifiant}</td>
+                                                                                                            <td>{d.agence}</td>
+                                                                                                            <td><Badge color="info-subtle" className="text-info">{d.source_financement}</Badge></td>
+                                                                                                            <td className="text-center"><Badge color="warning" pill>{d.nombre_stagiaires}</Badge></td>
+                                                                                                            <td className="text-end fw-bold">{Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                                            <td><Badge color="warning" className="fs-11">TRANSMIS_CB</Badge></td>
+                                                                                                            <td><i className={`ri-arrow-${expandedCbDossierId === d.id ? 'up' : 'down'}-s-line text-muted`}></i></td>
+                                                                                                        </tr>
+                                                                                                        {expandedCbDossierId === d.id && (
+                                                                                                            <tr>
+                                                                                                                <td colSpan={8} className="p-0 border-0">
+                                                                                                                    <div className="bg-light p-3">
+                                                                                                                        <div className="d-flex justify-content-end mb-2">
+                                                                                                                            <Input
+                                                                                                                                type="text"
+                                                                                                                                bsSize="sm"
+                                                                                                                                placeholder="Rechercher stagiaire..."
+                                                                                                                                value={cbStagiaireSearch}
+                                                                                                                                onChange={(e) => setCbStagiaireSearch(e.target.value)}
+                                                                                                                                onKeyDown={(e) => {
+                                                                                                                                    if (e.key === 'Enter') {
+                                                                                                                                        loadCbStagiaires(d.id);
+                                                                                                                                    }
+                                                                                                                                }}
+                                                                                                                                style={{ width: '200px' }}
+                                                                                                                            />
+                                                                                                                        </div>
+                                                                                                                        {cbStagiaireLoading ? (
+                                                                                                                            <div className="d-flex justify-content-center py-3"><Spinner size="sm" color="info" /></div>
+                                                                                                                        ) : cbStagiaires.length === 0 ? (
+                                                                                                                            <p className="text-muted text-center mb-0">Aucun stagiaire trouvé.</p>
+                                                                                                                        ) : (
+                                                                                                                            <>
+                                                                                                                                <table className="table table-sm table-bordered mb-2">
+                                                                                                                                    <thead className="table-light fs-11">
+                                                                                                                                        <tr>
+                                                                                                                                            <th>N° AEJ</th>
+                                                                                                                                            <th>Nom et Prénoms</th>
+                                                                                                                                            <th>Entreprise</th>
+                                                                                                                                            <th>Financement</th>
+                                                                                                                                            <th>Type Stage</th>
+                                                                                                                                            <th>Début</th>
+                                                                                                                                            <th>Fin</th>
+                                                                                                                                            <th className="text-end">Montant</th>
+                                                                                                                                            <th className="text-center">Actions</th>
+                                                                                                                                        </tr>
+                                                                                                                                    </thead>
+                                                                                                                                    <tbody>
+                                                                                                                                        {cbStagiaires.map((s: any) => (
+                                                                                                                                            <tr key={s.paiement_id}>
+                                                                                                                                                <td className="text-muted">{s.numero_aej}</td>
+                                                                                                                                                <td className="fw-semibold">{s.nom} {s.prenoms}</td>
+                                                                                                                                                <td className="text-truncate" style={{ maxWidth: 120 }}>{s.entreprise}</td>
+                                                                                                                                                <td>{s.source_financement}</td>
+                                                                                                                                                <td>{s.type_stage}</td>
+                                                                                                                                                <td className="fs-12">{s.date_debut}</td>
+                                                                                                                                                <td className="fs-12">{s.date_fin}</td>
+                                                                                                                                                <td className="text-end fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                                                                                <td className="text-center">
+                                                                                                                                                    <Button
+                                                                                                                                                        color="info"
+                                                                                                                                                        size="sm"
+                                                                                                                                                        className="btn-icon"
+                                                                                                                                                        outline
+                                                                                                                                                        onClick={() => handlePreviewDocs(s)}
+                                                                                                                                                        title="Prévisualiser les fichiers"
+                                                                                                                                                    >
+                                                                                                                                                        <i className="ri-folder-open-line"></i>
+                                                                                                                                                    </Button>
+                                                                                                                                                </td>
+                                                                                                                                            </tr>
+                                                                                                                                        ))}
+                                                                                                                                    </tbody>
+                                                                                                                                </table>
+                                                                                                                                {cbStagiaireTotal > 10 && (
+                                                                                                                                    <div className="d-flex justify-content-between align-items-center">
+                                                                                                                                        <small className="text-muted">{cbStagiaireTotal} stagiaire(s)</small>
+                                                                                                                                        <div className="d-flex gap-1">
+                                                                                                                                            <Button size="sm" color="light" disabled={cbStagiairePage <= 1} onClick={() => setCbStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                                                                                            <Button size="sm" color="light" disabled={cbStagiairePage >= Math.ceil(cbStagiaireTotal / 10)} onClick={() => setCbStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                                                                                        </div>
+                                                                                                                                    </div>
+                                                                                                                                )}
+                                                                                                                            </>
+                                                                                                                        )}
+                                                                                                                    </div>
+                                                                                                                </td>
+                                                                                                            </tr>
+                                                                                                        )}
+                                                                                                    </React.Fragment>
+                                                                                                ));
+                                                                                            })()}
+                                                                                            {dossiersCbTransmis.length === 0 && (
+                                                                                                <tr><td colSpan={8} className="text-center py-4 text-muted">
+                                                                                                    <i className="ri-inbox-line fs-24 d-block mb-2"></i>Aucun dossier en attente de validation CB.
+                                                                                                </td></tr>
+                                                                                            )}
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+                                                                                {dossiersCbTransmis.length > CB_DOSSIERS_PER_PAGE && (() => {
+                                                                                    const tp = Math.ceil(dossiersCbTransmis.length / CB_DOSSIERS_PER_PAGE);
+                                                                                    const maxV = 7;
+                                                                                    let pgs: (number | '...')[] = [];
+
+                                                                                    if (tp <= maxV) {
+                                                                                        pgs = Array.from({ length: tp }, (_, i) => i + 1);
+                                                                                    } else {
+                                                                                        pgs = [1];
+
+                                                                                        if (cbTransmisPage > 3) {
+                                                                                            pgs.push('...');
+                                                                                        }
+
+                                                                                        for (let i = Math.max(2, cbTransmisPage - 1); i <= Math.min(tp - 1, cbTransmisPage + 1); i++) {
+                                                                                            pgs.push(i);
+                                                                                        }
+
+                                                                                        if (cbTransmisPage < tp - 2) {
+                                                                                            pgs.push('...');
+                                                                                        }
+
+                                                                                        pgs.push(tp);
+                                                                                    }
+
+                                                                                    const siT = (Math.min(cbTransmisPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
+
+                                                                                    return (
+                                                                                        <div className="d-flex justify-content-between align-items-center p-2 border-top">
+                                                                                            <small className="text-muted">{siT + 1}–{Math.min(siT + CB_DOSSIERS_PER_PAGE, dossiersCbTransmis.length)} sur {dossiersCbTransmis.length}</small>
+                                                                                            <div className="d-flex align-items-center gap-1">
+                                                                                                <Button size="sm" color="light" disabled={cbTransmisPage <= 1} onClick={() => setCbTransmisPage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                                                {pgs.map((page, i) => page === '...' ? <span key={`t-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === cbTransmisPage ? 'warning' : 'light'} onClick={() => setCbTransmisPage(page)}>{page}</Button>)}
+                                                                                                <Button size="sm" color="light" disabled={cbTransmisPage >= tp} onClick={() => setCbTransmisPage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })()}
+                                                                            </CardBody>
+                                                                        </Card>
+
+                                                                        {/* ═══ Section 2 : Dossiers validés CB ═══ */}
+                                                                        <div className="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                                                                            <div>
+                                                                                <h5 className="fs-14 mb-1 text-success fw-bold">
+                                                                                    <i className="ri-check-double-line me-1"></i>Dossiers validés CB — Éligibles OP
+                                                                                </h5>
+                                                                                <p className="text-muted mb-0 fs-12">
+                                                                                    Élaborez l'ordre de paiement depuis l'onglet <strong>Ordres de Paiement</strong>.
+                                                                                </p>
+                                                                            </div>
+                                                                            <Button color="primary" size="sm" outline onClick={() => setDossierTab('ops')}>
+                                                                                <i className="ri-file-list-3-line me-1"></i>Aller aux ordres de paiement
+                                                                            </Button>
+                                                                        </div>
+                                                                        <Card className="border shadow-none">
+                                                                            <CardBody className="p-0">
+                                                                                <div className="table-responsive">
+                                                                                    <table className="table table-striped table-hover align-middle mb-0">
+                                                                                        <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                                                            <tr>
+                                                                                                <th>#</th>
+                                                                                                <th>Numéro</th>
+                                                                                                <th>Agence</th>
+                                                                                                <th>Financement</th>
+                                                                                                <th className="text-center">Stagiaires</th>
+                                                                                                <th className="text-end">Montant</th>
+                                                                                                <th>Statut</th>
+                                                                                            </tr>
+                                                                                        </thead>
+                                                                                        <tbody>
+                                                                                            {(() => {
+                                                                                                const tp = Math.max(1, Math.ceil(dossiersCbValides.length / CB_DOSSIERS_PER_PAGE));
+                                                                                                const safePage = Math.min(cbValidesPage, tp);
+                                                                                                const si = (safePage - 1) * CB_DOSSIERS_PER_PAGE;
+                                                                                                const rows = dossiersCbValides.slice(si, si + CB_DOSSIERS_PER_PAGE);
+
+                                                                                                return rows.map((d: any, idx: number) => (
+                                                                                                    <tr key={d.id}>
+                                                                                                        <td>{si + idx + 1}</td>
+                                                                                                        <td className="fw-medium text-success">{d.identifiant}</td>
+                                                                                                        <td>{d.agence}</td>
+                                                                                                        <td><Badge color="success-subtle" className="text-success">{d.source_financement}</Badge></td>
+                                                                                                        <td className="text-center"><Badge color="success" pill>{d.nombre_stagiaires}</Badge></td>
+                                                                                                        <td className="text-end fw-bold">{Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                                        <td><Badge color="success" className="fs-11">VALIDE_CB</Badge></td>
+                                                                                                    </tr>
+                                                                                                ));
+                                                                                            })()}
+                                                                                            {dossiersCbValides.length === 0 && (
+                                                                                                <tr><td colSpan={7} className="text-center py-4 text-muted">
+                                                                                                    <i className="ri-inbox-line fs-24 d-block mb-2"></i>Aucun dossier validé CB.
+                                                                                                </td></tr>
+                                                                                            )}
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+                                                                                {dossiersCbValides.length > CB_DOSSIERS_PER_PAGE && (() => {
+                                                                                    const tp = Math.ceil(dossiersCbValides.length / CB_DOSSIERS_PER_PAGE);
+                                                                                    const maxV = 7;
+                                                                                    let pgs: (number | '...')[] = [];
+
+                                                                                    if (tp <= maxV) {
+                                                                                        pgs = Array.from({ length: tp }, (_, i) => i + 1);
+                                                                                    } else {
+                                                                                        pgs = [1];
+
+                                                                                        if (cbValidesPage > 3) {
+                                                                                            pgs.push('...');
+                                                                                        }
+
+                                                                                        for (let i = Math.max(2, cbValidesPage - 1); i <= Math.min(tp - 1, cbValidesPage + 1); i++) {
+                                                                                            pgs.push(i);
+                                                                                        }
+
+                                                                                        if (cbValidesPage < tp - 2) {
+                                                                                            pgs.push('...');
+                                                                                        }
+
+                                                                                        pgs.push(tp);
+                                                                                    }
+
+                                                                                    const siP = (Math.min(cbValidesPage, tp) - 1) * CB_DOSSIERS_PER_PAGE;
+
+                                                                                    return (
+                                                                                        <div className="d-flex justify-content-between align-items-center p-2 border-top">
+                                                                                            <small className="text-muted">{siP + 1}–{Math.min(siP + CB_DOSSIERS_PER_PAGE, dossiersCbValides.length)} sur {dossiersCbValides.length}</small>
+                                                                                            <div className="d-flex align-items-center gap-1">
+                                                                                                <Button size="sm" color="light" disabled={cbValidesPage <= 1} onClick={() => setCbValidesPage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                                                {pgs.map((page, i) => page === '...' ? <span key={`v-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === cbValidesPage ? 'success' : 'light'} onClick={() => setCbValidesPage(page)}>{page}</Button>)}
+                                                                                                <Button size="sm" color="light" disabled={cbValidesPage >= tp} onClick={() => setCbValidesPage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                                            </div>
+                                                                                        </div>
+                                                                                    );
+                                                                                })()}
+                                                                            </CardBody>
+                                                                        </Card>
+                                                                    </>
+                                                                )}
+                                                            </TabPane>
+                                                            <TabPane tabId="ajournes">
+                                                                <h5 className="fs-14 mb-1 text-danger fw-bold">
+                                                                    <i className="ri-folder-forbid-line me-1"></i>Dossiers ajournés
+                                                                </h5>
+                                                                <p className="text-muted fs-12">Dossiers renvoyés par le CB ou retirés par la DMG.</p>
+                                                                <TableContainerReactTable columns={dossierColumns} data={dossiersAjournes} isGlobalFilter={true} customPageSize={10}
+                                                                    divClass="table-responsive table-card mb-4" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                                                <h5 className="fs-14 mb-1 text-danger fw-bold">
+                                                                    <i className="ri-user-forbid-line me-1"></i>Stagiaires ajournés
+                                                                </h5>
+                                                                <p className="text-muted fs-12">
+                                                                    Liste nominative, motif de la décision et remise en file d'attente après correction.
+                                                                </p>
+                                                                <AjournesTab
+                                                                    actif={dossierTab === 'ajournes'}
+                                                                    mois={moisDossiers}
+                                                                    agences={agences}
+                                                                    typesStage={typesStage}
+                                                                    sourcesFinancement={sourcesFinancement}
+                                                                    onApercuDocuments={handlePreviewDocs}
+                                                                />
+                                                            </TabPane>
+                                                            <TabPane tabId="multi">
+                                                                {/* ── Filtres + Sélection + Actions ── */}
+                                                                <Row className="g-3 mb-3">
+                                                                    {/* ── Filtres ── */}
+                                                                    <Col lg={8} xl={9}>
+                                                                        <Card className="border shadow-none">
+                                                                            <CardHeader className="bg-light py-2 d-flex align-items-center gap-2">
+                                                                                <i className="ri-filter-3-line text-warning"></i>
+                                                                                <h6 className="card-title mb-0 fs-13 fw-semibold">Filtres et Sélection</h6>
+                                                                                {isLoadingMultiDossiers && <Spinner size="sm" color="warning" />}
+                                                                            </CardHeader>
+                                                                            <CardBody className="py-3">
+                                                                                <Row className="g-3 align-items-end">
+                                                                                    <Col md={4}>
+                                                                                        <Label className="form-label fs-12 text-muted fw-semibold">Type Traitement</Label>
+                                                                                        <Select isSearchable={false} options={optionsTypeTraitement}
+                                                                                            value={optionSelectionnee(optionsTypeTraitement, multiTypeTraitement)}
+                                                                                            onChange={(selected) => setMultiTypeTraitement(selected?.value || '')}
+                                                                                            classNamePrefix="react-select"
+                                                                                        />
+                                                                                    </Col>
+                                                                                    <Col md={4}>
+                                                                                        <Label className="form-label fs-12 text-muted fw-semibold">Agence</Label>
+                                                                                        <Select isSearchable options={optionsAgences}
+                                                                                            value={optionSelectionnee(optionsAgences, multiAgenceId)}
+                                                                                            onChange={(selected) => setMultiAgenceId(selected?.value || '')}
+                                                                                            classNamePrefix="react-select"
+                                                                                        />
+                                                                                    </Col>
+                                                                                    <Col md={4}>
+                                                                                        <Label className="form-label fs-12 text-muted fw-semibold">Source de financement</Label>
+                                                                                        <Select isSearchable options={optionsSources}
+                                                                                            value={optionSelectionnee(optionsSources, multiSourceId)}
+                                                                                            onChange={(selected) => setMultiSourceId(selected?.value || '')}
+                                                                                            classNamePrefix="react-select"
+                                                                                        />
+                                                                                    </Col>
+                                                                                    <Col md={12}>
+                                                                                        <Label className="form-label fs-12 text-muted fw-semibold">
+                                                                                            <i className="ri-folder-2-fill me-1 text-warning"></i>Sélectionner les dossiers
+                                                                                            <Badge color="secondary" pill className="ms-2 fs-11">{multiDossiers.length} disponible(s)</Badge>
+                                                                                        </Label>
+                                                                                        <Select
+                                                                                            isMulti
+                                                                                            options={multiDossiers.map((d) => ({
+                                                                                                value: d.id,
+                                                                                                label: `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires} stagi., ${Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA)`,
+                                                                                                dossier: d,
+                                                                                            }))}
+                                                                                            value={multiDossiers
+                                                                                                .filter((d) => selectedMultiDossierIds.includes(d.id))
+                                                                                                .map((d) => ({
+                                                                                                    value: d.id,
+                                                                                                    label: `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires})`,
+                                                                                                }))}
+                                                                                            onChange={(selected: any) => {
+                                                                                                const ids = (selected || []).map((s: any) => s.value);
+                                                                                                setSelectedMultiDossierIds(ids);
+                                                                                                setStagiairePage(1);
+                                                                                            }}
+                                                                                            placeholder="Rechercher et sélectionner des dossiers..."
+                                                                                            noOptionsMessage={() => 'Aucun dossier disponible'}
+                                                                                            isDisabled={isLoadingMultiDossiers}
+                                                                                            classNamePrefix="react-select"
+                                                                                            styles={{
+                                                                                                control: (base) => ({ ...base, minHeight: 38, borderColor: '#dee2e6', fontSize: 13 }),
+                                                                                                menu: (base) => ({ ...base, zIndex: 9999 }),
+                                                                                            }}
+                                                                                        />
+                                                                                    </Col>
+                                                                                </Row>
+                                                                            </CardBody>
+                                                                        </Card>
+                                                                    </Col>
+
+                                                                    {/* ── Actions ── */}
+                                                                    <Col lg={4} xl={3}>
+                                                                        <Card className="border shadow-none h-100">
+                                                                            <CardHeader className="bg-success bg-opacity-10 py-2">
+                                                                                <h6 className="card-title mb-0 fs-13 text-success">
+                                                                                    <i className="ri-settings-3-line me-1"></i>Actions
+                                                                                </h6>
+                                                                            </CardHeader>
+                                                                            <CardBody className="py-2 d-flex flex-column gap-2">
+                                                                                <Button color="success" size="sm" block disabled={selectedMultiDossierIds.length === 0 || !moisDossiers || processing}
+                                                                                    onClick={() => setModalMultiValiderOpen(true)}>
+                                                                                    <i className="ri-check-double-line me-1"></i>Valider sélection
+                                                                                </Button>
+                                                                                <Button color="warning" size="sm" block disabled={selectedMultiDossierIds.length === 0}
+                                                                                    onClick={() => setModalMultiAjournerDossierOpen(true)}>
+                                                                                    <i className="ri-close-circle-line me-1"></i>Retirer le dossier
+                                                                                </Button>
+                                                                                <Button color="warning" size="sm" block disabled={selectedStagiaireIds.length === 0}
+                                                                                    onClick={() => setModalMultiAjournerStagiaireOpen(true)}>
+                                                                                    <i className="ri-user-unfollow-line me-1"></i>Retirer Stagiaire(s) ({selectedStagiaireIds.length})
+                                                                                </Button>
+                                                                                <hr className="my-1" />
+                                                                                <div className="d-flex gap-1">
+                                                                                    <Button color="info" className="flex-fill" size="sm" disabled={selectedMultiDossierIds.length === 0}
+                                                                                        onClick={() => handleMultiGenererPdf('paiement')}>
+                                                                                        <i className="ri-file-text-line me-1"></i>État Paiement
+                                                                                    </Button>
+                                                                                    <Button color="info" className="flex-fill" size="sm" disabled={selectedMultiDossierIds.length === 0}
+                                                                                        onClick={() => handleMultiGenererPdf('attestations')}>
+                                                                                        <i className="ri-file-shield-line me-1"></i>ADD/ADP
+                                                                                    </Button>
+                                                                                </div>
+                                                                                {selectedMultiDossierIds.length > 0 && (
+                                                                                    <div className="text-center mt-1">
+                                                                                        <Badge color="success" pill className="fs-11">{selectedMultiDossierIds.length} dossier(s) sélectionné(s)</Badge>
+                                                                                    </div>
+                                                                                )}
+                                                                            </CardBody>
+                                                                        </Card>
+                                                                    </Col>
+                                                                </Row>
+
+                                                                {/* ── Tableau Stagiaires (serveur-side) ── */}
+                                                                {selectedMultiDossierIds.length > 0 && (
+                                                                    <Card className="border shadow-none mb-3">
+                                                                        <CardHeader className="bg-info bg-opacity-10 py-2 d-flex justify-content-between align-items-center">
+                                                                            <h6 className="card-title mb-0 fs-13 text-info">
+                                                                                <i className="ri-user-search-line me-1"></i>Liste des Stagiaires
+                                                                                <Badge color="info" pill className="ms-2 fs-11">{stagiaireTotal}</Badge>
+                                                                            </h6>
+                                                                            <Input type="text" bsSize="sm" placeholder="Rechercher..." style={{ maxWidth: 220 }}
+                                                                                value={stagiaireSearch} onChange={(e) => {
+                                                                                    setStagiaireSearch(e.target.value); setStagiairePage(1);
+                                                                                }} />
+                                                                        </CardHeader>
+                                                                        <CardBody className="p-0">
+                                                                            {stagiaireLoading ? (
+                                                                                <div className="d-flex justify-content-center py-4"><Spinner color="info" size="sm" /></div>
+                                                                            ) : stagiaires.length === 0 ? (
+                                                                                <p className="text-muted text-center py-4 mb-0"><i className="ri-inbox-line me-1"></i>Aucun stagiaire trouvé.</p>
+                                                                            ) : (
+                                                                                <div className="table-responsive">
+                                                                                    <table className="table table-striped table-hover align-middle mb-0">
+                                                                                        <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                                                            <tr>
+                                                                                                <th style={{ width: 35 }}><Input type="checkbox" className="form-check-input"
+                                                                                                    checked={stagiaires.length > 0 && selectedStagiaireIds.length === stagiaires.length}
+                                                                                                    onChange={toggleAllStagiaires} /></th>
+                                                                                                <th>Date Création</th>
+                                                                                                <th>Agence</th>
+                                                                                                <th>Entreprise</th>
+                                                                                                <th>Financement</th>
+                                                                                                <th>Type Stage</th>
+                                                                                                <th>N° AEJ</th>
+                                                                                                <th>Nom et Prénoms</th>
+                                                                                                <th>Date Naiss.</th>
+                                                                                                <th>Date Début</th>
+                                                                                                <th>Date Fin</th>
+                                                                                                <th>N° Trésor Pay</th>
+                                                                                                <th>Montant</th>
+                                                                                                <th className="text-center">Actions</th>
+                                                                                            </tr>
+                                                                                        </thead>
+                                                                                        <tbody>
+                                                                                            {stagiaires.map((s) => (
+                                                                                                <tr key={s.paiement_id}>
+                                                                                                    <td><Input type="checkbox" className="form-check-input"
+                                                                                                        checked={selectedStagiaireIds.includes(s.paiement_id)}
+                                                                                                        onChange={() => toggleStagiaireSelection(s.paiement_id)} /></td>
+                                                                                                    <td className="fs-12">{s.created_at}</td>
+                                                                                                    <td>{s.agence}</td>
+                                                                                                    <td className="text-truncate" style={{ maxWidth: 130 }}>{s.entreprise}</td>
+                                                                                                    <td>{s.source_financement}</td>
+                                                                                                    <td className="text-truncate" style={{ maxWidth: 100 }}>{s.type_stage}</td>
+                                                                                                    <td className="text-muted">{s.numero_aej}</td>
+                                                                                                    <td className="fw-semibold">{s.nom_prenoms}</td>
+                                                                                                    <td className="fs-12">{s.date_naissance}</td>
+                                                                                                    <td className="fs-12">{s.date_debut}</td>
+                                                                                                    <td className="fs-12">{s.date_fin}</td>
+                                                                                                    <td className="text-muted">{s.tresor_pay}</td>
+                                                                                                    <td className="fw-bold text-success">{Number(s.montant || 0).toLocaleString('fr-FR')} FCFA</td>
+                                                                                                    <td className="text-center">
+                                                                                                        <Button
+                                                                                                            color="info"
+                                                                                                            size="sm"
+                                                                                                            className="btn-icon"
+                                                                                                            outline
+                                                                                                            onClick={() => handlePreviewDocs(s)}
+                                                                                                            title="Prévisualiser les fichiers"
+                                                                                                        >
+                                                                                                            <i className="ri-folder-open-line"></i>
+                                                                                                        </Button>
+                                                                                                    </td>
+                                                                                                </tr>
+                                                                                            ))}
+                                                                                        </tbody>
+                                                                                    </table>
+                                                                                </div>
+                                                                            )}
+                                                                            {(() => {
+                                                                                const stPages = Math.ceil(stagiaireTotal / 10);
+
+                                                                                if (stPages <= 1) {
+                                                                                    return null;
+                                                                                }
+
+                                                                                const maxVis = 7;
+                                                                                let stPageNums: (number | '...')[] = [];
+
+                                                                                if (stPages <= maxVis) {
+                                                                                    stPageNums = Array.from({ length: stPages }, (_, i) => i + 1);
+                                                                                } else {
+                                                                                    stPageNums = [1];
+
+                                                                                    if (stagiairePage > 3) {
+                                                                                        stPageNums.push('...');
+                                                                                    }
+
+                                                                                    for (let i = Math.max(2, stagiairePage - 1); i <= Math.min(stPages - 1, stagiairePage + 1); i++) {
+                                                                                        stPageNums.push(i);
+                                                                                    }
+
+                                                                                    if (stagiairePage < stPages - 2) {
+                                                                                        stPageNums.push('...');
+                                                                                    }
+
+                                                                                    stPageNums.push(stPages);
+                                                                                }
+
+                                                                                return (
+                                                                                    <div className="d-flex justify-content-between align-items-center p-2 border-top">
+                                                                                        <small className="text-muted">{stagiaireTotal} résultat(s) — Page {stagiairePage}/{stPages}</small>
+                                                                                        <div className="d-flex align-items-center gap-1">
+                                                                                            <Button size="sm" color="light" disabled={stagiairePage <= 1} onClick={() => setStagiairePage((p) => p - 1)}><i className="ri-arrow-left-s-line"></i></Button>
+                                                                                            {stPageNums.map((page, i) => page === '...' ? <span key={`mds-${i}`} className="px-1 text-muted">…</span> : <Button key={page} size="sm" color={page === stagiairePage ? 'primary' : 'light'} onClick={() => setStagiairePage(page)}>{page}</Button>)}
+                                                                                            <Button size="sm" color="light" disabled={stagiairePage >= stPages} onClick={() => setStagiairePage((p) => p + 1)}><i className="ri-arrow-right-s-line"></i></Button>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                );
+                                                                            })()}
+                                                                        </CardBody>
+                                                                    </Card>
+                                                                )}
+
+                                                                {/* ── Multi-dossiers constitués ── */}
+                                                                <h5 className="fs-14 mb-3"><i className="ri-folder-shared-line me-1 text-warning"></i>Multi-dossiers constitués</h5>
+                                                                <TableContainerReactTable
+                                                                    columns={[
+                                                                        { header: 'Numéro', cell: (c: any) => <span className="fw-medium text-primary">{c.row.original.numero}</span> },
+                                                                        { header: 'Nature', cell: (c: any) => c.row.original.nature },
+                                                                        { header: 'Financement', cell: (c: any) => c.row.original.source_financement?.nom || '-' },
+                                                                        { header: 'Dossiers', cell: (c: any) => <Badge color="info">{c.row.original.dossiers_count}</Badge> },
+                                                                        { header: 'Montant', cell: (c: any) => <span className="fw-bold">{Number(c.row.original.montant_total || 0).toLocaleString('fr-FR')} FCFA</span> },
+                                                                        { header: 'Statut', cell: (c: any) => <Badge color={getStatutBadge(c.row.original.statut)}>{c.row.original.statut}</Badge> },
+                                                                        {
+                                                                            header: 'Actions', cell: (c: any) => (
+                                                                                <div className="d-flex gap-1">
+                                                                                    {c.row.original.statut === 'BROUILLON' && (
+                                                                                        <Button color="warning" size="sm" outline onClick={() => handleGenererPdfsGroupe(c.row.original.id)} title="Générer les PDFs"><i className="ri-file-pdf-2-line"></i></Button>
+                                                                                    )}
+                                                                                    {c.row.original.attestation_path && (
+                                                                                        <Button color="info" size="sm" outline onClick={() => handleDownloadAttestation(c.row.original.id)} title="Attestation"><i className="ri-file-text-line"></i></Button>
+                                                                                    )}
+                                                                                    {c.row.original.etat_financier_path && (
+                                                                                        <Button color="success" size="sm" outline onClick={() => handleDownloadEtatFinancier(c.row.original.id)} title="État financier"><i className="ri-money-dollar-circle-line"></i></Button>
+                                                                                    )}
+                                                                                    {c.row.original.statut === 'BROUILLON' && (
+                                                                                        <Button color="info" size="sm" outline onClick={() => handleTransmettreGroupe(c.row.original.id)} title="Transmettre CB"><i className="ri-send-plane-line"></i></Button>
+                                                                                    )}
+                                                                                </div>
+                                                                            )
+                                                                        },
+                                                                    ]}
+                                                                    data={groupesDossiers} isGlobalFilter={true} customPageSize={10}
+                                                                    divClass="table-responsive table-card mb-3" tableClass="table-striped align-middle table-nowrap mb-0" theadClass="table-light" />
+                                                            </TabPane>
+                                                            <TabPane tabId="ops">
+                                                                <OrdresPaiementTab
+                                                                    actif={dossierTab === 'ops'}
+                                                                    mois={moisDossiers}
+                                                                    periodeId={props.periode?.id ?? null}
+                                                                    dossiersEligibles={dossiersEligiblesOp}
+                                                                />
+                                                            </TabPane>
+                                                            <TabPane tabId="bordereaux">
+                                                                <BordereauxTab
+                                                                    actif={dossierTab === 'bordereaux'}
+                                                                    mois={moisDossiers}
+                                                                    periodeId={props.periode?.id ?? null}
+                                                                    bordereaux={bordereaux}
+                                                                />
+                                                            </TabPane>
+                                                        </TabContent>
+                                                    </Deferred>
+                                                </Col>
+                                            </Row>
                                         </TabPane>
                                     </TabContent>
-                                    </Deferred>
-                                        </Col>
-                                    </Row>
-                                </TabPane>
-                            </TabContent>
                                 </Col>
                             </Row>
                         </CardBody>
@@ -2813,10 +2840,10 @@ stPageNums.push('...');
                                 {previewDocs.map(doc => (
                                     <TabPane tabId={doc.id.toString()} key={doc.id}>
                                         <div className="border border-1" style={{ height: '70vh' }}>
-                                            <iframe 
-                                                src={`/storage/${doc.chemin}`} 
-                                                width="100%" 
-                                                height="100%" 
+                                            <iframe
+                                                src={`/storage/${doc.chemin}`}
+                                                width="100%"
+                                                height="100%"
                                                 style={{ border: 'none' }}
                                                 title={doc.nom_original || doc.nom}
                                             />

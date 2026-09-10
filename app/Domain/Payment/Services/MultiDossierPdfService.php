@@ -8,6 +8,7 @@ use App\Models\Payment\DossierGroupe;
 use App\Models\Payment\Paiement;
 use App\Models\Reference\SourceFinancement;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -45,7 +46,7 @@ class MultiDossierPdfService
     public function construireAttestation(Collection $paiements, ?int $sourceFinancementId, string $moisCode)
     {
         $codeFinancement = $this->codeFinancement($sourceFinancementId);
-        $mois = \Carbon\Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
+        $mois = Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
 
         $pdf = Pdf::loadView('pdf.dmg-attestation-presence', [
             'paiements' => $paiements,
@@ -65,14 +66,16 @@ class MultiDossierPdfService
      *
      * Le total porte sur le **net** versé ; quand des cotisations CMU ont été
      * prélevées, la trajectoire brut / prélèvement / net est détaillée en pied
-     * d'état, comme sur l'état legacy.
+     * d'état, comme sur l'état legacy. En-tête et bloc de signatures diffèrent
+     * par source de financement, comme les vues legacy
+     * `print.etat_financier_papsgouv` / `print.etat_financier_budgetaej`.
      *
      * @param  Collection<int, Paiement>  $paiements
      */
-    public function construireEtatFinancier(Collection $paiements, string $moisCode)
+    public function construireEtatFinancier(Collection $paiements, string $moisCode, ?int $sourceFinancementId = null)
     {
         $pages = preparePaginatedDataWithFooterSpace($paiements);
-        $mois = \Carbon\Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
+        $mois = Carbon::createFromFormat('Y-m', $moisCode)->locale('fr')->translatedFormat('F Y');
 
         $pdf = Pdf::loadView('pdf.dmg-etat-paiement', [
             'pages' => $pages,
@@ -82,6 +85,7 @@ class MultiDossierPdfService
             'total' => $paiements->count(),
             'mois' => $mois,
             'moisCode' => $moisCode,
+            'financement' => $this->codeFinancement($sourceFinancementId ?? $paiements->first()?->droitPaiement?->stage?->source_financement_id),
         ])->setPaper('a4', 'landscape');
 
         $this->configurerPdf($pdf);
@@ -125,7 +129,7 @@ class MultiDossierPdfService
         }
 
         $moisCode = $groupe->periode?->code ?? now()->format('Y-m');
-        $pdf = $this->construireEtatFinancier($paiements, $moisCode);
+        $pdf = $this->construireEtatFinancier($paiements, $moisCode, $groupe->source_financement_id);
 
         $filename = 'etat_financier_'.$groupe->numero.'.pdf';
         $path = 'multi_dossiers/'.$groupe->id;

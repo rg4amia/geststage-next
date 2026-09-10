@@ -13,6 +13,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use App\Models\User;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Génère en arrière-plan un export de la page DMG (état de paiement, attestation de présence
@@ -22,10 +23,18 @@ use Illuminate\Support\Facades\Auth;
  * les mois entiers dépassent 2 000 lignes et sortent du temps de réponse HTTP (dompdf est
  * gourmand en mémoire et en temps), d'où ce job dont l'avancement est suivi par le batch qui
  * le porte, comme ExporterVisasRegionauxJob pour la supervision régionale.
+ *
+ * Pour donner un indicateur de progression granulaire (0 → 33 → 66 → 100 %), chaque étape
+ * majeure (requête BDD, construction du fichier, sauvegarde) écrit sa progression dans le
+ * cache sous la clé `export_progress:{batchId}`. Le contrôleur `/progression` fusionne
+ * cette valeur avec l'état du batch Laravel pour renvoyer un pourcentage cohérent.
  */
 class GenererExportPaiementJob implements ShouldQueue
 {
     use Batchable, Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    /** TTL de la clé cache de progression (légèrement au-delà du timeout max du job). */
+    private const CACHE_TTL = 3600;
 
     /**
      * @param  string  $type  etat_paiement|attestation_demarrage|attestation_presence|fusion_tresor|excel
@@ -47,6 +56,8 @@ class GenererExportPaiementJob implements ShouldQueue
             return;
         }
 
+        $batchId = $this->batch()?->id ?? $this->job?->uuid() ?? uniqid('export_');
+
         // En file d'attente il n'y a pas de session : on ré-authentifie le demandeur pour que
         // l'export soit généré avec son périmètre exact (cf. ExporterVisasRegionauxJob).
         if ($this->demandeParId !== null) {
@@ -56,20 +67,47 @@ class GenererExportPaiementJob implements ShouldQueue
             }
         }
 
+        // Étape 1/3 — Requête BDD (33 %)
+        $this->avancer($batchId, 33);
         $paiements = $service->paiementsPour($this->nature, $this->mois, $this->filtres, $this->ids);
 
         if ($paiements->isEmpty()) {
+            Cache::forget(self::cleCache($batchId));
             throw new \RuntimeException('Aucun paiement eligible pour cet export.');
         }
 
-        $batchId = $this->batch()?->id ?? $this->job?->uuid() ?? uniqid('export_');
+        // Étape 2/3 — Construction du fichier (66 %)
+        $this->avancer($batchId, 66);
 
         if ($this->type === 'excel') {
-            $service->sauverExcel($service->construireExcel($paiements, $this->nature, $this->mois), $batchId);
-
-            return;
+            $fichier = $service->construireExcel($paiements, $this->nature, $this->mois);
+        } else {
+            $fichier = $service->construirePdf($this->type, $paiements, $this->mois, $this->filtres);
         }
 
-        $service->sauverPdf($service->construirePdf($this->type, $paiements, $this->mois, $this->filtres), $batchId);
+        // Étape 3/3 — Sauvegarde sur disque (100 %)
+        $this->avancer($batchId, 100);
+
+        if ($this->type === 'excel') {
+            $service->sauverExcel($fichier, $batchId);
+        } else {
+            $service->sauverPdf($fichier, $batchId);
+        }
+    }
+
+    /**
+     * Clé cache pour la progression interne d'un batch donné.
+     */
+    public static function cleCache(string $batchId): string
+    {
+        return "export_progress:{$batchId}";
+    }
+
+    /**
+     * Écrit le pourcentage d'avancement dans le cache.
+     */
+    private function avancer(string $batchId, int $pourcentage): void
+    {
+        Cache::put(self::cleCache($batchId), $pourcentage, self::CACHE_TTL);
     }
 }

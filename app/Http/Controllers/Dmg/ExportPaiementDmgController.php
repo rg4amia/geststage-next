@@ -10,7 +10,9 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -53,7 +55,7 @@ class ExportPaiementDmgController extends Controller
         $data = $request->validate([
             'mois' => ['required', 'date_format:Y-m', 'exists:periodes,code'],
             'nature' => ['nullable', 'in:demarrage,presence'],
-            'ids' => ['nullable', 'array', 'max:'.DmgService::LIMITE_LISTE_ATTENTE],
+            'ids' => ['nullable', 'array', 'max:' . DmgService::LIMITE_LISTE_ATTENTE],
             'ids.*' => ['integer', 'distinct'],
         ]);
         $nature = $data['nature'] ?? 'demarrage';
@@ -64,7 +66,7 @@ class ExportPaiementDmgController extends Controller
         $classeur = $this->exportService->construireExcel($paiements, $nature, $data['mois']);
         $horodatage = now()->format('Y-m-d_H-i-s');
         $nomFichier = "canvas_beneficiaires_tresorpay_depenses_{$nature}_du_{$data['mois']}_{$horodatage}.xlsx";
-        $redacteur = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($classeur);
+        $redacteur = new Xlsx($classeur);
 
         return response()->streamDownload(function () use ($redacteur): void {
             $redacteur->save('php://output');
@@ -90,7 +92,7 @@ class ExportPaiementDmgController extends Controller
                 ids: $data['ids'] ?? null,
                 demandeParId: Auth::id(),
             ),
-        ])->name('export-paiements:'.$data['type'].':'.$data['mois'].':'.$this->nature($data['type'], $request))->dispatch();
+        ])->name('export-paiements:' . $data['type'] . ':' . $data['mois'] . ':' . $this->nature($data['type'], $request))->dispatch();
 
         return response()->json([
             'batch_id' => $batch->id,
@@ -100,6 +102,11 @@ class ExportPaiementDmgController extends Controller
 
     /**
      * Avancement d'un export lancé en arrière-plan.
+     *
+     * Le pourcentage renvoyé est la valeur de progression interne écrite par
+     * GenererExportPaiementJob dans le cache (étapes : 33 → 66 → 100 %). Quand le job
+     * n'a pas encore démarré, on renvoie 0 ; quand le batch est terminé et le fichier
+     * disponible, on force 100.
      */
     public function progression(string $batchId): JsonResponse
     {
@@ -111,17 +118,23 @@ class ExportPaiementDmgController extends Controller
 
         $type = $this->typeDuBatch($batch->name);
         $extension = $type === 'excel' ? 'xlsx' : 'pdf';
+        $fichierDisponible = $batch->finished()
+            && $batch->failedJobs === 0
+            && Storage::disk('temp_files')->exists(ExportPaiementDmgService::chemin($batch->id, $extension));
+
+        // Progression interne du job (33 / 66 / 100), ou 0 si le job n'a pas encore démarré.
+        // On force 100 quand le fichier est sur disque pour garantir la cohérence de l'affichage.
+        $progressCache = (int) Cache::get(GenererExportPaiementJob::cleCache($batchId), 0);
+        $progress = $fichierDisponible ? 100 : $progressCache;
 
         return response()->json([
             'id' => $batch->id,
             'type' => $type,
             'mois' => $this->moisDuBatch($batch->name),
-            'progress' => $batch->progress(),
+            'progress' => $progress,
             'completed' => $batch->finished(),
             'failedJobs' => $batch->failedJobs,
-            'disponible' => $batch->finished()
-                && $batch->failedJobs === 0
-                && Storage::disk('temp_files')->exists(ExportPaiementDmgService::chemin($batch->id, $extension)),
+            'disponible' => $fichierDisponible,
         ]);
     }
 
@@ -153,7 +166,7 @@ class ExportPaiementDmgController extends Controller
         return $request->validate([
             'type' => ['required', 'in:etat_paiement,attestation_demarrage,attestation_presence,fusion_tresor,excel'],
             'mois' => ['required', 'date_format:Y-m', 'exists:periodes,code'],
-            'ids' => ['nullable', 'array', 'max:'.DmgService::LIMITE_LISTE_ATTENTE],
+            'ids' => ['nullable', 'array', 'max:' . DmgService::LIMITE_LISTE_ATTENTE],
             // Un identifiant inconnu est de toute façon écarté par le `whereIn` ci-dessous :
             // inutile de payer une requête `exists` par ligne sur un export de tout un mois.
             'ids.*' => ['integer', 'distinct'],

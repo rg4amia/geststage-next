@@ -10,26 +10,48 @@
         th, td { border: 1px solid #d0d5dd; padding: 5px; text-align: left; }
         th { background: #e7f5ef; color: #075e45; }
         .montant { text-align: right; white-space: nowrap; }
-        .attestation { page-break-after: always; min-height: 680px; padding: 24px; }
-        .attestation:last-child { page-break-after: auto; }
-        .signature { margin-top: 80px; text-align: right; }
     </style>
 </head>
 <body>
-@if (str_starts_with($type, 'attestation_'))
-    @foreach ($paiements as $paiement)
-        @php($stage = $paiement->droitPaiement->stage)
-        <section class="attestation">
-            <h1>{{ $titre }}</h1>
-            <p class="meta">Periode : {{ mb_strtoupper($mois) }} | Reference : PAY-{{ str_pad($paiement->id, 6, '0', STR_PAD_LEFT) }}</p>
-            <p>Nous attestons que <strong>{{ $stage->beneficiaire->nom }} {{ $stage->beneficiaire->prenoms }}</strong>, numero AEJ
-                <strong>{{ $stage->beneficiaire->numero_aej }}</strong>, effectue son stage au sein de
-                <strong>{{ $stage->entreprise->raison_sociale }}</strong>.</p>
-            <p>Periode du stage : {{ optional($stage->date_debut)->format('d/m/Y') }} au {{ optional($stage->date_fin_prevue)->format('d/m/Y') }}.</p>
-            <p>Montant du droit associe : <strong>{{ number_format((float) $paiement->montant, 0, ',', ' ') }} FCFA</strong>.</p>
-            <p class="signature">La Direction des Moyens Generaux</p>
-        </section>
-    @endforeach
+@if ($type === 'attestation_demarrage')
+    {{--
+        Portage tabulaire du legacy `print.attestation_demarrage` : un unique document listant
+        tous les bénéficiaires (et non plus une page par stagiaire).
+    --}}
+    @include('pdf.partials.entete-ministere', [
+        'titre' => 'ATTESTATION DE DEMARRAGE DU STAGE DE QUALIFICATION',
+    ])
+    <table style="margin-top: 12px;">
+        <thead>
+            <tr>
+                <th style="width: 3%">N° d'ordre</th>
+                <th style="width: 12%">Agence Régionale</th>
+                <th style="width: 16%">Entreprise</th>
+                <th style="width: 16%">Nom et prénom(s) du bénéficiaire</th>
+                <th style="width: 8%">N° AEJ</th>
+                <th style="width: 11%">Contact(s)</th>
+                <th style="width: 10%">Date de début de stage</th>
+                <th style="width: 12%">Période(s) de la prime</th>
+                <th style="width: 12%">N° TresorMoney</th>
+            </tr>
+        </thead>
+        <tbody>
+        @foreach ($paiements as $paiement)
+            @php($stage = $paiement->droitPaiement->stage)
+            <tr>
+                <td>{{ $loop->iteration }}</td>
+                <td>{{ $stage->agence->nom ?? '-' }}</td>
+                <td>{{ $stage->entreprise->raison_sociale ?? '-' }}</td>
+                <td>{{ $stage->beneficiaire->nom }} {{ $stage->beneficiaire->prenoms }}</td>
+                <td>{{ $stage->beneficiaire->numero_aej }}</td>
+                <td>{{ $stage->beneficiaire->telephone_principal ?? '-' }}</td>
+                <td>{{ optional($stage->date_debut)->format('d/m/Y') }}</td>
+                <td>{{ mb_strtoupper($mois) }}</td>
+                <td>{{ $stage->beneficiaire->numero_tresor_money ?? '-' }}</td>
+            </tr>
+        @endforeach
+        </tbody>
+    </table>
 @else
     <h1>{{ $titre }}</h1>
     <p class="meta">Periode : {{ mb_strtoupper($mois) }} | {{ $paiements->count() }} beneficiaire(s)</p>
@@ -42,7 +64,7 @@
                 <td>{{ $loop->iteration }}</td><td>{{ $stage->beneficiaire->numero_aej }}</td>
                 <td>{{ $stage->beneficiaire->nom }} {{ $stage->beneficiaire->prenoms }}</td>
                 <td>{{ $stage->agence->nom }}</td><td>{{ $stage->entreprise->raison_sociale }}</td>
-                <td>{{ $stage->beneficiaire->numero_tresor_pay ?? '-' }}</td>
+                <td>{{ $stage->beneficiaire->numero_tresor_money ?? '-' }}</td>
                 <td class="montant">{{ number_format((float) $paiement->montant, 0, ',', ' ') }} FCFA</td>
             </tr>
         @endforeach
