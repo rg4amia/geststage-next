@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Domain\Payment\Services\ApplicationPrelevementsService;
 use App\Domain\Payment\Services\Prime\PrimeCalculationException;
 use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Models\Payment\DroitPaiement;
@@ -37,8 +38,12 @@ class RecalculerPrimesCommand extends Command
      */
     private const STATUTS_MODIFIABLES = ['A_TRAITER', 'AJOURNE', 'REJETE'];
 
-    public function handle(PrimeCalculatorService $calculator): int
+    private ApplicationPrelevementsService $prelevements;
+
+    public function handle(PrimeCalculatorService $calculator, ApplicationPrelevementsService $prelevements): int
     {
+        $this->prelevements = $prelevements;
+
         $dryRun = (bool) $this->option('dry-run');
         $tousStatuts = (bool) $this->option('tous-statuts');
         $chunk = max(50, min((int) $this->option('chunk'), 5000));
@@ -96,13 +101,37 @@ class RecalculerPrimesCommand extends Command
                     $corriges++;
 
                     if (! $dryRun) {
-                        DB::transaction(function () use ($droit, $montant, $tousStatuts): void {
+                        DB::transaction(function () use ($droit, $montant, $tousStatuts, $calculator): void {
                             $droit->update(['montant' => $montant]);
 
                             $paiements = $droit->paiements()
-                                ->when(! $tousStatuts, fn ($q) => $q->whereIn('statut', self::STATUTS_MODIFIABLES));
+                                ->when(! $tousStatuts, fn ($q) => $q->whereIn('statut', self::STATUTS_MODIFIABLES))
+                                ->get();
 
-                            $paiements->update(['montant' => $montant]);
+                            foreach ($paiements as $paiement) {
+                                // La prime recalculee devient un brut : les regles de
+                                // prelevement CMU (parametrage systeme) se reappliquent a
+                                // l'identique, paiement engage ou non.
+                                $regle = $this->prelevements->regleApplicable(
+                                    $droit->source_financement_id,
+                                    $droit->stage?->type_stage_id,
+                                    $droit->periode,
+                                    $this->prelevements->typePaiementDeNature((string) $droit->nature),
+                                );
+
+                                if ($regle) {
+                                    $this->prelevements->appliquer($paiement, $montant, $regle);
+                                } else {
+                                    $paiement->forceFill([
+                                        'montant_brut' => $montant,
+                                        'montant_prelevement' => 0,
+                                        'type_prelevement' => null,
+                                        'regle_prelevement_id' => null,
+                                        'montant' => $montant,
+                                    ]);
+                                    $paiement->save();
+                                }
+                            }
                         });
                     }
                 } catch (PrimeCalculationException $e) {

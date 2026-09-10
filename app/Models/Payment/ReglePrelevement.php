@@ -26,6 +26,9 @@ class ReglePrelevement extends Model
 
     public const PAIEMENT_DEMARRAGE = 'DEMARRAGE';
 
+    /** Paiement mensuel de présence : ouvrable aux prélèvements via paramétrage. */
+    public const PAIEMENT_PRESENCE = 'PRESENCE';
+
     /** Borne haute conventionnelle d'une règle sans date de fin. */
     public const FIN_OUVERTE = '9999-12-31';
 

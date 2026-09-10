@@ -161,6 +161,11 @@ class MultiDossierController extends Controller
                 'date_fin' => $stage?->date_fin_prevue?->format('d/m/Y') ?? '-',
                 'tresor_pay' => $beneficiaire?->numero_tresor_pay ?? '-',
                 'montant' => $paiement->montant,
+                'montant_brut' => $paiement->montant_brut_calcule,
+                'montant_prelevement' => $paiement->prelevement_calcule,
+                'montant_net' => (float) $paiement->montant,
+                'type_prelevement' => $paiement->type_prelevement,
+                'a_prelevement' => $paiement->a_prelevement,
                 'statut' => $paiement->statut,
             ];
         });

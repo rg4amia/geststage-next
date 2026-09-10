@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Company\Entreprise;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 
 /**
  * Recherche d'entreprises pour les listes déroulantes async (react-select).
@@ -14,12 +15,26 @@ use Illuminate\Http\Request;
  * CachesReferenceData à chaque save/delete/restore — plutôt que sur un LIKE SQL :
  * la liste tient en mémoire, la recherche ne coûte aucune requête et un grand
  * référentiel n'alourdit pas la base à chaque frappe.
+ *
+ * Le cœur de recherche est partagé : l'écran CIP « Mes Stagiaires » l'appelle avec
+ * le périmètre d'agences de l'agent connecté (MesStagiairesCipController::rechercherEntreprises),
+ * l'écran DMG sans restriction (la permission voir_paiements_dmg est déjà nationale).
  */
 class EntrepriseRechercheController extends Controller
 {
     private const LIMITE = 50;
 
     public function __invoke(Request $request): JsonResponse
+    {
+        return self::repondre($request);
+    }
+
+    /**
+     * Recherche insensible à la casse sur la raison sociale, plafonnée à 50 résultats.
+     * `agencesAutorisees` restreint les entreprises à un périmètre d'agences ;
+     * `null` signifie « aucune restriction » (vue nationale).
+     */
+    public static function repondre(Request $request, ?array $agencesAutorisees = null): JsonResponse
     {
         $terme = mb_strtolower(trim($request->query('q', '')));
         // Débounce côté client, mais garde-fou ici : en dessous de 2 caractères on ne
@@ -29,6 +44,7 @@ class EntrepriseRechercheController extends Controller
         }
 
         $resultats = Entreprise::cached()
+            ->when($agencesAutorisees !== null, fn (Collection $entreprises) => $entreprises->whereIn('agence_id', $agencesAutorisees))
             ->filter(fn (Entreprise $entreprise): bool => str_contains(
                 mb_strtolower($entreprise->raison_sociale ?? ''),
                 $terme,

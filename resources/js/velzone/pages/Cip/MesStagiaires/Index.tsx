@@ -1,8 +1,66 @@
 import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import React, { useMemo, useState, useEffect } from 'react';
-import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner, Dropdown, DropdownToggle, DropdownMenu, DropdownItem } from 'reactstrap';
+import AsyncSelect from 'react-select/async';
+import Select from 'react-select';
+import { Card, CardBody, CardHeader, Col, Container, Row, Button, Form, Input, Modal, ModalHeader, ModalBody, ModalFooter, Badge, Spinner, Dropdown, DropdownToggle, DropdownMenu, DropdownItem, Progress } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
 import TableContainerReactTable from '../../../Components/Common/TableContainerReactTable';
+
+/* Option react-select : valeurs en chaînes pour coller au format querystring. */
+interface OptionSelect {
+    value: string;
+    label: string;
+}
+
+interface RefItem {
+    id: number;
+    nom: string;
+}
+
+/* Options communes : entrée "tous/toutes" en tête (valeur vide) puis le référentiel. */
+const optionsAvecTout = (referentiel: Record<string, unknown> | undefined, libelleTout: string): OptionSelect[] => [
+    { value: '', label: libelleTout },
+    ...Object.entries(referentiel || {}).map(([id, label]) => ({ value: id, label: String(label) })),
+];
+
+const optionSelectionnee = (options: OptionSelect[], value?: string | null): OptionSelect | null =>
+    options.find((o) => o.value === value) || null;
+
+/*
+ * Recherche serveur d'entreprises (route cip.mes_stagiaires.entreprises) pour le filtre
+ * async : le référentiel complet peut dépasser plusieurs milliers d'entrées, on interroge
+ * l'API à chaque frappe plutôt que de le charger dans le navigateur. Débounce 300 ms ;
+ * la requête en cours est annulée si une nouvelle saisie arrive.
+ */
+let minuterieEntreprises: number | undefined;
+let controleurEntreprises: AbortController | undefined;
+const chargerOptionsEntreprises = (saisie: string): Promise<OptionSelect[]> =>
+    new Promise((resolve) => {
+        window.clearTimeout(minuterieEntreprises);
+        minuterieEntreprises = window.setTimeout(async () => {
+            controleurEntreprises?.abort();
+            controleurEntreprises = new AbortController();
+
+            try {
+                const reponse = await fetch(`/cip/mes-stagiaires/entreprises?q=${encodeURIComponent(saisie)}`, {
+                    headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: controleurEntreprises.signal,
+                });
+
+                if (!reponse.ok) {
+                    throw new Error(String(reponse.status));
+                }
+
+                const donnees = await reponse.json();
+                resolve((donnees.data || []).map((e: { id: number; raison_sociale: string }) => ({
+                    value: String(e.id),
+                    label: e.raison_sociale,
+                })));
+            } catch {
+                resolve([]);
+            }
+        }, 300);
+    });
 
 const MesStagiaires = () => {
     const {
@@ -187,6 +245,28 @@ const MesStagiaires = () => {
         date_fin: filters?.date_fin || '',
         search: filters?.search || '',
     });
+
+    /* Référentiels react-select (mémoïsés : les props ne changent qu'au rechargement Inertia). */
+    const optionsAgences = useMemo(() => optionsAvecTout(agences, 'Toutes les agences'), [agences]);
+    const optionsEntreprisesRef = useMemo(() => optionsAvecTout(entreprises, 'Toutes les entreprises'), [entreprises]);
+    const optionsFinancements = useMemo(() => optionsAvecTout(typesfinancements, 'Tous'), [typesfinancements]);
+    const optionsTypesStage = useMemo(() => optionsAvecTout(typestages, 'Tous les types'), [typestages]);
+    const optionsTypesStructure = useMemo(() => optionsAvecTout(typestructures, 'Toutes'), [typestructures]);
+    const optionsEtapes = useMemo(() => optionsAvecTout(etapes, 'Toutes les étapes'), [etapes]);
+    const optionsSituations = useMemo(() => optionsAvecTout(situationstages, 'Toutes les situations'), [situationstages]);
+
+    /*
+     * L'entreprise choisie est mémorisée en état : la recherche async ne conserve pas les
+     * résultats en local, le libellé sélectionné doit donc survivre à la fermeture du menu.
+     * Au montage (filtre présent dans l'URL), on retombe sur la prop `entreprises` que le
+     * contrôleur alimente uniquement avec l'entreprise pré-filtrée.
+     */
+    const [entrepriseChoisie, setEntrepriseChoisie] = useState<OptionSelect | null>(null);
+    const optionEntrepriseAffichee = entrepriseChoisie
+        ?? (formData.entreprise_id
+            ? optionSelectionnee(optionsEntreprisesRef, formData.entreprise_id)
+                || { value: formData.entreprise_id, label: `Entreprise #${formData.entreprise_id}` }
+            : null);
 
     const handleSearch = (e?: any) => {
         if (e) {
@@ -690,6 +770,87 @@ e.preventDefault();
         formData.situationstage_id, formData.date_debut, formData.date_fin, formData.search
     ].filter(Boolean).length;
 
+    /* ─── Export Excel/CSV : synchrone pour les listes courtes, batch + progression pour les gros volumes ─── */
+    const [exportEnCours, setExportEnCours] = useState(false);
+    const [batchExport, setBatchExport] = useState<{ id: string; progress: number; disponible: boolean } | null>(null);
+
+    const parametresExport = useMemo(
+        () => Object.fromEntries(
+            Object.entries({ ...formData }).filter(([, valeur]) => valeur !== '' && valeur !== null && valeur !== undefined),
+        ) as Record<string, string>,
+        [formData],
+    );
+
+    /* Export synchrone : le navigateur télécharge directement le CSV (listes courtes). */
+    const exporterSynchrone = () => {
+        window.location.href = `/cip/mes-stagiaires/export?${new URLSearchParams(parametresExport).toString()}`;
+    };
+
+    /* Export en arrière-plan : renvoie un batch suivi par la carte de progression. */
+    const exporterEnArrierePlan = async () => {
+        setExportEnCours(true);
+
+        try {
+            const reponse = await fetch('/cip/mes-stagiaires/exporter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Accept: 'application/json',
+                    'X-CSRF-TOKEN': (document.querySelector('meta[name="csrf-token"]') as HTMLMetaElement)?.content ?? '',
+                },
+                body: JSON.stringify(parametresExport),
+            });
+
+            const donnees = await reponse.json();
+
+            if (!reponse.ok || !donnees.batch_id) {
+                throw new Error(donnees.message || `Erreur ${reponse.status}`);
+            }
+
+            setBatchExport({ id: donnees.batch_id, progress: 0, disponible: false });
+        } catch (err: any) {
+            console.error(err);
+        } finally {
+            setExportEnCours(false);
+        }
+    };
+
+    // Suit l'avancement de l'export en arrière-plan jusqu'au fichier téléchargeable.
+    useEffect(() => {
+        if (!batchExport || batchExport.disponible) {
+            return;
+        }
+
+        const minuteur = window.setInterval(async () => {
+            try {
+                const reponse = await fetch(`/cip/mes-stagiaires/exporter/${batchExport.id}/progression`, {
+                    headers: { Accept: 'application/json' },
+                });
+
+                if (!reponse.ok) {
+                    window.clearInterval(minuteur);
+
+                    return;
+                }
+
+                const donnees = await reponse.json();
+                setBatchExport((etat) =>
+                    etat ? { ...etat, progress: donnees.progress ?? 0, disponible: Boolean(donnees.disponible) } : etat,
+                );
+            } catch {
+                window.clearInterval(minuteur);
+            }
+        }, 2000);
+
+        return () => window.clearInterval(minuteur);
+    }, [batchExport?.id, batchExport?.disponible]);
+
+    const telechargerExport = () => {
+        if (batchExport) {
+            window.location.href = `/cip/mes-stagiaires/exporter/${batchExport.id}/telechargement`;
+        }
+    };
+
     return (
         <React.Fragment>
             <Head title="Mes Stagiaires" />
@@ -747,45 +908,51 @@ e.preventDefault();
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-building-4-line me-1"></i>Agence
                                         </label>
-                                        <Input type="select" className="form-select-sm" value={formData.agence_id} onChange={e => setData('agence_id', e.target.value)}>
-                                            <option value="">Toutes les agences</option>
-                                            {Object.entries(agences || {}).map(([id, label]) => (
-                                                <option key={id} value={id}>{String(label)}</option>
-                                            ))}
-                                        </Input>
+                                        <Select isSearchable classNamePrefix="react-select" placeholder="Toutes les agences" noOptionsMessage={() => 'Aucune agence'}
+                                            options={optionsAgences}
+                                            value={optionSelectionnee(optionsAgences, formData.agence_id)}
+                                            onChange={(selected) => setData('agence_id', selected?.value || '')}
+                                        />
                                     </Col>
                                     <Col xs={6} sm={4} md={2}>
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-building-line me-1"></i>Entreprise
                                         </label>
-                                        <Input type="select" className="form-select-sm" value={formData.entreprise_id} onChange={e => setData('entreprise_id', e.target.value)}>
-                                            <option value="">Toutes les entreprises</option>
-                                            {Object.entries(entreprises || {}).map(([id, label]) => (
-                                                <option key={id} value={id}>{String(label)}</option>
-                                            ))}
-                                        </Input>
+                                        <AsyncSelect
+                                            loadOptions={chargerOptionsEntreprises}
+                                            value={optionEntrepriseAffichee}
+                                            onChange={(selected) => {
+                                                setEntrepriseChoisie(selected);
+                                                setData('entreprise_id', selected?.value || '');
+                                            }}
+                                            placeholder="Rechercher une entreprise..."
+                                            noOptionsMessage={({ inputValue }) => inputValue.length < 2 ? 'Saisissez au moins 2 caractères' : 'Aucune entreprise'}
+                                            loadingMessage={() => 'Recherche...'}
+                                            isClearable
+                                            cacheOptions
+                                            defaultOptions={[]}
+                                            classNamePrefix="react-select"
+                                        />
                                     </Col>
                                     <Col xs={6} sm={4} md={2}>
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-bank-card-line me-1"></i>Financement
                                         </label>
-                                        <Input type="select" className="form-select-sm" value={formData.typesfinancement_id} onChange={e => setData('typesfinancement_id', e.target.value)}>
-                                            <option value="">Tous</option>
-                                            {Object.entries(typesfinancements || {}).map(([id, label]) => (
-                                                <option key={id} value={id}>{String(label)}</option>
-                                            ))}
-                                        </Input>
+                                        <Select isSearchable classNamePrefix="react-select" placeholder="Tous" noOptionsMessage={() => 'Aucun financement'}
+                                            options={optionsFinancements}
+                                            value={optionSelectionnee(optionsFinancements, formData.typesfinancement_id)}
+                                            onChange={(selected) => setData('typesfinancement_id', selected?.value || '')}
+                                        />
                                     </Col>
                                     <Col xs={6} sm={4} md={3}>
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-macbook-line me-1"></i>Type de Stage
                                         </label>
-                                        <Input type="select" className="form-select-sm" value={formData.typestage_id} onChange={e => setData('typestage_id', e.target.value)}>
-                                            <option value="">Tous les types</option>
-                                            {Object.entries(typestages || {}).map(([id, label]) => (
-                                                <option key={id} value={id}>{String(label)}</option>
-                                            ))}
-                                        </Input>
+                                        <Select isSearchable classNamePrefix="react-select" placeholder="Tous les types" noOptionsMessage={() => 'Aucun type de stage'}
+                                            options={optionsTypesStage}
+                                            value={optionSelectionnee(optionsTypesStage, formData.typestage_id)}
+                                            onChange={(selected) => setData('typestage_id', selected?.value || '')}
+                                        />
                                     </Col>
                                 </Row>
 
@@ -795,34 +962,31 @@ e.preventDefault();
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-community-line me-1"></i>Structure
                                         </label>
-                                        <Input type="select" className="form-select-sm" value={formData.type_structure_id} onChange={e => setData('type_structure_id', e.target.value)}>
-                                            <option value="">Toutes</option>
-                                            {Object.entries(typestructures || {}).map(([id, label]) => (
-                                                <option key={id} value={id}>{String(label)}</option>
-                                            ))}
-                                        </Input>
+                                        <Select isSearchable classNamePrefix="react-select" placeholder="Toutes" noOptionsMessage={() => 'Aucun type de structure'}
+                                            options={optionsTypesStructure}
+                                            value={optionSelectionnee(optionsTypesStructure, formData.type_structure_id)}
+                                            onChange={(selected) => setData('type_structure_id', selected?.value || '')}
+                                        />
                                     </Col>
                                     <Col xs={6} sm={4} md={2}>
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-git-merge-line me-1"></i>Étape
                                         </label>
-                                        <Input type="select" className="form-select-sm" value={formData.etape_id} onChange={e => setData('etape_id', e.target.value)}>
-                                            <option value="">Toutes les étapes</option>
-                                            {Object.entries(etapes || {}).map(([id, label]) => (
-                                                <option key={id} value={id}>{String(label)}</option>
-                                            ))}
-                                        </Input>
+                                        <Select isSearchable classNamePrefix="react-select" placeholder="Toutes les étapes" noOptionsMessage={() => 'Aucune étape'}
+                                            options={optionsEtapes}
+                                            value={optionSelectionnee(optionsEtapes, formData.etape_id)}
+                                            onChange={(selected) => setData('etape_id', selected?.value || '')}
+                                        />
                                     </Col>
                                     <Col xs={6} sm={4} md={2}>
                                         <label className="form-label fs-12 text-muted mb-1">
                                             <i className="ri-flag-line me-1"></i>Situation
                                         </label>
-                                        <Input type="select" className="form-select-sm" value={formData.situationstage_id} onChange={e => setData('situationstage_id', e.target.value)}>
-                                            <option value="">Toutes les situations</option>
-                                            {Object.entries(situationstages || {}).map(([id, label]) => (
-                                                <option key={id} value={id}>{String(label)}</option>
-                                            ))}
-                                        </Input>
+                                        <Select isSearchable classNamePrefix="react-select" placeholder="Toutes les situations" noOptionsMessage={() => 'Aucune situation'}
+                                            options={optionsSituations}
+                                            value={optionSelectionnee(optionsSituations, formData.situationstage_id)}
+                                            onChange={(selected) => setData('situationstage_id', selected?.value || '')}
+                                        />
                                     </Col>
                                     <Col xs={6} sm={4} md={2}>
                                         <label className="form-label fs-12 text-muted mb-1">
@@ -860,11 +1024,30 @@ e.preventDefault();
                                     </Col>
                                 </Row>
 
-                                {/* Barre d'actions optionnelle (si besoin d'actions globales) */}
+                                {/* Barre d'actions : export de la liste courante (mêmes filtres) */}
                                 <div className="d-flex align-items-center justify-content-between mt-3 pt-2 border-top">
                                     <div className="d-flex gap-2">
-                                        <button type="button" className="btn btn-outline-success btn-sm">
+                                        <button
+                                            type="button"
+                                            className="btn btn-outline-success btn-sm"
+                                            onClick={exporterSynchrone}
+                                            title="Télécharger immédiatement la liste courante (CSV compatible Excel)"
+                                            disabled={exportEnCours || batchExport !== null}
+                                        >
                                             <i className="ri-file-excel-line me-1"></i> Exporter Excel
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-success btn-sm"
+                                            onClick={exporterEnArrierePlan}
+                                            title="Générer en arrière-plan : idéal pour les gros volumes (téléchargement dès que prêt)"
+                                            disabled={exportEnCours || batchExport !== null}
+                                        >
+                                            {exportEnCours ? (
+                                                <><i className="ri-loader-4-line me-1"></i> Lancement…</>
+                                            ) : (
+                                                <><i className="ri-stack-line me-1"></i> Export volumineux</>
+                                            )}
                                         </button>
                                     </div>
                                     {activeFiltersCount > 0 && (
@@ -881,6 +1064,37 @@ e.preventDefault();
                             </Form>
                         </CardBody>
                     </Card>
+
+                    {/* Carte de progression d'un export lancé en arrière-plan */}
+                    {batchExport && (
+                        <Card className="mb-3 border-0 shadow-sm">
+                            <CardBody className="py-3">
+                                {batchExport.disponible ? (
+                                    <div className="d-flex align-items-center justify-content-between">
+                                        <div className="d-flex align-items-center gap-2 text-success">
+                                            <i className="ri-check-double-line fs-20"></i>
+                                            <span className="fw-medium">Export terminé — le fichier est prêt.</span>
+                                        </div>
+                                        <div className="d-flex gap-2">
+                                            <Button color="success" size="sm" onClick={telechargerExport}>
+                                                <i className="ri-download-line me-1"></i>Télécharger
+                                            </Button>
+                                            <Button color="light" size="sm" onClick={() => setBatchExport(null)}>Fermer</Button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <div className="d-flex align-items-center gap-2 mb-2">
+                                            <Spinner size="sm" color="primary" />
+                                            <span className="fw-medium">Génération de l'export en arrière-plan…</span>
+                                            <span className="text-muted fs-12 ms-auto">{Math.round(batchExport.progress)}%</span>
+                                        </div>
+                                        <Progress value={batchExport.progress} className="progress-sm" />
+                                    </div>
+                                )}
+                            </CardBody>
+                        </Card>
+                    )}
 
                     {/* Main Content: Table */}
                     <Row>

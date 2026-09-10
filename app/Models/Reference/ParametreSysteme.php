@@ -35,7 +35,7 @@ class ParametreSysteme extends Model
         'cmu_obligatoire' => [
             'type' => self::TYPE_BOOLEEN,
             'libelle' => 'Prélèvement CMU obligatoire',
-            'description' => 'Applique systématiquement la règle de prélèvement CMU active au paiement de démarrage.',
+            'description' => 'Applique systématiquement les règles de prélèvement CMU actives aux paiements de démarrage et de présence couvrant leur période.',
             'defaut' => '0',
         ],
         'sms_actif' => [

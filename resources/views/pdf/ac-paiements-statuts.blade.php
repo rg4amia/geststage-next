@@ -28,7 +28,9 @@
                 <th>N° AEJ</th>
                 <th>Nom et prénoms</th>
                 <th>N° Trésor Money</th>
-                <th class="montant">Montant</th>
+                <th class="montant">Brut</th>
+                <th class="montant">Prélèvement</th>
+                <th class="montant">Net</th>
                 <th>Situation</th>
             </tr>
         </thead>
@@ -48,6 +50,8 @@
                 <td>{{ $stagiaire['numero_aej'] ?? '-' }}</td>
                 <td>{{ trim(($stagiaire['nom'] ?? '').' '.($stagiaire['prenoms'] ?? '')) }}</td>
                 <td>{{ $stagiaire['numero_tresor_money'] ?? '-' }}</td>
+                <td class="montant">{{ number_format((float) ($stagiaire['montant_brut'] ?? $stagiaire['montant']), 0, ',', ' ') }}</td>
+                <td class="montant">{{ number_format((float) ($stagiaire['montant_prelevement'] ?? 0), 0, ',', ' ') }}</td>
                 <td class="montant">{{ number_format((float) $stagiaire['montant'], 0, ',', ' ') }} FCFA</td>
                 <td>{{ $stagiaire['statut_paiement'] === 'PAYE' ? 'Payé' : 'Non payé' }}</td>
             </tr>

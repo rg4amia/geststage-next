@@ -32,14 +32,16 @@
             <thead>
                 <tr>
                     <th style="width: 4%">N°</th>
-                    <th style="width: 9%">N° AEJ</th>
-                    <th style="width: 17%">Bénéficiaire</th>
-                    <th style="width: 11%">Agence</th>
-                    <th style="width: 19%">Entreprise</th>
-                    <th style="width: 10%">Financement</th>
-                    <th style="width: 11%">Type stage</th>
-                    <th style="width: 10%">N° Trésor Pay</th>
-                    <th style="width: 9%" class="montant">Montant (FCFA)</th>
+                    <th style="width: 8%">N° AEJ</th>
+                    <th style="width: 15%">Bénéficiaire</th>
+                    <th style="width: 9%">Agence</th>
+                    <th style="width: 15%">Entreprise</th>
+                    <th style="width: 9%">Financement</th>
+                    <th style="width: 9%">Type stage</th>
+                    <th style="width: 9%">N° Trésor Pay</th>
+                    <th style="width: 8%" class="montant">Brut (FCFA)</th>
+                    <th style="width: 7%" class="montant">Prélèv. (FCFA)</th>
+                    <th style="width: 8%" class="montant">Net à payer (FCFA)</th>
                 </tr>
             </thead>
             <tbody>
@@ -55,13 +57,17 @@
                         <td>{{ $stage?->sourceFinancement?->nom ?? '-' }}</td>
                         <td>{{ $stage?->typeStage?->nom ?? '-' }}</td>
                         <td>{{ $stage?->beneficiaire?->numero_tresor_pay ?? '-' }}</td>
+                        <td class="montant">{{ number_format((float) $paiement->montant_brut_calcule, 0, ',', ' ') }}</td>
+                        <td class="montant">{{ number_format((float) $paiement->prelevement_calcule, 0, ',', ' ') }}</td>
                         <td class="montant">{{ number_format((float) $paiement->montant, 0, ',', ' ') }}</td>
                     </tr>
                 @endforeach
                 @if ($pageIndex === count($pages) - 1)
                     <tr class="table-total-row">
-                        <td colspan="8">SOLDE TOTAL DES PRIMES</td>
-                        <td class="montant">{{ number_format((float) $solde, 0, ',', ' ') }} FCFA</td>
+                        <td colspan="8">TOTAL PRIMES (brut / prélèvement / net)</td>
+                        <td class="montant">{{ number_format((float) $total_brut, 0, ',', ' ') }}</td>
+                        <td class="montant">-{{ number_format((float) $total_prelevement, 0, ',', ' ') }}</td>
+                        <td class="montant">{{ number_format((float) $solde, 0, ',', ' ') }}</td>
                     </tr>
                 @endif
             </tbody>
@@ -73,6 +79,9 @@
                     Arrêté le présent état de paiement à la somme de
                     <strong>{{ \Illuminate\Support\Str::upper(convertir_en_lettres((int) round($solde))) }} ({{ number_format((float) $solde, 0, ',', ' ') }}) francs CFA</strong>,
                     représentant la prime de {{ count($pages) > 1 ? 'présence' : 'stage' }} des {{ $total }} bénéficiaires listés ci-dessus pour la période de {{ mb_strtolower($mois) }}.
+@if($total_prelevement > 0)
+                    Cotisation CMU prélevée sur les primes concernées : {{ number_format((float) $total_prelevement, 0, ',', ' ') }} FCFA (montant brut : {{ number_format((float) $total_brut, 0, ',', ' ') }} FCFA).
+@endif
                 </p>
                 <div class="signatures">
                     <div class="signature">

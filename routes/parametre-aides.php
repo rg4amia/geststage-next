@@ -73,6 +73,7 @@ Route::middleware(['auth', 'verified'])->prefix('parametre-aides')->name('parame
         Route::get('/', [PrimeController::class, 'index'])->name('index');
         Route::put('/', [PrimeController::class, 'update'])->middleware('can:gerer_parametres_systeme')->name('update');
         Route::post('/reinitialiser', [PrimeController::class, 'reset'])->middleware('can:gerer_parametres_systeme')->name('reset');
+        Route::get('/stagiaires', [PrimeController::class, 'rechercherStagiaires'])->name('stagiaires');
         Route::post('/simuler', [PrimeController::class, 'simuler'])->name('simuler');
     });
 

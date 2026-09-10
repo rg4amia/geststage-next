@@ -103,6 +103,12 @@ interface PaiementRow {
         date_fin: string;
     };
     montant: number;
+    // Trajectoire brute / prélèvement CMU / net, posée par ApplicationPrelevementsService.
+    montant_brut?: number | null;
+    montant_prelevement?: number | null;
+    montant_net?: number | null;
+    type_prelevement?: string | null;
+    a_prelevement?: boolean;
     statut: string;
     date_creation: string;
     piece_jointe: string | null;
@@ -1189,7 +1195,26 @@ return <span className="text-muted">—</span>;
                 </div>
             );
         }},
-        { header: 'Montant', cell: (cell: any) => {
+        { header: 'Montant Brut', cell: (cell: any) => {
+            const mb = cell.row.original.montant_brut;
+
+            return mb != null ? <span className="text-muted">{Number(mb).toLocaleString('fr-FR')} FCFA</span> : '-';
+        }},
+        { header: 'Prélèvement', cell: (cell: any) => {
+            const prelev = cell.row.original.montant_prelevement;
+
+            if (!prelev) {
+return <span className="text-muted">—</span>;
+}
+
+            return (
+                <div>
+                    <Badge color="warning" className="fs-11">-{Number(prelev).toLocaleString('fr-FR')} F</Badge>
+                    <div className="text-muted fs-11">{cell.row.original.type_prelevement || 'CMU'}</div>
+                </div>
+            );
+        }},
+        { header: 'Net à payer', cell: (cell: any) => {
             const m = cell.row.original.montant;
 
             return m ? <span className="fw-bold text-success">{Number(m).toLocaleString('fr-FR')} FCFA</span> : '-';

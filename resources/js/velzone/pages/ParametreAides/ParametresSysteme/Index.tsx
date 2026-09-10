@@ -342,8 +342,10 @@ const Index = ({ parametres, regles, sources, typesStage, typesPrelevement, type
                                     ))}
                                 </select>
                             </Col>
-                            <Col md={4}>
-                                <Label htmlFor="type_paiement" className="form-label">Type de paiement</Label>
+                            <Col md={4}>                                                    <Label htmlFor="type_paiement" className="form-label">Type de paiement</Label>
+                                                    <div className="text-muted fs-12 mb-1">
+                                                        Démarrage : prime du mois d'entrée du stagiaire · Présence : primes mensuelles suivantes.
+                                                    </div>
                                 <select
                                     className="form-select"
                                     id="type_paiement"

@@ -7,6 +7,7 @@ use App\Domain\Payment\Services\Prime\PrimeCalculationException;
 use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Domain\Payment\Services\Prime\PrimeConfigurationService;
 use App\Http\Controllers\Controller;
+use App\Models\Internship\Stage;
 use App\Models\Payment\PrimeConfigurationOverride;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -91,6 +92,53 @@ class PrimeController extends Controller
      * plusieurs fois de suite, sans recharger la page ni toucher au formulaire
      * d'édition en cours.
      */
+    /**
+     * Recherche de stagiaires pour préremplir le simulateur : évite d'avoir à
+     * ressaisir à la main des dates et des identifiants de référentiel qu'on
+     * peut simplement relire sur un dossier réel.
+     */
+    public function rechercherStagiaires(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('voir_parametres_systeme'), 403);
+
+        $terme = trim((string) $request->query('q', ''));
+
+        if (mb_strlen($terme) < 2) {
+            return response()->json(['data' => []]);
+        }
+
+        $stages = Stage::query()
+            ->with(['beneficiaire', 'entreprise.typeStructure', 'typeStage', 'sourceFinancement'])
+            ->whereHas('beneficiaire', function ($requete) use ($terme): void {
+                $requete->where('numero_aej', 'like', "%{$terme}%")
+                    ->orWhere('nom', 'like', "%{$terme}%")
+                    ->orWhere('prenoms', 'like', "%{$terme}%")
+                    ->orWhereRaw("nom || ' ' || prenoms like ?", ["%{$terme}%"]);
+            })
+            ->latest('date_debut')
+            ->limit(20)
+            ->get();
+
+        return response()->json([
+            'data' => $stages->map(fn (Stage $stage): array => [
+                'id' => $stage->id,
+                'label' => trim(sprintf(
+                    '%s %s — %s (%s)',
+                    $stage->beneficiaire?->nom,
+                    $stage->beneficiaire?->prenoms,
+                    $stage->beneficiaire?->numero_aej ?? 'sans n° AEJ',
+                    $stage->entreprise?->raison_sociale ?? 'entreprise inconnue',
+                )),
+                'type_stage_legacy_id' => $stage->typeStage?->ancien_id,
+                'source_financement_legacy_id' => $stage->sourceFinancement?->ancien_id,
+                'type_structure_legacy_id' => $stage->entreprise?->typeStructure?->ancien_id,
+                'date_debut' => $stage->date_debut?->format('Y-m-d'),
+                'date_fin' => $stage->date_fin_prevue?->format('Y-m-d'),
+                'nom_entreprise' => $stage->entreprise?->raison_sociale,
+            ])->values(),
+        ]);
+    }
+
     public function simuler(Request $request): JsonResponse
     {
         abort_unless($request->user()->can('voir_parametres_systeme'), 403);

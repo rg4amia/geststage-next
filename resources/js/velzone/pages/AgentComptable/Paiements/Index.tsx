@@ -92,6 +92,10 @@ type Stagiaire = {
     paiement_id: number;
     statut_paiement: string;
     montant: string | number;
+    montant_brut?: string | number | null;
+    montant_prelevement?: string | number | null;
+    type_prelevement?: string | null;
+    a_prelevement?: boolean;
     paye_le?: string | null;
     decide_le?: string | null;
     beneficiaire_id?: number;
@@ -1784,6 +1788,32 @@ export default function AcPaiementsIndex({
                                                                                 )}{' '}
                                                                                 FCFA
                                                                             </strong>
+                                                                            <span className="d-block fs-12 text-muted">
+                                                                                Brut :{' '}
+                                                                                {formatMontant(
+                                                                                    stagiaire.montant_brut ??
+                                                                                        stagiaire.montant,
+                                                                                )}{' '}
+                                                                                FCFA
+                                                                            </span>
+                                                                            {Number(
+                                                                                stagiaire.montant_prelevement ??
+                                                                                    0,
+                                                                            ) > 0 && (
+                                                                                <span className="d-block fs-12 text-warning">
+                                                                                    Prélèv.{' '}
+                                                                                    {
+                                                                                        stagiaire.type_prelevement ||
+                                                                                            'CMU'
+                                                                                    }{' '}
+                                                                                    :
+                                                                                    -
+                                                                                    {formatMontant(
+                                                                                        stagiaire.montant_prelevement,
+                                                                                    )}{' '}
+                                                                                    F
+                                                                                </span>
+                                                                            )}
                                                                             <span className="d-block fs-12 text-muted">
                                                                                 Trésor
                                                                                 Money

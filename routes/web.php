@@ -54,6 +54,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Phase CIP : Mes Stagiaires et Ajournements
     Route::get('/cip/mes-stagiaires', [MesStagiairesCipController::class, 'index'])->name('cip.mes_stagiaires');
+    // Recherche async d'entreprises pour le filtre react-select : le référentiel complet peut
+    // dépasser plusieurs milliers d'entrées, on n'expédie que les résultats demandés et
+    // restreints au périmètre d'agences de l'agent connecté.
+    Route::get('/cip/mes-stagiaires/entreprises', [MesStagiairesCipController::class, 'rechercherEntreprises'])->name('cip.mes_stagiaires.entreprises');
+    // Export de la liste : synchrone pour les périmètres courts, en arrière-plan (batch +
+    // progression + téléchargement) pour les gros volumes — mêmes filtres que l'affichage.
+    Route::get('/cip/mes-stagiaires/export', [MesStagiairesCipController::class, 'export'])->name('cip.mes_stagiaires.export');
+    Route::post('/cip/mes-stagiaires/exporter', [MesStagiairesCipController::class, 'exporter'])->name('cip.mes_stagiaires.exporter');
+    Route::get('/cip/mes-stagiaires/exporter/{batchId}/progression', [MesStagiairesCipController::class, 'exportProgression'])->name('cip.mes_stagiaires.exporter.progression');
+    Route::get('/cip/mes-stagiaires/exporter/{batchId}/telechargement', [MesStagiairesCipController::class, 'exportTelechargement'])->name('cip.mes_stagiaires.exporter.telechargement');
     Route::get('/cip/mes-stagiaires/ajournes-ca', [MesStagiairesCipController::class, 'ajournesChefAgence'])->name('cip.mes_stagiaires.ajournes_ca');
     Route::get('/cip/pointage/ajourne-dmg', [MesStagiairesCipController::class, 'pointageAjourneDmg'])->name('cip.pointages.ajourne_dmg');
     Route::get('/cip/suivi', [MesStagiairesCipController::class, 'suivi'])->name('cip.suivi.index');

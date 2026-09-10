@@ -22,6 +22,10 @@ class Paiement extends Model
         'droit_paiement_id',
         'compte_paiement_beneficiaire_id',
         'montant',
+        'montant_brut',
+        'montant_prelevement',
+        'type_prelevement',
+        'regle_prelevement_id',
         'statut',
         'corbeille_actuelle',
         'statut_dossier_physique',
@@ -35,8 +39,36 @@ class Paiement extends Model
     protected $casts = [
         'paye_le' => 'datetime',
         'montant' => 'decimal:2',
+        'montant_brut' => 'decimal:2',
+        'montant_prelevement' => 'decimal:2',
         'dossier_physique_marque_le' => 'datetime',
     ];
+
+    /**
+     * Montant brut avant prélèvement (CMU) : vaut le montant historique quand
+     * aucun prélèvement n'a été appliqué au paiement.
+     */
+    public function getMontantBrutCalculeAttribute(): float
+    {
+        return (float) ($this->montant_brut ?? $this->montant ?? 0);
+    }
+
+    /**
+     * La part prélevée (cotisation CMU) sur ce paiement, zéro si aucune règle
+     * ne s'applique.
+     */
+    public function getPrelevementCalculeAttribute(): float
+    {
+        return (float) ($this->montant_prelevement ?? 0);
+    }
+
+    /**
+     * Un prélèvement a-t-il été opéré sur ce paiement ? Sert aux badges CB/AC.
+     */
+    public function getAPrelevementAttribute(): bool
+    {
+        return $this->prelevement_calcule > 0.009;
+    }
 
     public function droitPaiement(): BelongsTo
     {
@@ -56,6 +88,14 @@ class Paiement extends Model
     public function decisions(): HasMany
     {
         return $this->hasMany(DecisionPaiement::class);
+    }
+
+    /**
+     * La règle de prélèvement (CMU) appliquée à ce paiement, si applicable.
+     */
+    public function reglePrelevement(): BelongsTo
+    {
+        return $this->belongsTo(ReglePrelevement::class);
     }
 
     // Scopes

@@ -26,7 +26,10 @@ class StoreReglePrelevementRequest extends FormRequest
             'type_prelevement' => ['required', Rule::in([ReglePrelevement::TYPE_CMU])],
             'source_financement_id' => ['required', 'integer', 'exists:sources_financement,id'],
             'type_stage_id' => ['nullable', 'integer', 'exists:types_stage,id'],
-            'type_paiement' => ['required', Rule::in([ReglePrelevement::PAIEMENT_DEMARRAGE])],
+            'type_paiement' => ['required', Rule::in([
+                ReglePrelevement::PAIEMENT_DEMARRAGE,
+                ReglePrelevement::PAIEMENT_PRESENCE,
+            ])],
             'montant' => ['required', 'numeric', 'min:0', 'max:9999999999.99'],
             // Le legacy raisonne au mois : on conserve la saisie `Y-m`.
             'effet_du' => ['required', 'date_format:Y-m'],

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Domain\Audit\Support\AuditContext;
 use App\Domain\Payment\Services\AgentComptableService;
+use App\Domain\Payment\Services\ApplicationPrelevementsService;
 use App\Domain\Payment\Services\Prime\ContexteCalculPrime;
 use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Domain\Validation\Services\ValidationChefAgenceService;
@@ -141,6 +142,7 @@ class MigrateLegacyDataCommand extends Command
             'fix_statut_paiements_legacy', 'fix_pointage_revisions', 'backfill_avenants_renouvellement',
             'backfill_visa_desse', 'backfill_validation_ar', 'backfill_stagiaires_differes_ac',
             'fix_etat_chef_agence_100', 'fix_legacy_ca_validation', 'update_missing_data',
+            'backfill_prelevements_cmu',
             'remaining',
         ];
         if (! in_array($step, $allowedSteps, true)) {
@@ -292,6 +294,10 @@ class MigrateLegacyDataCommand extends Command
 
             if ($step === 'all' || $step === 'backfill_validation_ar') {
                 $this->runPhase('backfill_validation_ar', fn () => $this->backfillValidationAr($dryRun));
+            }
+
+            if ($step === 'all' || $step === 'backfill_prelevements_cmu') {
+                $this->runPhase('backfill_prelevements_cmu', fn () => $this->backfillPrelevementsCmu());
             }
 
             if ($step === 'all' || $step === 'fix_statut_paiements_legacy') {
@@ -5435,6 +5441,20 @@ class MigrateLegacyDataCommand extends Command
 
         $bar->finish();
         $this->newLine();
+    }
+
+    /**
+     * Applique les règles de prélèvement CMU aux paiements A_TRAITER qui n'en
+     * portent pas encore : la prime déjà calculée devient le brut, la cotisation
+     * est retranchée selon la règle datée (source de financement, type de stage,
+     * type de paiement) couvrant la période du droit. Les règles elles-mêmes
+     * sont posées par `db:seed --class=ReglePrelevementSeeder`.
+     */
+    private function backfillPrelevementsCmu(): void
+    {
+        $traites = app(ApplicationPrelevementsService::class)->appliquerAuxPaiementsEnAttente();
+
+        $this->info("Prélèvements CMU appliqués à {$traites} paiement(s) A_TRAITER.");
     }
 
     /**

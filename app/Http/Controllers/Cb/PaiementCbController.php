@@ -111,6 +111,12 @@ class PaiementCbController extends Controller
                 'paiements.id as paiement_id',
                 'paiements.created_at',
                 'lignes_dossiers_paiement.montant',
+                // Trajectoire de la prime : brut calculé, cotisation CMU prélevée
+                // selon la règle paramétrée, net réellement versé — visibles par le
+                // CB au même titre que dans la corbeille DMG.
+                'paiements.montant_brut',
+                'paiements.montant_prelevement',
+                'paiements.type_prelevement',
                 'paiements.statut',
                 'beneficiaires.nom',
                 'beneficiaires.prenoms',

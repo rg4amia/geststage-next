@@ -50,7 +50,7 @@ class ParametreSystemeController extends Controller
             'sources' => SourceFinancement::query()->where('actif', true)->orderBy('nom')->get(['id', 'nom']),
             'typesStage' => TypeStage::query()->where('actif', true)->orderBy('nom')->get(['id', 'nom']),
             'typesPrelevement' => [ReglePrelevement::TYPE_CMU],
-            'typesPaiement' => [ReglePrelevement::PAIEMENT_DEMARRAGE],
+            'typesPaiement' => [ReglePrelevement::PAIEMENT_DEMARRAGE, ReglePrelevement::PAIEMENT_PRESENCE],
             'peutGerer' => $request->user()->can('gerer_parametres_systeme'),
         ]);
     }

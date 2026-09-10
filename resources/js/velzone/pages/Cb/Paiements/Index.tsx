@@ -65,6 +65,9 @@ interface StagiaireRow {
     date_fin: string;
     tresor_pay: string;
     montant: number;
+    montant_brut?: number | null;
+    montant_prelevement?: number | null;
+    type_prelevement?: string | null;
     statut: string;
     stage_id?: number;
     dossier_identifiant?: string;
@@ -364,7 +367,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                         const totalAjournes = etatsAjournes.length;
                         const stats = [
                             { label: 'Dossiers en attente', value: totalDossiers, icon: 'ri-folder-check-line', color: 'primary' },
-                            { label: 'Montant total', value: `${totalMontantDossiers.toLocaleString('fr-FR')} FCFA`, icon: 'ri-money-dollar-circle-line', color: 'success' },
+                            { label: 'Montant total (net)', value: `${totalMontantDossiers.toLocaleString('fr-FR')} FCFA`, icon: 'ri-money-dollar-circle-line', color: 'success' },
                             { label: 'Stagiaires concernés', value: totalStagiaires, icon: 'ri-user-follow-line', color: 'info' },
                             { label: 'États ajournés', value: totalAjournes, icon: 'ri-close-circle-line', color: 'danger' },
                         ];
@@ -723,7 +726,9 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                                     <th>Date Début</th>
                                                                     <th>Date Fin</th>
                                                                     <th>N° Trésor Pay</th>
-                                                                    <th className="text-end">Montant</th>
+                                                                    <th className="text-end">Brut</th>
+                                                                    <th className="text-center">Prélèvement</th>
+                                                                    <th className="text-end">Net à payer</th>
                                                                     <th className="text-center">Fichiers</th>
                                                                 </tr>
                                                             </thead>
@@ -748,6 +753,21 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                                         <td className="fs-12">{s.date_debut}</td>
                                                                         <td className="fs-12">{s.date_fin}</td>
                                                                         <td className="text-muted">{s.tresor_pay}</td>
+                                                                        <td className="text-end text-muted">
+                                                                            {Number(s.montant_brut ?? s.montant ?? 0).toLocaleString('fr-FR')} FCFA
+                                                                        </td>
+                                                                        <td className="text-center">
+                                                                            {Number(s.montant_prelevement ?? 0) > 0 ? (
+                                                                                <div>
+                                                                                    <Badge color="warning" className="fs-11">
+                                                                                        -{Number(s.montant_prelevement).toLocaleString('fr-FR')} F
+                                                                                    </Badge>
+                                                                                    <div className="text-muted fs-11">{s.type_prelevement || 'CMU'}</div>
+                                                                                </div>
+                                                                            ) : (
+                                                                                <span className="text-muted">—</span>
+                                                                            )}
+                                                                        </td>
                                                                         <td className="text-end fw-bold text-success">
                                                                             {Number(s.montant || 0).toLocaleString('fr-FR')} FCFA
                                                                         </td>

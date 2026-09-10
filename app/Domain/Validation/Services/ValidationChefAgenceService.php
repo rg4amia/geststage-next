@@ -2,11 +2,13 @@
 
 namespace App\Domain\Validation\Services;
 
+use App\Domain\Payment\Services\ApplicationPrelevementsService;
 use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Models\Adjournment\Ajournement;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Payment\ReglePrelevement;
 use App\Models\Reference\Periode;
 use App\Models\User;
 use App\Models\Workflow\EtapeParcours;
@@ -22,6 +24,7 @@ class ValidationChefAgenceService
     public function __construct(
         WorkflowTransitionService $workflowService,
         private PrimeCalculatorService $primeCalculator,
+        private ApplicationPrelevementsService $prelevements,
     ) {
         $this->workflowService = $workflowService;
     }
@@ -69,14 +72,31 @@ class ValidationChefAgenceService
                 'statut' => 'OUVERT',
             ]);
 
-            // 2. Générer le paiement correspondant et le mettre en attente DMG
-            $paiement = Paiement::create([
+            // 2. Générer le paiement correspondant et le mettre en attente DMG.
+            // La prime calculée devient un montant BRUT dont une règle de
+            // prélèvement CMU datée (paramétrée dans Paramètre & Aides) peut
+            // retrancher une cotisation : le paiement porte l'instantané
+            // brut / prélèvement / net pour la traçabilité CB / AC.
+            $regle = $this->prelevements->regleApplicable(
+                $sourceFinancementId,
+                $stage->type_stage_id,
+                $periodeCourante,
+                ReglePrelevement::PAIEMENT_DEMARRAGE,
+            );
+
+            $paiement = new Paiement([
                 'uuid_public' => (string) Str::uuid(),
                 'droit_paiement_id' => $droitPaiement->id,
-                'montant' => $droitPaiement->montant,
+                'montant' => $montantDemarrage,
                 'statut' => 'A_TRAITER',
                 'version_verrouillage' => 0,
             ]);
+
+            if ($regle) {
+                $this->prelevements->appliquer($paiement, (float) $montantDemarrage, $regle);
+            }
+
+            $paiement->save();
             $this->workflowService->dmgReceptionnePaiement($paiement);
 
             // 3. Transitionner le workflow : l'instance passe à la DMG

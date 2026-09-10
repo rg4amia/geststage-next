@@ -489,6 +489,12 @@ class PaiementAcController extends Controller
             'statut_paiement' => $paiement->statut,
             'onglet' => $this->ongletDuPaiement($paiement),
             'montant' => $paiement->montant,
+            // Trajectoire de la prime : brut calculé, cotisation CMU prélevée
+            // (type de règle) et net versé — cohérente avec l'affichage DMG / CB.
+            'montant_brut' => $paiement->montant_brut_calcule,
+            'montant_prelevement' => $paiement->prelevement_calcule,
+            'type_prelevement' => $paiement->type_prelevement,
+            'a_prelevement' => $paiement->a_prelevement,
             'paye_le' => $paiement->paye_le?->format('d/m/Y H:i'),
             'beneficiaire_id' => $beneficiaire?->id,
             'stage_id' => $stageId !== null ? (int) $stageId : null,
@@ -515,7 +521,7 @@ class PaiementAcController extends Controller
             ->where('statut', $statut)
             ->whereHas('dossiersPaiement', function (Builder $query) use ($periode): void {
                 $query->whereNull('lignes_dossiers_paiement.retire_le')
-                    ->whereHas('ordrePaiement', fn (Builder $ordre): Builder => $ordre->where('periode_id', $periode->id));
+                    ->whereHas('ordrePaiement', fn (Builder $ordre): Builder => $this->restreindreOrdreParPeriodeBordereau($ordre, $periode));
             })
             ->with([
                 'dossiersPaiement.agence',
@@ -550,7 +556,7 @@ class PaiementAcController extends Controller
             'N° dossier', 'OP', 'Date création', 'Agence', 'Entreprise',
             'Source de financement', 'Type de stagiaire', 'N° AEJ',
             'Nom et prénoms', 'Date de naissance', 'Début', 'Fin',
-            'N° Trésor Money', 'Montant (FCFA)', 'Situation', 'Confirmé le',
+            'N° Trésor Money', 'Brut (FCFA)', 'Prélèvement (FCFA)', 'Net (FCFA)', 'Situation', 'Confirmé le',
         ];
         $feuille->fromArray($entetes, null, 'A1');
 
@@ -568,6 +574,8 @@ class PaiementAcController extends Controller
             $ligne['stagiaire']['date_debut'] ?? '',
             $ligne['stagiaire']['date_fin'] ?? '',
             $ligne['stagiaire']['numero_tresor_money'] ?? '',
+            (float) ($ligne['stagiaire']['montant_brut'] ?? $ligne['stagiaire']['montant']),
+            (float) ($ligne['stagiaire']['montant_prelevement'] ?? 0),
             (float) $ligne['stagiaire']['montant'],
             $ligne['stagiaire']['statut_paiement'] === 'PAYE' ? 'Payé' : 'Non payé',
             $ligne['stagiaire']['decide_le'] ?? '',
@@ -577,7 +585,7 @@ class PaiementAcController extends Controller
         $derniereColonne = chr(ord('A') + count($entetes) - 1);
         $derniereLigne = $lignes->count() + 1;
         $plageEntetes = "A1:{$derniereColonne}1";
-        $plageMontants = "N2:N{$derniereLigne}";
+        $plageMontants = "N2:P{$derniereLigne}";
 
         $feuille->getStyle($plageEntetes)->getFont()->setBold(true)->getColor()->setARGB('FFFFFFFF');
         $feuille->getStyle($plageEntetes)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FF0AB39C');
@@ -921,7 +929,7 @@ class PaiementAcController extends Controller
     private function bordereauxAvecOrdres(Periode $periode, array $statutsOrdres, ?array $statutsPaiements = null): Collection
     {
         $ordres = OrdrePaiement::query()
-            ->where('periode_id', $periode->id)
+            ->where(fn (Builder $query): Builder => $this->restreindreOrdreParPeriodeBordereau($query, $periode))
             ->whereIn('statut', $statutsOrdres)
             ->when($statutsPaiements !== null, function (Builder $query) use ($statutsPaiements): void {
                 $query->whereHas('dossiersPaiement.paiementsActifs', function (Builder $paiement) use ($statutsPaiements): void {
@@ -959,6 +967,21 @@ class PaiementAcController extends Controller
         return $avecBordereau
             ->values()
             ->merge($sansBordereau->values());
+    }
+
+    /**
+     * Les OP legacy peuvent garder leur mois d'origine même quand elles ont été
+     * regroupées dans un bordereau AC d'un autre mois. L'écran AC se pilote par
+     * période du bordereau ; l'OP garde sa période seulement comme secours.
+     */
+    private function restreindreOrdreParPeriodeBordereau(Builder $ordre, Periode $periode): Builder
+    {
+        return $ordre->where(function (Builder $query) use ($periode): void {
+            $query->where('periode_id', $periode->id)
+                ->orWhereHas('bordereau', function (Builder $bordereau) use ($periode): void {
+                    $bordereau->where('periode_id', $periode->id);
+                });
+        });
     }
 
     /**

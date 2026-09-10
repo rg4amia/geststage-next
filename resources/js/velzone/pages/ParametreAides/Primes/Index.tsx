@@ -1,9 +1,66 @@
 import { Head, router, useForm } from '@inertiajs/react';
+import classnames from 'classnames';
 import React, { useState } from 'react';
+import AsyncSelect from 'react-select/async';
 import {
-    Alert, Badge, Button, Card, CardBody, CardHeader, Col, Container, Form, Input, Label, Row, Table,
+    Alert, Badge, Button, Card, CardBody, CardHeader, Col, Container, Form, Input, InputGroup, InputGroupText,
+    Label, Nav, NavItem, NavLink, Row, Table, TabContent, TabPane,
 } from 'reactstrap';
 import BreadCrumb from '../../../Components/Common/BreadCrumb';
+
+interface OptionStagiaire {
+    value: number;
+    label: string;
+    type_stage_legacy_id: number | null;
+    source_financement_legacy_id: number | null;
+    type_structure_legacy_id: number | null;
+    date_debut: string | null;
+    date_fin: string | null;
+    nom_entreprise: string | null;
+}
+
+let minuterieStagiaires: number | undefined;
+let controleurStagiaires: AbortController | undefined;
+const chargerOptionsStagiaires = (saisie: string): Promise<OptionStagiaire[]> =>
+    new Promise((resolve) => {
+        window.clearTimeout(minuterieStagiaires);
+        minuterieStagiaires = window.setTimeout(async () => {
+            controleurStagiaires?.abort();
+            controleurStagiaires = new AbortController();
+
+            if (saisie.trim().length < 2) {
+                resolve([]);
+                return;
+            }
+
+            try {
+                const reponse = await fetch(
+                    `/parametre-aides/primes/stagiaires?q=${encodeURIComponent(saisie)}`,
+                    {
+                        credentials: 'same-origin',
+                        headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                        signal: controleurStagiaires.signal,
+                    },
+                );
+                const donnees = await reponse.json();
+
+                resolve(
+                    (donnees.data || []).map((s: Record<string, unknown>) => ({
+                        value: s.id,
+                        label: s.label,
+                        type_stage_legacy_id: s.type_stage_legacy_id,
+                        source_financement_legacy_id: s.source_financement_legacy_id,
+                        type_structure_legacy_id: s.type_structure_legacy_id,
+                        date_debut: s.date_debut,
+                        date_fin: s.date_fin,
+                        nom_entreprise: s.nom_entreprise,
+                    })),
+                );
+            } catch {
+                resolve([]);
+            }
+        }, 300);
+    });
 
 interface Strategie {
     key: string;
@@ -15,9 +72,38 @@ interface Strategie {
     config: string;
 }
 
-type Valeur = string | number | null;
-type Noeud = Valeur | Noeud[] | { [cle: string]: Noeud };
-type Bareme = Record<string, Noeud>;
+/** Grille indexée par plage de jour de démarrage, ex. `{'1-5': 45000, '10-19': 31500, '20': 16500}`. */
+type GrilleJourValeur = Record<string, number>;
+
+interface GrillePae {
+    full: number;
+    rules: Record<string, GrilleJourValeur>;
+}
+
+interface GrilleStageEcole {
+    base: number;
+    first_month: GrilleJourValeur;
+    last_month: Record<string, GrilleJourValeur>;
+    middle_adjustment_1_5?: GrilleJourValeur;
+}
+
+interface PeriodeBudgetAej {
+    start: string;
+    end: string | null;
+    public: string;
+    prive: string;
+}
+
+interface Bareme {
+    smig: { default: number };
+    qualification: { budget_aej_effective_date: string };
+    pae: Record<string, GrillePae>;
+    stage_ecole: {
+        budget_aej_effective_date: string;
+        budget_aej_periods: PeriodeBudgetAej[];
+        [grille: string]: GrilleStageEcole | string | PeriodeBudgetAej[];
+    };
+}
 
 interface Props {
     configuration: Bareme;
@@ -36,189 +122,361 @@ interface Simulation {
     erreur?: string;
 }
 
-/**
- * Libellés des sections et des clés du barème. Les grilles sont indexées par
- * des clés techniques héritées du legacy (`45000`, `1-5`, `one_point_five`) :
- * on les traduit à l'affichage sans les renommer en base, le moteur de calcul
- * lisant toujours les clés d'origine.
- */
-const LIBELLES: Record<string, string> = {
-    smig: 'Repli SMIG',
-    qualification: 'Stage de qualification',
-    pae: 'Grilles PAE (stage de qualification)',
-    stage_ecole: 'Stage école',
-    default: 'Par défaut',
-    budget_aej_public: 'Budget État — structure publique',
-    budget_aej_prive: 'Budget État — structure privée',
-    budget_aej_scad: 'Budget État — SCAD',
-    budget_aej_effective_date: 'Entrée en vigueur des grilles Budget État',
-    budget_aej_periods: 'Périodes des grilles Budget État',
-    rules: 'Prorata des mois de bord',
-    full: 'Mois plein',
-    base: 'Mois plein',
-    first_month: 'Mois de démarrage',
-    last_month: 'Mois de fin',
-    middle_adjustment_1_5: 'Mois intermédiaire (stage d’1,5 mois)',
-    one_point_five: 'Stage d’1,5 mois',
-    start: 'Début',
-    end: 'Fin',
-    prive: 'Structure privée',
-    public: 'Structure publique',
-    '1-5': 'Démarrage du 1er au 5',
+/** Libellés des plages de jour de démarrage, communes aux deux grilles (PAE et stage école). */
+const LIBELLE_PLAGE_JOUR: Record<string, string> = {
+    '1-5': 'Démarrage du 1ᵉʳ au 5',
     '10-19': 'Démarrage du 10 au 19',
     '10': 'Démarrage le 10',
     '20': 'Démarrage à partir du 20',
-    '45000': 'Grille 45 000 FCFA',
-    '75000': 'Grille 75 000 FCFA',
 };
 
-const libelle = (cle: string): string => LIBELLES[cle] ?? cle.replace(/_/g, ' ');
-
-const estObjet = (valeur: Noeud): valeur is { [cle: string]: Noeud } =>
-    typeof valeur === 'object' && valeur !== null && !Array.isArray(valeur);
-
-/** Une clé de date : saisie au format AAAA-MM-JJ plutôt qu'en montant. */
-const estDate = (cle: string, chemin: string[]): boolean =>
-    cle.toLowerCase().includes('date') ||
-    (chemin.includes('budget_aej_periods') && (cle === 'start' || cle === 'end'));
-
-/** Recopie immuable de l'arbre en remplaçant la feuille désignée par `chemin`. */
-const remplacer = (racine: Noeud, chemin: string[], valeur: Valeur): Noeud => {
-    if (chemin.length === 0) {
-        return valeur;
-    }
-
-    const [cle, ...reste] = chemin;
-
-    if (Array.isArray(racine)) {
-        return racine.map((item, index) => (String(index) === cle ? remplacer(item, reste, valeur) : item));
-    }
-
-    return { ...(estObjet(racine) ? racine : {}), [cle]: remplacer(estObjet(racine) ? racine[cle] : null, reste, valeur) };
+/** Libellés des grilles `stage_ecole` (`default`, `budget_aej_public`, …). */
+const LIBELLE_GRILLE_STAGE_ECOLE: Record<string, string> = {
+    default: 'Grille historique',
+    budget_aej_public: 'Budget État — structure publique',
+    budget_aej_prive: 'Budget État — structure privée',
+    budget_aej_scad: 'Budget État — SCAD',
 };
 
-const lire = (racine: Noeud, chemin: string[]): Noeud => {
-    let courant: Noeud = racine;
+/** Libellés des clés de durée sous `last_month` (`default`, `one_point_five`, ou un entier). */
+const libelleDuree = (cle: string): string => {
+    if (cle === 'default') return 'Toute autre durée';
+    if (cle === 'one_point_five') return 'Stage de 1,5 mois';
 
-    for (const cle of chemin) {
-        if (Array.isArray(courant)) {
-            courant = courant[Number(cle)] ?? null;
-        } else if (estObjet(courant)) {
-            courant = courant[cle] ?? null;
-        } else {
-            return null;
-        }
-    }
-
-    return courant;
+    return `Stage de ${cle} mois`;
 };
+
+const libelleGrillePae = (cle: string): string => `Grille ${new Intl.NumberFormat('fr-FR').format(Number(cle))} FCFA`;
 
 const formaterMontant = (montant: number): string => new Intl.NumberFormat('fr-FR').format(montant);
 
-interface EditeurProps {
-    valeur: Noeud;
-    defaut: Noeud;
-    chemin: string[];
+/** Recopie immuable d'un objet en remplaçant une valeur à un chemin de clés donné. */
+const remplacer = <T,>(racine: T, chemin: (string | number)[], valeur: unknown): T => {
+    if (chemin.length === 0) {
+        return valeur as T;
+    }
+
+    const [cle, ...reste] = chemin;
+    const racineObjet = (racine ?? {}) as Record<string | number, unknown>;
+
+    if (Array.isArray(racine)) {
+        return racine.map((item, index) => (index === cle ? remplacer(item, reste, valeur) : item)) as T;
+    }
+
+    return { ...racineObjet, [cle]: remplacer(racineObjet[cle], reste, valeur) } as T;
+};
+
+const lireNombre = (obj: unknown, chemin: (string | number)[]): number | undefined => {
+    let courant: unknown = obj;
+
+    for (const cle of chemin) {
+        if (courant === null || typeof courant !== 'object') {
+            return undefined;
+        }
+
+        courant = (courant as Record<string | number, unknown>)[cle];
+    }
+
+    return typeof courant === 'number' ? courant : undefined;
+};
+
+interface ChampMontantProps {
+    label: string;
+    chemin: (string | number)[];
+    valeur: number;
+    defaut?: number;
     modifiable: boolean;
-    onChange: (chemin: string[], valeur: Valeur) => void;
+    onChange: (chemin: (string | number)[], valeur: number) => void;
 }
 
 /**
- * Éditeur générique du barème : il descend la structure telle qu'elle est
- * livrée par le backend plutôt que de figer les sections connues, afin qu'une
- * grille ajoutée dans `config/primes.php` reste éditable sans toucher à
- * l'écran.
+ * Un champ montant unique, avec suffixe FCFA et retour au défaut d'un clic
+ * lorsqu'il a été modifié — plutôt qu'un badge "modifié" qu'il faut relire
+ * pour comprendre ce qu'il permet de faire.
  */
-const EditeurNoeud = ({ valeur, defaut, chemin, modifiable, onChange }: EditeurProps) => {
-    if (Array.isArray(valeur)) {
-        return (
+const ChampMontant = ({ label, chemin, valeur, defaut, modifiable, onChange }: ChampMontantProps) => {
+    const modifie = defaut !== undefined && valeur !== defaut;
+
+    return (
+        <div className="mb-3">
+            <Label className="form-label fs-13 mb-1">{label}</Label>
+            <InputGroup className={modifie ? 'border border-warning rounded' : undefined}>
+                <Input
+                    type="number"
+                    min={0}
+                    value={valeur}
+                    disabled={!modifiable}
+                    className={modifie ? 'border-0' : undefined}
+                    onChange={(e) => onChange(chemin, Number(e.target.value))}
+                />
+                <InputGroupText className={modifie ? 'border-0 bg-transparent' : undefined}>FCFA</InputGroupText>
+                {modifiable && modifie && defaut !== undefined && (
+                    <Button
+                        color="light"
+                        className="border-0"
+                        title={`Revenir au défaut (${formaterMontant(defaut)} FCFA)`}
+                        onClick={() => onChange(chemin, defaut)}
+                    >
+                        <i className="ri-arrow-go-back-line" />
+                    </Button>
+                )}
+            </InputGroup>
+        </div>
+    );
+};
+
+interface GrilleJourProps {
+    valeur: GrilleJourValeur;
+    defaut?: GrilleJourValeur;
+    chemin: (string | number)[];
+    modifiable: boolean;
+    onChange: (chemin: (string | number)[], valeur: number) => void;
+}
+
+/** Table « plage de jour de démarrage → montant », partagée par les deux grilles de prime. */
+const GrilleJour = ({ valeur, defaut, chemin, modifiable, onChange }: GrilleJourProps) => (
+    <Table className="align-middle mb-0" borderless>
+        <tbody>
+            {Object.keys(valeur).map((plage) => {
+                const montant = valeur[plage];
+                const montantDefaut = defaut?.[plage];
+                const modifie = montantDefaut !== undefined && montant !== montantDefaut;
+
+                return (
+                    <tr key={plage}>
+                        <td className="text-muted fs-13" style={{ width: '50%' }}>
+                            {LIBELLE_PLAGE_JOUR[plage] ?? plage}
+                        </td>
+                        <td>
+                            <InputGroup className={modifie ? 'border border-warning rounded' : undefined}>
+                                <Input
+                                    type="number"
+                                    min={0}
+                                    value={montant}
+                                    disabled={!modifiable}
+                                    className={modifie ? 'border-0' : undefined}
+                                    onChange={(e) => onChange([...chemin, plage], Number(e.target.value))}
+                                />
+                                <InputGroupText className={classnames({ 'border-0 bg-transparent': modifie })}>
+                                    FCFA
+                                </InputGroupText>
+                                {modifiable && modifie && montantDefaut !== undefined && (
+                                    <Button
+                                        color="light"
+                                        className="border-0"
+                                        title={`Revenir au défaut (${formaterMontant(montantDefaut)} FCFA)`}
+                                        onClick={() => onChange([...chemin, plage], montantDefaut)}
+                                    >
+                                        <i className="ri-arrow-go-back-line" />
+                                    </Button>
+                                )}
+                            </InputGroup>
+                        </td>
+                    </tr>
+                );
+            })}
+        </tbody>
+    </Table>
+);
+
+interface ChampDateProps {
+    label: string;
+    chemin: (string | number)[];
+    valeur: string;
+    defaut?: string;
+    modifiable: boolean;
+    onChange: (chemin: (string | number)[], valeur: string) => void;
+}
+
+const ChampDate = ({ label, chemin, valeur, defaut, modifiable, onChange }: ChampDateProps) => {
+    const modifie = defaut !== undefined && valeur !== defaut;
+
+    return (
+        <div className="mb-3">
+            <Label className="form-label fs-13 mb-1">{label}</Label>
+            <InputGroup className={modifie ? 'border border-warning rounded' : undefined}>
+                <Input
+                    type="date"
+                    value={valeur}
+                    disabled={!modifiable}
+                    className={modifie ? 'border-0' : undefined}
+                    onChange={(e) => onChange(chemin, e.target.value)}
+                />
+                {modifiable && modifie && defaut !== undefined && (
+                    <Button
+                        color="light"
+                        className="border-0"
+                        title={`Revenir au défaut (${defaut})`}
+                        onClick={() => onChange(chemin, defaut)}
+                    >
+                        <i className="ri-arrow-go-back-line" />
+                    </Button>
+                )}
+            </InputGroup>
+        </div>
+    );
+};
+
+interface CarteGrillePaeProps {
+    montantCle: string;
+    valeur: GrillePae;
+    defaut?: GrillePae;
+    modifiable: boolean;
+    onChange: (chemin: (string | number)[], valeur: number) => void;
+}
+
+/** Une grille de stage de qualification : montant du mois plein + prorata des mois de bord. */
+const CarteGrillePae = ({ montantCle, valeur, defaut, modifiable, onChange }: CarteGrillePaeProps) => (
+    <Card className="border h-100">
+        <CardHeader className="bg-light-subtle">
+            <h6 className="mb-0 fs-14">{libelleGrillePae(montantCle)}</h6>
+        </CardHeader>
+        <CardBody>
+            <ChampMontant
+                label="Mois plein (mois intermédiaire)"
+                chemin={['pae', montantCle, 'full']}
+                valeur={valeur.full}
+                defaut={defaut?.full}
+                modifiable={modifiable}
+                onChange={onChange}
+            />
+            <Label className="form-label fs-13 mb-1">Mois de démarrage et mois de fin</Label>
             <Row className="g-3">
-                {valeur.map((item, index) => (
-                    <Col md={6} key={index}>
-                        <div className="border rounded p-3 h-100">
-                            <h6 className="text-muted text-uppercase fs-11 mb-3">Période {index + 1}</h6>
-                            <EditeurNoeud
-                                valeur={item}
-                                defaut={lire(defaut, [String(index)])}
-                                chemin={[...chemin, String(index)]}
-                                modifiable={modifiable}
-                                onChange={onChange}
-                            />
+                {Object.keys(valeur.rules).map((plage) => (
+                    <Col md={6} key={plage}>
+                        <div className="border rounded p-2">
+                            <div className="text-muted fs-11 text-uppercase mb-1">{LIBELLE_PLAGE_JOUR[plage] ?? plage}</div>
+                            <div className="d-flex align-items-center gap-2 mb-1">
+                                <span className="fs-11 text-muted" style={{ width: 55 }}>
+                                    Début
+                                </span>
+                                <ChampMontantInline
+                                    chemin={['pae', montantCle, 'rules', plage, 'start']}
+                                    valeur={valeur.rules[plage].start}
+                                    defaut={defaut?.rules?.[plage]?.start}
+                                    modifiable={modifiable}
+                                    onChange={onChange}
+                                />
+                            </div>
+                            <div className="d-flex align-items-center gap-2">
+                                <span className="fs-11 text-muted" style={{ width: 55 }}>
+                                    Fin
+                                </span>
+                                <ChampMontantInline
+                                    chemin={['pae', montantCle, 'rules', plage, 'end']}
+                                    valeur={valeur.rules[plage].end}
+                                    defaut={defaut?.rules?.[plage]?.end}
+                                    modifiable={modifiable}
+                                    onChange={onChange}
+                                />
+                            </div>
                         </div>
                     </Col>
                 ))}
             </Row>
-        );
-    }
+        </CardBody>
+    </Card>
+);
 
-    if (estObjet(valeur)) {
-        const entrees = Object.entries(valeur);
-        const feuilles = entrees.filter(([, v]) => !estObjet(v) && !Array.isArray(v));
-        const branches = entrees.filter(([, v]) => estObjet(v) || Array.isArray(v));
-
-        return (
-            <React.Fragment>
-                {feuilles.length > 0 && (
-                    <Row className="g-3">
-                        {feuilles.map(([cle, v]) => (
-                            <Col md={4} key={cle}>
-                                <EditeurNoeud
-                                    valeur={v}
-                                    defaut={lire(defaut, [cle])}
-                                    chemin={[...chemin, cle]}
-                                    modifiable={modifiable}
-                                    onChange={onChange}
-                                />
-                            </Col>
-                        ))}
-                    </Row>
-                )}
-                {branches.map(([cle, v]) => (
-                    <div key={cle} className={chemin.length === 0 ? 'mb-4' : 'mt-3 ps-3 border-start'}>
-                        <h6 className="fs-13 mb-2">{libelle(cle)}</h6>
-                        <EditeurNoeud
-                            valeur={v}
-                            defaut={lire(defaut, [cle])}
-                            chemin={[...chemin, cle]}
-                            modifiable={modifiable}
-                            onChange={onChange}
-                        />
-                    </div>
-                ))}
-            </React.Fragment>
-        );
-    }
-
-    const cle = chemin[chemin.length - 1] ?? '';
-    const date = estDate(cle, chemin);
-    const modifie = defaut !== undefined && String(valeur ?? '') !== String(defaut ?? '');
+/** Variante compacte de `ChampMontant`, sans label, pour les tables denses. */
+const ChampMontantInline = ({
+    chemin, valeur, defaut, modifiable, onChange,
+}: Omit<ChampMontantProps, 'label'>) => {
+    const modifie = defaut !== undefined && valeur !== defaut;
 
     return (
-        <div>
-            <Label className="form-label fs-12 mb-1 d-flex align-items-center gap-2">
-                {libelle(cle)}
-                {modifie && (
-                    <Badge color="warning" className="bg-warning-subtle text-warning">
-                        modifié
-                    </Badge>
-                )}
-            </Label>
+        <InputGroup className={modifie ? 'border border-warning rounded' : undefined}>
             <Input
-                type={date ? 'date' : 'number'}
-                bsSize="sm"
-                value={valeur === null ? '' : String(valeur)}
+                type="number"
+                min={0}
+                value={valeur}
                 disabled={!modifiable}
-                onChange={(e) => {
-                    const brut = e.target.value;
-                    onChange(chemin, brut === '' ? null : date ? brut : Number(brut));
-                }}
+                className={modifie ? 'border-0' : undefined}
+                onChange={(e) => onChange(chemin, Number(e.target.value))}
             />
-            {!date && typeof defaut === 'number' && (
-                <span className="text-muted fs-11">Défaut : {formaterMontant(defaut)} FCFA</span>
+            {modifiable && modifie && defaut !== undefined && (
+                <Button
+                    color="light"
+                    className="border-0"
+                    title={`Revenir au défaut (${formaterMontant(defaut)} FCFA)`}
+                    onClick={() => onChange(chemin, defaut)}
+                >
+                    <i className="ri-arrow-go-back-line" />
+                </Button>
             )}
-        </div>
+        </InputGroup>
     );
 };
+
+interface CarteGrilleStageEcoleProps {
+    cle: string;
+    valeur: GrilleStageEcole;
+    defaut?: GrilleStageEcole;
+    modifiable: boolean;
+    onChange: (chemin: (string | number)[], valeur: number) => void;
+}
+
+/** Une grille de stage école : mois plein, premier mois, dernier mois (par durée) et ajustement 1,5 mois. */
+const CarteGrilleStageEcole = ({ cle, valeur, defaut, modifiable, onChange }: CarteGrilleStageEcoleProps) => (
+    <Card className="border">
+        <CardHeader className="bg-light-subtle">
+            <h6 className="mb-0 fs-14">{LIBELLE_GRILLE_STAGE_ECOLE[cle] ?? cle}</h6>
+        </CardHeader>
+        <CardBody>
+            <Row className="g-4">
+                <Col md={4}>
+                    <ChampMontant
+                        label="Mois plein (mois intermédiaire)"
+                        chemin={['stage_ecole', cle, 'base']}
+                        valeur={valeur.base}
+                        defaut={defaut?.base}
+                        modifiable={modifiable}
+                        onChange={onChange}
+                    />
+                    {valeur.middle_adjustment_1_5 && (
+                        <>
+                            <Label className="form-label fs-13 mb-1">
+                                Ajustement mois intermédiaire (stage de 1,5 mois)
+                            </Label>
+                            <GrilleJour
+                                valeur={valeur.middle_adjustment_1_5}
+                                defaut={defaut?.middle_adjustment_1_5}
+                                chemin={['stage_ecole', cle, 'middle_adjustment_1_5']}
+                                modifiable={modifiable}
+                                onChange={onChange}
+                            />
+                        </>
+                    )}
+                </Col>
+                <Col md={4}>
+                    <Label className="form-label fs-13 mb-1">Premier mois (démarrage)</Label>
+                    <GrilleJour
+                        valeur={valeur.first_month}
+                        defaut={defaut?.first_month}
+                        chemin={['stage_ecole', cle, 'first_month']}
+                        modifiable={modifiable}
+                        onChange={onChange}
+                    />
+                </Col>
+                <Col md={4}>
+                    <Label className="form-label fs-13 mb-1">Dernier mois, selon la durée du contrat</Label>
+                    {Object.keys(valeur.last_month).map((duree) => (
+                        <div key={duree} className="mb-2">
+                            <div className="text-muted fs-11 text-uppercase mb-1">{libelleDuree(duree)}</div>
+                            <GrilleJour
+                                valeur={valeur.last_month[duree]}
+                                defaut={defaut?.last_month?.[duree]}
+                                chemin={['stage_ecole', cle, 'last_month', duree]}
+                                modifiable={modifiable}
+                                onChange={onChange}
+                            />
+                        </div>
+                    ))}
+                </Col>
+            </Row>
+        </CardBody>
+    </Card>
+);
 
 const TYPES_STAGE = [
     { id: 1, nom: 'Stage de qualification' },
@@ -240,8 +498,15 @@ const STRUCTURES = [
     { id: '3', nom: 'SCAD' },
 ];
 
+const ONGLETS = [
+    { id: 'qualification', label: 'Stage de qualification', icone: 'ri-graduation-cap-line' },
+    { id: 'stage_ecole', label: 'Stage école', icone: 'ri-book-open-line' },
+    { id: 'smig', label: 'Repli SMIG', icone: 'ri-shield-line' },
+] as const;
+
 const Index = ({ configuration, defauts, strategies, personnalise, derniereModification, peutGerer }: Props) => {
     const bareme = useForm<{ configuration: Bareme }>({ configuration });
+    const [ongletActif, setOngletActif] = useState<(typeof ONGLETS)[number]['id']>('qualification');
 
     const [simulation, setSimulation] = useState<Simulation | null>(null);
     const [simulationEnCours, setSimulationEnCours] = useState(false);
@@ -254,10 +519,50 @@ const Index = ({ configuration, defauts, strategies, personnalise, derniereModif
         mois: '',
         nom_entreprise: '',
     });
+    const [stagiaireChoisi, setStagiaireChoisi] = useState<OptionStagiaire | null>(null);
 
-    const majValeur = (chemin: string[], valeur: Valeur) => {
-        bareme.setData('configuration', remplacer(bareme.data.configuration, chemin, valeur) as Bareme);
+    const choisirStagiaire = (option: OptionStagiaire | null) => {
+        setStagiaireChoisi(option);
+
+        if (!option) {
+            return;
+        }
+
+        setSaisie({
+            ...saisie,
+            type_stage_legacy_id: option.type_stage_legacy_id ? String(option.type_stage_legacy_id) : saisie.type_stage_legacy_id,
+            source_financement_legacy_id: option.source_financement_legacy_id
+                ? String(option.source_financement_legacy_id)
+                : saisie.source_financement_legacy_id,
+            type_structure_legacy_id: option.type_structure_legacy_id ? String(option.type_structure_legacy_id) : '',
+            date_debut: option.date_debut ?? saisie.date_debut,
+            date_fin: option.date_fin ?? saisie.date_fin,
+            nom_entreprise: option.nom_entreprise ?? saisie.nom_entreprise,
+        });
     };
+
+    const majValeur = (chemin: (string | number)[], valeur: unknown) => {
+        bareme.setData('configuration', remplacer(bareme.data.configuration, chemin, valeur));
+    };
+
+    const nombreChampsModifies = (() => {
+        const compter = (a: unknown, b: unknown): number => {
+            if (a === null || typeof a !== 'object') {
+                return a !== b ? 1 : 0;
+            }
+
+            if (Array.isArray(a)) {
+                return a.reduce((total, item, index) => total + compter(item, (b as unknown[] | undefined)?.[index]), 0);
+            }
+
+            return Object.entries(a as Record<string, unknown>).reduce(
+                (total, [cle, valeur]) => total + compter(valeur, (b as Record<string, unknown> | undefined)?.[cle]),
+                0,
+            );
+        };
+
+        return compter(bareme.data.configuration, defauts);
+    })();
 
     const enregistrer = (e: React.FormEvent) => {
         e.preventDefault();
@@ -311,6 +616,8 @@ const Index = ({ configuration, defauts, strategies, personnalise, derniereModif
         }
     };
 
+    const config = bareme.data.configuration;
+
     return (
         <React.Fragment>
             <Head title="Barème des primes" />
@@ -326,8 +633,9 @@ const Index = ({ configuration, defauts, strategies, personnalise, derniereModif
                                     Ces montants alimentent la <strong>prime du mois</strong> calculée pour chaque
                                     paiement : montant plein pour un mois entier, prorata pour le mois de démarrage et
                                     le mois de fin selon le jour de démarrage du contrat. Les règles d’enchaînement
-                                    restent portées par le code ; seules leurs valeurs sont modifiables ici. Une
-                                    modification ne recalcule pas les paiements déjà émis.
+                                    (quelle grille s’applique à quel financement) restent portées par le code ; seules
+                                    leurs valeurs sont modifiables ici. Une modification ne recalcule pas les
+                                    paiements déjà émis.
                                 </div>
                             </Alert>
                         </Col>
@@ -343,6 +651,12 @@ const Index = ({ configuration, defauts, strategies, personnalise, derniereModif
                                             {personnalise ? (
                                                 <span className="text-muted fs-12">
                                                     Barème personnalisé
+                                                    {nombreChampsModifies > 0 && (
+                                                        <Badge color="warning" className="bg-warning-subtle text-warning ms-1">
+                                                            {nombreChampsModifies} valeur{nombreChampsModifies > 1 ? 's' : ''} modifiée
+                                                            {nombreChampsModifies > 1 ? 's' : ''}
+                                                        </Badge>
+                                                    )}
                                                     {derniereModification?.par
                                                         ? ` — dernière modification par ${derniereModification.par}`
                                                         : ''}
@@ -366,24 +680,100 @@ const Index = ({ configuration, defauts, strategies, personnalise, derniereModif
                                             </div>
                                         )}
                                     </CardHeader>
+
+                                    <Nav tabs className="nav-tabs-custom px-3 pt-2">
+                                        {ONGLETS.map((onglet) => (
+                                            <NavItem key={onglet.id}>
+                                                <NavLink
+                                                    style={{ cursor: 'pointer' }}
+                                                    className={classnames('fw-semibold', { active: ongletActif === onglet.id })}
+                                                    onClick={() => setOngletActif(onglet.id)}
+                                                >
+                                                    <i className={`${onglet.icone} align-bottom me-1`} />
+                                                    {onglet.label}
+                                                </NavLink>
+                                            </NavItem>
+                                        ))}
+                                    </Nav>
+
                                     <CardBody>
                                         {bareme.errors.configuration && (
                                             <Alert color="danger">{bareme.errors.configuration}</Alert>
                                         )}
-                                        {Object.entries(bareme.data.configuration).map(([section, valeur]) => (
-                                            <div key={section} className="mb-4">
-                                                <h5 className="fs-14 text-uppercase text-muted mb-3">
-                                                    {libelle(section)}
-                                                </h5>
-                                                <EditeurNoeud
-                                                    valeur={valeur}
-                                                    defaut={lire(defauts, [section])}
-                                                    chemin={[section]}
+
+                                        <TabContent activeTab={ongletActif}>
+                                            <TabPane tabId="qualification">
+                                                <p className="text-muted fs-13">
+                                                    Grille appliquée selon le montant de référence retenu pour le
+                                                    stage (financement, structure et date de démarrage) : chaque
+                                                    grille reste éditable indépendamment.
+                                                </p>
+                                                <ChampDate
+                                                    label="Entrée en vigueur des grilles Budget État"
+                                                    chemin={['qualification', 'budget_aej_effective_date']}
+                                                    valeur={config.qualification.budget_aej_effective_date}
+                                                    defaut={defauts.qualification?.budget_aej_effective_date}
                                                     modifiable={peutGerer}
                                                     onChange={majValeur}
                                                 />
-                                            </div>
-                                        ))}
+                                                <Row className="g-3">
+                                                    {Object.keys(config.pae).map((montantCle) => (
+                                                        <Col md={6} key={montantCle}>
+                                                            <CarteGrillePae
+                                                                montantCle={montantCle}
+                                                                valeur={config.pae[montantCle]}
+                                                                defaut={defauts.pae?.[montantCle]}
+                                                                modifiable={peutGerer}
+                                                                onChange={majValeur}
+                                                            />
+                                                        </Col>
+                                                    ))}
+                                                </Row>
+                                            </TabPane>
+
+                                            <TabPane tabId="stage_ecole">
+                                                <ChampDate
+                                                    label="Entrée en vigueur des grilles Budget État"
+                                                    chemin={['stage_ecole', 'budget_aej_effective_date']}
+                                                    valeur={config.stage_ecole.budget_aej_effective_date}
+                                                    defaut={defauts.stage_ecole?.budget_aej_effective_date as string | undefined}
+                                                    modifiable={peutGerer}
+                                                    onChange={majValeur}
+                                                />
+                                                <div className="d-flex flex-column gap-3">
+                                                    {Object.keys(config.stage_ecole)
+                                                        .filter((cle) => !['budget_aej_effective_date', 'budget_aej_periods'].includes(cle))
+                                                        .map((cle) => (
+                                                            <CarteGrilleStageEcole
+                                                                key={cle}
+                                                                cle={cle}
+                                                                valeur={config.stage_ecole[cle] as GrilleStageEcole}
+                                                                defaut={defauts.stage_ecole?.[cle] as GrilleStageEcole | undefined}
+                                                                modifiable={peutGerer}
+                                                                onChange={majValeur}
+                                                            />
+                                                        ))}
+                                                </div>
+                                            </TabPane>
+
+                                            <TabPane tabId="smig">
+                                                <p className="text-muted fs-13">
+                                                    Montant versé lorsqu’aucune grille spécialisée ne reconnaît le
+                                                    stage — un filet de sécurité, pas une règle destinée à être
+                                                    déclenchée en usage normal.
+                                                </p>
+                                                <Col md={4}>
+                                                    <ChampMontant
+                                                        label="Montant du repli SMIG"
+                                                        chemin={['smig', 'default']}
+                                                        valeur={config.smig.default}
+                                                        defaut={defauts.smig?.default}
+                                                        modifiable={peutGerer}
+                                                        onChange={majValeur}
+                                                    />
+                                                </Col>
+                                            </TabPane>
+                                        </TabContent>
                                     </CardBody>
                                 </Card>
                             </Form>
@@ -400,6 +790,26 @@ const Index = ({ configuration, defauts, strategies, personnalise, derniereModif
                                 </CardHeader>
                                 <CardBody>
                                     <Form onSubmit={simuler}>
+                                        <div className="mb-3">
+                                            <Label className="form-label">Stagiaire (optionnel)</Label>
+                                            <AsyncSelect
+                                                loadOptions={chargerOptionsStagiaires}
+                                                value={stagiaireChoisi}
+                                                onChange={(option) => choisirStagiaire(option as OptionStagiaire | null)}
+                                                placeholder="Rechercher un stagiaire (nom ou n° AEJ)..."
+                                                noOptionsMessage={({ inputValue }) =>
+                                                    inputValue.length < 2 ? 'Saisissez au moins 2 caractères' : 'Aucun stagiaire trouvé'
+                                                }
+                                                loadingMessage={() => 'Recherche...'}
+                                                isClearable
+                                                cacheOptions
+                                                defaultOptions={[]}
+                                                classNamePrefix="react-select"
+                                            />
+                                            <div className="form-text">
+                                                Sélectionner un stagiaire préremplit le formulaire avec son dossier.
+                                            </div>
+                                        </div>
                                         <div className="mb-3">
                                             <Label className="form-label">Type de stage</Label>
                                             <Input
@@ -493,7 +903,7 @@ const Index = ({ configuration, defauts, strategies, personnalise, derniereModif
                                                 }
                                             />
                                         </div>
-                                        <Button color="secondary" type="submit" disabled={simulationEnCours}>
+                                        <Button color="secondary" type="submit" disabled={simulationEnCours} className="w-100">
                                             {simulationEnCours ? 'Calcul…' : 'Calculer la prime du mois'}
                                         </Button>
                                     </Form>

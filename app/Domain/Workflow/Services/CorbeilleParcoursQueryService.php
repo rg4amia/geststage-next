@@ -113,6 +113,16 @@ class CorbeilleParcoursQueryService
                 'date_fin' => $stage?->date_fin_prevue ? Carbon::parse($stage->date_fin_prevue)->format('d/m/Y') : '-',
             ],
             'montant' => $paiement->montant,
+            // Trajectoire financière du paiement : la prime calculée (brut), la
+            // cotisation CMU prélevée selon la règle paramétrée, et le net réellement
+            // versé au stagiaire — repris de l'affichage legacy (montant_brut /
+            // montant_prelevement / montant_net). Un paiement antérieur au
+            // paramétrage vaut brut = net, prélèvement 0.
+            'montant_brut' => $paiement->montant_brut_calcule,
+            'montant_prelevement' => $paiement->prelevement_calcule,
+            'montant_net' => (float) $paiement->montant,
+            'type_prelevement' => $paiement->type_prelevement,
+            'a_prelevement' => $paiement->a_prelevement,
             'statut' => $statut,
             'date_creation' => $paiement->created_at?->format('d/m/Y'),
             'piece_jointe' => $paiement->statut_dossier_physique,

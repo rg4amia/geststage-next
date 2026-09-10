@@ -419,6 +419,68 @@ class PaiementAcWorkflowTest extends TestCase
         $this->assertDatabaseCount('decisions_paiements', 2);
     }
 
+    public function test_les_op_vises_restent_dans_status_paiement_selon_la_periode_du_bordereau(): void
+    {
+        $periodeBordereau = $this->periode('2026-08');
+        $periodeOp190 = $this->periode('2026-04');
+        $periodeOp191 = $this->periode('2025-05');
+
+        $op190 = $this->chainePaiement($periodeBordereau, 'TRANSMIS_AC', 'EN_OP');
+        $op191 = $this->chainePaiement($periodeBordereau, 'TRANSMIS_AC', 'EN_OP');
+        $op191['ordre']->update(['bordereau_paiement_id' => $op190['bordereau']->id]);
+        $op191['bordereau']->delete();
+        $op190['bordereau']->update(['numero' => 'BOR-55-LEGACY-481', 'montant_total' => 210000]);
+        $op190['ordre']->update(['numero' => '0-190', 'periode_id' => $periodeOp190->id, 'montant_total' => 75000]);
+        $op190['dossier']->update(['periode_id' => $periodeOp190->id]);
+        $op191['ordre']->update(['numero' => '0-191', 'periode_id' => $periodeOp191->id, 'montant_total' => 135000]);
+        $op191['dossier']->update(['periode_id' => $periodeOp191->id]);
+
+        $this->actingAs($this->agentComptable)
+            ->post('/agent-comptable/paiements/ordres/'.$op190['ordre']->id.'/valider')
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->get('/agent-comptable/paiements?mois=2026-08&vue=statuts')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AgentComptable/Paiements/Index')
+                ->has('statutPaiements', 1)
+                ->where('statutPaiements.0.id', $op190['bordereau']->id)
+                ->has('statutPaiements.0.ordres', 1)
+                ->where('statutPaiements.0.ordres.0.numero', '0-190')
+                ->has('bordereauxAttente', 1)
+                ->where('bordereauxAttente.0.id', $op190['bordereau']->id));
+
+        $this->post('/agent-comptable/paiements/ordres/'.$op190['ordre']->id.'/situation-paiements', [
+            'paiement_ids' => [$op190['paiement']->id],
+            'situation' => 'PAYE',
+            'motif' => 'Paiement Trésor Money confirmé.',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+
+        $this->getJson('/agent-comptable/paiements/statuts?mois=2026-08&situation=paye')
+            ->assertOk()
+            ->assertJsonPath('total', 1)
+            ->assertJsonPath('rows.0.ordre.numero', '0-190');
+
+        $this->post('/agent-comptable/paiements/ordres/'.$op191['ordre']->id.'/valider')
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $this->get('/agent-comptable/paiements?mois=2026-08&vue=statuts')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('AgentComptable/Paiements/Index')
+                ->has('bordereauxAttente', 0)
+                ->has('statutPaiements', 1)
+                ->has('statutPaiements.0.ordres', 2)
+                ->where('statutPaiements.0.ordres', fn (mixed $ordres): bool => collect($ordres)
+                    ->pluck('numero')
+                    ->sort()
+                    ->values()
+                    ->all() === ['0-190', '0-191'])
+                ->where('statutCompteurs.payes', 1));
+    }
+
     public function test_differer_une_op_retourne_tous_ses_paiements_a_la_dmg(): void
     {
         $chaine = $this->chainePaiement($this->periode('2026-08'), 'TRANSMIS_AC', 'EN_OP');

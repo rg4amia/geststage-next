@@ -63,6 +63,10 @@ class MultiDossierPdfService
      * Construit le PDF d'état de paiement (état financier) pour un lot de paiements : paysage,
      * paginé avec espace pied de page réservé et solde total des primes en dernière page.
      *
+     * Le total porte sur le **net** versé ; quand des cotisations CMU ont été
+     * prélevées, la trajectoire brut / prélèvement / net est détaillée en pied
+     * d'état, comme sur l'état legacy.
+     *
      * @param  Collection<int, Paiement>  $paiements
      */
     public function construireEtatFinancier(Collection $paiements, string $moisCode)
@@ -73,6 +77,8 @@ class MultiDossierPdfService
         $pdf = Pdf::loadView('pdf.dmg-etat-paiement', [
             'pages' => $pages,
             'solde' => (float) $paiements->sum('montant'),
+            'total_brut' => (float) $paiements->sum(fn (Paiement $p) => $p->montant_brut_calcule),
+            'total_prelevement' => (float) $paiements->sum(fn (Paiement $p) => $p->prelevement_calcule),
             'total' => $paiements->count(),
             'mois' => $mois,
             'moisCode' => $moisCode,

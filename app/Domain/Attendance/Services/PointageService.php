@@ -2,6 +2,7 @@
 
 namespace App\Domain\Attendance\Services;
 
+use App\Domain\Payment\Services\ApplicationPrelevementsService;
 use App\Domain\Payment\Services\Prime\PrimeCalculatorService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Domain\Pejedec\Services\PejedecSourceResolver;
@@ -12,6 +13,7 @@ use App\Models\Attendance\VersionPointage;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
+use App\Models\Payment\ReglePrelevement;
 use App\Models\Reference\Periode;
 use App\Models\Reference\SituationStage;
 use App\Models\User;
@@ -26,6 +28,7 @@ class PointageService
         private WorkflowTransitionService $workflowService,
         private PejedecSourceResolver $pejedecSourceResolver,
         private PrimeCalculatorService $primeCalculator,
+        private ApplicationPrelevementsService $prelevements,
     ) {}
 
     public function getCountsByTab(?int $periodeId, $stageFilters = []): array
@@ -277,14 +280,30 @@ class PointageService
                 'statut' => 'OUVERT',
             ]);
 
-            // 4. Générer le paiement correspondant et le mettre en attente DMG
-            $paiement = Paiement::create([
+            // 4. Générer le paiement correspondant et le mettre en attente DMG.
+            // Même instantané brut / prélèvement / net que le démarrage : une
+            // règle CMU de type PRESENCE peut retrancher une cotisation quand
+            // l'administrateur en a créé une pour ce financement / type stage.
+            $regle = $this->prelevements->regleApplicable(
+                $stage->source_financement_id,
+                $stage->type_stage_id,
+                $pointage->periode,
+                ReglePrelevement::PAIEMENT_PRESENCE,
+            );
+
+            $paiement = new Paiement([
                 'uuid_public' => (string) Str::uuid(),
                 'droit_paiement_id' => $droitPaiement->id,
-                'montant' => $droitPaiement->montant,
+                'montant' => $montantPaiement,
                 'statut' => 'A_TRAITER',
                 'version_verrouillage' => 0,
             ]);
+
+            if ($regle) {
+                $this->prelevements->appliquer($paiement, (float) $montantPaiement, $regle);
+            }
+
+            $paiement->save();
             $this->workflowService->dmgReceptionnePaiement($paiement);
 
             return $droitPaiement;

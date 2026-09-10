@@ -2,7 +2,10 @@
 
 namespace Tests\Feature\Cip;
 
+use App\Domain\Workflow\Services\ListeStagiairesCipService;
 use App\Enums\CorbeilleEnum;
+use App\Jobs\ExporterStagiairesCipJob;
+use App\Models\Company\Entreprise;
 use App\Models\Contract\Contrat;
 use App\Models\Internship\Stage;
 use App\Models\Reference\Agence;
@@ -14,6 +17,7 @@ use App\Models\Workflow\InstanceParcours;
 use Database\Seeders\RolePermissionSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Role;
@@ -420,6 +424,197 @@ class MesStagiairesCipTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseHas('instances_parcours', ['id' => $instance->id]);
+    }
+
+    public function test_la_recherche_entreprises_async_est_restreinte_au_perimetre(): void
+    {
+        ['user' => $user, 'stage' => $stage] = $this->creerDossier();
+
+        $entreprisePerimetre = Entreprise::factory()->create([
+            'agence_id' => $stage->agence_id,
+            'raison_sociale' => 'Agence Atlantique SARL',
+        ]);
+        Entreprise::factory()->create(['raison_sociale' => 'Cotonou Hors Perimetre SA']);
+
+        $this->actingAs($user)
+            ->getJson('/cip/mes-stagiaires/entreprises?q=')
+            ->assertOk()
+            ->assertJsonCount(0, 'data');
+
+        $this->actingAs($user)
+            ->getJson('/cip/mes-stagiaires/entreprises?q=sarl')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $entreprisePerimetre->getKey());
+    }
+
+    public function test_la_recherche_entreprises_async_est_nationale_pour_un_administrateur(): void
+    {
+        $this->creerDossier(admin: true);
+
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'administrateur', 'guard_name' => 'web']));
+
+        $premiere = Entreprise::factory()->create(['raison_sociale' => 'Benco Distribution']);
+        $seconde = Entreprise::factory()->create(['raison_sociale' => 'Zénith Industries']);
+
+        $this->actingAs($admin)
+            ->getJson('/cip/mes-stagiaires/entreprises?q=industries')
+            ->assertOk()
+            ->assertJsonCount(1, 'data')
+            ->assertJsonPath('data.0.id', $seconde->getKey());
+
+        $this->actingAs($admin)
+            ->getJson('/cip/mes-stagiaires/entreprises?q=benco')
+            ->assertOk()
+            ->assertJsonPath('data.0.id', $premiere->getKey());
+    }
+
+    public function test_la_recherche_entreprises_async_exige_authentification(): void
+    {
+        $this->getJson('/cip/mes-stagiaires/entreprises?q=test')->assertUnauthorized();
+    }
+
+    public function test_le_payload_entreprises_ne_contient_que_la_selection_prefiltree(): void
+    {
+        ['user' => $admin, 'stage' => $stage] = $this->creerDossier(admin: true);
+
+        $entrepriseFiltree = Entreprise::factory()->create(['agence_id' => $stage->agence_id]);
+        Entreprise::factory()->count(3)->create();
+        $stage->update(['entreprise_id' => $entrepriseFiltree->id]);
+
+        $this->actingAs($admin)
+            ->get('/cip/mes-stagiaires')
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('entreprises', 0)
+            );
+
+        $this->actingAs($admin)
+            ->get("/cip/mes-stagiaires?entreprise_id={$entrepriseFiltree->id}")
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('entreprises', 1)
+                ->where('entreprises.0.id', $entrepriseFiltree->id)
+                ->where('entreprises.0.nom', $entrepriseFiltree->raison_sociale)
+            );
+    }
+
+    public function test_l_export_synchrone_reprend_les_lignes_filtrees(): void
+    {
+        ['user' => $admin] = $this->creerDossier(admin: true);
+        ['stage' => $stageCorbeille] = $this->creerDossier();
+        $this->creerDossier();
+
+        Contrat::factory()->create(['stage_id' => $stageCorbeille->id, 'numero' => 'CTR-777777']);
+
+        $reponse = $this->actingAs($admin)
+            ->get('/cip/mes-stagiaires/export?search=CTR-777777');
+
+        $reponse->assertOk();
+
+        $contenu = $reponse->streamedContent();
+
+        $this->assertStringContainsString('N° AEJ', $contenu);
+        $this->assertStringContainsString($stageCorbeille->beneficiaire->nom, $contenu);
+        $this->assertStringContainsString('CTR-777777', $contenu);
+
+        // Le second dossier, hors recherche, ne doit pas fuiter dans le fichier.
+        $tous = $this->actingAs($admin)->get('/cip/mes-stagiaires/export')->streamedContent();
+        $this->assertStringContainsString($stageCorbeille->beneficiaire->nom, $tous);
+    }
+
+    public function test_l_export_synchrone_respecte_le_perimetre_agence(): void
+    {
+        ['user' => $user, 'stage' => $stagePerimetre] = $this->creerDossier();
+        ['stage' => $stageAutre] = $this->creerDossier();
+
+        $contenu = $this->actingAs($user)
+            ->get('/cip/mes-stagiaires/export')
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertStringContainsString($stagePerimetre->beneficiaire->nom, $contenu);
+        $this->assertStringNotContainsString($stageAutre->beneficiaire->nom, $contenu);
+    }
+
+    public function test_l_export_volumineux_passe_par_un_batch_puis_est_telechargeable(): void
+    {
+        Bus::fake();
+
+        ['user' => $user] = $this->creerDossier();
+
+        $reponse = $this->actingAs($user)
+            ->post('/cip/mes-stagiaires/exporter', ['search' => 'AEJ-TEST'])
+            ->assertOk()
+            ->assertJsonStructure(['batch_id']);
+
+        Bus::assertBatched(function ($batch) use ($user): bool {
+            $job = $batch->jobs->first();
+
+            return $job instanceof ExporterStagiairesCipJob
+                && $job->filtres === ['search' => 'AEJ-TEST']
+                && $job->demandeParId === $user->id;
+        });
+
+        // Un identifiant de batch inconnu ne doit jamais servir de fichier.
+        $this->actingAs($user)
+            ->get('/cip/mes-stagiaires/exporter/inconnu/progression')
+            ->assertNotFound();
+        $this->actingAs($user)
+            ->get('/cip/mes-stagiaires/exporter/inconnu/telechargement')
+            ->assertNotFound();
+    }
+
+    public function test_la_generation_asynchrone_produit_un_csv_telechargeable(): void
+    {
+        // QUEUE_CONNECTION=sync en test : le job s'exécute dans la requête POST, le fichier est
+        // donc immédiatement disponible — c'est le scénario complet que le sondage frontend suit.
+        Storage::fake('temp_files');
+        ['user' => $user, 'stage' => $stage] = $this->creerDossier();
+
+        $batchId = $this->actingAs($user)
+            ->post('/cip/mes-stagiaires/exporter', [])
+            ->assertOk()
+            ->json('batch_id');
+
+        $this->getJson("/cip/mes-stagiaires/exporter/{$batchId}/progression")
+            ->assertOk()
+            ->assertJsonPath('disponible', true);
+
+        $contenu = $this->get("/cip/mes-stagiaires/exporter/{$batchId}/telechargement")
+            ->assertOk()
+            ->streamedContent();
+
+        $this->assertStringContainsString('N° AEJ', $contenu);
+        $this->assertStringContainsString($stage->beneficiaire->nom, $contenu);
+    }
+
+    public function test_le_job_reauthentifie_le_demandeur_pour_confiner_lexport_a_son_perimetre(): void
+    {
+        Storage::fake('temp_files');
+        ['user' => $cip, 'stage' => $stagePerimetre] = $this->creerDossier();
+        ['stage' => $stageAutre] = $this->creerDossier();
+
+        // Simule le contexte file d'attente : l'export a été demandé par un CIP à périmètre
+        // (demandeParId), mais c'est un administrateur à vue nationale qui est « courant »
+        // dans le worker. La ré-authentification du demandeur doit primer : sans elle,
+        // le fichier contiendrait les agences de toute la plateforme.
+        $admin = User::factory()->create();
+        $admin->assignRole(Role::firstOrCreate(['name' => 'administrateur', 'guard_name' => 'web']));
+        $this->actingAs($admin);
+
+        new ExporterStagiairesCipJob(
+            filtres: [],
+            demandeParId: $cip->id,
+        )->handle(app(ListeStagiairesCipService::class));
+
+        $fichiers = Storage::disk('temp_files')->files(ExporterStagiairesCipJob::DOSSIER);
+        $this->assertCount(1, $fichiers);
+
+        $contenu = Storage::disk('temp_files')->get($fichiers[0]);
+        $this->assertStringContainsString($stagePerimetre->beneficiaire->nom, $contenu);
+        $this->assertStringNotContainsString($stageAutre->beneficiaire->nom, $contenu);
     }
 
     /**

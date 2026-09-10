@@ -3,10 +3,13 @@
 namespace App\Http\Controllers\Cip;
 
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
+use App\Domain\Workflow\Services\ListeStagiairesCipService;
 use App\Domain\Workflow\Services\SuiviPointageService;
 use App\Domain\Workflow\Services\WorkflowTransitionService;
 use App\Enums\CorbeilleEnum;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Dmg\EntrepriseRechercheController;
+use App\Jobs\ExporterStagiairesCipJob;
 use App\Models\Company\Entreprise;
 use App\Models\Document\Document;
 use App\Models\Document\VersionDocument;
@@ -23,11 +26,12 @@ use App\Models\Workflow\EtapeParcours;
 use App\Models\Workflow\InstanceParcours;
 use App\Services\ContratPaeService;
 use App\Services\TresorMoneyService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -38,12 +42,12 @@ class MesStagiairesCipController extends Controller
 
     private const CODE_DOCUMENT_TRESOR_MONEY = 'TRESOR_MONEY';
 
-    /**
-     * Corbeille : Mes Stagiaires
-     */
-    public function index(Request $request)
+    public function __construct(private readonly ListeStagiairesCipService $stagiaires) {}
+
+    /** Filtres de liste communs à l'affichage et à l'export (`page` n'en fait pas partie). */
+    private function filtres(Request $request): array
     {
-        $filters = $request->only([
+        return $request->only([
             'agence_id',
             'entreprise_id',
             'typesfinancement_id',
@@ -54,80 +58,18 @@ class MesStagiairesCipController extends Controller
             'etape_id',
             'situationstage_id',
             'search',
-            'page',
         ]);
+    }
 
-        $query = InstanceParcours::with([
-            'stage.beneficiaire.typePaiement',
-            'stage.entreprise.typeStructure',
-            'stage.agence',
-            'stage.sourceFinancement',
-            'stage.typeStage',
-            'stage.contrats',
-            'stage.documents.typeDocument',
-            'stage.documents.versions',
-            'stage.pointages.periode',
-            'stage.pointages.versionCourante',
-            'etapeCourante',
-        ]);
+    /**
+     * Corbeille : Mes Stagiaires
+     */
+    public function index(Request $request)
+    {
+        $filters = $this->filtres($request) + ['page' => $request->query('page')];
 
         $agencesAutorisees = $this->agencesAutorisees();
-
-        // Toujours exiger un stage non supprimé logiquement : Stage a désormais le trait
-        // SoftDeletes, donc whereHas('stage') exclut déjà les dossiers "deleted_at" côté legacy.
-        $query->whereHas('stage', function ($q) use ($agencesAutorisees) {
-            if ($agencesAutorisees !== null) {
-                $q->whereIn('agence_id', $agencesAutorisees);
-            }
-        });
-
-        // Apply filters
-        if (! empty($filters['agence_id'])) {
-            $query->whereHas('stage', function ($q) use ($filters) {
-                $q->where('agence_id', $filters['agence_id']);
-            });
-        }
-        if (! empty($filters['entreprise_id'])) {
-            $query->whereHas('stage', function ($q) use ($filters) {
-                $q->where('entreprise_id', $filters['entreprise_id']);
-            });
-        }
-        if (! empty($filters['typesfinancement_id'])) {
-            $query->whereHas('stage', function ($q) use ($filters) {
-                $q->where('source_financement_id', $filters['typesfinancement_id']);
-            });
-        }
-        if (! empty($filters['typestage_id'])) {
-            $query->whereHas('stage', function ($q) use ($filters) {
-                $q->where('type_stage_id', $filters['typestage_id']);
-            });
-        }
-        if (! empty($filters['type_structure_id'])) {
-            $query->whereHas('stage.entreprise', function ($q) use ($filters) {
-                $q->where('type_structure_id', $filters['type_structure_id']);
-            });
-        }
-        if (! empty($filters['etape_id'])) {
-            $query->where('etape_courante_id', $filters['etape_id']);
-        }
-        if (! empty($filters['situationstage_id'])) {
-            $query->whereHas('stage', function ($q) use ($filters) {
-                $q->where('situation_stage', $filters['situationstage_id']);
-            });
-        }
-        if (! empty($filters['date_debut'])) {
-            $query->whereHas('stage', function ($q) use ($filters) {
-                $q->where('date_debut', '>=', $filters['date_debut']);
-            });
-        }
-        if (! empty($filters['date_fin'])) {
-            $query->whereHas('stage', function ($q) use ($filters) {
-                $q->where('date_fin_prevue', '<=', $filters['date_fin']);
-            });
-        }
-        if (! empty($filters['search'])) {
-            $this->applyRechercheDossier($query, $filters['search']);
-        }
+        $query = $this->stagiaires->query($filters, $agencesAutorisees);
 
         $total = $query->count();
         $avecContrat = (clone $query)->has('stage.contrats')->count();
@@ -143,14 +85,20 @@ class MesStagiairesCipController extends Controller
         ])->count();
 
         $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
-
         // Shell Inertia — données de filtres
         $agences = Agence::cachedPluck('nom');
-        $entreprises = Entreprise::cached()
-            ->when($agencesAutorisees, fn ($c, $ids) => $c->whereIn('agence_id', $ids))
-            ->sortBy('raison_sociale')
-            ->pluck('raison_sociale', 'id')
-            ->all();
+        // Le référentiel complet des entreprises se cherche désormais via la route
+        // cip.mes_stagiaires.entreprises (react-select async, restreinte au périmètre) ;
+        // on ne transmet que l'entreprise pré-filtrée pour en afficher le libellé
+        // dans le sélecteur après un rechargement de page.
+        $entreprises = ($filters['entreprise_id'] ?? null)
+            ? Entreprise::query()
+                ->whereKey($filters['entreprise_id'])
+                ->when($agencesAutorisees, fn ($q, $ids) => $q->whereIn('agence_id', $ids))
+                ->get(['id', 'raison_sociale'])
+                ->map(fn (Entreprise $e) => ['id' => $e->id, 'nom' => $e->raison_sociale])
+                ->toArray()
+            : [];
         $typesfinancements = SourceFinancement::cachedPluck('nom');
         $typestages = TypeStage::cachedPluck('nom');
         $typestructures = TypeStructure::cachedPluck('nom');
@@ -174,6 +122,105 @@ class MesStagiairesCipController extends Controller
             'situationstages' => $situationstages,
             'filters' => $filters,
         ]);
+    }
+
+    /**
+     * Recherche async d'entreprises pour le filtre react-select de « Mes Stagiaires ».
+     * Délègue au cœur partagé EntrepriseRechercheController::repondre() en le restreignant
+     * au périmètre d'agences de l'agent connecté — un CIP régional ne doit ni voir ni
+     * sélectionner une entreprise hors de son périmètre.
+     */
+    public function rechercherEntreprises(Request $request): JsonResponse
+    {
+        return EntrepriseRechercheController::repondre($request, $this->agencesAutorisees());
+    }
+
+    /**
+     * Export CSV synchrone de la liste courante : mêmes filtres et même périmètre que
+     * l'affichage — une ligne invisible dans la liste ne peut pas apparaître dans le fichier.
+     * Convient aux listes courtes ; les gros volumes passent par `exporter()`.
+     */
+    public function export(Request $request)
+    {
+        $query = $this->stagiaires->query($this->filtres($request), $this->agencesAutorisees());
+
+        return response()->streamDownload(function () use ($query): void {
+            $handle = fopen('php://output', 'w');
+
+            // BOM UTF-8 pour Excel
+            fwrite($handle, "\xEF\xBB\xBF");
+
+            foreach ($this->stagiaires->lignesExport($query) as $ligne) {
+                fputcsv($handle, $ligne, ';');
+            }
+
+            fclose($handle);
+        }, sprintf('mes-stagiaires_%s.csv', now()->format('Ymd_His')), [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    }
+
+    /**
+     * Export lancé en arrière-plan pour les gros volumes : le job réauthentifie le
+     * demandeur, l'export ne peut donc pas déborder de son périmètre d'agences.
+     * L'avancement et le téléchargement suivent le patron des exports de supervision.
+     */
+    public function exporter(Request $request): JsonResponse
+    {
+        $batch = Bus::batch([
+            new ExporterStagiairesCipJob(
+                filtres: $this->filtres($request),
+                demandeParId: Auth::id(),
+            ),
+        ])->name('export-cip-stagiaires')->dispatch();
+
+        return response()->json([
+            'batch_id' => $batch->id,
+            'message' => 'Export lancé en arrière-plan. Vous serez notifié quand le fichier sera prêt.',
+        ]);
+    }
+
+    /**
+     * Avancement d'un export lancé en arrière-plan.
+     */
+    public function exportProgression(string $batchId): JsonResponse
+    {
+        $batch = Bus::findBatch($batchId);
+
+        if (! $batch) {
+            return response()->json(['message' => 'Export introuvable.'], 404);
+        }
+
+        return response()->json([
+            'id' => $batch->id,
+            'progress' => $batch->progress(),
+            'completed' => $batch->finished(),
+            'failedJobs' => $batch->failedJobs,
+            'disponible' => $batch->finished()
+                && $batch->failedJobs === 0
+                && Storage::disk('temp_files')->exists(ExporterStagiairesCipJob::chemin($batch->id)),
+        ]);
+    }
+
+    /**
+     * Téléchargement du fichier produit par un export en arrière-plan. Le nom du fichier
+     * est dérivé de l'identifiant de batch : un utilisateur ne peut jamais viser le
+     * fichier d'un autre export.
+     */
+    public function exportTelechargement(string $batchId)
+    {
+        $batch = Bus::findBatch($batchId);
+
+        abort_if($batch === null, 404, 'Export introuvable.');
+
+        $chemin = ExporterStagiairesCipJob::chemin($batchId);
+
+        abort_unless(Storage::disk('temp_files')->exists($chemin), 404, "L'export n'est pas encore disponible.");
+
+        return response()->download(
+            Storage::disk('temp_files')->path($chemin),
+            sprintf('mes-stagiaires_%s.csv', $batchId)
+        );
     }
 
     /**
@@ -225,7 +272,7 @@ class MesStagiairesCipController extends Controller
             $query->whereHas('stage.entreprise', fn ($q) => $q->where('type_structure_id', $filters['type_structure_id']));
         }
         if (! empty($filters['search'])) {
-            $this->applyRechercheDossier($query, $filters['search']);
+            $this->stagiaires->appliquerRecherche($query, $filters['search']);
         }
 
         $instances = $query->orderBy('created_at', 'desc')->paginate(50)->withQueryString();
@@ -450,35 +497,6 @@ class MesStagiairesCipController extends Controller
         if ($agencesAutorisees !== null && ! in_array($instance->stage->agence_id, $agencesAutorisees, true)) {
             abort(403, "Ce dossier ne relève pas de votre périmètre d'agence.");
         }
-    }
-
-    /**
-     * Recherche libre couvrant, comme le legacy DataTables : le bénéficiaire (nom, prénoms,
-     * numéro AEJ), le numéro et l'état du contrat, l'étape courante du workflow et l'état des
-     * pointages.
-     */
-    private function applyRechercheDossier($query, string $search): void
-    {
-        $operator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
-        $term = '%'.addcslashes($search, '%_').'%';
-
-        $query->where(function ($q) use ($operator, $term) {
-            $q->whereHas('stage.beneficiaire', function ($bq) use ($operator, $term) {
-                $bq->where('nom', $operator, $term)
-                    ->orWhere('prenoms', $operator, $term)
-                    ->orWhere('numero_aej', $operator, $term);
-            })
-                ->orWhereHas('stage.contrats', function ($cq) use ($operator, $term) {
-                    $cq->where('numero', $operator, $term)
-                        ->orWhere('statut', $operator, $term);
-                })
-                ->orWhereHas('etapeCourante', function ($eq) use ($operator, $term) {
-                    $eq->where('nom', $operator, $term);
-                })
-                ->orWhereHas('stage.pointages', function ($pq) use ($operator, $term) {
-                    $pq->where('statut', $operator, $term);
-                });
-        });
     }
 
     /**
