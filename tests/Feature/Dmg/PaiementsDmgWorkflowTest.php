@@ -142,7 +142,8 @@ class PaiementsDmgWorkflowTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('administrateur');
         $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
-        $paiement = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-10');
+        // La présence exige un stage démarré avant le mois payé (règle legacy scopeAttestationPresence).
+        $paiement = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-07-10');
 
         $reponse = $this->actingAs($user)->postJson('/dmg/paiements/valider-workflow', [
             'mois' => '2026-08',
@@ -170,8 +171,9 @@ class PaiementsDmgWorkflowTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('administrateur');
         $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
-        $paiementA = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-10');
-        $paiementB = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-08-12');
+        // Stages démarrés avant le mois payé pour entrer dans la file présence legacy.
+        $paiementA = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-07-10');
+        $paiementB = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_PRESENCE, 'PRESENCE', '2026-07-12');
 
         $this->actingAs($user)->postJson('/dmg/paiements/valider-workflow', [
             'mois' => '2026-08',
@@ -193,7 +195,9 @@ class PaiementsDmgWorkflowTest extends TestCase
         $user = User::factory()->create();
         $user->assignRole('administrateur');
         $periode = Periode::create(['code' => '2026-08', 'date_debut' => '2026-08-01', 'date_fin' => '2026-08-31']);
-        $paiement = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'DEMARRAGE', '2026-08-03');
+        // Démarrage le 7 : hors cohortes 1/2/3 (jours 1-5, 10, 20), le paiement reste dans la
+        // cohorte « global » attendue par la requête ci-dessous.
+        $paiement = $this->paiement($periode, CorbeilleEnum::DMG_ATTENTE_PAIEMENT_DEMARRAGE, 'DEMARRAGE', '2026-08-07');
 
         $this->actingAs($user)->postJson('/dmg/paiements/valider-workflow', [
             'mois' => '2026-08',
