@@ -924,6 +924,8 @@ const DmgPaiementsIndex = (props: PageProps) => {
         setIsLoading(true);
         router.reload({
             preserveScroll: true,
+            preserveState: true,
+            only: ['attenteDemarrage', 'attentePresence', 'compteurs', 'dossiers', 'dossiersTransmis', 'dossiersAjournes', 'dossiersGroupables', 'dossiersEligiblesOp', 'groupesDossiers'],
             onFinish: () => setIsLoading(false),
         });
     }, [batchValidation?.finished, batchValidation?.echec]);
@@ -1736,6 +1738,9 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                 <div className="d-flex align-items-center gap-2 mb-1">
                                                     <i className={`ri-loader-4-line ${batchValidation.finished || batchValidation.echec ? '' : 'ri-spin'} text-success me-1`}></i>
                                                     <span className="fw-semibold fs-13 flex-grow-1">{batchValidation.libelle}</span>
+                                                    {!batchValidation.finished && !batchValidation.echec && (
+                                                        <span className="text-muted fs-12 fw-semibold me-1">{batchValidation.progress}%</span>
+                                                    )}
                                                     {batchValidation.echec ? (
                                                         <Badge color="danger">Échec</Badge>
                                                     ) : batchValidation.finished ? (
@@ -1774,9 +1779,7 @@ const DmgPaiementsIndex = (props: PageProps) => {
                                                         )}
                                                     </>
                                                 ) : (
-                                                    <Progress value={batchValidation.progress} color="success" className="mt-1" style={{ height: '6px' }}>
-                                                        {batchValidation.progress}%
-                                                    </Progress>
+                                                    <Progress value={batchValidation.progress} color="success" className="mt-1" style={{ height: '8px', borderRadius: '4px' }} />
                                                 )}
                                             </CardBody>
                                         </Card>

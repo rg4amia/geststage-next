@@ -15,6 +15,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Bus;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
@@ -32,10 +33,10 @@ class DossierPaiementDmgController extends Controller
     {
         // Valider « toute la liste » de présence porte sur le mois entier : plafond aligné sur
         // la liste et `exists` par élément laissé au contrôle groupé de genererDossiersPaiement().
-        $data = $request->validate(['periode_id' => ['required', 'integer', 'exists:periodes,id'], 'paiement_ids' => ['required', 'array', 'min:1', 'max:'.DmgService::LIMITE_LISTE_ATTENTE], 'paiement_ids.*' => ['integer', 'distinct']]);
+        $data = $request->validate(['periode_id' => ['required', 'integer', 'exists:periodes,id'], 'paiement_ids' => ['required', 'array', 'min:1', 'max:' . DmgService::LIMITE_LISTE_ATTENTE], 'paiement_ids.*' => ['integer', 'distinct']]);
         $dossiers = $this->service->genererDossiersPaiement($data['periode_id'], $data['paiement_ids'], $request->user());
 
-        return back()->with('success', $dossiers->count().' dossier(s) genere(s).');
+        return back()->with('success', $dossiers->count() . ' dossier(s) genere(s).');
     }
 
     public function validerWorkflow(Request $request): JsonResponse
@@ -44,7 +45,7 @@ class DossierPaiementDmgController extends Controller
             'mois' => ['required', 'date_format:Y-m', 'exists:periodes,code'],
             'nature' => ['required', 'in:demarrage,presence'],
             'keyword' => ['nullable', 'in:valider,valider-select,annuler-selection,annuler-tous'],
-            'datas' => ['nullable', 'array', 'max:'.DmgService::LIMITE_LISTE_ATTENTE],
+            'datas' => ['nullable', 'array', 'max:' . DmgService::LIMITE_LISTE_ATTENTE],
             'datas.*' => ['integer', 'distinct'],
             'observation' => ['nullable', 'string', 'max:1000'],
             'agence_id' => ['nullable', 'integer'],
@@ -88,7 +89,7 @@ class DossierPaiementDmgController extends Controller
             ->orderBy('paiements.id')
             ->limit(DmgService::LIMITE_LISTE_ATTENTE)
             ->pluck('paiements.id')
-            ->map(fn (mixed $id): int => (int) $id)
+            ->map(fn(mixed $id): int => (int) $id)
             ->values()
             ->all();
 
@@ -124,6 +125,11 @@ class DossierPaiementDmgController extends Controller
             return response()->json(['message' => 'Batch introuvable.'], 404);
         }
 
+        // Progression interne du job (50 → 100), ou 0 si le job n'a pas encore démarré.
+        // On force 100 quand le batch est terminé sans erreur pour garantir la cohérence.
+        $progressCache = (int) Cache::get(ValiderPaiementsDmgJob::cleCache($batchId), 0);
+        $progress = ($batch->finished() && $batch->failedJobs === 0) ? 100 : $progressCache;
+
         return response()->json([
             'id' => $batch->id,
             'name' => $batch->name,
@@ -131,7 +137,7 @@ class DossierPaiementDmgController extends Controller
             'pendingJobs' => $batch->pendingJobs,
             'failedJobs' => $batch->failedJobs,
             'processedJobs' => $batch->processedJobs(),
-            'progress' => $batch->progress(),
+            'progress' => $progress,
             'finished' => $batch->finished(),
             'failureMessage' => $this->messageErreurBatch($batch->failedJobIds),
             'dossiers' => $this->dossiersDuBatch($batch->id),
@@ -171,7 +177,7 @@ class DossierPaiementDmgController extends Controller
             ->where('validation_batch_id', $batchId)
             ->orderBy('id')
             ->get()
-            ->map(fn (DossierPaiement $dossier) => [
+            ->map(fn(DossierPaiement $dossier) => [
                 'id' => $dossier->id,
                 'numero' => $dossier->numero,
                 'nature' => $dossier->nature,
@@ -285,7 +291,7 @@ class DossierPaiementDmgController extends Controller
     {
         $groupe = $this->pdfService->genererPdfs($groupe);
 
-        return back()->with('success', 'PDFs generes pour le multi-dossier '.$groupe->numero.'.');
+        return back()->with('success', 'PDFs generes pour le multi-dossier ' . $groupe->numero . '.');
     }
 
     public function downloadAttestation(DossierGroupe $groupe): Response
@@ -341,7 +347,7 @@ class DossierPaiementDmgController extends Controller
 
         return response()->streamDownload(function () use ($pdf): void {
             echo $pdf->output();
-        }, 'attestation-presence-'.$dossier->numero.'.pdf', ['Content-Type' => 'application/pdf']);
+        }, 'attestation-presence-' . $dossier->numero . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     /**
@@ -373,7 +379,7 @@ class DossierPaiementDmgController extends Controller
 
         return response()->streamDownload(function () use ($pdf): void {
             echo $pdf->output();
-        }, 'etat-paiement-'.$dossier->numero.'.pdf', ['Content-Type' => 'application/pdf']);
+        }, 'etat-paiement-' . $dossier->numero . '.pdf', ['Content-Type' => 'application/pdf']);
     }
 
     /**
@@ -390,7 +396,7 @@ class DossierPaiementDmgController extends Controller
                 'droitPaiement.stage.typeStage',
                 'droitPaiement.stage.contrats',
             ])
-            ->whereHas('dossiersPaiement', fn ($q) => $q
+            ->whereHas('dossiersPaiement', fn($q) => $q
                 ->where('dossiers_paiement.id', $dossier->id)
                 ->whereNull('lignes_dossiers_paiement.retire_le'))
             ->orderBy('paiements.id')

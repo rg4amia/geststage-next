@@ -11,6 +11,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Throwable;
 
@@ -21,6 +22,9 @@ class ValiderPaiementsDmgJob implements ShouldQueue
     public int $timeout = 500;
 
     public int $tries = 3;
+
+    /** TTL de la clé cache de progression (légèrement au-delà du timeout max du job). */
+    private const CACHE_TTL = 3600;
 
     /**
      * @param  list<int>  $paiementIds
@@ -39,6 +43,11 @@ class ValiderPaiementsDmgJob implements ShouldQueue
             return;
         }
 
+        $batchId = $this->batch()?->id ?? $this->job?->uuid() ?? uniqid('validation_');
+
+        // Étape 1/2 — Authentification + début du traitement (50 %)
+        $this->avancer($batchId, 50);
+
         try {
             $auteur = User::findOrFail($this->auteurId);
             Auth::login($auteur);
@@ -49,17 +58,19 @@ class ValiderPaiementsDmgJob implements ShouldQueue
                     $this->observation ?: 'Ajournement DMG depuis la validation des paiements.',
                     $auteur,
                 );
-
-                return;
+            } else {
+                $service->genererDossiersPaiement(
+                    $this->periodeId,
+                    $this->paiementIds,
+                    $auteur,
+                    $batchId,
+                );
             }
 
-            $service->genererDossiersPaiement(
-                $this->periodeId,
-                $this->paiementIds,
-                $auteur,
-                $this->batch()?->id,
-            );
+            // Étape 2/2 — Traitement terminé (100 %)
+            $this->avancer($batchId, 100);
         } catch (Throwable $exception) {
+            Cache::forget(self::cleCache($batchId));
             Log::error('Echec validation paiements DMG', [
                 'periode_id' => $this->periodeId,
                 'paiement_ids' => $this->paiementIds,
@@ -70,5 +81,21 @@ class ValiderPaiementsDmgJob implements ShouldQueue
 
             throw $exception;
         }
+    }
+
+    /**
+     * Clé cache pour la progression interne d'un batch de validation.
+     */
+    public static function cleCache(string $batchId): string
+    {
+        return "validation_progress:{$batchId}";
+    }
+
+    /**
+     * Écrit le pourcentage d'avancement dans le cache.
+     */
+    private function avancer(string $batchId, int $pourcentage): void
+    {
+        Cache::put(self::cleCache($batchId), $pourcentage, self::CACHE_TTL);
     }
 }
