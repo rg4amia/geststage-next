@@ -132,6 +132,8 @@ interface PaiementRow {
     // Statut du dossier physique : en_attente / recu / conforme, avec la date du dernier marquage.
     dossier_physique?: { statut: string | null; marque_le: string | null };
     cohorte: number;
+    // Période couverte par ce paiement (code Y-m, ex. "2026-08"), utile pour l'onglet présence.
+    periode?: string | null;
 }
 
 interface DossierRow {
@@ -1370,6 +1372,19 @@ const DmgPaiementsIndex = (props: PageProps) => {
             }
         },
         {
+            header: 'Prime du mois',
+            cell: (cell: any) => {
+                const periode = cell.row.original.periode;
+                if (!periode) return <span className="text-muted">—</span>;
+                // Convertit le code Y-m en libellé court "Août 2026"
+                const [annee, moisNum] = periode.split('-');
+                const date = new Date(Number(annee), Number(moisNum) - 1, 1);
+                const libelle = date.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' });
+
+                return <Badge color="primary-subtle" className="text-primary fs-11">{libelle}</Badge>;
+            },
+        },
+        {
             header: 'Montant Brut', cell: (cell: any) => {
                 const mb = cell.row.original.montant_brut;
 
@@ -1498,16 +1513,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
         prevFiltresMulti.current = cle;
     }, [multiTypeTraitement, multiAgenceId, multiSourceId, dossierTab, loadMultiDossiers]);
 
-    /* ─── Stats ─── */
-    // `undefined` = la prop différée n'est pas encore arrivée : la carte affiche un spinner
-    // plutôt qu'un 0 trompeur.
-    const statCards = useMemo(() => [
-        { label: 'Attente Démarrage', value: compteurs?.demarrage, icon: 'ri-flag-line', color: 'primary' },
-        { label: 'Attente Présence', value: compteurs?.presence, icon: 'ri-user-follow-line', color: 'info' },
-        { label: 'Dossiers en cours', value: props.dossiers?.length, icon: 'ri-folder-2-line', color: 'warning' },
-        { label: 'Total à traiter', value: compteurs ? (compteurs.demarrage ?? 0) + (compteurs.presence ?? 0) : undefined, icon: 'ri-time-line', color: 'success' },
-    ], [compteurs, props.dossiers]);
-
     /* ─── Cohorte badges (démarrage uniquement) ─── */
     const cohortBadge = (cohorteKey: 'global' | 'cohorte1' | 'cohorte2' | 'cohorte3') => {
         if (!compteurs || !compteurs[cohorteKey]) {
@@ -1538,31 +1543,6 @@ const DmgPaiementsIndex = (props: PageProps) => {
                             <i className="ri-error-warning-line me-2 align-middle"></i>{flash.error}
                         </Alert>
                     )}
-
-                    {/* ─── Cartes Statistiques ─── */}
-                    <Row className="g-3 mb-4">
-                        {statCards.map((s) => (
-                            <Col xl={3} md={6} key={s.label}>
-                                <Card className="card-animate mb-0 h-100 shadow-sm border-0">
-                                    <CardBody className="p-3">
-                                        <div className="d-flex align-items-center gap-3">
-                                            <div className={`avatar-sm flex-shrink-0 bg-${s.color}-subtle rounded`}>
-                                                <span className={`avatar-title text-${s.color} rounded fs-3 bg-transparent`}>
-                                                    <i className={s.icon}></i>
-                                                </span>
-                                            </div>
-                                            <div>
-                                                <p className="text-uppercase fw-medium text-muted mb-0 fs-11">{s.label}</p>
-                                                <h4 className="fs-22 fw-bold mb-0">
-                                                    {s.value === undefined ? <Spinner size="sm" color={s.color} /> : s.value}
-                                                </h4>
-                                            </div>
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
 
                     {/* ═══════ FILTRES ═══════ */}
                     <Card className="mb-3 shadow-sm border-0">

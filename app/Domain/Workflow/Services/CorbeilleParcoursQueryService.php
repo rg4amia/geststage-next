@@ -35,7 +35,7 @@ class CorbeilleParcoursQueryService
             ->with(['stage.beneficiaire', 'stage.entreprise', 'stage.agence', 'etapeCourante'])
             ->where('corbeille_actuelle', $corbeille->value)
             ->whereNull('terminee_le')
-            ->when($instanceIds !== [], fn ($query) => $query->whereNotIn('id', $instanceIds))
+            ->when($instanceIds !== [], fn($query) => $query->whereNotIn('id', $instanceIds))
             ->orderBy('created_at')
             ->get();
 
@@ -45,14 +45,14 @@ class CorbeilleParcoursQueryService
     public function instanceRows(CorbeilleEnum $corbeille, string $statut): Collection
     {
         return $this->instancesFor($corbeille)
-            ->map(fn (InstanceParcours $instance) => $this->formatInstanceRow($instance, $statut))
+            ->map(fn(InstanceParcours $instance) => $this->formatInstanceRow($instance, $statut))
             ->values();
     }
 
     public function paiementRows(Collection $paiements): Collection
     {
         return $paiements
-            ->map(fn (Paiement $paiement) => $this->formatPaiementRow($paiement, $paiement->statut))
+            ->map(fn(Paiement $paiement) => $this->formatPaiementRow($paiement, $paiement->statut))
             ->values();
     }
 
@@ -68,7 +68,7 @@ class CorbeilleParcoursQueryService
     public function paiementRowsFor(CorbeilleEnum $corbeille, string $statut): Collection
     {
         return $this->paiementsFor($corbeille)
-            ->map(fn (Paiement $paiement) => $this->formatPaiementRow($paiement, $statut))
+            ->map(fn(Paiement $paiement) => $this->formatPaiementRow($paiement, $statut))
             ->values();
     }
 
@@ -86,7 +86,7 @@ class CorbeilleParcoursQueryService
 
         return [
             'id' => $paiement->id,
-            'numero' => 'PAY-'.str_pad((string) $paiement->id, 5, '0', STR_PAD_LEFT),
+            'numero' => 'PAY-' . str_pad((string) $paiement->id, 5, '0', STR_PAD_LEFT),
             'beneficiaire' => [
                 'nom' => $beneficiaire?->nom ?? 'Inconnu',
                 'prenoms' => $beneficiaire?->prenoms ?? '',
@@ -126,6 +126,9 @@ class CorbeilleParcoursQueryService
             'statut' => $statut,
             'date_creation' => $paiement->created_at?->format('d/m/Y'),
             'piece_jointe' => $paiement->statut_dossier_physique,
+            // Période couverte par ce paiement (code Y-m, ex. "2026-08"), accessible via le
+            // droit de paiement. Utile en présence où plusieurs mois peuvent coexister à l'écran.
+            'periode' => $paiement->droitPaiement?->periode?->code,
             // Statut du dossier physique (en_attente/recu/conforme) et horodatage du dernier
             // marquage : équivalent du couple legacy `date_recu`/`date_depose`, remplacé par un
             // unique horodatage + auteur (cf. DmgService::marquerDossiersPhysiques()).
@@ -140,7 +143,7 @@ class CorbeilleParcoursQueryService
     public function dossierRows(Collection $dossiers, string $statut): Collection
     {
         return $dossiers
-            ->map(fn (DossierPaiement $dossier) => [
+            ->map(fn(DossierPaiement $dossier) => [
                 'id' => $dossier->id,
                 'numero' => $dossier->numero,
                 'numero_dossier' => $dossier->numero,
@@ -169,7 +172,7 @@ class CorbeilleParcoursQueryService
     {
         $stage = $instance->stage;
         $beneficiaire = $stage?->beneficiaire;
-        $numero = 'DOS-'.str_pad((string) $instance->id, 5, '0', STR_PAD_LEFT);
+        $numero = 'DOS-' . str_pad((string) $instance->id, 5, '0', STR_PAD_LEFT);
 
         return [
             'id' => $instance->id,
