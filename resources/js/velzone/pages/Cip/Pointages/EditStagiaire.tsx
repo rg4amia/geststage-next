@@ -572,11 +572,28 @@ unique.set(o.entreprise_id, o);
 }
             });
 
-        return Array.from(unique.values()).map(o => ({
+        const options = Array.from(unique.values()).map(o => ({
             value: String(o.entreprise_id),
             label: o.entreprise?.raison_sociale || `Entreprise #${o.entreprise_id}`,
         }));
-    }, [offres, data.agence_id, references.entreprises]);
+
+        // Le stage existant peut être rattaché à une entreprise qui n'a pas d'offre publiée
+        // pour cette agence (offres = source dérivée pour la saisie, pas la vérité terrain) :
+        // sans ce fallback, le select afficherait vide alors qu'une valeur est enregistrée.
+        if (data.entreprise_id && !options.some(o => o.value === String(data.entreprise_id))) {
+            const entrepriseActuelle = references.entreprises.find(
+                e => String(e.id) === String(data.entreprise_id),
+            );
+            if (entrepriseActuelle) {
+                options.push({
+                    value: String(entrepriseActuelle.id),
+                    label: entrepriseActuelle.raison_sociale,
+                });
+            }
+        }
+
+        return options;
+    }, [offres, data.agence_id, data.entreprise_id, references.entreprises]);
 
     const piecePrefix = getPiecePrefix(data.nature_piece_identite);
     const pieceMaxLength = getPieceMaxLength(data.nature_piece_identite);

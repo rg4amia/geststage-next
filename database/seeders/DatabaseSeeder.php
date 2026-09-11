@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
             ContratsPaeColumnMappingSeeder::class,
             RolePermissionSeeder::class,
             AdminUserSeeder::class,
+            NiveauxEtudeSeeder::class,
         ]);
     }
 }
