@@ -142,10 +142,6 @@ const CbPaiementsIndex = (props: PageProps) => {
     const [selectedStagiaireIds, setSelectedStagiaireIds] = useState<number[]>([]);
     const [doublonCount, setDoublonCount] = useState(0);
 
-    /* ─── Pagination dossiers ─── */
-    const DOSSIERS_PER_PAGE = 5;
-    const [dossierPage, setDossierPage] = useState(1);
-
     /* ─── Refs ─── */
     const stagiairesRef = useRef<HTMLDivElement>(null);
 
@@ -423,17 +419,6 @@ const CbPaiementsIndex = (props: PageProps) => {
         return previewDocuments.find((d) => d.type_code?.toUpperCase() === code.toUpperCase());
     };
 
-    /* ─── Badge helpers ─── */
-    const getStatutBadge = (statut?: string) => {
-        switch ((statut || '').toUpperCase()) {
-            case 'VALIDE': case 'VALIDE_CB': return 'success';
-            case 'AJOURNE': case 'AJOURNE_DMG': case 'AJOURNE_CB': return 'danger';
-            case 'TRANSMIS_CB': return 'warning';
-            case 'BROUILLON': return 'info';
-            default: return 'secondary';
-        }
-    };
-
     /* ─── Période totale montant ─── */
     const totalMontant = useMemo(
         () => stagiaires.reduce((sum, s) => sum + Number(s.montant || 0), 0),
@@ -516,7 +501,6 @@ const CbPaiementsIndex = (props: PageProps) => {
                                         onChange={(e) => {
                                             setSelectedMois(e.target.value);
                                             setSelectedDossierId('');
-                                            setDossierPage(1);
                                             setStagiaires([]);
                                             setStagiaireTotal(0);
                                         }}>
@@ -669,211 +653,17 @@ const CbPaiementsIndex = (props: PageProps) => {
                             <TabContent activeTab={activeTab} className="pt-4 text-muted">
                                 {/* ═══════ ONGLET 1 : DOSSIERS EN ATTENTE ═══════ */}
                                 <TabPane tabId="1">
-                                    {/* ── Tableau des dossiers ── */}
-                                    {(() => {
-                                        const totalPages = Math.max(1, Math.ceil(dossiersControle.length / DOSSIERS_PER_PAGE));
-                                        const safeDossierPage = Math.min(dossierPage, totalPages);
-                                        const startIdx = (safeDossierPage - 1) * DOSSIERS_PER_PAGE;
-                                        const pageRows = dossiersControle.slice(startIdx, startIdx + DOSSIERS_PER_PAGE);
-
-                                        return (
-                                            <>
-                                                <div className="table-responsive">
-                                                    <table className="table table-striped table-hover align-middle mb-0">
-                                                        <thead className="table-light text-uppercase fs-11 fw-semibold">
-                                                            <tr>
-                                                                <th style={{ width: 40 }}>#</th>
-                                                                <th>Numéro</th>
-                                                                <th>Agence</th>
-                                                                <th>Financement</th>
-                                                                <th className="text-center">Nb Stagiaires</th>
-                                                                <th className="text-end">Montant Total</th>
-                                                                <th>Statut</th>
-                                                                <th>Actions</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody>
-                                                            {pageRows.map((d, idx) => (
-                                                                <tr key={d.id}
-                                                                    className={selectedDossierId === String(d.id) ? 'table-active' : ''}
-                                                                    onClick={() => {
-                                                                        setSelectedGroupeId('');
-                                                                        setSelectedDossierId(String(d.id));
-                                                                        setStagiairePage(1);
-                                                                        setStagiaireSearch('');
-                                                                        setTimeout(() => stagiairesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-                                                                    }}
-                                                                    style={{ cursor: 'pointer' }}>
-                                                                    <td>{startIdx + idx + 1}</td>
-                                                                    <td className="fw-medium text-primary">{d.numero}</td>
-                                                                    <td>{d.agence?.nom || '-'}</td>
-                                                                    <td>
-                                                                        <Badge color="info-subtle" className="text-info">{d.source_financement?.libelle || '-'}</Badge>
-                                                                    </td>
-                                                                    <td className="text-center">
-                                                                        <Badge color="primary" pill>{d.nombre_stagiaires || 0}</Badge>
-                                                                    </td>
-                                                                    <td className="text-end fw-bold">
-                                                                        {Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA
-                                                                    </td>
-                                                                    <td><Badge color={getStatutBadge(d.statut)} className="fs-11">{d.statut}</Badge></td>
-                                                                    <td>
-                                                                        <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                                                            <Button color="success" size="sm" outline
-                                                                                onClick={() => handleValiderDossier(d)}
-                                                                                title="Valider le dossier">
-                                                                                <i className="ri-check-line"></i>
-                                                                            </Button>
-                                                                            <Button color="danger" size="sm" outline
-                                                                                onClick={() => handleAjournerDossier(d)}
-                                                                                title="Ajourner le dossier">
-                                                                                <i className="ri-close-line"></i>
-                                                                            </Button>
-                                                                        </div>
-                                                                    </td>
-                                                                </tr>
-                                                            ))}
-                                                            {dossiersControle.length === 0 && (
-                                                                <tr>
-                                                                    <td colSpan={8} className="text-center py-4">
-                                                                        <i className="ri-inbox-line fs-24 d-block mb-2 text-muted"></i>
-                                                                        Aucun dossier en attente de contrôle pour cette période.
-                                                                    </td>
-                                                                </tr>
-                                                            )}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-
-                                                {/* ── Pagination dossiers ── */}
-                                                {dossiersControle.length > DOSSIERS_PER_PAGE && (() => {
-                                                    // Pages visibles : max 7 avec ellipses
-                                                    const maxVisible = 7;
-                                                    let pages: (number | '...')[] = [];
-
-                                                    if (totalPages <= maxVisible) {
-                                                        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
-                                                    } else {
-                                                        pages = [1];
-
-                                                        if (safeDossierPage > 3) {
-                                                            pages.push('...');
-                                                        }
-
-                                                        const start = Math.max(2, safeDossierPage - 1);
-                                                        const end = Math.min(totalPages - 1, safeDossierPage + 1);
-
-                                                        for (let i = start; i <= end; i++) {
-                                                            pages.push(i);
-                                                        }
-
-                                                        if (safeDossierPage < totalPages - 2) {
-                                                            pages.push('...');
-                                                        }
-
-                                                        pages.push(totalPages);
-                                                    }
-
-                                                    return (
-                                                        <div className="d-flex justify-content-between align-items-center p-2 border-top mt-2">
-                                                            <small className="text-muted">
-                                                                Affichage {startIdx + 1}–{Math.min(startIdx + DOSSIERS_PER_PAGE, dossiersControle.length)} sur {dossiersControle.length} dossier(s)
-                                                            </small>
-                                                            <div className="d-flex align-items-center gap-1">
-                                                                <Button size="sm" color="light" disabled={safeDossierPage <= 1}
-                                                                    onClick={() => setDossierPage((p) => p - 1)}>
-                                                                    <i className="ri-arrow-left-s-line"></i>
-                                                                </Button>
-                                                                {pages.map((page, i) =>
-                                                                    page === '...' ? (
-                                                                        <span key={`dots-${i}`} className="px-1 text-muted">…</span>
-                                                                    ) : (
-                                                                        <Button key={page} size="sm"
-                                                                            color={page === safeDossierPage ? 'primary' : 'light'}
-                                                                            onClick={() => setDossierPage(page)}>
-                                                                            {page}
-                                                                        </Button>
-                                                                    )
-                                                                )}
-                                                                <Button size="sm" color="light" disabled={safeDossierPage >= totalPages}
-                                                                    onClick={() => setDossierPage((p) => p + 1)}>
-                                                                    <i className="ri-arrow-right-s-line"></i>
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    );
-                                                })()}
-                                            </>
-                                        );
-                                    })()}
-
-                                    {/* ── Multi-dossiers en attente ── */}
-                                    {groupesControle.length > 0 && (
-                                        <div className="table-responsive mt-4">
-                                            <h6 className="fs-13 mb-2">
-                                                <i className="ri-folder-shared-line me-1 text-warning"></i>Multi-dossiers en attente
-                                                <Badge color="warning" pill className="ms-2">{groupesControle.length}</Badge>
-                                            </h6>
-                                            <table className="table table-striped table-hover align-middle mb-0">
-                                                <thead className="table-light text-uppercase fs-11 fw-semibold">
-                                                    <tr>
-                                                        <th>Numéro</th>
-                                                        <th>Financement</th>
-                                                        <th className="text-center">Nb Dossiers</th>
-                                                        <th className="text-end">Montant Total</th>
-                                                        <th>Actions</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {groupesControle.map((g) => (
-                                                        <tr key={`groupe-${g.id}`}
-                                                            className={selectedGroupeId === String(g.id) ? 'table-active' : ''}
-                                                            onClick={() => {
-                                                                setSelectedDossierId('');
-                                                                setSelectedGroupeId(String(g.id));
-                                                                setStagiairePage(1);
-                                                                setStagiaireSearch('');
-                                                                setTimeout(() => stagiairesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-                                                            }}
-                                                            style={{ cursor: 'pointer' }}>
-                                                            <td className="fw-medium text-primary">
-                                                                <Badge color="warning-subtle" className="text-warning me-1">Multi-dossier</Badge>{g.numero}
-                                                            </td>
-                                                            <td>
-                                                                <Badge color="info-subtle" className="text-info">{g.source_financement?.nom || '-'}</Badge>
-                                                            </td>
-                                                            <td className="text-center">
-                                                                <Badge color="primary" pill>{g.dossiers_count || 0}</Badge>
-                                                            </td>
-                                                            <td className="text-end fw-bold">
-                                                                {Number(g.montant_total || 0).toLocaleString('fr-FR')} FCFA
-                                                            </td>
-                                                            <td>
-                                                                <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
-                                                                    <Button color="success" size="sm" outline
-                                                                        onClick={() => handleValiderGroupe(g)}
-                                                                        title="Valider le multi-dossier">
-                                                                        <i className="ri-check-line"></i>
-                                                                    </Button>
-                                                                    <Button color="danger" size="sm" outline
-                                                                        onClick={() => handleAjournerGroupe(g)}
-                                                                        title="Ajourner le multi-dossier">
-                                                                        <i className="ri-close-line"></i>
-                                                                    </Button>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
+                                    {/* ── Prompt sélection dossier ── */}
+                                    {!selectedDossierId && !selectedGroupeId && (dossiersControle.length > 0 || groupesControle.length > 0) && (
+                                        <div className="text-center py-4 text-muted">
+                                            <i className="ri-cursor-line fs-24 d-block mb-2"></i>
+                                            <p className="mb-0">Sélectionnez un dossier ci-dessus pour afficher la liste des stagiaires.</p>
                                         </div>
                                     )}
-
-                                    {/* ── Prompt sélection dossier ── */}
-                                    {!selectedDossierId && !selectedGroupeId && dossiersControle.length > 0 && (
-                                        <div className="text-center py-4 text-muted border-top mt-3">
-                                            <i className="ri-cursor-line fs-24 d-block mb-2"></i>
-                                            <p className="mb-0">Cliquez sur un dossier pour afficher la liste des stagiaires.</p>
+                                    {dossiersControle.length === 0 && groupesControle.length === 0 && (
+                                        <div className="text-center py-4 text-muted">
+                                            <i className="ri-inbox-line fs-24 d-block mb-2"></i>
+                                            <p className="mb-0">Aucun dossier en attente de contrôle pour cette période.</p>
                                         </div>
                                     )}
 
@@ -953,7 +743,9 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                             </thead>
                                                             <tbody>
                                                                 {stagiaires.map((s) => (
-                                                                    <tr key={s.paiement_id}>
+                                                                    <tr key={s.paiement_id}
+                                                                        className={s.doublon ? 'table-warning' : ''}
+                                                                        title={s.doublon ? "Stagiaire en doublon détecté (AEJ/CMU/pièce d'identité)" : undefined}>
                                                                         <td>
                                                                             <Input type="checkbox" className="form-check-input"
                                                                                 checked={selectedStagiaireIds.includes(s.paiement_id)}
