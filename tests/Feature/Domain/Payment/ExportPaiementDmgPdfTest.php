@@ -3,6 +3,7 @@
 namespace Tests\Feature\Domain\Payment;
 
 use App\Domain\Payment\Services\ApplicationPrelevementsService;
+use App\Domain\Payment\Services\MultiDossierPdfService;
 use App\Models\Internship\Stage;
 use App\Models\Payment\DroitPaiement;
 use App\Models\Payment\Paiement;
@@ -126,6 +127,45 @@ class ExportPaiementDmgPdfTest extends TestCase
 
         $this->assertStringContainsString('CABINET DU PREMIER MINISTRE', $html);
         $this->assertStringContainsString('LE CHEF D&#039;UNITÉ', $html);
+    }
+
+    public function test_etat_financier_pdf_embeds_fonts_sans_double_serialisation(): void
+    {
+        $source = $this->source('BUDGET_AEJ');
+        $paiements = collect([$this->paiementPourSource($source)]);
+
+        $pdf = app(MultiDossierPdfService::class)->construireEtatFinancier($paiements, '2026-09', $source->id);
+        $output = $pdf->output();
+
+        // Les polices doivent être embarquées une seule fois (DejaVuSans + DejaVuSans-Bold).
+        // Une double sérialisation du canvas (output() puis save()) duplique les polices et
+        // corrompt les flux CIDToGIDMap (/FlateDecode sur des données non compressées), ce qui
+        // rend le PDF illisible dans les visionneuses.
+        $this->assertSame(2, substr_count($output, '/FontFile2'));
+        $this->assertSame(2, substr_count($output, '/CIDToGIDMap'));
+        $this->assertTrue($this->tousLesFlateStreamsSontValides($output));
+    }
+
+    /**
+     * Vérifie que chaque flux /FlateDecode du PDF se décompresse (zlib valide) : les flux
+     * CIDToGIDMap corrompus par la double sérialisation échouent à gzuncompress().
+     */
+    private function tousLesFlateStreamsSontValides(string $pdf): bool
+    {
+        preg_match_all('/(\d+) 0 obj\s*<<(.*?)>>\s*stream\r?\n(.*?)\r?\nendstream/s', $pdf, $matches, PREG_SET_ORDER);
+        $flateStreams = 0;
+
+        foreach ($matches as $match) {
+            if (strpos($match[2], '/FlateDecode') === false) {
+                continue;
+            }
+            $flateStreams++;
+            if (gzuncompress($match[3]) === false) {
+                return false;
+            }
+        }
+
+        return $flateStreams > 0;
     }
 
     public function test_attestation_demarrage_renders_tabular_legacy_layout(): void

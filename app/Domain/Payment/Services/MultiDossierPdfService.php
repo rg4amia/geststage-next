@@ -247,7 +247,10 @@ class MultiDossierPdfService
                 ],
             ])
         );
-        $pdf->output();
+        // Rendu unique (sans sérialisation) puis numérotation : sérialiser le canvas deux fois
+        // (output() puis save()) corrompt les flux CIDToGIDMap des polices embarquées (dompdf
+        // base64-décode CIDtoGID en place à chaque passage).
+        $pdf->render();
         $canvas = $pdf->get_canvas();
         $canvas->page_text(10, $canvas->get_height() - 20, 'P. {PAGE_NUM} / {PAGE_COUNT}', null, 10, [0, 0, 0]);
     }

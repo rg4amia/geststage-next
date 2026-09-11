@@ -369,7 +369,7 @@ return;
         router.post('/chefagence/validations/valider-group', { ids: allIds.map(String), type: currentTabType }, {
             preserveScroll: true,
             onSuccess: () => {
- setSelectedIds([]); reloadData(); 
+ setSelectedIds([]); reloadData();
 },
             onFinish: () => setIsProcessing(false),
         });
@@ -388,7 +388,7 @@ return;
         }, {
             preserveScroll: true,
             onSuccess: () => {
- setSelectedIds([]); reloadData(); 
+ setSelectedIds([]); reloadData();
 },
             onFinish: () => setIsProcessing(false),
         });
@@ -435,7 +435,7 @@ return;
         router.post('/chefagence/validations/generer-add-group', { ids: ids.map(String), type: currentTabType }, {
             preserveScroll: true,
             onSuccess: () => {
- setSelectedIds([]); reloadData(); 
+ setSelectedIds([]); reloadData();
 },
             onFinish: () => setIsProcessing(false),
         });
@@ -667,39 +667,6 @@ return <span className="text-muted">-</span>;
                             <i className="ri-error-warning-line me-2 align-middle"></i>{flash.error}
                         </Alert>
                     )}
-
-                    {/* ─── Cartes Statistiques ─── */}
-                    <Row className="g-3 mb-4">
-                        {tabs.map((card) => (
-                            <Col lg={4} md={4} sm={12} key={card.key}>
-                                <Card
-                                    className="mb-0 shadow-sm border-0"
-                                    onClick={() => toggleTab(card.key)}
-                                    style={{
-                                        cursor: 'pointer',
-                                        borderLeft: activeTab === card.key
-                                            ? `4px solid var(--vz-${card.color})`
-                                            : '4px solid transparent',
-                                        transition: 'border-left-color 0.2s ease',
-                                    }}
-                                >
-                                    <CardBody className="py-3">
-                                        <div className="d-flex align-items-center">
-                                            <div className="avatar-sm flex-shrink-0 me-3">
-                                                <span className={`avatar-title bg-${card.color}-subtle text-${card.color} rounded-circle fs-20`}>
-                                                    <i className={card.icon}></i>
-                                                </span>
-                                            </div>
-                                            <div className="flex-grow-1">
-                                                <p className="text-muted text-uppercase fw-medium fs-12 mb-1">{card.label}</p>
-                                                <h3 className={`mb-0 text-${card.color}`}>{card.count}</h3>
-                                            </div>
-                                        </div>
-                                    </CardBody>
-                                </Card>
-                            </Col>
-                        ))}
-                    </Row>
 
                     {/* ─── Carte principale ─── */}
                     <Card className="shadow-sm border-0">

@@ -138,7 +138,10 @@ class AttestationPresenceService
         );
 
         $pdf->setPaper('A4', 'landscape');
-        $pdf->output();
+
+        // Rendu unique (sans sérialisation) puis numérotation : sérialiser le canvas deux fois
+        // (output() puis save()) corrompt les flux CIDToGIDMap des polices embarquées.
+        $pdf->render();
 
         // 9. Ajouter la numérotation des pages
         $canvas = $pdf->get_canvas();

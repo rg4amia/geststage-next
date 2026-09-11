@@ -68,7 +68,9 @@ class ContratPaeService
             );
 
             // Ajouter la numérotation des pages
-            $pdf->output();
+            // Rendu unique (sans sérialisation) : sérialiser le canvas deux fois
+            // (output() puis save()) corrompt les flux CIDToGIDMap des polices embarquées.
+            $pdf->render();
             $canvas = $pdf->get_canvas();
             $canvas->page_text(
                 $canvas->get_width() - 100,
