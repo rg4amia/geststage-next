@@ -222,12 +222,15 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/agent-comptable/paiements/ordres/{ordre}/retirer', [PaiementAcController::class, 'retirerOrdre'])->middleware('can:ajourner_bordereau_ac')->name('ac.paiements.ordres.retirer');
 
     // Phase 8 : Chef de Bureau (CB)
-    Route::get('/cb/paiements', [PaiementCbController::class, 'index'])->name('cb.paiements.index');
-    Route::get('/cb/paiements/dossiers', [PaiementCbController::class, 'dossiersByMois'])->name('cb.paiements.dossiers');
-    Route::post('/cb/paiements/stagiaires', [PaiementCbController::class, 'stagiairesByDossier'])->name('cb.paiements.stagiaires');
-    Route::get('/cb/paiements/documents', [PaiementCbController::class, 'documentsByStage'])->name('cb.paiements.documents');
-    Route::post('/cb/paiements/valider/{id}', [PaiementCbController::class, 'valider'])->name('cb.paiements.valider');
-    Route::post('/cb/paiements/ajourner/{id}', [PaiementCbController::class, 'ajourner'])->name('cb.paiements.ajourner');
+    Route::get('/cb/paiements', [PaiementCbController::class, 'index'])->middleware('can:voir_dossier_cb')->name('cb.paiements.index');
+    Route::get('/cb/paiements/dossiers', [PaiementCbController::class, 'dossiersByMois'])->middleware('can:voir_dossier_cb')->name('cb.paiements.dossiers');
+    Route::post('/cb/paiements/stagiaires', [PaiementCbController::class, 'stagiairesByDossier'])->middleware('can:voir_dossier_cb')->name('cb.paiements.stagiaires');
+    Route::get('/cb/paiements/documents', [PaiementCbController::class, 'documentsByStage'])->middleware('can:voir_dossier_cb')->name('cb.paiements.documents');
+    Route::post('/cb/paiements/valider/{id}', [PaiementCbController::class, 'valider'])->middleware('can:valider_dossier_cb')->name('cb.paiements.valider');
+    Route::post('/cb/paiements/ajourner/{id}', [PaiementCbController::class, 'ajourner'])->middleware('can:ajourner_dossier_cb')->name('cb.paiements.ajourner');
+    Route::post('/cb/paiements/ajourner-stagiaires', [PaiementCbController::class, 'ajournerStagiaires'])->middleware('can:ajourner_dossier_cb')->name('cb.paiements.ajourner-stagiaires');
+    Route::post('/cb/paiements/groupes/{groupe}/valider', [PaiementCbController::class, 'validerGroupe'])->middleware('can:valider_dossier_cb')->name('cb.paiements.groupes.valider');
+    Route::post('/cb/paiements/groupes/{groupe}/ajourner', [PaiementCbController::class, 'ajournerGroupe'])->middleware('can:ajourner_dossier_cb')->name('cb.paiements.groupes.ajourner');
 
     Route::get('/desse/stagiaires', [StagiaireDesseController::class, 'index'])->middleware('can:valider_desse')->name('desse.stagiaires.index');
     Route::post('/desse/stagiaires/valider/{id}', [StagiaireDesseController::class, 'valider'])->middleware('can:valider_desse')->name('desse.stagiaires.valider');

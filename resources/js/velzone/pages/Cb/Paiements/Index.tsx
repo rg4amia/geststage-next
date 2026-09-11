@@ -71,6 +71,16 @@ interface StagiaireRow {
     statut: string;
     stage_id?: number;
     dossier_identifiant?: string;
+    doublon?: boolean;
+}
+
+interface DossierGroupeRow {
+    id: number;
+    numero: string;
+    statut: string;
+    montant_total: number;
+    dossiers_count: number;
+    source_financement?: { nom: string } | null;
 }
 
 interface DocumentItem {
@@ -87,6 +97,8 @@ interface DocumentItem {
 interface PageProps {
     dossiersControle: DossierRow[];
     etatsAjournes: DossierRow[];
+    groupesControle: DossierGroupeRow[];
+    groupesAjournes: DossierGroupeRow[];
     moisActuel: string;
     periode: { id: number; code: string } | null;
     periodeOptions: RefItem[];
@@ -99,13 +111,15 @@ const CbPaiementsIndex = (props: PageProps) => {
     const {
         dossiersControle = [],
         etatsAjournes = [],
+        groupesControle = [],
+        groupesAjournes = [],
         moisActuel = '',
         periodeOptions = [],
     } = props;
 
     const { flash, errors } = usePage<{
         flash: { success?: string; error?: string };
-        errors?: { dossier?: string; motif?: string; statut?: string };
+        errors?: { dossier?: string; motif?: string; statut?: string; groupe?: string; paiement_ids?: string };
     }>().props;
 
     /* ─── États ─── */
@@ -115,6 +129,7 @@ const CbPaiementsIndex = (props: PageProps) => {
 
     /* ─── Sélection dossier ─── */
     const [selectedDossierId, setSelectedDossierId] = useState<string>('');
+    const [selectedGroupeId, setSelectedGroupeId] = useState<string>('');
     const [dossierOptions, setDossierOptions] = useState<{ value: string; label: string; dossier: any }[]>([]);
     const [isLoadingDossiers, setIsLoadingDossiers] = useState(false);
 
@@ -125,6 +140,7 @@ const CbPaiementsIndex = (props: PageProps) => {
     const [stagiaireSearch, setStagiaireSearch] = useState('');
     const [stagiaireLoading, setStagiaireLoading] = useState(false);
     const [selectedStagiaireIds, setSelectedStagiaireIds] = useState<number[]>([]);
+    const [doublonCount, setDoublonCount] = useState(0);
 
     /* ─── Pagination dossiers ─── */
     const DOSSIERS_PER_PAGE = 5;
@@ -138,6 +154,11 @@ const CbPaiementsIndex = (props: PageProps) => {
     const [modalValiderOpen, setModalValiderOpen] = useState(false);
     const [motifAjourner, setMotifAjourner] = useState('');
     const [dossierToAction, setDossierToAction] = useState<DossierRow | null>(null);
+    const [groupeToAction, setGroupeToAction] = useState<DossierGroupeRow | null>(null);
+
+    /* ─── Ajournement partiel (stagiaires sélectionnés) ─── */
+    const [modalAjournerStagiairesOpen, setModalAjournerStagiairesOpen] = useState(false);
+    const [motifAjournerStagiaires, setMotifAjournerStagiaires] = useState('');
 
     /* ─── Prévisualisation fichiers ─── */
     const [modalPreviewOpen, setModalPreviewOpen] = useState(false);
@@ -162,12 +183,15 @@ const CbPaiementsIndex = (props: PageProps) => {
             .then((data: any[]) => {
                 setDossierOptions(
                     data.map((d) => ({
-                        value: String(d.id),
-                        label: `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires} stagi., ${Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA)`,
+                        value: `${d.type}:${d.id}`,
+                        label: d.type === 'groupe'
+                            ? `🗂 ${d.identifiant} — Multi-dossier (${d.dossiers_count} dossiers, ${Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA)`
+                            : `${d.identifiant} — ${d.agence} (${d.nombre_stagiaires} stagi., ${Number(d.montant_total || 0).toLocaleString('fr-FR')} FCFA)`,
                         dossier: d,
                     }))
                 );
                 setSelectedDossierId('');
+                setSelectedGroupeId('');
                 setStagiaires([]);
                 setStagiaireTotal(0);
             })
@@ -181,16 +205,21 @@ const CbPaiementsIndex = (props: PageProps) => {
 
     /* ═══════════════ CHARGEMENT STAGIAIRES ═══════════════ */
     const loadStagiaires = useCallback(() => {
-        if (!selectedDossierId) {
+        if (!selectedDossierId && !selectedGroupeId) {
             setStagiaires([]);
             setStagiaireTotal(0);
+            setDoublonCount(0);
 
             return;
         }
 
         setStagiaireLoading(true);
         const params = new URLSearchParams();
-        params.set('dossier_id', selectedDossierId);
+        if (selectedGroupeId) {
+            params.set('groupe_id', selectedGroupeId);
+        } else {
+            params.set('dossier_id', selectedDossierId);
+        }
         params.set('start', String((stagiairePage - 1) * 10));
         params.set('length', '10');
         params.set('search', stagiaireSearch);
@@ -210,14 +239,16 @@ const CbPaiementsIndex = (props: PageProps) => {
             .then((res) => {
                 setStagiaires(res.data || []);
                 setStagiaireTotal(res.recordsFiltered || 0);
+                setDoublonCount(res.doublonCount || 0);
                 setSelectedStagiaireIds([]);
             })
             .catch(() => {
                 setStagiaires([]);
                 setStagiaireTotal(0);
+                setDoublonCount(0);
             })
             .finally(() => setStagiaireLoading(false));
-    }, [selectedDossierId, stagiairePage, stagiaireSearch]);
+    }, [selectedDossierId, selectedGroupeId, stagiairePage, stagiaireSearch]);
 
     useEffect(() => {
         queueMicrotask(loadStagiaires);
@@ -238,11 +269,33 @@ const CbPaiementsIndex = (props: PageProps) => {
 
     /* ═══════════════ ACTIONS ═══════════════ */
     const handleValiderDossier = (dossier: DossierRow) => {
+        setGroupeToAction(null);
         setDossierToAction(dossier);
         setModalValiderOpen(true);
     };
 
+    const handleValiderGroupe = (groupe: DossierGroupeRow) => {
+        setDossierToAction(null);
+        setGroupeToAction(groupe);
+        setModalValiderOpen(true);
+    };
+
     const confirmValider = () => {
+        if (groupeToAction) {
+            setProcessing(true);
+            router.post(`/cb/paiements/groupes/${groupeToAction.id}/valider`, {}, {
+                preserveScroll: true,
+                preserveState: false,
+                onSuccess: () => {
+                    setModalValiderOpen(false);
+                    setGroupeToAction(null);
+                },
+                onFinish: () => setProcessing(false),
+            });
+
+            return;
+        }
+
         if (!dossierToAction) {
             return;
         }
@@ -260,13 +313,41 @@ const CbPaiementsIndex = (props: PageProps) => {
     };
 
     const handleAjournerDossier = (dossier: DossierRow) => {
+        setGroupeToAction(null);
         setDossierToAction(dossier);
         setMotifAjourner('');
         setModalAjournerOpen(true);
     };
 
+    const handleAjournerGroupe = (groupe: DossierGroupeRow) => {
+        setDossierToAction(null);
+        setGroupeToAction(groupe);
+        setMotifAjourner('');
+        setModalAjournerOpen(true);
+    };
+
     const confirmAjourner = () => {
-        if (!dossierToAction || motifAjourner.trim().length < 5) {
+        if (motifAjourner.trim().length < 5) {
+            return;
+        }
+
+        if (groupeToAction) {
+            setProcessing(true);
+            router.post(`/cb/paiements/groupes/${groupeToAction.id}/ajourner`, { motif: motifAjourner }, {
+                preserveScroll: true,
+                preserveState: false,
+                onSuccess: () => {
+                    setModalAjournerOpen(false);
+                    setGroupeToAction(null);
+                    setMotifAjourner('');
+                },
+                onFinish: () => setProcessing(false),
+            });
+
+            return;
+        }
+
+        if (!dossierToAction) {
             return;
         }
 
@@ -282,6 +363,32 @@ const CbPaiementsIndex = (props: PageProps) => {
             onFinish: () => {
                 setProcessing(false);
             },
+        });
+    };
+
+    const handleAjournerSelection = () => {
+        setMotifAjournerStagiaires('');
+        setModalAjournerStagiairesOpen(true);
+    };
+
+    const confirmAjournerStagiaires = () => {
+        if (selectedStagiaireIds.length === 0 || motifAjournerStagiaires.trim().length < 5) {
+            return;
+        }
+
+        setProcessing(true);
+        router.post('/cb/paiements/ajourner-stagiaires', {
+            paiement_ids: selectedStagiaireIds,
+            motif: motifAjournerStagiaires,
+        }, {
+            preserveScroll: true,
+            preserveState: false,
+            onSuccess: () => {
+                setModalAjournerStagiairesOpen(false);
+                setMotifAjournerStagiaires('');
+                setSelectedStagiaireIds([]);
+            },
+            onFinish: () => setProcessing(false),
         });
     };
 
@@ -426,9 +533,20 @@ const CbPaiementsIndex = (props: PageProps) => {
                                     </Label>
                                     <Select
                                         options={dossierOptions}
-                                        value={dossierOptions.find((o) => o.value === selectedDossierId) || null}
+                                        value={dossierOptions.find((o) => o.value === (selectedGroupeId ? `groupe:${selectedGroupeId}` : `dossier:${selectedDossierId}`)) || null}
                                         onChange={(selected: any) => {
-                                            setSelectedDossierId(selected?.value || '');
+                                            const d = selected?.dossier;
+
+                                            if (!d) {
+                                                setSelectedDossierId('');
+                                                setSelectedGroupeId('');
+                                            } else if (d.type === 'groupe') {
+                                                setSelectedGroupeId(String(d.id));
+                                                setSelectedDossierId('');
+                                            } else {
+                                                setSelectedDossierId(String(d.id));
+                                                setSelectedGroupeId('');
+                                            }
                                             setStagiairePage(1);
                                             setStagiaireSearch('');
                                         }}
@@ -445,12 +563,25 @@ const CbPaiementsIndex = (props: PageProps) => {
                                 <Col md={3}>
                                     <div className="d-flex gap-2">
                                         <Button color="success" size="sm"
-                                            disabled={!selectedDossierId || processing}
+                                            disabled={(!selectedDossierId && !selectedGroupeId) || processing}
                                             onClick={() => {
-                                                const dossier = dossierOptions.find(o => o.value === selectedDossierId)?.dossier;
+                                                const dossier = dossierOptions.find(o => o.value === (selectedGroupeId ? `groupe:${selectedGroupeId}` : `dossier:${selectedDossierId}`))?.dossier;
 
-                                                if (dossier) {
-                                                    const row: DossierRow = {
+                                                if (!dossier) {
+                                                    return;
+                                                }
+
+                                                if (dossier.type === 'groupe') {
+                                                    handleValiderGroupe({
+                                                        id: dossier.id,
+                                                        numero: dossier.identifiant,
+                                                        statut: 'TRANSMIS_CB',
+                                                        montant_total: dossier.montant_total,
+                                                        dossiers_count: dossier.dossiers_count,
+                                                        source_financement: { nom: dossier.source_financement },
+                                                    });
+                                                } else {
+                                                    handleValiderDossier({
                                                         id: dossier.id,
                                                         numero: dossier.identifiant,
                                                         agence: { nom: dossier.agence },
@@ -461,19 +592,31 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                         statut: 'En attente CB',
                                                         statut_code: 'TRANSMIS_CB',
                                                         date_creation: '',
-                                                    };
-                                                    handleValiderDossier(row);
+                                                    });
                                                 }
                                             }}>
                                             <i className="ri-check-line me-1"></i>Valider
                                         </Button>
                                         <Button color="danger" size="sm" outline
-                                            disabled={!selectedDossierId}
+                                            disabled={!selectedDossierId && !selectedGroupeId}
                                             onClick={() => {
-                                                const dossier = dossierOptions.find(o => o.value === selectedDossierId)?.dossier;
+                                                const dossier = dossierOptions.find(o => o.value === (selectedGroupeId ? `groupe:${selectedGroupeId}` : `dossier:${selectedDossierId}`))?.dossier;
 
-                                                if (dossier) {
-                                                    const row: DossierRow = {
+                                                if (!dossier) {
+                                                    return;
+                                                }
+
+                                                if (dossier.type === 'groupe') {
+                                                    handleAjournerGroupe({
+                                                        id: dossier.id,
+                                                        numero: dossier.identifiant,
+                                                        statut: 'TRANSMIS_CB',
+                                                        montant_total: dossier.montant_total,
+                                                        dossiers_count: dossier.dossiers_count,
+                                                        source_financement: { nom: dossier.source_financement },
+                                                    });
+                                                } else {
+                                                    handleAjournerDossier({
                                                         id: dossier.id,
                                                         numero: dossier.identifiant,
                                                         agence: { nom: dossier.agence },
@@ -484,8 +627,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                         statut: 'En attente CB',
                                                         statut_code: 'TRANSMIS_CB',
                                                         date_creation: '',
-                                                    };
-                                                    handleAjournerDossier(row);
+                                                    });
                                                 }
                                             }}>
                                             <i className="ri-close-circle-line me-1"></i>Ajourner
@@ -555,6 +697,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                                 <tr key={d.id}
                                                                     className={selectedDossierId === String(d.id) ? 'table-active' : ''}
                                                                     onClick={() => {
+                                                                        setSelectedGroupeId('');
                                                                         setSelectedDossierId(String(d.id));
                                                                         setStagiairePage(1);
                                                                         setStagiaireSearch('');
@@ -664,8 +807,70 @@ const CbPaiementsIndex = (props: PageProps) => {
                                         );
                                     })()}
 
+                                    {/* ── Multi-dossiers en attente ── */}
+                                    {groupesControle.length > 0 && (
+                                        <div className="table-responsive mt-4">
+                                            <h6 className="fs-13 mb-2">
+                                                <i className="ri-folder-shared-line me-1 text-warning"></i>Multi-dossiers en attente
+                                                <Badge color="warning" pill className="ms-2">{groupesControle.length}</Badge>
+                                            </h6>
+                                            <table className="table table-striped table-hover align-middle mb-0">
+                                                <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                    <tr>
+                                                        <th>Numéro</th>
+                                                        <th>Financement</th>
+                                                        <th className="text-center">Nb Dossiers</th>
+                                                        <th className="text-end">Montant Total</th>
+                                                        <th>Actions</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {groupesControle.map((g) => (
+                                                        <tr key={`groupe-${g.id}`}
+                                                            className={selectedGroupeId === String(g.id) ? 'table-active' : ''}
+                                                            onClick={() => {
+                                                                setSelectedDossierId('');
+                                                                setSelectedGroupeId(String(g.id));
+                                                                setStagiairePage(1);
+                                                                setStagiaireSearch('');
+                                                                setTimeout(() => stagiairesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+                                                            }}
+                                                            style={{ cursor: 'pointer' }}>
+                                                            <td className="fw-medium text-primary">
+                                                                <Badge color="warning-subtle" className="text-warning me-1">Multi-dossier</Badge>{g.numero}
+                                                            </td>
+                                                            <td>
+                                                                <Badge color="info-subtle" className="text-info">{g.source_financement?.nom || '-'}</Badge>
+                                                            </td>
+                                                            <td className="text-center">
+                                                                <Badge color="primary" pill>{g.dossiers_count || 0}</Badge>
+                                                            </td>
+                                                            <td className="text-end fw-bold">
+                                                                {Number(g.montant_total || 0).toLocaleString('fr-FR')} FCFA
+                                                            </td>
+                                                            <td>
+                                                                <div className="d-flex gap-1" onClick={(e) => e.stopPropagation()}>
+                                                                    <Button color="success" size="sm" outline
+                                                                        onClick={() => handleValiderGroupe(g)}
+                                                                        title="Valider le multi-dossier">
+                                                                        <i className="ri-check-line"></i>
+                                                                    </Button>
+                                                                    <Button color="danger" size="sm" outline
+                                                                        onClick={() => handleAjournerGroupe(g)}
+                                                                        title="Ajourner le multi-dossier">
+                                                                        <i className="ri-close-line"></i>
+                                                                    </Button>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
+
                                     {/* ── Prompt sélection dossier ── */}
-                                    {!selectedDossierId && dossiersControle.length > 0 && (
+                                    {!selectedDossierId && !selectedGroupeId && dossiersControle.length > 0 && (
                                         <div className="text-center py-4 text-muted border-top mt-3">
                                             <i className="ri-cursor-line fs-24 d-block mb-2"></i>
                                             <p className="mb-0">Cliquez sur un dossier pour afficher la liste des stagiaires.</p>
@@ -673,7 +878,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                     )}
 
                                     {/* ── Liste des Stagiaires ── */}
-                                    {selectedDossierId && (
+                                    {(selectedDossierId || selectedGroupeId) && (
                                         <Card className="border shadow-none mt-4" innerRef={stagiairesRef}>
                                             <CardHeader className="bg-info bg-opacity-10 py-2 d-flex justify-content-between align-items-center">
                                                 <h6 className="card-title mb-0 fs-13 text-info">
@@ -682,6 +887,14 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                     <Badge color="info" pill className="ms-2 fs-11">{stagiaireTotal}</Badge>
                                                 </h6>
                                                 <div className="d-flex align-items-center gap-2">
+                                                    {selectedStagiaireIds.length > 0 && (
+                                                        <Button color="danger" size="sm" outline
+                                                            onClick={handleAjournerSelection}
+                                                            title="Ajourner uniquement les stagiaires sélectionnés">
+                                                            <i className="ri-close-circle-line me-1"></i>
+                                                            Ajourner sélection ({selectedStagiaireIds.length})
+                                                        </Button>
+                                                    )}
                                                     {totalMontant > 0 && (
                                                         <Badge color="success" className="fs-12">
                                                             Total: {totalMontant.toLocaleString('fr-FR')} FCFA
@@ -697,6 +910,12 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                 </div>
                                             </CardHeader>
                                             <CardBody className="p-0">
+                                                {doublonCount > 0 && (
+                                                    <Alert color="warning" className="border-0 mb-0 rounded-0 py-2">
+                                                        <i className="ri-error-warning-line me-2 align-middle"></i>
+                                                        {doublonCount} stagiaire(s) partagent un même numéro AEJ, CMU ou pièce d'identité avec un autre stagiaire de ce dossier — vérifiez avant de valider.
+                                                    </Alert>
+                                                )}
                                                 {stagiaireLoading ? (
                                                     <div className="d-flex justify-content-center py-4">
                                                         <Spinner color="info" size="sm" />
@@ -748,7 +967,14 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                                         </td>
                                                                         <td className="text-truncate" style={{ maxWidth: 100 }}>{s.type_stage}</td>
                                                                         <td className="text-muted">{s.numero_aej}</td>
-                                                                        <td className="fw-semibold">{s.nom} {s.prenoms}</td>
+                                                                        <td className="fw-semibold">
+                                                                            {s.nom} {s.prenoms}
+                                                                            {s.doublon && (
+                                                                                <Badge color="warning" pill className="ms-1 fs-10" title="Doublon potentiel (AEJ/CMU/pièce d'identité)">
+                                                                                    <i className="ri-error-warning-line"></i>
+                                                                                </Badge>
+                                                                            )}
+                                                                        </td>
                                                                         <td className="fs-12">{s.date_naissance}</td>
                                                                         <td className="fs-12">{s.date_debut}</td>
                                                                         <td className="fs-12">{s.date_fin}</td>
@@ -881,7 +1107,7 @@ const CbPaiementsIndex = (props: PageProps) => {
                                                         <td>{e.date_ajournement || e.date_transmission || '-'}</td>
                                                     </tr>
                                                 ))}
-                                                {etatsAjournes.length === 0 && (
+                                                {etatsAjournes.length === 0 && groupesAjournes.length === 0 && (
                                                     <tr>
                                                         <td colSpan={7} className="text-center py-4">
                                                             <i className="ri-inbox-line fs-24 d-block mb-2 text-muted"></i>
@@ -892,6 +1118,42 @@ const CbPaiementsIndex = (props: PageProps) => {
                                             </tbody>
                                         </table>
                                     </div>
+
+                                    {/* ── Multi-dossiers ajournés ── */}
+                                    {groupesAjournes.length > 0 && (
+                                        <div className="table-responsive mt-4">
+                                            <h6 className="fs-13 mb-2">
+                                                <i className="ri-folder-shared-line me-1 text-warning"></i>Multi-dossiers ajournés
+                                                <Badge color="warning" pill className="ms-2">{groupesAjournes.length}</Badge>
+                                            </h6>
+                                            <table className="table table-striped table-hover align-middle mb-0">
+                                                <thead className="table-light text-uppercase fs-11 fw-semibold">
+                                                    <tr>
+                                                        <th>Numéro</th>
+                                                        <th>Financement</th>
+                                                        <th className="text-center">Nb Dossiers</th>
+                                                        <th className="text-end">Montant Total</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {groupesAjournes.map((g) => (
+                                                        <tr key={`groupe-ajourne-${g.id}`}>
+                                                            <td className="fw-medium text-danger">
+                                                                <Badge color="warning-subtle" className="text-warning me-1">Multi-dossier</Badge>{g.numero}
+                                                            </td>
+                                                            <td>{g.source_financement?.nom || '-'}</td>
+                                                            <td className="text-center">
+                                                                <Badge color="primary" pill>{g.dossiers_count || 0}</Badge>
+                                                            </td>
+                                                            <td className="text-end fw-bold">
+                                                                {Number(g.montant_total || 0).toLocaleString('fr-FR')} FCFA
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    )}
                                 </TabPane>
                             </TabContent>
                         </CardBody>
@@ -904,12 +1166,15 @@ const CbPaiementsIndex = (props: PageProps) => {
                ═══════════════════════════════════════════════════════════════ */}
             <Modal isOpen={modalValiderOpen} toggle={() => setModalValiderOpen(!modalValiderOpen)}>
                 <ModalHeader toggle={() => setModalValiderOpen(!modalValiderOpen)}>
-                    <i className="ri-check-double-line text-success me-2"></i>Validation du Dossier
+                    <i className="ri-check-double-line text-success me-2"></i>
+                    {groupeToAction ? 'Validation du Multi-dossier' : 'Validation du Dossier'}
                 </ModalHeader>
                 <ModalBody>
                     <div className="alert alert-success border-0 mb-3">
                         <i className="ri-information-line me-2"></i>
-                        En validant ce dossier, il sera transmis à la DMG pour l'élaboration de l'Ordre de Paiement.
+                        {groupeToAction
+                            ? "En validant ce multi-dossier, tous ses dossiers membres seront transmis à la DMG pour l'élaboration de l'Ordre de Paiement."
+                            : "En validant ce dossier, il sera transmis à la DMG pour l'élaboration de l'Ordre de Paiement."}
                     </div>
                     {(errors?.dossier || errors?.statut) && (
                         <div className="alert alert-danger border-0 mb-3">
@@ -927,6 +1192,16 @@ const CbPaiementsIndex = (props: PageProps) => {
                             </Row>
                         </div>
                     )}
+                    {groupeToAction && (
+                        <div className="border rounded p-3 bg-light">
+                            <Row className="g-2">
+                                <Col md={6}><strong>Multi-dossier :</strong> {groupeToAction.numero}</Col>
+                                <Col md={6}><strong>Financement :</strong> {groupeToAction.source_financement?.nom || '-'}</Col>
+                                <Col md={6}><strong>Dossiers :</strong> {groupeToAction.dossiers_count}</Col>
+                                <Col md={6}><strong>Montant :</strong> <span className="text-success fw-bold">{Number(groupeToAction.montant_total || 0).toLocaleString('fr-FR')} FCFA</span></Col>
+                            </Row>
+                        </div>
+                    )}
                 </ModalBody>
                 <ModalFooter>
                     <Button color="light" onClick={() => setModalValiderOpen(false)}>Annuler</Button>
@@ -941,12 +1216,15 @@ const CbPaiementsIndex = (props: PageProps) => {
                ═══════════════════════════════════════════════════════════════ */}
             <Modal isOpen={modalAjournerOpen} toggle={() => setModalAjournerOpen(!modalAjournerOpen)}>
                 <ModalHeader toggle={() => setModalAjournerOpen(!modalAjournerOpen)}>
-                    <i className="ri-close-circle-line text-danger me-2"></i>Ajourner le Dossier
+                    <i className="ri-close-circle-line text-danger me-2"></i>
+                    {groupeToAction ? 'Ajourner le Multi-dossier' : 'Ajourner le Dossier'}
                 </ModalHeader>
                 <ModalBody>
                     <div className="alert alert-warning border-0 mb-3">
                         <i className="ri-alert-line me-2"></i>
-                        En ajournant ce dossier, il retournera à la DMG pour correction.
+                        {groupeToAction
+                            ? 'En ajournant ce multi-dossier, tous ses dossiers membres retourneront à la DMG pour correction.'
+                            : 'En ajournant ce dossier, il retournera à la DMG pour correction.'}
                     </div>
                     {(errors?.dossier || errors?.statut) && (
                         <div className="alert alert-danger border-0 mb-3">
@@ -959,6 +1237,14 @@ const CbPaiementsIndex = (props: PageProps) => {
                             <Row className="g-2">
                                 <Col md={6}><strong>Dossier :</strong> {dossierToAction.numero}</Col>
                                 <Col md={6}><strong>Agence :</strong> {dossierToAction.agence?.nom}</Col>
+                            </Row>
+                        </div>
+                    )}
+                    {groupeToAction && (
+                        <div className="border rounded p-3 bg-light mb-3">
+                            <Row className="g-2">
+                                <Col md={6}><strong>Multi-dossier :</strong> {groupeToAction.numero}</Col>
+                                <Col md={6}><strong>Dossiers :</strong> {groupeToAction.dossiers_count}</Col>
                             </Row>
                         </div>
                     )}
@@ -980,6 +1266,45 @@ const CbPaiementsIndex = (props: PageProps) => {
                     <Button color="light" onClick={() => setModalAjournerOpen(false)}>Annuler</Button>
                     <Button color="danger" onClick={confirmAjourner}
                         disabled={processing || motifAjourner.trim().length < 5}>
+                        {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : <><i className="ri-close-line me-1"></i>Confirmer l'ajournement</>}
+                    </Button>
+                </ModalFooter>
+            </Modal>
+
+            {/* ═══════════════════════════════════════════════════════════════
+               MODAL AJOURNEMENT PARTIEL (STAGIAIRES SÉLECTIONNÉS)
+               ═══════════════════════════════════════════════════════════════ */}
+            <Modal isOpen={modalAjournerStagiairesOpen} toggle={() => setModalAjournerStagiairesOpen(!modalAjournerStagiairesOpen)}>
+                <ModalHeader toggle={() => setModalAjournerStagiairesOpen(!modalAjournerStagiairesOpen)}>
+                    <i className="ri-close-circle-line text-danger me-2"></i>Ajourner les Stagiaires Sélectionnés
+                </ModalHeader>
+                <ModalBody>
+                    <div className="alert alert-warning border-0 mb-3">
+                        <i className="ri-alert-line me-2"></i>
+                        Seuls les {selectedStagiaireIds.length} stagiaire(s) sélectionné(s) seront retirés du dossier et repartiront en file d'attente DMG. Le reste du dossier n'est pas affecté.
+                    </div>
+                    {errors?.paiement_ids && (
+                        <div className="alert alert-danger border-0 mb-3">
+                            <i className="ri-error-warning-line me-2"></i>
+                            {errors.paiement_ids}
+                        </div>
+                    )}
+                    <div className="mb-3">
+                        <Label className="form-label fw-semibold">Motif de l'ajournement <span className="text-danger">*</span></Label>
+                        <Input type="textarea" rows={4}
+                            value={motifAjournerStagiaires}
+                            onChange={(e) => setMotifAjournerStagiaires(e.target.value)}
+                            placeholder="Ex: Pièce d'identité illisible, doublon suspecté..."
+                            className={motifAjournerStagiaires.length > 0 && motifAjournerStagiaires.length < 5 ? 'is-invalid' : ''} />
+                        {motifAjournerStagiaires.length > 0 && motifAjournerStagiaires.length < 5 && (
+                            <div className="invalid-feedback">Le motif doit contenir au moins 5 caractères.</div>
+                        )}
+                    </div>
+                </ModalBody>
+                <ModalFooter>
+                    <Button color="light" onClick={() => setModalAjournerStagiairesOpen(false)}>Annuler</Button>
+                    <Button color="danger" onClick={confirmAjournerStagiaires}
+                        disabled={processing || motifAjournerStagiaires.trim().length < 5}>
                         {processing ? <><Spinner size="sm" className="me-1" />Traitement...</> : <><i className="ri-close-line me-1"></i>Confirmer l'ajournement</>}
                     </Button>
                 </ModalFooter>
