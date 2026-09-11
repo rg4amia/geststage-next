@@ -127,20 +127,6 @@ const TYPE_PIECE_OPTIONS = [
     { value: 'PASSEPORT', label: 'Passeport' },
 ];
 
-const HANDICAP_OPTIONS = [
-    { value: 'HANDICAP', label: 'Handicap' },
-    { value: 'SANS HANDICAP', label: 'Sans handicap' },
-];
-
-const TYPE_HANDICAP_OPTIONS = [
-    { value: 'HANDICAP MENTAL', label: 'Handicap mental' },
-    { value: 'HANDICAP MOTEUR', label: 'Handicap moteur' },
-    { value: 'HANDICAP PSYCHIQUE', label: 'Handicap psychique' },
-    { value: 'HANDICAP SENSORIEL', label: 'Handicap sensoriel' },
-    { value: 'MALADIE INVALIDANTE', label: 'Maladie invalidante' },
-    { value: 'AUTRE', label: 'Autre' },
-];
-
 const ALLOWED_DOC_EXTENSIONS = ['pdf', 'doc', 'docx'];
 const ALLOWED_IMAGE_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png'];
 const MAX_FILE_SIZE_KB = 10240; // 10 MB
@@ -599,6 +585,21 @@ unique.set(o.entreprise_id, o);
     const isNiveauAucun = String(data.niveau_etude_id) === '1';
     const isDiplomeAutre = String(data.diplome_id) === '42';
 
+    /** handicap_id / type_handicap_id sont des FK numériques (cf. exists:handicaps,id côté
+     * backend) : on retrouve les entrées "positives" par libellé plutôt que de coder leur id en dur. */
+    const handicapPositifId = useMemo(
+        () => references.handicaps.find(h => normalizeLabel(h.nom) === 'HANDICAP')?.id,
+        [references.handicaps],
+    );
+    const typeHandicapAutreId = useMemo(
+        () => references.typesHandicap.find(t => normalizeLabel(t.nom) === 'AUTRE')?.id,
+        [references.typesHandicap],
+    );
+    const isHandicapPositif = handicapPositifId !== undefined
+        && String(data.handicap_id) === String(handicapPositifId);
+    const isTypeHandicapAutre = typeHandicapAutreId !== undefined
+        && String(data.type_handicap_id) === String(typeHandicapAutreId);
+
     /* ═══════════════════════════════════════════════════════════════════════
        AUTO-EFFECTS (alignés sur Inscriptions/Create)
        ═══════════════════════════════════════════════════════════════════════ */
@@ -815,11 +816,11 @@ req('autre_diplome', data.autre_diplome, 'Préciser le diplôme');
         req('type_enseignement_id', data.type_enseignement_id, "Type d'enseignement");
         req('handicap_id', data.handicap_id, 'Handicap');
 
-        if (data.handicap_id === 'HANDICAP') {
+        if (isHandicapPositif) {
             req('type_handicap_id', data.type_handicap_id, 'Type de handicap');
         }
 
-        if (data.type_handicap_id === 'AUTRE') {
+        if (isTypeHandicapAutre) {
             req('autre_handicap', data.autre_handicap, 'Autre handicap');
         }
 
@@ -1656,7 +1657,7 @@ return;
                                                 <RsSelect
                                                     id="handicap_id"
                                                     value={data.handicap_id}
-                                                    options={HANDICAP_OPTIONS}
+                                                    options={optionsRef(references.handicaps)}
                                                     onChange={val =>
                                                         setData('handicap_id', val)
                                                     }
@@ -1664,7 +1665,7 @@ return;
                                                 />
                                                 {erreur('handicap_id')}
                                             </Col>
-                                            {data.handicap_id === 'HANDICAP' && (
+                                            {isHandicapPositif && (
                                                 <>
                                                     <Col md={4}>
                                                         <Label className="fw-semibold">
@@ -1674,7 +1675,7 @@ return;
                                                         <RsSelect
                                                             id="type_handicap_id"
                                                             value={data.type_handicap_id}
-                                                            options={TYPE_HANDICAP_OPTIONS}
+                                                            options={optionsRef(references.typesHandicap)}
                                                             onChange={val =>
                                                                 setData('type_handicap_id', val)
                                                             }
@@ -1682,7 +1683,7 @@ return;
                                                         />
                                                         {erreur('type_handicap_id')}
                                                     </Col>
-                                                    {data.type_handicap_id === 'AUTRE' && (
+                                                    {isTypeHandicapAutre && (
                                                         <Col md={4}>
                                                             <Label className="fw-semibold">
                                                                 Autre handicap (à préciser){' '}

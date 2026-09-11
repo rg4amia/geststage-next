@@ -490,7 +490,12 @@ class PointageCipController extends Controller
                 ->where('actif', true)
                 ->orderBy('nom')
                 ->get(['id', 'nom', 'prenoms', 'agence_id']),
-            'authUserAgenceIds' => Auth::user()->perimetresAgences()->pluck('agences.id')->toArray(),
+            // Un administrateur passe outre le périmètre dans assertDansLePerimetre() ci-dessous ;
+            // sans ce même bypass ici, le select Agence masquerait l'agence réelle du stage dès
+            // qu'elle est hors de son périmètre nominal (souvent vide ou restreint).
+            'authUserAgenceIds' => Auth::user()?->hasRole('administrateur')
+                ? []
+                : Auth::user()->perimetresAgences()->pluck('agences.id')->toArray(),
             'returnTo' => [
                 'tab' => $request->query('return_tab', 'ajourne_dmg'),
                 'mois' => $request->query('mois'),

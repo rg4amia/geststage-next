@@ -987,6 +987,10 @@ class MigrateLegacyDataCommand extends Command
         $liensParenteMap = LienParente::pluck('id', 'ancien_id')->toArray();
         $typesEnseignementMap = TypeEnseignement::pluck('id', 'ancien_id')->toArray();
         $communesMap = Commune::pluck('id', 'ancien_id')->toArray();
+        // Le legacy ne distingue pas commune et sous-préfecture dans une table dédiée : les
+        // colonnes "id_soupref_..." de contrats_pae référencent aussi `communes`. Les champs
+        // cibles sous_prefecture_* sont du texte libre (pas de FK), d'où ce libellé plutôt qu'un id.
+        $communesNomParAncienId = Commune::pluck('nom', 'ancien_id')->toArray();
         $niveauxParLibelle = NiveauEtude::pluck('id', 'nom')
             ->mapWithKeys(fn ($id, $nom) => [mb_strtoupper(trim((string) $nom)) => $id])
             ->toArray();
@@ -1001,7 +1005,8 @@ class MigrateLegacyDataCommand extends Command
 
         $this->processInChunks($query, 500, function ($contrats) use (
             &$bar, $typesPaiementMap, $handicapsMap, $typesHandicapMap,
-            $liensParenteMap, $typesEnseignementMap, $communesMap, $niveauxParLibelle, $diplomesParLibelle
+            $liensParenteMap, $typesEnseignementMap, $communesMap, $communesNomParAncienId,
+            $niveauxParLibelle, $diplomesParLibelle
         ): void {
             $chunkNumeroAej = $contrats->pluck('numero_aej')->filter()->unique()->toArray();
             $existantsMap = Beneficiaire::whereIn('numero_aej', $chunkNumeroAej)->get()->keyBy('numero_aej');
@@ -1066,6 +1071,12 @@ class MigrateLegacyDataCommand extends Command
                     'numero_piece_identite' => $legacyContrat->num_piece,
                     'numero_cmu' => $legacyContrat->numero_cmu ?? null,
                     'commune_residence_id' => isset($legacyContrat->id_commune_de_residence) ? ($communesMap[$legacyContrat->id_commune_de_residence] ?? null) : null,
+                    'sous_prefecture_naissance' => (isset($legacyContrat->id_soupref_lieu_naisse)
+                        ? ($communesNomParAncienId[$legacyContrat->id_soupref_lieu_naisse] ?? null)
+                        : null) ?? ($legacyContrat->custom_sous_prefecture_naissance ?? null),
+                    'sous_prefecture_residence' => isset($legacyContrat->id_sous_prefecture_de_residence)
+                        ? ($communesNomParAncienId[$legacyContrat->id_sous_prefecture_de_residence] ?? null)
+                        : null,
                     'personne_urgence' => $legacyContrat->personne_urgence ?? null,
                     'lien_parente_id' => isset($legacyContrat->lienparente_id) ? ($liensParenteMap[$legacyContrat->lienparente_id] ?? null) : null,
                     'contact_urgence_1' => $legacyContrat->prsurgent_tel1 ?? null,
@@ -1145,10 +1156,15 @@ class MigrateLegacyDataCommand extends Command
         // à rien dans la table situations_stage utilisée par le filtre de "Mes Stagiaires".
         $situationsStageMap = DB::table('situations_stage')->pluck('code', 'ancien_id')->toArray();
         $statutsStageMap = DB::table('statuts_stage')->pluck('code', 'ancien_id')->toArray();
+        // Comme pour sous_prefecture_naissance/residence côté bénéficiaire : pas de table
+        // sous_prefectures dédiée en legacy, les colonnes "id_soupref_lieu_stage" pointent
+        // aussi vers communes. stages.commune_stage/sous_prefecture_stage sont du texte libre.
+        $communesNomParAncienId = Commune::pluck('nom', 'ancien_id')->toArray();
 
         $this->processInChunks($query, 500, function ($contrats) use (
             &$bar, $agencesMap, $typesStageMap, $entreprisesMap, $sourcesFinancementMap,
-            $origineStagiaireMap, $situationsStageMap, $statutsStageMap, $conseillersMap
+            $origineStagiaireMap, $situationsStageMap, $statutsStageMap, $conseillersMap,
+            $communesNomParAncienId
         ): void {
             $aejNums = $contrats->pluck('numero_aej')->filter()->unique()->toArray();
             $beneficiairesMap = Beneficiaire::whereIn('numero_aej', $aejNums)->pluck('id', 'numero_aej')->toArray();
@@ -1265,8 +1281,16 @@ class MigrateLegacyDataCommand extends Command
                     'intitule_poste' => $legacyContrat->intitule_poste_stage ?? 'Poste non défini',
 
                     'localite_stage' => $legacyContrat->lieu_de_stage ?? null,
+                    'commune_stage' => isset($legacyContrat->id_commune_lieu_stage)
+                        ? ($communesNomParAncienId[$legacyContrat->id_commune_lieu_stage] ?? null)
+                        : null,
+                    'sous_prefecture_stage' => isset($legacyContrat->id_soupref_lieu_stage)
+                        ? ($communesNomParAncienId[$legacyContrat->id_soupref_lieu_stage] ?? null)
+                        : null,
 
                     'nom_encadreur' => $legacyContrat->nom_encadreur ?? null,
+                    'fonction_encadreur' => $legacyContrat->fonction_encadreur ?? null,
+                    'contact_encadreur' => $legacyContrat->tel_encadreur ?? null,
 
                     'date_debut' => $date_debut,
                     'date_fin_prevue' => $date_fin_prevue,
