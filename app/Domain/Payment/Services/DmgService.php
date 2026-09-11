@@ -545,7 +545,7 @@ class DmgService
             ]);
             $codePeriode = (string) Periode::whereKey($periodeId)->value('code');
             $groupe->update([
-                'numero' => $groupe->nature.substr($codePeriode, -2).'-'.$groupe->id.'-G',
+                'numero' => $groupe->nature.str_replace('-', '', $codePeriode).'-'.$groupe->id.'-G',
             ]);
 
             $now = now();

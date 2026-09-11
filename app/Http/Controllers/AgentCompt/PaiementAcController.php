@@ -4,6 +4,7 @@ namespace App\Http\Controllers\AgentCompt;
 
 use App\Domain\Payment\Services\AgentComptableService;
 use App\Enums\CorbeilleEnum;
+use App\Http\Controllers\Concerns\RestreintParPeriodeBordereau;
 use App\Http\Controllers\Controller;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\OrdrePaiement;
@@ -27,6 +28,8 @@ use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class PaiementAcController extends Controller
 {
+    use RestreintParPeriodeBordereau;
+
     /** Onglets stagiaires d'une OP, calqués sur ceux de l'écran legacy. */
     private const ONGLETS_STAGIAIRES = ['attente', 'valide', 'paye', 'non_paye', 'rejete', 'differe'];
 
@@ -967,21 +970,6 @@ class PaiementAcController extends Controller
         return $avecBordereau
             ->values()
             ->merge($sansBordereau->values());
-    }
-
-    /**
-     * Les OP legacy peuvent garder leur mois d'origine même quand elles ont été
-     * regroupées dans un bordereau AC d'un autre mois. L'écran AC se pilote par
-     * période du bordereau ; l'OP garde sa période seulement comme secours.
-     */
-    private function restreindreOrdreParPeriodeBordereau(Builder $ordre, Periode $periode): Builder
-    {
-        return $ordre->where(function (Builder $query) use ($periode): void {
-            $query->where('periode_id', $periode->id)
-                ->orWhereHas('bordereau', function (Builder $bordereau) use ($periode): void {
-                    $bordereau->where('periode_id', $periode->id);
-                });
-        });
     }
 
     /**

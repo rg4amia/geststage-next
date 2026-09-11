@@ -73,16 +73,12 @@ class PointageCipController extends Controller
 
         if ($periode) {
             if ($tab === 'attente') {
-                $query = Stage::with(['beneficiaire', 'entreprise', 'agence', 'sourceFinancement'])
+                $query = Stage::with(['beneficiaire', 'entreprise', 'agence', 'sourceFinancement', 'conseiller.user'])
                     ->withExists(['pointages as has_pointage_demarrage' => function ($q) {
                         $q->where('nature', 'DEMARRAGE')->where('statut', 'VALIDE');
                     }])
                     ->where('situation_stage', SituationStage::CODE_EN_COURS)
-                    ->where('date_debut', '<=', $periode->date_fin)
-                    ->where(function ($q) use ($periode) {
-                        $q->whereNull('date_fin_prevue')
-                            ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
-                    })
+                    ->enAttenteDePointage($periode)
                     ->whereDoesntHave('pointages', function ($q) use ($periode) {
                         $q->where('periode_id', $periode->id)
                             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
@@ -104,16 +100,12 @@ class PointageCipController extends Controller
                 });
 
             } elseif ($tab === 'attente_pejedec') {
-                $query = Stage::with(['beneficiaire', 'entreprise', 'agence', 'sourceFinancement'])
+                $query = Stage::with(['beneficiaire', 'entreprise', 'agence', 'sourceFinancement', 'conseiller.user'])
                     ->withExists(['pointages as has_pointage_demarrage' => function ($q) {
                         $q->where('nature', 'DEMARRAGE')->where('statut', 'VALIDE');
                     }])
                     ->where('situation_stage', SituationStage::CODE_EN_COURS)
-                    ->where('date_debut', '<=', $periode->date_fin)
-                    ->where(function ($q) use ($periode) {
-                        $q->whereNull('date_fin_prevue')
-                            ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
-                    })
+                    ->enAttenteDePointage($periode)
                     ->whereDoesntHave('pointages', function ($q) use ($periode) {
                         $q->where('periode_id', $periode->id)
                             ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);

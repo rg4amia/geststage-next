@@ -596,7 +596,7 @@ const PointagesIndex = (props: PageProps) => {
                                                     {(currentTab === 'attente' || currentTab === 'attente_pejedec') && (
                                                         <>
                                                             <td>{index + 1}</td>
-                                                            <td><span className="text-muted">CIP</span></td>
+                                                            <td>{getStageData(row)?.conseiller?.user?.name || <span className="text-muted">CIP</span>}</td>
                                                             <td>{getStageData(row)?.agence?.nom || '-'}</td>
                                                             <td>{getStageData(row)?.entreprise?.raison_sociale || '-'}</td>
                                                             <td>{getStageData(row)?.sourceFinancement?.nom || getStageData(row)?.source_financement?.nom || '-'}</td>

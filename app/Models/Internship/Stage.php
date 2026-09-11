@@ -13,11 +13,14 @@ use App\Models\Contract\Contrat;
 use App\Models\Document\Document;
 use App\Models\Reference\Agence;
 use App\Models\Reference\Conseiller;
+use App\Models\Reference\Periode;
 use App\Models\Reference\Programme;
 use App\Models\Reference\SourceFinancement;
 use App\Models\Reference\TypeStage;
 use App\Models\User;
 use App\Models\Workflow\InstanceParcours;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -162,5 +165,28 @@ class Stage extends Model
     public function visaDessePar(): BelongsTo
     {
         return $this->belongsTo(User::class, 'visa_desse_par_id');
+    }
+
+    /**
+     * Stages potentiellement en attente de pointage pour la période donnée : le stage doit
+     * chevaucher la période, mais un stage dont la fin prévue tombe dans les 5 premiers jours
+     * du mois cible est exclu — règle legacy (`PointageService::getStagiairesSansPointage`) :
+     * ces jours ne comptent pas comme une présence à pointer sur ce mois.
+     */
+    public function scopeEnAttenteDePointage(Builder $query, Periode $periode): Builder
+    {
+        return $query
+            ->where('date_debut', '<=', $periode->date_fin)
+            ->where(function (Builder $q) use ($periode): void {
+                $q->whereNull('date_fin_prevue')
+                    ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
+            })
+            ->where(function (Builder $q) use ($periode): void {
+                $q->whereNull('date_fin_prevue')
+                    ->orWhereRaw('date_fin_prevue NOT BETWEEN ? AND ?', [
+                        $periode->date_debut,
+                        Carbon::parse($periode->date_debut)->addDays(4),
+                    ]);
+            });
     }
 }

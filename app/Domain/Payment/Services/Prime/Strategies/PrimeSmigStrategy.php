@@ -4,6 +4,7 @@ namespace App\Domain\Payment\Services\Prime\Strategies;
 
 use App\Domain\Payment\Services\Prime\ContexteCalculPrime;
 use App\Domain\Payment\Services\Prime\PrimeConfigurationService;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Filet de sécurité : accepte tous les stages et renvoie le montant SMIG
@@ -21,7 +22,18 @@ class PrimeSmigStrategy implements PrimeStrategyInterface
 
     public function calculate(ContexteCalculPrime $contexte, string $mois): float
     {
-        return (float) $this->configuration->get('smig.default', 0);
+        $montant = (float) $this->configuration->get('smig.default', 0);
+
+        if ($montant === 0.0) {
+            Log::warning('Prime SMIG à 0 F — référentiel manquant ou stage hors grille', [
+                'stage_id' => $contexte->stageId,
+                'type_stage_legacy_id' => $contexte->typeStageLegacyId,
+                'source_financement_legacy_id' => $contexte->sourceFinancementLegacyId,
+                'mois' => $mois,
+            ]);
+        }
+
+        return $montant;
     }
 
     public function priority(): int

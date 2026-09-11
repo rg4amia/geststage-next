@@ -41,8 +41,6 @@ class IndexChefAgenceController extends Controller
      */
     public function moisOmis(Request $request): JsonResponse
     {
-        $user = Auth::user();
-
         $rows = InstanceParcours::query()
             ->join('stages', 'stages.id', '=', 'instances_parcours.stage_id')
             ->where('instances_parcours.corbeille_actuelle', CorbeilleEnum::CA_ATTENTE_VALIDATION_OMIS->value)
@@ -51,8 +49,8 @@ class IndexChefAgenceController extends Controller
             ->whereNotNull('stages.date_debut')
             // Même règle que le legacy : seuls les mois strictement antérieurs au mois courant
             ->whereRaw("TO_CHAR(stages.date_debut, 'YYYY-MM') < ?", [Carbon::now()->format('Y-m')])
-            ->when($user->agence_id, function (Builder $query) use ($user): void {
-                $query->where('stages.agence_id', $user->agence_id);
+            ->when($this->agencesAutorisees(), function (Builder $query, array $agenceIds): void {
+                $query->whereIn('stages.agence_id', $agenceIds);
             })
             // Filtres additionnels communs (agence, entreprise, financement, type stage, structure)
             ->when($request->filled('agence_id'), fn (Builder $q) => $q->where('stages.agence_id', $request->integer('agence_id')))
@@ -389,8 +387,6 @@ class IndexChefAgenceController extends Controller
 
     private function baseQuery(Request $request): Builder
     {
-        $user = Auth::user();
-
         return InstanceParcours::query()
             ->with([
                 'stage.beneficiaire',
@@ -409,8 +405,8 @@ class IndexChefAgenceController extends Controller
             // Dans le nouveau schéma : le stage doit avoir au moins un contrat actif.
             ->whereHas('stage.contrats')
             // ─── SCOPE AGENCE DU CA CONNECTÉ ───────────────────────────────────
-            ->when($user->agence_id, function (Builder $query) use ($user): void {
-                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('agence_id', $user->agence_id));
+            ->when($this->agencesAutorisees(), function (Builder $query, array $agenceIds): void {
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->whereIn('agence_id', $agenceIds));
             })
             // ─── FILTRES ADDITIONNELS (surchargent le scope agence si passés) ──
             ->when($request->filled('agence_id'), function (Builder $query) use ($request): void {
@@ -472,16 +468,39 @@ class IndexChefAgenceController extends Controller
      */
     private function findInstanceForChefAgence(int $id, array $corbeilles): InstanceParcours
     {
-        $user = Auth::user();
-
         return InstanceParcours::query()
             ->with('stage')
             ->where('id', $id)
             ->whereIn('corbeille_actuelle', array_map(fn (CorbeilleEnum $corbeille) => $corbeille->value, $corbeilles))
             // Vérification de sécurité : l'instance appartient bien à l'agence du CA
-            ->when($user->agence_id, function (Builder $query) use ($user): void {
-                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->where('agence_id', $user->agence_id));
+            ->when($this->agencesAutorisees(), function (Builder $query, array $agenceIds): void {
+                $query->whereHas('stage', fn (Builder $stageQuery) => $stageQuery->whereIn('agence_id', $agenceIds));
             })
             ->firstOrFail();
+    }
+
+    /**
+     * Agences sur lesquelles le chef d'agence connecté est habilité, ou `null` s'il n'a
+     * aucun périmètre défini (aucune restriction) — `users` n'a pas de colonne `agence_id` :
+     * le périmètre est porté par le pivot `perimetres_agences_utilisateurs`. L'administrateur
+     * conserve une vue nationale même s'il possède par ailleurs un périmètre.
+     *
+     * @return array<int, int>|null
+     */
+    private function agencesAutorisees(): ?array
+    {
+        $user = Auth::user();
+
+        if (! $user) {
+            return null;
+        }
+
+        if (method_exists($user, 'hasRole') && $user->hasRole('administrateur')) {
+            return null;
+        }
+
+        $agenceIds = $user->perimetresAgences()->pluck('agences.id')->all();
+
+        return $agenceIds === [] ? null : $agenceIds;
     }
 }

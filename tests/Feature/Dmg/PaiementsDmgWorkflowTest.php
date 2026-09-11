@@ -308,7 +308,7 @@ class PaiementsDmgWorkflowTest extends TestCase
         ])->assertRedirect();
 
         $groupe = DossierGroupe::firstOrFail();
-        $this->assertMatchesRegularExpression('/^PS08-\d+-G$/', $groupe->numero);
+        $this->assertMatchesRegularExpression('/^PS202608-\d+-G$/', $groupe->numero);
         $this->assertSame('95000.00', $groupe->montant_total);
         $this->assertDatabaseCount('lignes_dossiers_groupes', 2);
 

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Dmg;
 
 use App\Domain\Payment\Services\DmgService;
 use App\Domain\Workflow\Services\CorbeilleParcoursQueryService;
+use App\Http\Controllers\Concerns\RestreintParPeriodeBordereau;
 use App\Http\Controllers\Controller;
 use App\Models\Company\Entreprise;
 use App\Models\Payment\BordereauPaiement;
@@ -25,6 +26,8 @@ use Inertia\Response;
 
 class PaiementDmgController extends Controller
 {
+    use RestreintParPeriodeBordereau;
+
     public function __construct(
         private DmgService $dmgService,
         private CorbeilleParcoursQueryService $corbeilles,
@@ -103,7 +106,9 @@ class PaiementDmgController extends Controller
                 ->orderByDesc('created_at')
                 ->limit(500)
                 ->get(), 'dossiers'),
-            'ops' => Inertia::defer(fn () => OrdrePaiement::where('periode_id', $periodeId)->orderByDesc('created_at')->limit(500)->get(), 'dossiers'),
+            'ops' => Inertia::defer(fn () => OrdrePaiement::query()
+                ->when($periode, fn ($q) => $this->restreindreOrdreParPeriodeBordereau($q, $periode))
+                ->orderByDesc('created_at')->limit(500)->get(), 'dossiers'),
             'bordereaux' => Inertia::defer(fn () => BordereauPaiement::where('periode_id', $periodeId)
                 ->withCount('ordresPaiement')
                 ->orderByDesc('created_at')

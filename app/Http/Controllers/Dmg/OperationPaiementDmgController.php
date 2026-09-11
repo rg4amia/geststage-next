@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Dmg;
 
 use App\Domain\Payment\Services\DmgService;
+use App\Http\Controllers\Concerns\RestreintParPeriodeBordereau;
 use App\Http\Controllers\Controller;
 use App\Models\Payment\BordereauPaiement;
 use App\Models\Payment\DossierPaiement;
@@ -17,6 +18,8 @@ use Illuminate\Support\Facades\DB;
 
 class OperationPaiementDmgController extends Controller
 {
+    use RestreintParPeriodeBordereau;
+
     public function __construct(private DmgService $service) {}
 
     /**
@@ -72,7 +75,7 @@ class OperationPaiementDmgController extends Controller
         $ops = OrdrePaiement::query()
             ->with(['sourceFinancement:id,nom', 'bordereau:id,numero'])
             ->withCount('dossiersPaiement')
-            ->when($periode, fn ($q) => $q->where('periode_id', $periode->id))
+            ->when($periode, fn ($q) => $this->restreindreOrdreParPeriodeBordereau($q, $periode))
             ->when($request->string('statut')->toString(), fn ($q, $statut) => $q->where('statut', $statut))
             ->orderByDesc('created_at')
             ->limit(500)

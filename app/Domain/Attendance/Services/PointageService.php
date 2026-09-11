@@ -51,11 +51,7 @@ class PointageService
         }
 
         $queryAttente = Stage::where('situation_stage', SituationStage::CODE_EN_COURS)
-            ->where('date_debut', '<=', $periode->date_fin)
-            ->where(function ($q) use ($periode) {
-                $q->whereNull('date_fin_prevue')
-                    ->orWhere('date_fin_prevue', '>=', $periode->date_debut);
-            })
+            ->enAttenteDePointage($periode)
             ->whereDoesntHave('pointages', function ($q) use ($periodeId) {
                 $q->where('periode_id', $periodeId)
                     ->whereIn('statut', ['SOUMIS', 'VALIDE', 'CORRIGE_CIP', 'AJOURNE_CA', 'AJOURNE_DMG']);
